@@ -1,0 +1,164 @@
+@import "tailwindcss";
+
+/*
+ * AiaA design tokens — see docs/design-system.md (owned by the frontend-ux agent).
+ *
+ * Strictly black, white and greys. No hue is used to carry meaning: status is
+ * expressed with fill, weight, border and iconography, so the interface stays
+ * readable for colour-blind users and in greyscale print.
+ *
+ * Tailwind v4 reads these tokens from `@theme` and generates the matching
+ * utilities (`bg-surface`, `text-ink-muted`, `rounded-lg`, `shadow-raised`…).
+ * Components must never hard-code a value that exists here.
+ */
+@theme {
+  /* --- Typography ------------------------------------------------------- */
+  /* Native system stack: renders as SF Pro on macOS/iOS and Segoe UI Variable
+     on Windows. No network fetch, no layout shift, no FOUT. */
+  --font-sans:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
+    system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+
+  --text-display: 3.25rem;
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.03em;
+  --text-title: 2rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.02em;
+  --text-heading: 1.3125rem;
+  --text-heading--line-height: 1.25;
+  --text-heading--letter-spacing: -0.012em;
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 1.2;
+  --text-overline--letter-spacing: 0.09em;
+
+  /* --- Surfaces --------------------------------------------------------- */
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafafa;
+  --color-surface-sunken: #f4f4f5;
+  --color-inverse: #0a0a0b;
+  --color-inverse-soft: #1c1c1f;
+
+  /* --- Text ------------------------------------------------------------- */
+  /* Contrast on white: ink 19.6:1, ink-muted 6.9:1, ink-subtle 4.8:1 (WCAG AA). */
+  --color-ink: #0a0a0b;
+  --color-ink-muted: #5a5a60;
+  --color-ink-subtle: #6f6f77;
+  --color-ink-inverse: #fafafa;
+  /* Contrast on inverse: 7.4:1. */
+  --color-ink-inverse-muted: #a8a8b0;
+
+  /* --- Lines and focus --------------------------------------------------- */
+  --color-line: #e7e7ea;
+  --color-line-strong: #d2d2d8;
+  --color-focus: #0a0a0b;
+
+  /* --- Radii -------------------------------------------------------------- */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  /* --- Elevation (very light, Apple-like) --------------------------------- */
+  --shadow-subtle: 0 1px 2px rgb(10 10 11 / 0.04);
+  --shadow-raised: 0 1px 3px rgb(10 10 11 / 0.06), 0 8px 24px -12px rgb(10 10 11 / 0.14);
+  --shadow-overlay: 0 2px 8px rgb(10 10 11 / 0.08), 0 24px 48px -20px rgb(10 10 11 / 0.24);
+
+  /* --- Motion -------------------------------------------------------------- */
+  --ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 300ms;
+
+  --animate-rise: rise var(--duration-slow) var(--ease-standard) both;
+  --animate-fade: fade var(--duration-base) var(--ease-standard) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-spin-slow: spin 700ms linear infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Keyboard focus is always visible and never removed (WCAG 2.4.7). */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::selection {
+    background-color: var(--color-inverse);
+    color: var(--color-ink-inverse);
+  }
+}
+
+@layer utilities {
+  /* Discreet translucent panel (navigation bars, sticky headers). */
+  .panel-blur {
+    background-color: color-mix(in srgb, var(--color-canvas) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  .panel-blur-inverse {
+    background-color: color-mix(in srgb, var(--color-inverse) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+
+/* Motion is decoration: honour the OS setting (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

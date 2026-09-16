@@ -22,6 +22,7 @@ supabase/.temp/
 
 # tests
 coverage/
+.vitest/
 test-results/
 playwright-report/
 blob-report/
@@ -35,3 +36,9 @@ playwright/.cache/
 Thumbs.db
 *.log
 .vercel
+
+# private keys and certificates
+*.pem
+
+# locally generated fixture credentials (never commit)
+fixtures/.generated-credentials.json
