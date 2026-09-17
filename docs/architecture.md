@@ -71,6 +71,8 @@ paramètre envoyé par le client. En complément :
 | Un seul rendez-vous actif par contact | **code uniquement** pour l'instant (`checkEligibility`) — voir « ce qui n'est pas couvert » |
 | Aucun double envoi | `outbound_messages.idempotency_key`, unique par agence |
 | Journal d'exécution non réécrivable | `guard_ai_agent_run` : un run terminé est figé, les colonnes d'identité sont immuables |
+| Journal d'étapes non réécrivable | `ai_agent_run_steps` en ajout seul, `duration_ms` recalculé par la base |
+| Aucune valeur en euros écrite par une IA | `guard_property_estimated_value` : écriture refusée tant qu'une exécution d'agent de la session est ouverte |
 
 Le client `service_role` (`lib/supabase/admin.ts`) refuse de s'exécuter côté navigateur et n'est
 utilisé que pour le chargement des données de test en local et les tests d'intégration.
@@ -116,10 +118,29 @@ session + agence  →  garde-fous (coupe-circuit, volume, reprise humaine, appar
 ```
 
 **L'IA ne décide jamais** : ni une étape du pipeline, ni un destinataire, ni un canal, ni un envoi,
-ni une date, ni une confirmation de mandat. Ces décisions n'existent même pas dans les schémas de
-sortie : il n'y a aucun champ par lequel les exprimer. Exemple, Louis : c'est **le code** qui calcule
-les créneaux légaux et libres ; Louis choisit un identifiant dans cette liste fermée, et un
-identifiant hors liste invalide toute la réponse.
+ni une date, ni une confirmation de mandat, ni l'identité d'une personne. Ces décisions n'existent
+même pas dans les schémas de sortie : il n'y a aucun champ par lequel les exprimer. Trois exemples,
+un par type de décision à conséquence :
+
+| Décision | Qui la prend | Ce que l'IA peut, au mieux, exprimer |
+|---|---|---|
+| Quel créneau réserver (Louis) | le code calcule les créneaux légaux et libres | un identifiant **dans la liste fermée** fournie ; hors liste ⇒ réponse entière invalide |
+| Si deux vendeurs sont la même personne (Léa) | le code, sur correspondance **exacte** de l'email et du téléphone normalisés | rien : aucun champ de dédoublonnage n'existe dans son schéma |
+| Quelle étape du pipeline après un rendez-vous (Sarah) | le code, depuis une **liste blanche** qui ne contient que `estimation_faite` | rien : aucun champ d'étape n'existe dans son schéma |
+
+Pourquoi le dédoublonnage n'est pas confié à un modèle : une correspondance « probable » qui
+fusionnerait deux familles différentes dans une seule fiche est une faute grave et difficilement
+réversible. On préfère un doublon visible, qu'un humain tranche, à une fusion silencieuse.
+
+**Règles partagées, écrites une fois.** Le choix du canal, la vérification du consentement courant
+et l'ajout de la mention de désinscription vivent dans `lib/agents/consent.ts` et sont utilisés à
+l'identique par Louis et par Emma : la seule règle qui a des conséquences juridiques ne peut pas
+diverger d'un agent à l'autre.
+
+**Exécution sans contact.** Léa travaille *avant* qu'un contact existe :
+`startGuardedContactlessRun` ouvre un run avec `contact_id = null` (la colonne est nullable, et la
+base interdit de la modifier ensuite). Tous les autres garde-fous — coupe-circuit, volume quotidien,
+appartenance à l'agence — s'appliquent sans changement.
 
 **Injection de prompt.** Le texte écrit par un prospect est une **donnée, jamais une instruction** :
 il est isolé dans des blocs `<donnee_non_fiable>`, les balises forgées sont neutralisées, la
@@ -131,6 +152,46 @@ tâche est ouverte pour un humain, le run est marqué `failed`. Un agent ne devi
 
 **Coût.** Les tokens consommés sont enregistrés par exécution et par agence
 (`ai_agent_runs.input_tokens` / `output_tokens`), y compris pour une tentative échouée.
+
+**Voir l'agent travailler, sans mise en scène.** Chaque exécution écrit aussi un journal d'étapes
+détaillé (`ai_agent_run_steps`, API dans `lib/agents/steps.ts`) : `guardrails` → `context_loaded` →
+`prompt_built` → `ai_call` → `output_validated` → `decision` → `persisted`. Ces étapes sont
+enregistrées **au moment où le travail a lieu**, avec des instants mesurés côté serveur, et
+`duration_ms` est **recalculé par la base** à partir de `started_at` / `finished_at` : l'interface
+rejoue des durées réelles et n'a **jamais** le droit de fabriquer une barre de progression. Le
+`guardrails` est posé par `startGuardedRun` lui-même, y compris quand l'exécution est refusée
+(statut `blocked` + motif), pour que l'utilisateur voie *pourquoi* ça s'est arrêté. Une panne
+d'enregistrement d'étape n'échoue jamais l'exécution métier (même règle que `finishRun`).
+
+**Ce que l'écran affiche est ce qui a été mesuré.** Les chiffres de l'écran « Agents IA »
+(`features/agents-ia/data.ts`, exposés par `queries.ts`) sont des **comptages exacts en base**, jamais
+un échantillon : l'agrégation se fait en SQL (`public.agent_activity_summary`, migration
+`20260917120000`, `security invoker` — la RLS de l'appelant s'applique), sur deux fenêtres nommées et
+calculées en **Europe/Paris** (`today`, `last7Days`). Trois règles s'y ajoutent :
+
+- `runsToday` compte **exactement ce que compte `private.guard_ai_agent_run`** pour la limite
+  quotidienne — toutes les exécutions de l'agence du jour parisien **sauf** les `blocked`, tous agents
+  confondus. Un chiffre affiché à côté d'une limite doit être le chiffre sur lequel la limite porte ;
+- la **dernière exécution de chaque agent** vient d'une requête dédiée par agent, sans borne de
+  pagination : un agent qui a réellement tourné ne peut pas s'afficher « Jamais exécuté » ;
+- **un comptage qui a échoué n'est jamais renvoyé comme `0`.** La réponse de l'agrégat est validée par
+  zod et un `count` absent est une erreur : la lecture entière renvoie `{ data: null, error }` et
+  l'écran affiche l'erreur. Un zéro rassurant inventé serait un chiffre faux, ce que CLAUDE.md interdit.
+
+**Refuser un brouillon demande un motif.** `rejectOutboundMessage(client, id, { reason, note? })` exige
+un motif pris dans une **liste fermée** (`MESSAGE_REJECTION_REASONS`) — pas de texte libre en guise de
+motif : c'est exploitable pour corriger les agents, et rien de personnel ni de rédigé par un prospect
+ne peut atterrir dans un journal en ajout seul. Un commentaire libre facultatif est accepté, borné à
+300 caractères et débarrassé des caractères de contrôle. Motif et commentaire sont journalisés dans
+`activities` avec l'auteur humain estampillé par la base.
+
+**Ce qu'une IA ne peut pas écrire, même par erreur de code.** `properties.estimated_value_eur` est
+la donnée qui engage l'agence devant un vendeur : la base refuse toute écriture de cette colonne
+pendant qu'une exécution d'agent de la session appelante est ouverte
+(`private.guard_property_estimated_value`). Limite connue et assumée : le lien se fait sur
+`triggered_by_user_id = auth.uid()`, donc il bloque exactement le chemin de code d'un agent, pas un
+membre de la même agence qui saisirait une valeur au même moment qu'un collègue — refuser ce cas
+serait un faux positif sans bénéfice. Côté code, `lib/agents/` n'écrit cette colonne pour aucun agent.
 
 ---
 
@@ -154,7 +215,9 @@ jusqu'à l'interface (`lib/utils/result.ts`).
   tout traitement.
 - **Sorties d'IA** : schémas `strictObject` — toute clé supplémentaire invalide la réponse entière.
   Enums fermés dès qu'un vocabulaire existe, longueurs bornées partout, aucun lien autorisé dans un
-  message rédigé par l'IA.
+  message rédigé par l'IA, et **aucun montant en euros** dans les textes libres d'Emma et de Sarah
+  (`noMoney`, `lib/claude/schemas.ts`) : la colonne `estimated_value_eur` est déjà interdite aux
+  agents par la base, cette vérification ferme la voie de contournement par le texte.
 
 ---
 
@@ -186,7 +249,26 @@ Jetons OAuth et clés : côté serveur uniquement, jamais renvoyés au navigateu
 - **Intégration (Vitest, Supabase local)** : `*.integration.test.ts`. Sessions réelles, RLS active,
   deux agences fictives créées puis supprimées. Ils refusent de s'exécuter sur autre chose que le
   Supabase local.
-- **E2E (Playwright)** : parcours utilisateur.
+- **E2E (Playwright)** : parcours utilisateur. Un seul worker (`playwright.config.ts`) : plusieurs
+  parcours basculent le coupe-circuit de la **même** agence fictive, et en parallèle ils se
+  refuseraient mutuellement des exécutions.
+
+### 10.1 Ordre d'exécution des suites (ce n'est pas un bug)
+
+Les tests d'intégration vérifient que la base locale ne contient **que** des données fictives,
+notamment qu'aucune activité n'est enregistrée hors simulation. Or certains parcours E2E
+actionnent de vraies commandes humaines : le coupe-circuit passe par le RPC `set_ai_paused`, qui
+journalise `ai_paused` / `ai_resumed` avec `is_simulation = false` — c'est **correct**, un humain a
+réellement suspendu les agents.
+
+Conséquence, l'ordre à respecter localement :
+
+```
+npm run db:reset   →   npx vitest run   →   npx playwright test
+```
+
+Après un passage Playwright, relancer `npm run db:reset` **avant** de relancer les tests
+d'intégration. Aucun correctif de code n'est attendu ici : c'est l'ordre normal.
 
 ---
 
@@ -204,5 +286,13 @@ Jetons OAuth et clés : côté serveur uniquement, jamais renvoyés au navigateu
 - Pas encore : file d'attente de validation des premiers contacts, confirmation humaine d'un
   rendez-vous (passage en `rdv_planifie`), désinscription entrante (STOP reçu), purge RGPD
   automatique, chiffrement applicatif des jetons d'intégration.
+- **Dédoublonnage de Léa borné à 5 000 fiches par agence** (`LEAD_DEDUPE_SCAN_LIMIT`) : la
+  comparaison se fait dans le code, sur la liste des contacts de l'agence. Au-delà, l'exécution
+  **refuse de conclure** plutôt que de comparer une liste tronquée (un doublon manqué crée une
+  seconde fiche pour une personne réelle). Correctif le jour où une agence dépasse cet ordre de
+  grandeur : filtrer côté base sur `lower(email)` et sur le téléphone normalisé — ce qui suppose
+  une colonne normalisée indexée, donc une décision de schéma à valider.
+- **Un seul brouillon de relance par contact et par jour parisien** (clé d'idempotence d'Emma) :
+  volontaire, mais c'est une règle de rythme arbitraire, à arbitrer avec le métier.
 - Les règles juridiques implémentées reflètent l'état connu en septembre 2026 et **doivent être
   validées par un juriste** avant commercialisation.

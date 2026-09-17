@@ -28,8 +28,9 @@ import { generateValidated } from "@/lib/agents/ai-task";
 import { resolveAgentContext } from "@/lib/agents/context";
 import { databaseErrorCode, failFromDatabase, failFromUnexpected, failWith } from "@/lib/agents/errors";
 import { logAgentActivity, openHumanTask } from "@/lib/agents/journal";
-import { AGENT_TASK_TEXTS, type AgentErrorCode } from "@/lib/agents/messages";
+import { AGENT_STEP_LABELS, AGENT_TASK_TEXTS, type AgentErrorCode } from "@/lib/agents/messages";
 import { finishRun, startGuardedRun } from "@/lib/agents/runner";
+import type { RecordedRunStep } from "@/lib/agents/steps";
 import type { AgentContact, AgentContext, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
 import type { AiChoice, AiFacts, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
@@ -94,6 +95,12 @@ export type LouisRunResult = {
   reason: string;
   confidence: number;
   usage: AiUsage;
+  /**
+   * Steps really measured during this run, in order. Same content as
+   * `ai_agent_run_steps` for this run: the UI can replay immediately without a
+   * second read, and `getRunSteps(runId)` returns the same thing later.
+   */
+  steps: readonly RecordedRunStep[];
 };
 
 export type RunLouisOptions = {
@@ -192,7 +199,7 @@ export async function runLouisAppointment(
       now: options.now,
     });
     if (started.error) return { data: null, error: started.error };
-    const { runId, contact, agency } = started.data;
+    const { runId, contact, agency, steps } = started.data;
 
     const now = options.now ?? new Date();
 
@@ -203,6 +210,19 @@ export async function runLouisAppointment(
       task?: { type: keyof typeof AGENT_TASK_TEXTS; activityType: string };
       usage?: AiUsage;
     }): Promise<Result<LouisRunResult>> => {
+      // The user must see why Louis stopped, and that nothing was booked.
+      await steps.step({
+        phase: "decision",
+        label: LOUIS_DECISION_TEXTS[input.decision],
+        status: "failed",
+        detail: {
+          decision: input.decision,
+          error_code: input.code,
+          task_type: input.task?.type ?? null,
+          appointment_created: false,
+          message_created: false,
+        },
+      });
       if (input.task) {
         await openHumanTask(client, context, {
           contactId: contact.id,
@@ -241,6 +261,12 @@ export async function runLouisAppointment(
       .maybeSingle();
 
     if (propertyQuery.error) {
+      await steps.step({
+        phase: "context_loaded",
+        label: "Lecture du bien impossible : aucune action.",
+        status: "failed",
+        detail: { error_code: "property_read_failed" },
+      });
       await finishRun(client, runId, {
         status: "failed",
         error: "property_read_failed",
@@ -261,6 +287,12 @@ export async function runLouisAppointment(
       .lte("starts_at", horizonEnd.toISOString());
 
     if (appointmentsQuery.error) {
+      await steps.step({
+        phase: "context_loaded",
+        label: "Lecture de l'agenda impossible : aucune action.",
+        status: "failed",
+        detail: { error_code: "appointments_read_failed" },
+      });
       await finishRun(client, runId, {
         status: "failed",
         error: "appointments_read_failed",
@@ -269,6 +301,17 @@ export async function runLouisAppointment(
       return failFromDatabase<LouisRunResult>("runLouisAppointment.appointments", appointmentsQuery.error);
     }
     const activeAppointments = appointmentsQuery.data ?? [];
+
+    await steps.step({
+      phase: "context_loaded",
+      label: AGENT_STEP_LABELS.context_loaded,
+      detail: {
+        contact_stage: contact.stage,
+        property_known: property !== null,
+        active_appointments: activeAppointments.length,
+        horizon_days: SLOT_HORIZON_DAYS,
+      },
+    });
 
     // --- eligibility ----------------------------------------------------------
     const eligibility = checkEligibility({
@@ -287,6 +330,12 @@ export async function runLouisAppointment(
       .eq("contact_id", contact.id);
 
     if (consentsQuery.error) {
+      await steps.step({
+        phase: "context_loaded",
+        label: "Lecture des consentements impossible : aucune action.",
+        status: "failed",
+        detail: { error_code: "consents_read_failed" },
+      });
       await finishRun(client, runId, {
         status: "failed",
         error: "consents_read_failed",
@@ -338,6 +387,21 @@ export async function runLouisAppointment(
     const slotById = new Map(slots.map((slot) => [slot.id, slot]));
     const choices: AiChoice[] = slots.map((slot) => ({ id: slot.id, label: slot.label }));
 
+    // Everything that has a consequence has already been decided, BY THE CODE,
+    // before the AI is even called: eligibility, channel, consent, free slots.
+    await steps.step({
+      phase: "decision",
+      label:
+        "Règles du code appliquées : éligibilité, canal et consentement vérifiés, créneaux libres calculés.",
+      detail: {
+        stage: contact.stage,
+        channel,
+        consent_checked: true,
+        free_slots: slots.length,
+        slot_ids: slots.map((slot) => slot.id),
+      },
+    });
+
     // --- history (untrusted) ---------------------------------------------------
     const historyQuery = await client
       .from("activities")
@@ -350,6 +414,24 @@ export async function runLouisAppointment(
     const history = historyQuery.data ?? [];
 
     // --- AI call: it may only choose a slot and write the wording --------------
+    const untrusted = [
+      { label: "contact_notes", content: contact.notes ?? "" },
+      { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
+    ];
+
+    await steps.step({
+      phase: "prompt_built",
+      label: AGENT_STEP_LABELS.prompt_built,
+      detail: {
+        prompt_version: LOUIS_PROMPT_VERSION,
+        // Counts only: the prospect's text itself never enters the journal.
+        untrusted_blocks: untrusted.length,
+        untrusted_chars: untrusted.reduce((total, block) => total + block.content.length, 0),
+        offered_slots: choices.length,
+        scenario: options.scenario ?? null,
+      },
+    });
+
     const generation = await generateValidated(
       provider,
       {
@@ -358,13 +440,11 @@ export async function runLouisAppointment(
         promptVersion: LOUIS_PROMPT_VERSION,
         facts: buildFacts({ contact, property, agencyName: agency.name, channel }),
         choices,
-        untrusted: [
-          { label: "contact_notes", content: contact.notes ?? "" },
-          { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
-        ],
+        untrusted,
         scenario: options.scenario,
       },
       createLouisAppointmentSchema(slots.map((slot) => slot.id)),
+      { steps },
     );
 
     if (!generation.ok) {
@@ -386,6 +466,17 @@ export async function runLouisAppointment(
         payload: { agent: LOUIS_AGENT, run_id: runId, error_code: generation.error.code },
         agent: LOUIS_AGENT,
         isSimulation: provider.isSimulation,
+      });
+      await steps.step({
+        phase: "persisted",
+        label: AGENT_STEP_LABELS.no_write,
+        status: "failed",
+        detail: {
+          error_code: generation.error.code,
+          task_type: task.data?.type ?? null,
+          appointment_created: false,
+          message_created: false,
+        },
       });
       await finishRun(client, runId, {
         status: "failed",
@@ -410,6 +501,21 @@ export async function runLouisAppointment(
       });
     }
 
+    await steps.step({
+      phase: "decision",
+      label: `Créneau retenu, relu depuis la table du code : ${slot.label}`,
+      detail: {
+        slot_id: slot.id,
+        starts_at: slot.startsAt,
+        ends_at: slot.endsAt,
+        offered_slots: slots.length,
+        confidence: proposal.confidence,
+        // The pipeline stage is deliberately untouched: `rdv_planifie` means a
+        // CONFIRMED appointment, and a human confirms it.
+        stage_changed: false,
+      },
+    });
+
     // --- writes ---------------------------------------------------------------
     const assignedUserId = contact.assigned_user_id ?? context.userId;
 
@@ -433,6 +539,15 @@ export async function runLouisAppointment(
       // 23P01 (exclusion constraint) = the slot was taken between the read and
       // the write. The database, not the code, is what makes this race safe.
       const code = appointmentConflictCode(appointmentInsert.error);
+      await steps.step({
+        phase: "persisted",
+        label:
+          code === "appointment_slot_taken"
+            ? "Créneau pris entre-temps : la base a refusé, rien n'a été réservé."
+            : "Réservation refusée par la base : aucune action.",
+        status: "failed",
+        detail: { error_code: code, appointment_created: false, message_created: false },
+      });
       await finishRun(client, runId, {
         status: "failed",
         error: code,
@@ -475,6 +590,17 @@ export async function runLouisAppointment(
         .delete()
         .eq("agency_id", context.agencyId)
         .eq("id", appointment.id);
+      await steps.step({
+        phase: "persisted",
+        label: "Message impossible à préparer : le créneau réservé a été libéré, aucune action.",
+        status: "failed",
+        detail: {
+          error_code: "outbound_message_insert_failed",
+          appointment_created: false,
+          appointment_rolled_back: true,
+          message_created: false,
+        },
+      });
       await finishRun(client, runId, {
         status: "failed",
         error: "outbound_message_insert_failed",
@@ -505,6 +631,20 @@ export async function runLouisAppointment(
       },
       agent: LOUIS_AGENT,
       isSimulation: provider.isSimulation,
+    });
+
+    await steps.step({
+      phase: "persisted",
+      label:
+        "Rendez-vous créé en « proposé » et message mis en attente de validation : rien n'est envoyé.",
+      detail: {
+        appointment_id: appointment.id,
+        appointment_status: appointment.status,
+        message_id: message.id,
+        message_status: message.status,
+        channel,
+        is_simulation: true,
+      },
     });
 
     await finishRun(client, runId, {
@@ -557,6 +697,7 @@ export async function runLouisAppointment(
       reason: proposal.reason,
       confidence: proposal.confidence,
       usage: generation.usage,
+      steps: steps.steps,
     });
   } catch (cause) {
     return failFromUnexpected<LouisRunResult>("runLouisAppointment", cause);

@@ -12,7 +12,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // One worker, always. Several journeys flip the agency-wide AI kill switch of
+  // the same fictitious agency: run in parallel, they would refuse each other's
+  // executions and fail for a reason that has nothing to do with the product.
+  workers: 1,
   reporter: process.env.CI ? "github" : "list",
   use: {
     baseURL: BASE_URL,

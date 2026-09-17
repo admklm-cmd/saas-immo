@@ -20,7 +20,11 @@ const ITEMS: readonly NavItem[] = [
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/agents-ia") return pathname === href;
+  // "Agents IA" owns the replay of one execution, but not the validation queue,
+  // which is a menu entry of its own.
+  if (href === "/agents-ia") {
+    return pathname === href || pathname.startsWith("/agents-ia/executions");
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

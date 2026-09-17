@@ -33,7 +33,9 @@ type PublicTable =
   | "outbound_messages"
   | "activities"
   | "ai_agent_runs"
-  | "tasks";
+  | "ai_agent_run_steps"
+  | "tasks"
+  | "inbound_leads";
 
 type TableCase = {
   table: PublicTable;
@@ -127,6 +129,23 @@ const tableCases: TableCase[] = [
     update: { column: "decision", value: "hacked" },
   },
   {
+    table: "ai_agent_run_steps",
+    rowId: (r) => r.aiAgentRunStepId,
+    insertPayload: (victim) => ({
+      agency_id: victim.agencyId,
+      run_id: victim.aiAgentRunId,
+      // A free index: the unique (run_id, step_index) must never be what
+      // refuses the insert, otherwise a broken RLS policy would go unnoticed.
+      step_index: 42,
+      phase: "decision",
+      label: "Étape intruse",
+      status: "ok",
+      started_at: new Date(Date.now() - 2_000).toISOString(),
+      finished_at: new Date(Date.now() - 1_000).toISOString(),
+    }),
+    update: { column: "label", value: "hacked" },
+  },
+  {
     table: "tasks",
     rowId: (r) => r.taskId,
     // A `type` of its own: the partial unique index must never be what refuses
@@ -138,6 +157,16 @@ const tableCases: TableCase[] = [
       title: "Tâche intruse",
     }),
     update: { column: "title", value: "hacked" },
+  },
+  {
+    table: "inbound_leads",
+    rowId: (r) => r.inboundLeadId,
+    insertPayload: (victim) => ({
+      agency_id: victim.agencyId,
+      source: "website_form",
+      raw_text: "Lead intrus",
+    }),
+    update: { column: "raw_text", value: "hacked" },
   },
 ];
 
@@ -465,6 +494,19 @@ describe("refus propres à chaque table (dans sa propre agence)", () => {
     expect(error?.code).toBe("42501");
     await adminReadColumn("ai_agent_runs", env.agencyA.aiAgentRunId, "id");
   });
+
+  // The step journal is what the UI replays. If it could be rewritten, the
+  // replay would prove nothing.
+  it("ai_agent_run_steps : UPDATE et DELETE refusés à un membre", async () => {
+    const client = env.users.directorA.client;
+    const id = env.agencyA.aiAgentRunStepId;
+
+    const updated = await client.from("ai_agent_run_steps").update({ label: "hacked" }).eq("id", id);
+    expect(updated.error?.code).toBe("42501");
+    const deleted = await client.from("ai_agent_run_steps").delete().eq("id", id);
+    expect(deleted.error?.code).toBe("42501");
+    expect(await adminReadColumn("ai_agent_run_steps", id, "label")).toBe("Étape de test");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -577,6 +619,40 @@ describe("intégrité inter-agences", () => {
     const deleted = await env.admin.from("activities").delete().eq("id", env.agencyA.activityId);
     expect(deleted.error?.message).toContain("activities_append_only");
     expect(await adminReadColumn("activities", env.agencyA.activityId, "summary")).toBe("Activité de test");
+  });
+
+  it("ai_agent_run_steps : UPDATE et DELETE refusés même en service role", async () => {
+    const id = env.agencyA.aiAgentRunStepId;
+    const updated = await env.admin.from("ai_agent_run_steps").update({ label: "hacked" }).eq("id", id);
+    expect(updated.error?.message).toContain("ai_agent_run_steps_append_only");
+    const deleted = await env.admin.from("ai_agent_run_steps").delete().eq("id", id);
+    expect(deleted.error?.message).toContain("ai_agent_run_steps_append_only");
+    expect(await adminReadColumn("ai_agent_run_steps", id, "label")).toBe("Étape de test");
+  });
+
+  it("refuse une étape rattachée à l'exécution d'une autre agence", async () => {
+    const { error } = await env.users.agentA.client.from("ai_agent_run_steps").insert({
+      agency_id: env.agencyA.agencyId,
+      run_id: env.agencyB.aiAgentRunId,
+      step_index: 7,
+      phase: "decision",
+      label: "Étape croisée",
+      status: "ok",
+      started_at: new Date(Date.now() - 2_000).toISOString(),
+      finished_at: new Date(Date.now() - 1_000).toISOString(),
+    });
+    expect(error?.code).toBe("23503");
+  });
+
+  it("refuse un lead de A rattaché au contact de B", async () => {
+    const { error } = await env.users.agentA.client.from("inbound_leads").insert({
+      agency_id: env.agencyA.agencyId,
+      source: "estimation_form",
+      raw_text: "Lead croisé",
+      status: "processed",
+      contact_id: env.agencyB.contactId,
+    });
+    expect(error?.code).toBe("23503");
   });
 });
 
@@ -1041,5 +1117,239 @@ describe("tasks : clôture et anti-doublon", () => {
     expect(closed.error).toBeNull();
     const reopenedDuplicate = await agent.from("tasks").insert({ ...base, created_by_agent: "hugo" });
     expect(reopenedDuplicate.error).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. Estimated value in euros: never written by an AI agent
+// ---------------------------------------------------------------------------
+describe("valeur estimée d'un bien", () => {
+  it("refuse toute écriture pendant qu'une exécution d'agent IA est ouverte", async () => {
+    const agent = env.users.agentA.client;
+    const propertyId = env.agencyA.propertyId;
+
+    const run = await agent
+      .from("ai_agent_runs")
+      .insert({
+        agency_id: env.agencyA.agencyId,
+        agent: "hugo",
+        contact_id: env.agencyA.contactId,
+        triggered_by_user_id: env.users.agentA.id,
+      })
+      .select("id")
+      .single();
+    expect(run.error).toBeNull();
+
+    // While the run is open, the euro figure is out of reach.
+    const duringRun = await agent
+      .from("properties")
+      .update({ estimated_value_eur: 420000, estimated_value_source: "agency" })
+      .eq("id", propertyId);
+    expect(duringRun.error?.message).toBe("estimated_value_ai_write_refused");
+    expect(await adminReadColumn("properties", propertyId, "estimated_value_eur")).toBeNull();
+
+    // A property created during the run cannot carry a figure either.
+    const createdDuringRun = await agent.from("properties").insert({
+      agency_id: env.agencyA.agencyId,
+      contact_id: env.agencyA.contactId,
+      city: "Cassis",
+      estimated_value_eur: 500000,
+      estimated_value_source: "agency",
+    });
+    expect(createdDuringRun.error?.message).toBe("estimated_value_ai_write_refused");
+
+    // Everything else stays writable: only the euro figure is protected.
+    const otherColumn = await agent.from("properties").update({ city: "Ceyreste" }).eq("id", propertyId);
+    expect(otherColumn.error).toBeNull();
+
+    const closed = await agent.from("ai_agent_runs").update({ status: "succeeded" }).eq("id", run.data!.id);
+    expect(closed.error).toBeNull();
+  });
+
+  it("une fois l'exécution close, un humain enregistre la valeur et le serveur estampille", async () => {
+    const agent = env.users.agentA.client;
+    const propertyId = env.agencyA.propertyId;
+
+    const recorded = await agent
+      .from("properties")
+      .update({
+        estimated_value_eur: 420000,
+        estimated_value_source: "agency",
+        // Ignored: the server stamps the date itself.
+        estimated_value_recorded_at: "2000-01-01T00:00:00Z",
+      })
+      .eq("id", propertyId)
+      .select("estimated_value_eur, estimated_value_recorded_at, estimated_value_recorded_by")
+      .single();
+    expect(recorded.error).toBeNull();
+    expect(Number(recorded.data!.estimated_value_eur)).toBe(420000);
+    expect(recorded.data!.estimated_value_recorded_by).toBe(env.users.agentA.id);
+    expect(new Date(recorded.data!.estimated_value_recorded_at!).getUTCFullYear()).toBeGreaterThanOrEqual(2026);
+
+    // The provenance cannot be attributed to somebody else.
+    const forged = await agent
+      .from("properties")
+      .update({
+        estimated_value_eur: 430000,
+        estimated_value_source: "agency",
+        estimated_value_recorded_by: env.users.directorA.id,
+      })
+      .eq("id", propertyId);
+    expect(forged.error?.message).toBe("estimated_value_recorded_by_must_be_caller");
+
+    // Nor rewritten while the figure itself does not move.
+    const rewritten = await agent
+      .from("properties")
+      .update({ estimated_value_recorded_by: env.users.directorA.id })
+      .eq("id", propertyId);
+    expect(rewritten.error?.message).toBe("estimated_value_stamp_immutable");
+
+    // A figure without a source is refused by the schema itself.
+    const noSource = await agent
+      .from("properties")
+      .update({ estimated_value_eur: 450000, estimated_value_source: null })
+      .eq("id", propertyId);
+    expect(noSource.error?.code).toBe("23514");
+
+    // Out-of-range values are refused too.
+    const negative = await agent
+      .from("properties")
+      .update({ estimated_value_eur: -1, estimated_value_source: "agency" })
+      .eq("id", propertyId);
+    expect(negative.error?.code).toBe("23514");
+
+    // Clearing the figure clears its provenance.
+    const cleared = await agent
+      .from("properties")
+      .update({ estimated_value_eur: null })
+      .eq("id", propertyId)
+      .select("estimated_value_source, estimated_value_recorded_at, estimated_value_recorded_by")
+      .single();
+    expect(cleared.error).toBeNull();
+    expect(cleared.data).toEqual({
+      estimated_value_source: null,
+      estimated_value_recorded_at: null,
+      estimated_value_recorded_by: null,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 12. Appointment report: stamped by the server (Sarah's raw material)
+// ---------------------------------------------------------------------------
+describe("compte-rendu de rendez-vous", () => {
+  it("estampille l'auteur et la date, refuse une attribution forgée", async () => {
+    const agent = env.users.agentA.client;
+    const id = env.agencyA.appointmentId;
+
+    const forged = await agent
+      .from("appointments")
+      .update({ report_notes: "Compte-rendu forgé", report_recorded_by: env.users.directorA.id })
+      .eq("id", id);
+    expect(forged.error?.message).toBe("report_recorded_by_must_be_caller");
+
+    const written = await agent
+      .from("appointments")
+      .update({
+        report_notes: "Estimation réalisée, le vendeur réfléchit au prix de présentation.",
+        // Ignored: the server stamps the date itself.
+        report_recorded_at: "2000-01-01T00:00:00Z",
+      })
+      .eq("id", id)
+      .select("report_notes, report_recorded_by, report_recorded_at")
+      .single();
+    expect(written.error).toBeNull();
+    expect(written.data!.report_recorded_by).toBe(env.users.agentA.id);
+    expect(new Date(written.data!.report_recorded_at!).getUTCFullYear()).toBeGreaterThanOrEqual(2026);
+
+    // Touching another column leaves the report stamps untouched.
+    const untouched = await agent
+      .from("appointments")
+      .update({ status: "done" })
+      .eq("id", id)
+      .select("report_recorded_at, report_recorded_by")
+      .single();
+    expect(untouched.data).toEqual({
+      report_recorded_at: written.data!.report_recorded_at,
+      report_recorded_by: env.users.agentA.id,
+    });
+
+    // Erasing the report erases its stamps, all three together.
+    const erased = await agent
+      .from("appointments")
+      .update({ report_notes: null })
+      .eq("id", id)
+      .select("report_notes, report_recorded_by, report_recorded_at")
+      .single();
+    expect(erased.data).toEqual({ report_notes: null, report_recorded_by: null, report_recorded_at: null });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 13. Step journal: measured, not declared
+// ---------------------------------------------------------------------------
+describe("ai_agent_run_steps : durées mesurées", () => {
+  it("recalcule duration_ms depuis les instants et ignore ce que le client envoie", async () => {
+    const agent = env.users.agentA.client;
+    const startedAt = new Date(Date.now() - 5_000);
+    const finishedAt = new Date(startedAt.getTime() + 1_250);
+
+    const inserted = await agent
+      .from("ai_agent_run_steps")
+      .insert({
+        agency_id: env.agencyA.agencyId,
+        run_id: env.agencyA.aiAgentRunId,
+        step_index: 1,
+        phase: "ai_call",
+        label: "Appel du simulateur.",
+        status: "ok",
+        started_at: startedAt.toISOString(),
+        finished_at: finishedAt.toISOString(),
+        // A blatant lie: the database must overwrite it.
+        duration_ms: 999_999,
+      })
+      .select("duration_ms, created_at")
+      .single();
+    expect(inserted.error).toBeNull();
+    expect(inserted.data!.duration_ms).toBe(1_250);
+    expect(new Date(inserted.data!.created_at).getUTCFullYear()).toBeGreaterThanOrEqual(2026);
+
+    // No two steps can claim the same rank in a run.
+    const duplicate = await agent.from("ai_agent_run_steps").insert({
+      agency_id: env.agencyA.agencyId,
+      run_id: env.agencyA.aiAgentRunId,
+      step_index: 1,
+      phase: "decision",
+      label: "Doublon.",
+      status: "ok",
+      started_at: startedAt.toISOString(),
+      finished_at: finishedAt.toISOString(),
+    });
+    expect(duplicate.error?.code).toBe("23505");
+
+    // A step cannot be dated in the future, nor end before it started.
+    const future = await agent.from("ai_agent_run_steps").insert({
+      agency_id: env.agencyA.agencyId,
+      run_id: env.agencyA.aiAgentRunId,
+      step_index: 2,
+      phase: "decision",
+      label: "Étape future.",
+      status: "ok",
+      started_at: new Date(Date.now() + 3_600_000).toISOString(),
+      finished_at: new Date(Date.now() + 3_601_000).toISOString(),
+    });
+    expect(future.error?.message).toBe("ai_agent_run_step_in_future");
+
+    const backwards = await agent.from("ai_agent_run_steps").insert({
+      agency_id: env.agencyA.agencyId,
+      run_id: env.agencyA.aiAgentRunId,
+      step_index: 3,
+      phase: "decision",
+      label: "Étape à rebours.",
+      status: "ok",
+      started_at: finishedAt.toISOString(),
+      finished_at: startedAt.toISOString(),
+    });
+    expect(backwards.error?.code).toBe("23514");
   });
 });

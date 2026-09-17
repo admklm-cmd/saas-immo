@@ -14,15 +14,21 @@ import { fail, ok, type Result } from "@/lib/utils/result";
 
 import { buildPromptInput } from "./prompt";
 import type { AiGeneration, AiGenerationRequest, AiProvider, AiTaskName } from "./provider";
+import { simulateEmmaFollowUp } from "./simulations/emma-relation";
 import { simulateHugoQualification } from "./simulations/hugo-qualification";
+import { simulateLeaAcquisition } from "./simulations/lea-acquisition";
 import { simulateLouisAppointment } from "./simulations/louis-rendez-vous";
+import { simulateSarahFollowThrough } from "./simulations/sarah-suivi";
 
 export const SIMULATOR_NAME = "simulator";
 export const SIMULATOR_MODEL = "simulator-v1";
 
 const GENERATORS: Record<AiTaskName, (request: AiGenerationRequest) => unknown> = {
+  lea_acquisition: simulateLeaAcquisition,
   hugo_qualification: simulateHugoQualification,
+  emma_follow_up: simulateEmmaFollowUp,
   louis_appointment: simulateLouisAppointment,
+  sarah_follow_through: simulateSarahFollowThrough,
 };
 
 /** Rough, deterministic token estimate (~4 characters per token). */

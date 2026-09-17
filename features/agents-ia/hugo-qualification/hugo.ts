@@ -14,14 +14,25 @@
  *
  * Any invalid AI output leads to: no business write at all, a task for a human,
  * and a `failed` run.
+ *
+ * Every stage of that sequence is journaled as it happens in
+ * `ai_agent_run_steps` (see lib/agents/steps.ts), with measured timestamps, so
+ * the UI can replay the execution instead of staging it. Hugo's business
+ * behaviour is unchanged by this: the steps only observe.
  */
 
 import { generateValidated } from "@/lib/agents/ai-task";
 import { resolveAgentContext } from "@/lib/agents/context";
 import { failFromDatabase, failFromUnexpected, failWith } from "@/lib/agents/errors";
 import { logAgentActivity, openHumanTask, type HumanTaskResult } from "@/lib/agents/journal";
-import { AGENT_TASK_TEXTS, listFieldLabels, type QualificationField } from "@/lib/agents/messages";
+import {
+  AGENT_STEP_LABELS,
+  AGENT_TASK_TEXTS,
+  listFieldLabels,
+  type QualificationField,
+} from "@/lib/agents/messages";
 import { finishRun, startGuardedRun } from "@/lib/agents/runner";
+import type { RecordedRunStep } from "@/lib/agents/steps";
 import type { AgentContact, AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
 import type { AiFacts, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
@@ -60,6 +71,12 @@ export type HugoRunResult = {
   provider: string;
   model: string;
   usage: AiUsage;
+  /**
+   * Steps really measured during this run, in order. Same content as
+   * `ai_agent_run_steps` for this run: the UI can replay immediately without a
+   * second read, and `getRunSteps(runId)` returns the same thing later.
+   */
+  steps: readonly RecordedRunStep[];
 };
 
 export type RunHugoOptions = {
@@ -133,7 +150,7 @@ export async function runHugoQualification(
       now: options.now,
     });
     if (started.error) return { data: null, error: started.error };
-    const { runId, contact } = started.data;
+    const { runId, contact, steps } = started.data;
 
     // --- inputs: contact, property, recent history ---------------------------
     const propertyQuery = await client
@@ -146,6 +163,12 @@ export async function runHugoQualification(
       .maybeSingle();
 
     if (propertyQuery.error) {
+      await steps.step({
+        phase: "context_loaded",
+        label: "Lecture du bien impossible : aucune action.",
+        status: "failed",
+        detail: { error_code: "property_read_failed" },
+      });
       await finishRun(client, runId, {
         status: "failed",
         error: "property_read_failed",
@@ -165,7 +188,35 @@ export async function runHugoQualification(
 
     const history = historyQuery.data ?? [];
 
+    await steps.step({
+      phase: "context_loaded",
+      label: AGENT_STEP_LABELS.context_loaded,
+      detail: {
+        contact_stage: contact.stage,
+        property_known: property !== null,
+        history_entries: history.length,
+        has_notes: Boolean(contact.notes && contact.notes.length > 0),
+      },
+    });
+
     // --- AI call: prospect content is passed as untrusted DATA ----------------
+    const untrusted = [
+      { label: "contact_notes", content: contact.notes ?? "" },
+      { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
+    ];
+
+    await steps.step({
+      phase: "prompt_built",
+      label: AGENT_STEP_LABELS.prompt_built,
+      detail: {
+        prompt_version: HUGO_PROMPT_VERSION,
+        // Counts only: the prospect's text itself never enters the journal.
+        untrusted_blocks: untrusted.length,
+        untrusted_chars: untrusted.reduce((total, block) => total + block.content.length, 0),
+        scenario: options.scenario ?? null,
+      },
+    });
+
     const generation = await generateValidated(
       provider,
       {
@@ -173,13 +224,11 @@ export async function runHugoQualification(
         systemPrompt: HUGO_SYSTEM_PROMPT,
         promptVersion: HUGO_PROMPT_VERSION,
         facts: buildFacts(contact, property),
-        untrusted: [
-          { label: "contact_notes", content: contact.notes ?? "" },
-          { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
-        ],
+        untrusted,
         scenario: options.scenario,
       },
       hugoQualificationSchema,
+      { steps },
     );
 
     if (!generation.ok) {
@@ -199,6 +248,16 @@ export async function runHugoQualification(
         payload: { agent: HUGO_AGENT, error_code: generation.error.code },
         agent: HUGO_AGENT,
         isSimulation: provider.isSimulation,
+      });
+      await steps.step({
+        phase: "persisted",
+        label: AGENT_STEP_LABELS.no_write,
+        status: "failed",
+        detail: {
+          error_code: generation.error.code,
+          task_type: task.data?.type ?? null,
+          updated_columns: [],
+        },
       });
       await finishRun(client, runId, {
         status: "failed",
@@ -231,6 +290,19 @@ export async function runHugoQualification(
       confidence: qualification.confidence,
     });
 
+    await steps.step({
+      phase: "decision",
+      label: HUGO_DECISION_TEXTS[decision.reason],
+      detail: {
+        decision: decision.reason,
+        previous_stage: contact.stage,
+        stage: decision.stage,
+        stage_changed: decision.changed,
+        missing_fields: merged.missingFields,
+        confidence: qualification.confidence,
+      },
+    });
+
     // --- writes ---------------------------------------------------------------
     const updatedColumns: string[] = [];
     const contactUpdate: Tables["contacts"]["Update"] = { ...merged.contactUpdates };
@@ -243,6 +315,12 @@ export async function runHugoQualification(
         .eq("agency_id", context.agencyId)
         .eq("id", contact.id);
       if (error) {
+        await steps.step({
+          phase: "persisted",
+          label: "Écriture du contact refusée : aucune action.",
+          status: "failed",
+          detail: { error_code: "contact_update_failed" },
+        });
         await finishRun(client, runId, {
           status: "failed",
           error: "contact_update_failed",
@@ -265,6 +343,12 @@ export async function runHugoQualification(
             .from("properties")
             .insert({ agency_id: context.agencyId, contact_id: contact.id, ...merged.propertyUpdates });
       if (error) {
+        await steps.step({
+          phase: "persisted",
+          label: "Écriture du bien refusée : aucune autre action.",
+          status: "failed",
+          detail: { error_code: "property_write_failed", updated_columns: updatedColumns },
+        });
         await finishRun(client, runId, {
           status: "failed",
           error: "property_write_failed",
@@ -328,6 +412,17 @@ export async function runHugoQualification(
       isSimulation: provider.isSimulation,
     });
 
+    await steps.step({
+      phase: "persisted",
+      label: AGENT_STEP_LABELS.persisted,
+      detail: {
+        updated_columns: updatedColumns,
+        activity_type: activityType,
+        task_type: task?.type ?? null,
+        task_created: task?.created ?? false,
+      },
+    });
+
     await finishRun(client, runId, {
       status: "succeeded",
       output: {
@@ -358,6 +453,7 @@ export async function runHugoQualification(
       provider: provider.name,
       model: provider.model,
       usage: generation.usage,
+      steps: steps.steps,
     });
   } catch (cause) {
     return failFromUnexpected<HugoRunResult>("runHugoQualification", cause);

@@ -10,7 +10,7 @@ import { FIXTURE_AGENCY_IDS, FIXTURE_EMAIL_DOMAIN, FIXTURE_PHONE_PATTERN, FIXTUR
 /**
  * Proves that the loaded fixtures are, and stay, 100 % synthetic:
  * reserved e-mail domain, Arcep fiction phone blocks, "(fictive)" agency names,
- * everything flagged as simulated, and the expected volumes.
+ * every simulated action flagged as such, and the expected volumes.
  *
  * Fails loudly (with the command to run) if the local stack is unreachable or
  * if the fixtures have not been loaded.
@@ -18,6 +18,35 @@ import { FIXTURE_AGENCY_IDS, FIXTURE_EMAIL_DOMAIN, FIXTURE_PHONE_PATTERN, FIXTUR
 
 const CONTEXT = "Fixtures check";
 const AGENCY_IDS = [FIXTURE_AGENCY_IDS.a, FIXTURE_AGENCY_IDS.b];
+
+/**
+ * The ONLY activity types allowed to carry `is_simulation = false`.
+ *
+ * `is_simulation` answers "was this ACTION simulated?", not "is this DATA
+ * synthetic?" — two different questions this suite used to conflate, which made
+ * it order-dependent: running the Playwright journey (which really flips the
+ * kill switch through `public.set_ai_paused`) left a legitimate
+ * `ai_paused` / `ai_resumed` row behind and failed a later `vitest` run.
+ *
+ * Flipping the kill switch IS a real action, really performed by a real human
+ * of the agency, and the RPC journals it as such on purpose. Marking it
+ * "simulation" would be the actual lie. The synthetic nature of the fixtures is
+ * proved by the tests above (reserved e-mail domain, Arcep fiction numbers,
+ * "(fictive)" agency names) — not by this flag.
+ *
+ * So the assertion is narrowed, not relaxed. A non-simulated activity is
+ * accepted only if it is an agency-level configuration event of a known type,
+ * written by a human. What this still catches — and what it exists for:
+ *   * an AI agent writing an action that is NOT marked as simulated
+ *     (`actor_type = 'ai_agent'`) — the dangerous regression;
+ *   * any real action recorded against one of the fictitious contacts
+ *     (`contact_id` not null), e.g. a send that stopped being simulated;
+ *   * any new activity type that starts claiming to be real.
+ *
+ * Do not widen this list to make a test pass: a new entry here means a new real
+ * action exists in the product, and that deserves its own review.
+ */
+const REAL_ACTIVITY_TYPES = ["ai_paused", "ai_resumed"] as const;
 
 type TypedClient = SupabaseClient<Database>;
 
@@ -110,8 +139,8 @@ describe("fixtures : données 100 % fictives", () => {
     }
   });
 
-  it.each(["appointments", "outbound_messages", "activities", "ai_agent_runs"] as const)(
-    "aucune ligne réelle (is_simulation = false) dans %s",
+  it.each(["appointments", "outbound_messages", "ai_agent_runs"] as const)(
+    "aucune action réelle (is_simulation = false) dans %s",
     async (table) => {
       const { count, error } = await (admin as unknown as SupabaseClient)
         .from(table)
@@ -122,6 +151,26 @@ describe("fixtures : données 100 % fictives", () => {
       expect(count).toBe(0);
     },
   );
+
+  it("dans activities, seules les actions humaines sur la configuration de l'agence sont réelles", async () => {
+    const { data, error } = await admin
+      .from("activities")
+      .select("id, type, contact_id, actor_type, actor_agent")
+      .in("agency_id", AGENCY_IDS)
+      .eq("is_simulation", false);
+    expect(error).toBeNull();
+
+    for (const activity of data ?? []) {
+      const where = `activité « ${activity.type} » (${activity.id})`;
+      // A human really did act: not an agent, and not "the system".
+      expect(REAL_ACTIVITY_TYPES, `${where} : type inattendu`).toContain(activity.type);
+      expect(activity.actor_type, `${where} : auteur non humain`).toBe("user");
+      expect(activity.actor_agent, `${where} : un agent IA en est l'auteur`).toBeNull();
+      // Agency-level configuration only: nothing real may target a fictitious
+      // person, since no real person exists behind these contacts.
+      expect(activity.contact_id, `${where} : rattachée à un contact`).toBeNull();
+    }
+  });
 });
 
 describe("fixtures : volumes attendus", () => {

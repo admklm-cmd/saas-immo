@@ -7,9 +7,12 @@ import { formatSlot } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Card } from "@/components/ui/Card";
 import { PipelineStageBadge } from "@/components/ui/PipelineStageBadge";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { AgentRunReplay } from "@/features/agents-ia/components/AgentRunReplay";
+import { replayStepsFromRecorded } from "@/features/agents-ia/components/replay";
 import { qualifyContact } from "@/features/agents-ia/hugo-qualification/actions";
 import { proposeAppointment } from "@/features/agents-ia/louis-rendez-vous/actions";
 import { QUALIFICATION_FIELD_LABELS } from "@/lib/agents/messages";
@@ -70,6 +73,13 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
   }
 
   const blocked = state.kind === "louis" && "blocked" in state.result ? state.result.blocked : null;
+
+  // Steps really measured during the run we just launched: the replay needs no
+  // second read, and shows exactly what `getRunSteps` would show later.
+  const replay =
+    state.kind === "hugo" || state.kind === "louis"
+      ? { runId: state.result.runId, steps: state.result.steps }
+      : null;
 
   return (
     <Card
@@ -153,6 +163,21 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
           </Alert>
         ) : null}
       </div>
+
+      {/* Outside the live region on purpose: the replay updates step by step and
+          must not be re-announced in full at every tick. */}
+      {replay ? (
+        <section className="mt-5 rounded-lg border border-line bg-surface-muted p-4" data-testid="agent-replay">
+          <h3 className="text-sm font-semibold text-ink">{APP_TEXTS.replay.title}</h3>
+          <p className="mt-1 mb-4 text-xs text-ink-muted">{APP_TEXTS.replay.subtitle}</p>
+          <AgentRunReplay key={replay.runId} steps={replayStepsFromRecorded(replay.runId, replay.steps)} />
+          <div className="mt-4">
+            <ButtonLink href={`/agents-ia/executions/${replay.runId}`} variant="ghost" size="sm">
+              {APP_TEXTS.agentsIa.viewReplay}
+            </ButtonLink>
+          </div>
+        </section>
+      ) : null}
     </Card>
   );
 }

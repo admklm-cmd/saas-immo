@@ -89,7 +89,12 @@ Boutons et badges : `rounded-full`.
 > numérique correspondant, dont la valeur **est** celle du token.
 
 Animations nommées : `animate-rise` (entrée de section), `animate-fade` (apparition
-d'alerte), `animate-shimmer` (squelettes), `animate-spin-slow` (bouton en cours).
+d'alerte et d'étape de rejeu), `animate-shimmer` (squelettes), `animate-spin-slow`
+(bouton en cours), `animate-pulse` (étape de rejeu en cours — indicateur d'activité,
+jamais une mesure d'avancement).
+
+**Exception assumée** : le rejeu d'une exécution d'agent n'utilise aucune durée de
+token. Ses délais sont les durées réellement mesurées par le serveur (voir 3.1).
 
 `prefers-reduced-motion: reduce` ramène toutes les animations et transitions à
 0,01 ms (`app/globals.css`).
@@ -115,12 +120,55 @@ d'alerte), `animate-shimmer` (squelettes), `animate-spin-slow` (bouton en cours)
 | `Field` | `Field.tsx` | Libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), désactivé |
 | `DataList` | `DataList.tsx` | `dl` 1 ou 2 colonnes |
 | `PageHeader` | `PageHeader.tsx` | Fil d'Ariane, `h1`, description, badges, actions |
+| `Select` | `Select.tsx` | `<select>` natif, `<label for>` réel, `id` obligatoire (utilisable en Server Component), survol, désactivé |
+| `Textarea` | `Textarea.tsx` | Champ multiligne : libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), `maxLength` |
 | `ComingSoon` | `ComingSoon.tsx` | Écran « À venir » soigné |
+
+`Button` accepte `ref` (prop simple en React 19), pour les cas où le focus doit
+être déplacé — par exemple sur le bouton de confirmation du coupe-circuit.
 
 Règle : **réutiliser avant de créer**. Un nouveau composant n'est ajouté que s'il est
 utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simulation).
 
-### 3.1 Le badge « simulation » est une règle produit
+### 3.1 Composants du module « Agents IA » (`features/agents-ia/components/`)
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `AgentRunReplay` | `AgentRunReplay.tsx` (client) | Rejeu animé d'une exécution : barre d'outils (facteur de ralenti, durée mesurée, « Tout afficher » / « Rejouer »), frise des étapes, zone `aria-live` |
+| `AgentRunStepRow` | `AgentRunStepRow.tsx` | Une étape : phase, auteur (`Code` / `Fournisseur IA`), statut, durée mesurée, détail technique replié |
+| `AgentRunHead` | `AgentRunHead.tsx` | Carte d'identité d'une exécution (dates, contact ou « Lead entrant », fournisseur, jetons, décision) |
+| `AgentOverviewCard` | `AgentOverviewCard.tsx` | Un agent : prénom, mission, statut, compteurs par fenêtre, dernière exécution, dernières erreurs |
+| `ActivityFigure` | `ActivityFigure.tsx` | Un compteur **toujours accompagné de sa fenêtre**, « Indisponible » si la lecture a échoué |
+| `AgencyActivityCard` | `AgencyActivityCard.tsx` | Chiffres de l'agence : exécutions décomptées, limite, tentatives, brouillons à valider |
+| `KillSwitchPanel` | `KillSwitchPanel.tsx` (client) | Coupe-circuit : état, confirmation en deux temps, refus expliqué |
+| `AgentRunsHistory` / `AgentRunsFilters` / `AgentRunsTable` | — | Journal filtrable et paginé (formulaire GET, sans JavaScript) |
+| `PendingMessagesList` | `PendingMessagesList.tsx` (client) | File « à valider » : confirmation persistante (`aria-live`) + rafraîchissement serveur |
+| `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |
+| `MessageRejectionForm` | `MessageRejectionForm.tsx` (client) | Motif obligatoire (liste fermée, `fieldset`/`legend`) + note facultative bornée |
+
+#### Règles de ce module (non négociables)
+
+1. **Le rejeu ne ment pas sur le rythme.** Chaque délai animé vient de
+   `durationMs`, mesuré par le serveur et recalculé par la base. Pas de fausse
+   barre de progression, pas de durée arrondie, pas de pause décorative.
+   Le seul écart permis est un **ralentissement affiché** (« Rejeu ralenti ×10 »
+   + durée réelle à côté), jamais une accélération.
+2. **`prefers-reduced-motion`** : aucune animation, aucun `setTimeout`, la liste
+   complète s'affiche immédiatement. Le bouton « Tout afficher » couvre le même
+   besoin à la demande.
+3. **Un chiffre sans sa fenêtre n'existe pas** : « 12 exécutions **aujourd'hui** ».
+   Un comptage impossible affiche « Indisponible », **jamais** « 0 ».
+4. **Auteur de l'étape visible** : une seule phase (`ai_call`) sort du code de
+   l'agence ; la phase `decision` est encadrée et annotée.
+5. Tout texte venant d'un prospect ou d'un journal s'affiche en **texte brut**
+   (aucun `dangerouslySetInnerHTML` dans le projet).
+6. **Valider n'est pas envoyer** : deux boutons distincts, jamais un seul. Le mot
+   « envoyer » est toujours suivi de « (simulation) », et la confirmation répète
+   que rien n'est parti.
+7. Un **refus** demande toujours un motif (liste fermée) ; la note reste
+   facultative et bornée.
+
+### 3.2 Le badge « simulation » est une règle produit
 
 Toute action simulée (message, rendez-vous, exécution d'agent IA) affiche
 `SimulationBadge`. C'est un garde-fou de `CLAUDE.md` : on ne doit **jamais** confondre
@@ -163,11 +211,18 @@ Chaque écran gère quatre états :
 
 - Conteneur applicatif : `max-w-7xl`, gouttières `px-6` (mobile) / `px-10` (≥ 1024 px).
 - Fiche contact : `lg:grid-cols-[minmax(0,1fr)_22rem]`, colonne de droite collante.
+- Écran Agents IA : bandeau `lg:grid-cols-2` (coupe-circuit + activité), grille des
+  cinq agents `lg:grid-cols-2 2xl:grid-cols-3`, journal pleine largeur.
+- Rejeu d'une exécution : colonne unique `max-w-4xl` (la lecture prime).
 - Navigation : barre horizontale défilante sous 1024 px, colonne fixe de 256 px au-dessus.
 - Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
 
 ## 8. Limites connues (à traiter plus tard)
 
 - Pas de thème sombre : les tokens sont prêts (surfaces inverses), le basculement ne l'est pas.
-- Pas encore de modale ni de toast : à ajouter avec l'écran de validation du premier contact.
+- Pas encore de modale ni de toast : à ajouter avec l'écran de validation du premier
+  contact. En attendant, une action sensible se confirme **en place** (panneau de
+  confirmation dans la carte, focus déplacé sur « Confirmer »), comme le coupe-circuit.
+- Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
+  et « Rejouer » suffisent pour le prototype.
 - Pas de police de marque (choix assumé, voir 2.2).

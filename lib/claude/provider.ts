@@ -17,11 +17,14 @@
 
 import type { Result } from "@/lib/utils/result";
 
-/**
- * Tasks a provider can be asked to perform. One entry per product agent.
- * Lea, Emma and Sarah will add their own entries.
- */
-export const AI_TASKS = ["hugo_qualification", "louis_appointment"] as const;
+/** Tasks a provider can be asked to perform. One entry per product agent. */
+export const AI_TASKS = [
+  "lea_acquisition",
+  "hugo_qualification",
+  "emma_follow_up",
+  "louis_appointment",
+  "sarah_follow_through",
+] as const;
 export type AiTaskName = (typeof AI_TASKS)[number];
 
 /**

@@ -30,9 +30,9 @@ il n'existe aucun code capable d'émettre un message réel.
 
 ### 2.1 Isolation entre agences (le risque n°1 du produit)
 
-- Les **10 tables métier** (`agencies`, `memberships`, `contacts`, `properties`, `consents`,
-  `appointments`, `outbound_messages`, `activities`, `ai_agent_runs`, `tasks`) portent un `agency_id`
-  et ont **RLS activée** (vérifié directement dans `pg_class`).
+- Les **12 tables métier** (`agencies`, `memberships`, `contacts`, `properties`, `consents`,
+  `appointments`, `outbound_messages`, `activities`, `ai_agent_runs`, `ai_agent_run_steps`, `tasks`,
+  `inbound_leads`) portent un `agency_id` et ont **RLS activée** (vérifié directement dans `pg_class`).
 - Toutes les politiques passent par `private.member_agency_ids()` / `private.director_agency_ids()`,
   qui lisent l'appartenance réelle de la **session** (`auth.uid()`). **Aucune politique `using (true)`,
   aucune politique ne lit une valeur envoyée par le navigateur** (vérifié dans `pg_policies`).
@@ -46,7 +46,7 @@ il n'existe aucun code capable d'émettre un message réel.
 - `agency_id` est **immuable** après création (trigger), y compris pour le rôle de service.
 
 **Testé, pas supposé** : `lib/supabase/database-isolation.integration.test.ts` exécute, avec de vrais
-utilisateurs authentifiés, la matrice **10 tables × 4 opérations (lire / créer / modifier / supprimer)
+utilisateurs authentifiés, la matrice **12 tables × 4 opérations (lire / créer / modifier / supprimer)
 × 2 directions (A → B et B → A)**, plus l'accès anonyme. Chemins détournés vérifiés lors de l'audit :
 jointures imbriquées PostgREST, endpoint GraphQL, en-tête `x-agency-id` forgé, RPC avec un `agency_id`
 nul ou étranger, table `auth.users`, buckets de stockage.
@@ -124,8 +124,23 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   ligne `activities` attribuée à un agent IA ou au système, et le drapeau `is_simulation` d'une entrée
   IA est **estampillé par le serveur** depuis l'exécution réellement en cours
   (migration `20260916150000_activity_actor_guard.sql`).
-- Tests d'injection réels : `lib/claude/prompt.test.ts`, `…/schema.test.ts`,
-  `hugo.integration.test.ts`, `louis.integration.test.ts` (charge « ignore tes instructions… »).
+- **Journal d'étapes en ajout seul** (`ai_agent_run_steps`, migration `20260916161000`) : `UPDATE`,
+  `DELETE` et `TRUNCATE` refusés à tous les rôles non superutilisateur, service role compris. Les
+  durées affichées par l'interface sont **recalculées par la base** à partir des instants enregistrés
+  (`duration_ms` est ignoré s'il vient du client) et une étape ne peut pas être datée dans le futur :
+  le rejeu animé d'une exécution repose donc sur des mesures, jamais sur une mise en scène.
+- **Valeur estimée d'un bien jamais écrite par une IA** (`properties.estimated_value_eur`, migration
+  `20260916160000`) : la base refuse l'écriture tant qu'une exécution d'agent de la session appelante
+  est ouverte, et la provenance (`source`, `recorded_at`, `recorded_by`) est **estampillée par le
+  serveur** puis figée. Limite connue : le lien se fait sur `triggered_by_user_id = auth.uid()` (voir
+  `docs/architecture.md`).
+- **Compte-rendu de rendez-vous** (`appointments.report_*`, migration `20260916163000`) : auteur et
+  date estampillés par le serveur, les trois colonnes renseignées ou absentes ensemble.
+- Tests d'injection réels sur **les cinq agents** : `lib/claude/prompt.test.ts`, les `schema.test.ts`
+  de chaque agent, les simulations (`lib/claude/simulations/*.test.ts`) et les tests d'intégration
+  `hugo.`, `louis.`, `lea.`, `emma.`, `sarah.integration.test.ts` (charge « ignore tes instructions
+  précédentes… », avec demande d'envoi de masse, de fusion de fiches, de mandat signé et de montant
+  inventé selon l'agent).
 
 ### 2.6 Garde-fous produit et conformité (partie couverte)
 
@@ -141,12 +156,63 @@ nul ou étranger, table `auth.users`, buckets de stockage.
 - **Aucun double envoi** : clé d'idempotence unique par agence ; un message envoyé est immuable.
 - **Aucune double réservation** : contrainte d'exclusion GiST sur (agence, conseiller, plage horaire).
 - **Mandat signé jamais auto-déclaré par une IA** : Hugo ne peut sortir que de `nouveau`/`qualifie`, et
-  seulement vers `qualifie`/`chaud` ; Louis ne change aucune étape. Les schémas de sortie n'ont aucun
+  seulement vers `qualifie`/`chaud` ; Louis et Emma ne changent aucune étape ; **Sarah** ne peut écrire
+  qu'une seule étape, `estimation_faite`, choisie par le code dans une liste blanche
+  (`SARAH_ALLOWED_TARGET_STAGES`) et revérifiée juste avant l'écriture. Aucun schéma de sortie n'a de
   champ d'étape. Un **humain** peut bien sûr passer un contact en `mandat_signe` : c'est exactement ce
-  que la règle produit demande.
+  que la règle produit demande. Testé sur des comptes-rendus malveillants
+  (`features/agents-ia/sarah-suivi/sarah.integration.test.ts`).
+- **Aucun montant en euros écrit par une IA, même en texte libre** : en plus du refus de la base sur
+  `properties.estimated_value_eur`, les schémas d'Emma et de Sarah rejettent tout montant en euros dans
+  un message, un résumé, une objection ou une tâche (`noMoney`, `lib/claude/schemas.ts`). Sarah dit
+  seulement qu'une estimation *a été présentée*, jamais laquelle.
+- **Dédoublonnage jamais confié à un modèle** : Léa rapproche deux fiches par correspondance **exacte**
+  de l'email et du téléphone normalisés, dans le code (`lea-acquisition/dedupe.ts`). Son schéma de
+  sortie n'a aucun champ permettant d'affirmer que deux personnes sont la même, et le nom n'est jamais
+  une clé de rapprochement. Une fusion silencieuse de deux vendeurs différents est donc impossible.
+- **Un lead n'ouvre aucun droit à contacter quelqu'un** : la fiche créée par Léa arrive **sans aucun
+  consentement**, et une tâche `collect_consent` est ouverte. Aucun envoi n'est possible tant qu'un
+  consentement prouvable n'est pas enregistré et vérifié à l'envoi par la base.
+- **Aucune relance sans consentement valide au moment de la rédaction** : Emma vérifie le consentement
+  courant du canal (vue `current_consents`) **avant** d'appeler le modèle ; sans lui, aucun brouillon
+  n'est écrit et une tâche est ouverte. Un consentement retiré invalide le canal, et un consentement
+  `phone` n'autorise jamais un message.
+- **Aucun double brouillon de relance** : garanti deux fois — par le code (un brouillon déjà en attente
+  bloque une seconde exécution) et par la base (clé d'idempotence `emma-<contact>-<jour parisien>`,
+  unique par agence).
+- **Envoi impossible sans validation humaine explicite** : le passage `pending_validation` →
+  `approved` → `sent_simulated` est en trois étapes séparées, et valider n'envoie pas. Un brouillon
+  non validé est refusé côté code (`outbound_message_not_approved`) puis côté base
+  (`first_contact_requires_human_validation`). `validated_by` est estampillé avec l'appelant par la
+  base, jamais accepté depuis le client.
+- **Refus tracé** : refuser un brouillon exige un **motif d'une liste fermée** (validé par zod côté
+  serveur), plus un commentaire libre facultatif borné à 300 caractères et nettoyé de ses caractères
+  de contrôle. Motif et commentaire sont écrits dans `activities` (en ajout seul) avec l'auteur humain
+  estampillé par la base. Un motif hors liste est refusé (`invalid_reason`) et le brouillon reste en
+  attente : aucune décision n'est enregistrée sans sa justification.
+- **Aucun chiffre inventé sur l'écran « Agents IA »** : tous les compteurs sont des agrégats SQL
+  exacts sur des fenêtres parisiennes nommées, `runsToday` compte exactement ce que compte le
+  garde-fou de la base pour la limite quotidienne, et **une lecture en erreur n'est jamais affichée
+  comme un zéro** — la lecture entière échoue et l'écran doit montrer l'erreur (tests :
+  `features/agents-ia/activity.test.ts`, `data.test.ts`, `dashboard.integration.test.ts`, ce dernier
+  comparant chaque compteur à un comptage direct, y compris au-delà de 500 exécutions dans la journée).
+- **Un consentement valide hier n'est pas une permission aujourd'hui** : le consentement du canal est
+  relu **au moment de l'envoi**. Un retrait survenu entre la validation et l'envoi bloque l'envoi
+  (`consent_not_granted`) — testé explicitement dans `validation.integration.test.ts`.
+- **« Envoyé » veut toujours dire simulé** : aucun fournisseur d'envoi n'est branché, et la base
+  refuse tout envoi non marqué simulation (`outbound_messages_sent_is_simulation`).
+- **Parcours complet testé de bout en bout** (`features/agents-ia/parcours-complet.integration.test.ts`) :
+  lead → Léa → consentement recueilli par un humain → Hugo → Louis → validation et envoi humains →
+  compte-rendu humain → Sarah → Emma. Le test vérifie surtout ce que la chaîne **ne fait pas** :
+  aucun envoi sans validation, aucun contact passé en `mandat_signe` par un agent, et tout ce que
+  produit un agent est marqué simulation.
 - **Tout est marqué « simulation »**, dans l'interface (badge textuel, jamais une simple couleur) et
   dans les journaux (`is_simulation` sur `activities`, `appointments`, `outbound_messages`,
   `ai_agent_runs`). Un message « envoyé » ne peut l'être qu'en simulation (contrainte de base).
+- **Un lead entrant n'est pas un consentement** : `inbound_leads` (migration `20260916162000`) stocke
+  la matière brute saisie par un membre de l'agence. Rien ne peut partir vers ces personnes tant
+  qu'un consentement n'est pas enregistré dans `consents` et vérifié à l'envoi par la base. `anon`
+  n'a toujours aucun privilège : il n'existe pas encore de formulaire public alimentant cette table.
 - **Pas d'extraction de portails tiers** : aucun scraping n'existe dans le code.
 
 ### 2.7 Dépendances
@@ -185,10 +251,13 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
 - **Durées de conservation, purge automatique, export des données d'une personne** : non implémentés.
   L'effacement est possible (suppression d'un contact par un directeur, cascade), mais il n'y a ni
   export RGPD, ni politique de rétention, ni **journal des accès sensibles**.
-- **Validation du premier contact dans l'interface** : la base l'impose, mais l'écran
-  `agents-ia/a-valider` n'est pas encore écrit — un message reste donc en attente indéfiniment.
-- **Coupe-circuit dans l'interface** : la fonction serveur (`set_ai_paused`) existe, est testée et
-  protégée par rôle, mais le bouton n'existe pas encore (page « Agents IA » à venir).
+- **Validation du premier contact** : le **moteur** est désormais complet et testé
+  (`features/agents-ia/validation.ts` : valider / refuser avec motif obligatoire / envoyer en
+  simulation, avec relecture du consentement au moment de l'envoi et estampille serveur de l'auteur
+  de la validation). Il ne manque plus que l'écran `agents-ia/a-valider` lui-même.
+- **Coupe-circuit** : la fonction serveur (`set_ai_paused`) et l'action applicative
+  (`setAgencyAiPaused`) existent, sont testées et protégées par rôle — tout membre peut suspendre,
+  seul un directeur peut réactiver. Il ne manque que le bouton (page « Agents IA » à venir).
 
 ### 3.4 Limites techniques connues
 

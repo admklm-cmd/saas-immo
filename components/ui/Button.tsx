@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ComponentPropsWithRef } from "react";
 
 import { cn } from "./cn";
 
@@ -30,7 +30,8 @@ export function buttonStyles(variant: ButtonVariant = "primary", size: ButtonSiz
   return cn(BASE, VARIANTS[variant], SIZES[size]);
 }
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+/** `ref` is a plain prop in React 19: it is forwarded by the spread below. */
+export type ButtonProps = ComponentPropsWithRef<"button"> & {
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** Shows a spinner, disables the button and announces the busy state. */

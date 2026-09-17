@@ -4,9 +4,10 @@
 > Propriétaire : agent `frontend-ux`. Les workflows détaillés des agents IA vivent dans
 > `docs/workflows.md`, les choix techniques dans `docs/architecture.md`.
 >
-> **État au 16/09/2026** : prototype. Seul le premier parcours (connexion → contacts →
-> fiche → Hugo → Louis → historique) est réellement implémenté. Les autres écrans sont
-> des coquilles « À venir » assumées.
+> **État au 17/09/2026** : prototype. Sont réellement implémentés : le premier parcours
+> (connexion → contacts → fiche → Hugo → Louis → historique) et le module « Agents IA »
+> (les cinq agents, le coupe-circuit, le journal des exécutions et le rejeu animé d'une
+> exécution). Les autres écrans sont des coquilles « À venir » assumées.
 
 ## 1. À qui on vend
 
@@ -55,11 +56,14 @@ Deux règles produit :
 
 | Agent | Mission | État |
 |---|---|---|
-| **Léa** — acquisition | Vérifie la source d'un contact, dédoublonne, crée la fiche | À venir |
-| **Hugo** — qualification | Type de bien, secteur, motivation, délai. Ne comble jamais un trou : il le signale | **Implémenté (simulateur)** |
-| **Emma** — relation | Prépare les relances et adapte le contenu | À venir |
-| **Louis** — rendez-vous | Propose un créneau d'estimation libre et rédige le message | **Implémenté (simulateur)** |
-| **Sarah** — suivi | Exploite le compte-rendu de RDV, suit jusqu'au mandat | À venir |
+| **Léa** — acquisition | Vérifie la source d'un lead entrant, dédoublonne, crée la fiche | Serveur fait (simulateur), écran dédié à venir |
+| **Hugo** — qualification | Type de bien, secteur, motivation, délai. Ne comble jamais un trou : il le signale | **Implémenté (simulateur)**, lançable depuis la fiche contact |
+| **Emma** — relation | Prépare les relances et adapte le contenu | Serveur fait (simulateur), écran dédié à venir |
+| **Louis** — rendez-vous | Propose un créneau d'estimation libre et rédige le message | **Implémenté (simulateur)**, lançable depuis la fiche contact |
+| **Sarah** — suivi | Exploite le compte-rendu de RDV, suit jusqu'au mandat | Serveur fait (simulateur), écran dédié à venir |
+
+Les cinq agents sont visibles sur l'écran « Agents IA » avec leur activité réelle,
+qu'ils aient déjà tourné ou non.
 
 Tous tournent aujourd'hui sur un **simulateur** : aucun appel payant, aucun envoi réel.
 Chaque trace produite porte un badge « simulation » dans l'interface.
@@ -76,8 +80,9 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo et Louis |
 | Pipeline | `/pipeline` | Coquille | Vue par étape |
-| Agents IA | `/agents-ia` | Coquille | Mission, statut, historique, erreurs + **coupe-circuit** |
-| Messages à valider | `/agents-ia/a-valider` | Coquille | File d'attente des premiers contacts |
+| Agents IA | `/agents-ia` | **Fait** | Les 5 agents (mission, statut, compteurs, dernière exécution, erreurs), activité de l'agence, **coupe-circuit**, journal filtrable et paginé |
+| Rejeu d'une exécution | `/agents-ia/executions/[runId]` | **Fait** | Étapes réellement enregistrées, rejouées avec les durées mesurées |
+| Messages à valider | `/agents-ia/a-valider` | **Fait** | File d'attente : contact, canal, consentement, message proposé ; valider, refuser (motif obligatoire) ou déclencher un envoi **simulé** |
 | Paramètres | `/parametres` | Coquille | Agence, utilisateurs, intégrations, conservation |
 
 ## 6. Parcours implémenté : « premier parcours complet »
@@ -102,6 +107,23 @@ préparer une proposition de rendez-vous, sans rien envoyer.
 6. **Historique**. La frise se met à jour : activités, rendez-vous, messages, tâches et
    exécutions d'agents, du plus récent au plus ancien. Chaque entrée simulée porte le
    badge « Simulation ».
+7. **Voir l'agent travailler**. Sous les boutons, le rejeu affiche les étapes réellement
+   enregistrées (garde-fous → dossier chargé → prompt construit → appel du fournisseur →
+   sortie validée → décision du code → écritures), avec **les durées mesurées par le
+   serveur**. Le même rejeu est consultable plus tard depuis `/agents-ia`.
+
+### 6.1 Ce que le rejeu doit faire comprendre
+
+1. **C'est le code qui décide.** Une seule étape sort du code de l'agence (« Appel du
+   fournisseur IA ») ; la phase « Décision du code » est encadrée — chez Louis elle
+   précède même l'appel, parce que les créneaux sont calculés par le code et que le
+   modèle ne fait qu'en choisir un.
+2. **Une exécution bloquée montre où et pourquoi elle s'est arrêtée** (coupe-circuit,
+   limite quotidienne, reprise humaine) : c'est un outil de diagnostic.
+3. **Tout est simulé**, et le badge « Simulation » le dit en toutes lettres.
+4. **Le rythme n'est jamais inventé** : aucune fausse barre de progression, aucune durée
+   arrondie. Un ralentissement est affiché (« Rejeu ralenti ×10 ») à côté de la durée
+   réelle, « Tout afficher » saute l'animation, et `prefers-reduced-motion` la supprime.
 
 ### Cas d'arrêt couverts par l'interface
 
@@ -114,20 +136,45 @@ préparer une proposition de rendez-vous, sans rien envoyer.
 | Réponse IA invalide | Aucune action, une tâche est créée pour un conseiller |
 | Contact d'une autre agence | Page « Contact introuvable. », sans aucune donnée |
 
+## 6.2 Parcours « Messages à valider »
+
+**Acteur** : Marc (conseiller). **Objectif** : décider ce qui partira, sans jamais subir
+une décision d'un agent IA.
+
+1. `/agents-ia/a-valider` liste les brouillons, du plus ancien au plus récent : contact,
+   canal, qui a préparé le message, **état du consentement du canal**, et le texte proposé
+   affiché en **texte brut**.
+2. **Valider n'est pas envoyer** : la validation fait passer le message en « Validé » et
+   affiche « Rien n'a été envoyé ». Un second geste, explicite, déclenche l'**envoi simulé**.
+3. **Refuser** demande un motif dans une liste fermée (plus une note facultative) : c'est ce
+   qui permettra de corriger les agents plus tard. Le message ne partira jamais.
+4. Sans consentement valide sur le canal, le bouton d'envoi est désactivé **et** expliqué ;
+   le serveur refuse de toute façon, et relit le consentement au moment de l'envoi.
+5. La modification du texte n'est pas encore possible (aucune action serveur) : l'écran le
+   dit et propose de refuser puis de reprendre la main depuis la fiche contact.
+
 ## 7. Règles produit visibles dans l'interface
 
 1. **Premier contact validé par un humain** : le message de Louis est affiché comme
-   « à valider », jamais comme envoyé.
+   « à valider », jamais comme envoyé, et il ne part qu'après une décision humaine prise
+   dans `/agents-ia/a-valider`.
 2. **Badge « simulation »** sur toute action simulée, dans l'interface et dans les journaux.
 3. **Consentement par canal** : la fiche liste les quatre canaux (email, SMS, WhatsApp,
    téléphone) y compris ceux sans consentement, avec la date, la source et la version du texte.
 4. **Rien d'inventé** : une information absente s'affiche « Non renseigné », jamais comblée.
-5. **Coupe-circuit** accessible depuis les réglages de l'agence (écran à construire).
+5. **Coupe-circuit** accessible en haut de l'écran « Agents IA » : confirmation explicite
+   dans les deux sens, état affiché sans ambiguïté, et « Réactiver » désactivé pour un
+   conseiller avec l'explication « Seul un directeur peut réactiver les agents IA. »
+   (le serveur refuse de toute façon : l'interface explique, elle ne protège pas).
+6. **Chiffres nommés** : un compteur est toujours affiché avec sa fenêtre
+   (« aujourd'hui », « sur 7 jours ») ; un comptage impossible affiche « Indisponible »,
+   jamais « 0 ».
+7. **Léa n'a pas de contact** : ses exécutions affichent « Lead entrant », pas un tiret.
 
 ## 8. Prochaines itérations (proposition)
 
-1. Écran de validation du premier contact (`/agents-ia/a-valider`) : message proposé,
-   contact, canal, statut du consentement, modifier / valider / refuser en un clic.
-2. Écran « Agents IA » avec le coupe-circuit réel et l'historique par agent.
-3. Formulaire d'estimation public avec consentement par canal (cases non précochées).
-4. Tableau de bord et vue pipeline.
+1. Boîte de réception des leads (Léa) : leads bruts, dédoublonnage, création de fiche.
+2. Écran de suivi de rendez-vous (Sarah) : compte-rendu saisi par un conseiller, actions de suivi.
+3. Modification d'un brouillon avant validation (nécessite une action serveur dédiée).
+4. Formulaire d'estimation public avec consentement par canal (cases non précochées).
+5. Tableau de bord et vue pipeline.

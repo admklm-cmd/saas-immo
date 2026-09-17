@@ -52,7 +52,11 @@ export type AgencyRows = {
   outboundMessageId: string;
   activityId: string;
   aiAgentRunId: string;
+  /** One recorded step of `aiAgentRunId` (append-only run journal). */
+  aiAgentRunStepId: string;
   taskId: string;
+  /** One raw incoming lead waiting for Léa. */
+  inboundLeadId: string;
 };
 
 export type TestEnv = {
@@ -277,12 +281,29 @@ export async function setupTestEnv(): Promise<TestEnv> {
         agent: "hugo",
         contact_id: contactId,
       });
+      const aiAgentRunStepId = await insertOne("ai_agent_run_steps", {
+        agency_id: agencyId,
+        run_id: aiAgentRunId,
+        step_index: 0,
+        phase: "guardrails",
+        label: "Étape de test",
+        status: "ok",
+        // Real, past instants: the table refuses a step dated in the future.
+        started_at: new Date(Date.now() - 2_000).toISOString(),
+        finished_at: new Date(Date.now() - 1_000).toISOString(),
+      });
       const taskId = await insertOne("tasks", {
         agency_id: agencyId,
         contact_id: contactId,
         type: "missing_information",
         title: "Tâche de test",
         created_by_agent: "hugo",
+      });
+      const inboundLeadId = await insertOne("inbound_leads", {
+        agency_id: agencyId,
+        source: "estimation_form",
+        raw_text: "Demande de test (fictive).",
+        payload: { form_id: `test-${runId}` },
       });
 
       return {
@@ -297,7 +318,9 @@ export async function setupTestEnv(): Promise<TestEnv> {
         outboundMessageId,
         activityId,
         aiAgentRunId,
+        aiAgentRunStepId,
         taskId,
+        inboundLeadId,
       };
     };
 

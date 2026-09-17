@@ -139,6 +139,8 @@ async function insertAgency(admin: TypedClient, dataset: FixtureDataset): Promis
   fail(`${label} appointments`, (await admin.from("appointments").insert(dataset.appointments)).error);
   fail(`${label} outbound_messages`, (await admin.from("outbound_messages").insert(dataset.outboundMessages)).error);
   fail(`${label} tasks`, (await admin.from("tasks").insert(dataset.tasks)).error);
+  // Inbound leads after contacts: a processed/duplicate lead points at one.
+  fail(`${label} inbound_leads`, (await admin.from("inbound_leads").insert(dataset.inboundLeads)).error);
   fail(`${label} activities`, (await admin.from("activities").insert(dataset.activities)).error);
 
   // AI runs are journaled in two steps, as the database guard requires:
@@ -162,6 +164,7 @@ function summarise(dataset: FixtureDataset): Record<string, number> {
     appointments: dataset.appointments.length,
     outbound_messages: dataset.outboundMessages.length,
     tasks: dataset.tasks.length,
+    inbound_leads: dataset.inboundLeads.length,
     activities: dataset.activities.length,
     ai_agent_runs: dataset.aiAgentRuns.length,
   };

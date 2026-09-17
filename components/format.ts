@@ -62,6 +62,21 @@ export function formatSlot(startIso: string, endIso: string): string {
   return end ? `${WEEKDAY_DATE_TIME.format(start)} – ${TIME.format(end)}` : WEEKDAY_DATE_TIME.format(start);
 }
 
+/**
+ * A measured duration, in milliseconds.
+ *
+ * Milliseconds are kept as the unit as long as they stay readable, because the
+ * replay of an AI run must show the figure that was really measured — never a
+ * rounded, prettier one (CLAUDE.md: nothing simulated is passed off as real,
+ * and nothing real is dressed up).
+ */
+export function formatDurationMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const rounded = Math.round(ms);
+  if (rounded < 10_000) return `${rounded} ms`;
+  return `${(rounded / 1000).toFixed(1).replace(".", ",")} s (${rounded} ms)`;
+}
+
 export function formatSurface(surfaceM2: number | null): string | null {
   return surfaceM2 === null ? null : `${surfaceM2} m²`;
 }

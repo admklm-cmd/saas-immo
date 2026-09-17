@@ -4,6 +4,7 @@ import { APP_TEXTS } from "@/components/texts";
 import { NOTABLE_CONTACTS } from "@/fixtures/dataset";
 import { AGENT_ERROR_MESSAGES } from "@/lib/agents/messages";
 
+import { keepAgentsRunning } from "./helpers/kill-switch";
 import { clearLouisArtefacts, setAiPaused } from "./helpers/local-agency";
 import { fixtureUser, signIn } from "./helpers/sign-in";
 
@@ -31,6 +32,10 @@ const COLD_START = 60_000;
 test.beforeEach(() => {
   test.setTimeout(120_000);
 });
+
+// The kill switch is agency-wide: one test turns it on here, so every test of
+// this file establishes and restores it instead of trusting the previous run.
+keepAgentsRunning("agentA");
 
 // Louis refuses a second proposal while one is still pending: start from a
 // clean slate so the journey can be replayed.
@@ -95,30 +100,28 @@ test("coupe-circuit activé : message clair et aucune action", async ({ page }) 
   const user = await fixtureUser("agentA");
 
   await setAiPaused(user.agencyId, true);
-  try {
-    await signIn(page, "agentA");
-    await openContactFile(page, CONTACT_ID);
 
-    const timeline = page.getByTestId(TIMELINE);
-    const entriesBefore = await timeline.locator("li").count();
-    const stageBefore = await page.locator("[data-stage]").first().getAttribute("data-stage");
+  await signIn(page, "agentA");
+  await openContactFile(page, CONTACT_ID);
 
-    await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
+  const timeline = page.getByTestId(TIMELINE);
+  const entriesBefore = await timeline.locator("li").count();
+  const stageBefore = await page.locator("[data-stage]").first().getAttribute("data-stage");
 
-    const error = page.getByTestId("agent-error");
-    await expect(error).toBeVisible({ timeout: COLD_START });
-    await expect(error).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
-    await expect(page.getByTestId("agent-result")).toHaveCount(0);
+  await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
 
-    // No business action at all: only the refusal is journaled (audit trail),
-    // and the pipeline stage is untouched.
-    await page.reload();
-    await expect(page.getByTestId(TIMELINE).locator("li")).toHaveCount(entriesBefore + 1);
-    await expect(page.getByTestId(TIMELINE)).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
-    expect(await page.locator("[data-stage]").first().getAttribute("data-stage")).toBe(stageBefore);
-  } finally {
-    await setAiPaused(user.agencyId, false);
-  }
+  const error = page.getByTestId("agent-error");
+  await expect(error).toBeVisible({ timeout: COLD_START });
+  await expect(error).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
+  await expect(page.getByTestId("agent-result")).toHaveCount(0);
+
+  // No business action at all: only the refusal is journaled (audit trail),
+  // and the pipeline stage is untouched.
+  await page.reload();
+  await expect(page.getByTestId(TIMELINE).locator("li")).toHaveCount(entriesBefore + 1);
+  await expect(page.getByTestId(TIMELINE)).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
+  expect(await page.locator("[data-stage]").first().getAttribute("data-stage")).toBe(stageBefore);
+  // Resumed by `keepAgentsRunning()`, timeout or not.
 });
 
 test("isolation : un contact d'une autre agence est introuvable", async ({ page }) => {

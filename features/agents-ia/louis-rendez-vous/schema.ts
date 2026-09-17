@@ -17,25 +17,12 @@
 
 import { z } from "zod";
 
-import { boundedText, confidenceSchema } from "@/lib/claude/schemas";
+import { boundedText, confidenceSchema, noUrl } from "@/lib/claude/schemas";
 
 export const LOUIS_SLOT_ID_MAX = 60;
 export const LOUIS_SUBJECT_MAX = 150;
 export const LOUIS_BODY_MAX = 1200;
 export const LOUIS_REASON_MAX = 300;
-
-/**
- * No URL may come out of the model: a link is the easiest way to turn a
- * human-validated message into a phishing vector. Links, when the product needs
- * them (unsubscribe page), are added by the code.
- */
-const URL_PATTERN = /(https?:\/\/|www\.)/i;
-
-function noUrl<T extends z.ZodType<string>>(schema: T) {
-  return schema.refine((value) => !URL_PATTERN.test(value), {
-    message: "aucun lien n'est autorisé dans un message rédigé par l'IA",
-  });
-}
 
 const baseShape = {
   slot_id: z.string().trim().min(1).max(LOUIS_SLOT_ID_MAX),

@@ -167,6 +167,203 @@ export const APP_TEXTS = {
     refreshHint: "L'historique ci-dessous a été mis à jour.",
   },
 
+  /**
+   * Replay of one AI run — "voir l'agent travailler".
+   *
+   * The wording is deliberately factual: the steps and their durations are the
+   * ones the server measured and the database recomputed. The interface never
+   * invents a rhythm, and says so when it slows the replay down.
+   */
+  replay: {
+    title: "L'agent au travail",
+    subtitle:
+      "Étapes réellement enregistrées pendant l'exécution, rejouées avec les durées mesurées par le serveur.",
+    empty: "Aucune étape n'a été enregistrée pour cette exécution.",
+    authorCode: "Code",
+    authorAi: "Fournisseur IA",
+    authorLegend:
+      "Une seule étape sort du code de l'agence : l'appel au fournisseur IA. La décision est prise par le code — chez Louis, elle précède même l'appel.",
+    decisionMarker: "Choix arrêté par le code de l'agence, jamais par le modèle.",
+    totalMeasured: "Durée totale mesurée",
+    speedFactor: (factor: number) => `Rejeu ralenti ×${factor}`,
+    speedFactorHint:
+      "Seule la vitesse du rejeu est ralentie : les durées affichées restent les durées réellement mesurées.",
+    realSpeed: "Rejeu à vitesse réelle",
+    showAll: "Tout afficher",
+    replayAgain: "Rejouer",
+    playing: "Rejeu en cours…",
+    finished: "Rejeu terminé.",
+    stepAnnounce: (position: number, total: number, phase: string, status: string) =>
+      `Étape ${position} sur ${total} : ${phase} — ${status}.`,
+    detailSummary: "Détail technique",
+    stopped: "Exécution arrêtée à cette étape.",
+  },
+
+  /** Screen « Agents IA » — the five agents, their real activity, the kill switch. */
+  agentsIa: {
+    title: "Agents IA",
+    subtitle:
+      "Léa, Hugo, Emma, Louis et Sarah : mission, activité réellement enregistrée, erreurs et coupe-circuit.",
+    simulatorNote:
+      "Les cinq agents tournent sur simulateur : aucun appel payant, aucune communication réelle.",
+    overviewErrorTitle: "Impossible d'afficher l'activité des agents",
+    agentsSectionTitle: "Les cinq agents, dans l'ordre du cycle de vente",
+    agentsSectionSubtitle:
+      "Chaque agent a un périmètre borné : ce qu'il fait, et ce qu'il ne décide pas.",
+    agencyTitle: "Activité de l'agence",
+    agencySubtitle: "Chiffres comptés exactement dans le journal des exécutions, jamais estimés.",
+    runsAgainstLimit: "Exécutions décomptées",
+    runsAgainstLimitHint: "Les tentatives refusées ne consomment aucun quota.",
+    attempts: "Tentatives, refus compris",
+    dailyLimit: "Limite quotidienne",
+    pendingValidation: "Brouillons en attente de validation",
+    mission: "Mission",
+    statusActive: "Actif",
+    statusPaused: "Suspendu par le coupe-circuit",
+    runsLabel: (count: number, window: string) =>
+      count > 1 ? `${count} exécutions ${window}` : `${count} exécution ${window}`,
+    outcome: (label: string, count: number) => `${label} : ${count}`,
+    tokens: "Jetons",
+    tokensValue: (input: number, output: number) => `${input} en entrée / ${output} en sortie`,
+    lastRun: "Dernière exécution",
+    lastErrors: "Dernières erreurs",
+    noError: "Aucune erreur ni blocage enregistré pour cet agent.",
+    viewReplay: "Voir le rejeu",
+    inboundLead: "Lead entrant",
+    inboundLeadHint: "Léa travaille avant toute fiche : cette exécution n'est rattachée à aucun contact.",
+    openContact: "Voir la fiche",
+  },
+
+  /** Kill switch of the agency — a safety control, not a decorative setting. */
+  killSwitch: {
+    title: "Coupe-circuit des agents IA",
+    running: "Agents IA actifs",
+    paused: "Coupe-circuit actif",
+    descriptionRunning:
+      "Les agents IA de l'agence peuvent s'exécuter. Un clic les suspend tous immédiatement.",
+    descriptionPaused:
+      "Les agents IA de l'agence sont suspendus : aucune exécution n'est possible, chaque tentative est refusée et journalisée.",
+    pause: "Suspendre tous les agents IA",
+    resume: "Réactiver les agents IA",
+    confirmPauseTitle: "Suspendre les cinq agents IA ?",
+    confirmPauseBody:
+      "Plus aucune exécution ne sera possible tant que le coupe-circuit reste actif. Les tentatives en cours de préparation seront refusées et journalisées.",
+    confirmResumeTitle: "Réactiver les cinq agents IA ?",
+    confirmResumeBody:
+      "Les agents pourront de nouveau s'exécuter, toujours sur simulateur et toujours dans la limite quotidienne de l'agence.",
+    confirm: "Confirmer",
+    cancel: "Annuler",
+    pending: "Application en cours…",
+    pausedSuccess: "Les agents IA sont suspendus.",
+    resumedSuccess: "Les agents IA sont réactivés.",
+    errorTitle: "Le coupe-circuit n'a pas pu être modifié",
+  },
+
+  /** Execution journal of the agency: filters, table, pagination. */
+  runHistory: {
+    title: "Historique des exécutions",
+    subtitle: "Toutes les exécutions de l'agence, de la plus récente à la plus ancienne.",
+    errorTitle: "Impossible d'afficher l'historique",
+    emptyTitle: "Aucune exécution ne correspond",
+    emptyBody: "Modifiez les filtres, ou lancez un agent depuis une fiche contact.",
+    caption: "Exécutions des agents IA de l'agence",
+    filtersLabel: "Filtrer l'historique",
+    filterAgent: "Agent",
+    filterStatus: "Résultat",
+    filterAll: "Tous",
+    filterSubmit: "Filtrer",
+    filterReset: "Réinitialiser",
+    columnAgent: "Agent",
+    columnStatus: "Résultat",
+    columnContact: "Contact",
+    columnDecision: "Décision journalisée",
+    columnStartedAt: "Démarrée",
+    columnReplay: "Rejeu",
+    range: (from: number, to: number, total: number) => `${from}–${to} sur ${total}`,
+    previous: "Page précédente",
+    next: "Page suivante",
+    noDecision: "Aucune décision journalisée",
+  },
+
+  /**
+   * File d'attente « Messages à valider ».
+   *
+   * L'écran où s'applique la règle produit la plus stricte de `CLAUDE.md` :
+   * **premier contact toujours validé par un humain**. Rien n'y est envoyé
+   * automatiquement, et « envoyé » veut dire « envoi simulé ».
+   */
+  validationQueue: {
+    title: "Messages à valider",
+    subtitle:
+      "Aucun message préparé par un agent IA ne part sans la décision d'un membre de l'agence.",
+    ruleTitle: "Premier contact : toujours validé par un humain",
+    ruleBody:
+      "Un agent IA prépare, un humain décide. Aucun fournisseur d'envoi n'est branché sur ce prototype : un envoi validé ici reste une simulation.",
+    count: (total: number) =>
+      total > 1 ? `${total} messages en attente` : `${total} message en attente`,
+    errorTitle: "Impossible d'afficher la file de validation",
+    emptyTitle: "Aucun message en attente",
+    emptyBody:
+      "Les brouillons préparés par Emma ou Louis apparaissent ici, avec leur contact, leur canal et l'état du consentement.",
+    emptyAction: "Voir les contacts",
+
+    firstContact: "Premier contact",
+    preparedBy: (agent: string) => `Préparé par ${agent}`,
+    writtenByHuman: "Rédigé par un conseiller",
+    receivedAt: "Préparé le",
+    channel: "Canal",
+    consent: "Consentement du canal",
+    consentNone: "Aucun consentement enregistré",
+    consentBlocked:
+      "Sans consentement valide sur ce canal, le serveur refuse l'envoi : le message ne peut pas partir.",
+    subject: "Objet",
+    body: "Message proposé",
+    untrusted: "Texte affiché tel quel, jamais interprété comme une consigne.",
+    approvedNotSent: "Validé : le message attend un envoi explicite. Rien n'est parti.",
+
+    validate: "Valider",
+    refuse: "Refuser",
+    send: "Envoyer (simulation)",
+    working: "Action en cours…",
+    sendBlocked: "Envoi impossible : consentement du canal manquant ou retiré.",
+
+    successValidated: "Message validé. Rien n'a été envoyé.",
+    successRejected: (reason: string) => `Message refusé (${reason}) : il ne partira pas.`,
+    successSent: "Envoi simulé effectué : aucune communication réelle n'a quitté le produit.",
+    actionErrorTitle: "L'action n'a pas abouti",
+
+    rejectTitle: "Pourquoi refuser ce message ?",
+    rejectHint:
+      "Le motif est obligatoire : c'est lui qui permettra de corriger les agents IA plus tard.",
+    rejectReasonLegend: "Motif du refus",
+    rejectNote: "Note (facultative)",
+    rejectNoteHint: (max: number) =>
+      `${max} caractères maximum. Écrite par un membre de l'agence, jamais par un agent IA.`,
+    rejectConfirm: "Confirmer le refus",
+    cancel: "Annuler",
+    noEditYet:
+      "La modification du texte n'est pas encore disponible : refusez le message et reprenez la main sur la fiche contact.",
+  },
+
+  /** One past execution, replayed from the journal. */
+  runDetail: {
+    pageTitle: "Exécution d'agent",
+    back: "Agents IA",
+    errorTitle: "Impossible d'afficher cette exécution",
+    headTitle: (agent: string) => `Exécution de ${agent}`,
+    headCardTitle: "Détails de l'exécution",
+    startedAt: "Démarrée le",
+    finishedAt: "Terminée le",
+    stillRunning: "Exécution encore en cours",
+    provider: "Fournisseur",
+    model: "Modèle",
+    tokens: "Jetons (entrée / sortie)",
+    decision: "Décision journalisée",
+    errorCode: "Motif d'arrêt journalisé",
+    contact: "Contact",
+    unknown: "Non renseigné",
+  },
+
   /** One-line promises of the screens that are still shells. */
   shells: {
     dashboard: "Statistiques de l'agence, calculées uniquement à partir des données réellement enregistrées.",

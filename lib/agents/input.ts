@@ -14,11 +14,19 @@
 
 import { z } from "zod";
 
+/** Identifier of a row, as sent by the UI (contact, lead, appointment, run). */
+export const uuidSchema = z.uuid();
+
 /** Identifier of a contact, as sent by the UI. */
-export const contactIdSchema = z.uuid();
+export const contactIdSchema = uuidSchema;
+
+/** Returns the validated identifier, or `null` when the input is not usable. */
+export function parseUuid(value: unknown): string | null {
+  const parsed = uuidSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 /** Returns the validated contact id, or `null` when the input is not usable. */
 export function parseContactId(value: unknown): string | null {
-  const parsed = contactIdSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  return parseUuid(value);
 }

@@ -127,6 +127,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_agent_run_steps: {
+        Row: {
+          agency_id: string
+          created_at: string
+          detail: Json
+          duration_ms: number
+          finished_at: string
+          id: string
+          label: string
+          phase: Database["public"]["Enums"]["ai_agent_run_phase"]
+          run_id: string
+          started_at: string
+          status: Database["public"]["Enums"]["ai_agent_run_step_status"]
+          step_index: number
+        }
+        Insert: {
+          agency_id: string
+          created_at?: string
+          detail?: Json
+          duration_ms?: number
+          finished_at: string
+          id?: string
+          label: string
+          phase: Database["public"]["Enums"]["ai_agent_run_phase"]
+          run_id: string
+          started_at: string
+          status: Database["public"]["Enums"]["ai_agent_run_step_status"]
+          step_index: number
+        }
+        Update: {
+          agency_id?: string
+          created_at?: string
+          detail?: Json
+          duration_ms?: number
+          finished_at?: string
+          id?: string
+          label?: string
+          phase?: Database["public"]["Enums"]["ai_agent_run_phase"]
+          run_id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["ai_agent_run_step_status"]
+          step_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_agent_run_steps_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_agent_run_steps_run_fkey"
+            columns: ["agency_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_runs"
+            referencedColumns: ["agency_id", "id"]
+          },
+        ]
+      }
       ai_agent_runs: {
         Row: {
           agency_id: string
@@ -222,6 +282,9 @@ export type Database = {
           id: string
           is_simulation: boolean
           property_id: string | null
+          report_notes: string | null
+          report_recorded_at: string | null
+          report_recorded_by: string | null
           starts_at: string
           status: Database["public"]["Enums"]["appointment_status"]
           updated_at: string
@@ -235,6 +298,9 @@ export type Database = {
           id?: string
           is_simulation?: boolean
           property_id?: string | null
+          report_notes?: string | null
+          report_recorded_at?: string | null
+          report_recorded_by?: string | null
           starts_at: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -248,6 +314,9 @@ export type Database = {
           id?: string
           is_simulation?: boolean
           property_id?: string | null
+          report_notes?: string | null
+          report_recorded_at?: string | null
+          report_recorded_by?: string | null
           starts_at?: string
           status?: Database["public"]["Enums"]["appointment_status"]
           updated_at?: string
@@ -412,6 +481,77 @@ export type Database = {
           },
         ]
       }
+      inbound_leads: {
+        Row: {
+          agency_id: string
+          contact_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          payload: Json
+          processed_run_id: string | null
+          raw_text: string | null
+          source: Database["public"]["Enums"]["contact_source"]
+          status: Database["public"]["Enums"]["inbound_lead_status"]
+          updated_at: string
+        }
+        Insert: {
+          agency_id: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payload?: Json
+          processed_run_id?: string | null
+          raw_text?: string | null
+          source: Database["public"]["Enums"]["contact_source"]
+          status?: Database["public"]["Enums"]["inbound_lead_status"]
+          updated_at?: string
+        }
+        Update: {
+          agency_id?: string
+          contact_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          payload?: Json
+          processed_run_id?: string | null
+          raw_text?: string | null
+          source?: Database["public"]["Enums"]["contact_source"]
+          status?: Database["public"]["Enums"]["inbound_lead_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_leads_agency_id_fkey"
+            columns: ["agency_id"]
+            isOneToOne: false
+            referencedRelation: "agencies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_contact_fkey"
+            columns: ["agency_id", "contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["agency_id", "id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_created_by_fkey"
+            columns: ["agency_id", "created_by"]
+            isOneToOne: false
+            referencedRelation: "memberships"
+            referencedColumns: ["agency_id", "user_id"]
+          },
+          {
+            foreignKeyName: "inbound_leads_run_fkey"
+            columns: ["agency_id", "processed_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_runs"
+            referencedColumns: ["agency_id", "id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           agency_id: string
@@ -527,6 +667,10 @@ export type Database = {
           city: string | null
           contact_id: string
           created_at: string
+          estimated_value_eur: number | null
+          estimated_value_recorded_at: string | null
+          estimated_value_recorded_by: string | null
+          estimated_value_source: string | null
           id: string
           postal_code: string | null
           property_type: Database["public"]["Enums"]["property_type"] | null
@@ -541,6 +685,10 @@ export type Database = {
           city?: string | null
           contact_id: string
           created_at?: string
+          estimated_value_eur?: number | null
+          estimated_value_recorded_at?: string | null
+          estimated_value_recorded_by?: string | null
+          estimated_value_source?: string | null
           id?: string
           postal_code?: string | null
           property_type?: Database["public"]["Enums"]["property_type"] | null
@@ -555,6 +703,10 @@ export type Database = {
           city?: string | null
           contact_id?: string
           created_at?: string
+          estimated_value_eur?: number | null
+          estimated_value_recorded_at?: string | null
+          estimated_value_recorded_by?: string | null
+          estimated_value_source?: string | null
           id?: string
           postal_code?: string | null
           property_type?: Database["public"]["Enums"]["property_type"] | null
@@ -693,6 +845,26 @@ export type Database = {
       }
     }
     Functions: {
+      agent_activity_summary: {
+        Args: { day_start: string; target_agency: string; window_start: string }
+        Returns: {
+          agent_name: Database["public"]["Enums"]["ai_agent_name"]
+          today_blocked: number
+          today_failed: number
+          today_input_tokens: number
+          today_output_tokens: number
+          today_running: number
+          today_succeeded: number
+          today_total: number
+          window_blocked: number
+          window_failed: number
+          window_input_tokens: number
+          window_output_tokens: number
+          window_running: number
+          window_succeeded: number
+          window_total: number
+        }[]
+      }
       set_ai_paused: {
         Args: { paused: boolean; target_agency: string }
         Returns: boolean
@@ -701,7 +873,16 @@ export type Database = {
     Enums: {
       activity_actor_type: "user" | "ai_agent" | "system"
       ai_agent_name: "lea" | "hugo" | "emma" | "louis" | "sarah"
+      ai_agent_run_phase:
+        | "guardrails"
+        | "context_loaded"
+        | "prompt_built"
+        | "ai_call"
+        | "output_validated"
+        | "decision"
+        | "persisted"
       ai_agent_run_status: "running" | "succeeded" | "failed" | "blocked"
+      ai_agent_run_step_status: "ok" | "blocked" | "failed" | "skipped"
       appointment_status: "proposed" | "confirmed" | "cancelled" | "done"
       consent_channel: "email" | "sms" | "whatsapp" | "phone"
       consent_status: "granted" | "withdrawn"
@@ -714,6 +895,7 @@ export type Database = {
         | "referral"
         | "partner_api"
         | "software_import"
+      inbound_lead_status: "pending" | "processed" | "duplicate" | "rejected"
       membership_role: "agent" | "director"
       outbound_message_status:
         | "pending_validation"
@@ -862,7 +1044,17 @@ export const Constants = {
     Enums: {
       activity_actor_type: ["user", "ai_agent", "system"],
       ai_agent_name: ["lea", "hugo", "emma", "louis", "sarah"],
+      ai_agent_run_phase: [
+        "guardrails",
+        "context_loaded",
+        "prompt_built",
+        "ai_call",
+        "output_validated",
+        "decision",
+        "persisted",
+      ],
       ai_agent_run_status: ["running", "succeeded", "failed", "blocked"],
+      ai_agent_run_step_status: ["ok", "blocked", "failed", "skipped"],
       appointment_status: ["proposed", "confirmed", "cancelled", "done"],
       consent_channel: ["email", "sms", "whatsapp", "phone"],
       consent_status: ["granted", "withdrawn"],
@@ -876,6 +1068,7 @@ export const Constants = {
         "partner_api",
         "software_import",
       ],
+      inbound_lead_status: ["pending", "processed", "duplicate", "rejected"],
       membership_role: ["agent", "director"],
       outbound_message_status: [
         "pending_validation",

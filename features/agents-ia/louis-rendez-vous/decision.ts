@@ -11,19 +11,28 @@
  *  C. MESSAGE — the unsubscribe notice is appended by the code, always, so that
  *     it cannot depend on what the model felt like writing.
  *
+ * B and C are the same rule for every agent that prepares a message (Louis,
+ * Emma), so they live in `lib/agents/consent.ts` and are re-exported here: one
+ * implementation, one set of tests, no chance of the two agents drifting apart
+ * on the one rule that has legal consequences.
+ *
  * Nothing here can be influenced by the prospect's text: these functions only
  * see structured CRM values.
  */
 
-import type { Database } from "@/types/database";
-
 import type { PipelineStage } from "@/lib/agents/types";
 
-type ConsentChannel = Database["public"]["Enums"]["consent_channel"];
-type ConsentStatus = Database["public"]["Enums"]["consent_status"];
-
-/** Channels a message can actually be drafted for (`phone` is not a message). */
-export type MessageChannel = Exclude<ConsentChannel, "phone">;
+export {
+  CHANNEL_LABELS,
+  CHANNEL_PREFERENCE,
+  chooseChannel,
+  composeMessageBody,
+  UNSUBSCRIBE_NOTICE,
+  type ChannelInput,
+  type ChannelRefusal,
+  type ChannelResult,
+  type MessageChannel,
+} from "@/lib/agents/consent";
 
 /**
  * Stages from which Louis may propose an estimation appointment.
@@ -51,65 +60,6 @@ export function checkEligibility(input: EligibilityInput): EligibilityResult {
     return { eligible: false, code: "appointment_stage_not_ready" };
   }
   return { eligible: true };
-}
-
-// -----------------------------------------------------------------------------
-// Channel
-// -----------------------------------------------------------------------------
-
-/** Preference order: the least intrusive channel first. */
-export const CHANNEL_PREFERENCE: readonly MessageChannel[] = ["email", "sms", "whatsapp"];
-
-export type ChannelInput = {
-  hasEmail: boolean;
-  hasPhone: boolean;
-  /** Current consent per channel (most recent row per channel), if any. */
-  consents: Partial<Record<ConsentChannel, ConsentStatus>>;
-};
-
-export type ChannelRefusal = "appointment_no_reachable_channel" | "consent_not_granted";
-
-export type ChannelResult = { channel: MessageChannel } | { channel: null; code: ChannelRefusal };
-
-/**
- * Picks the channel of the draft. Refuses — with a distinct reason — when the
- * contact has no usable address at all, and when an address exists but no valid
- * consent covers it.
- */
-export function chooseChannel(input: ChannelInput): ChannelResult {
-  const reachable = CHANNEL_PREFERENCE.filter((channel) =>
-    channel === "email" ? input.hasEmail : input.hasPhone,
-  );
-
-  if (reachable.length === 0) {
-    return { channel: null, code: "appointment_no_reachable_channel" };
-  }
-
-  const granted = reachable.find((channel) => input.consents[channel] === "granted");
-  if (!granted) {
-    return { channel: null, code: "consent_not_granted" };
-  }
-  return { channel: granted };
-}
-
-// -----------------------------------------------------------------------------
-// Message
-// -----------------------------------------------------------------------------
-
-/**
- * Opt-out notice required in every message sent to a private individual.
- * Added by the code, never left to the model.
- */
-export const UNSUBSCRIBE_NOTICE = "Pour ne plus recevoir de messages de notre part, répondez STOP.";
-
-/** Detects an opt-out keyword already present in the body (avoids duplicates). */
-const STOP_PATTERN = /\bSTOP\b/;
-
-export function composeMessageBody(body: string, signature?: string | null): string {
-  const parts = [body.trim()];
-  if (signature && signature.trim().length > 0) parts.push(signature.trim());
-  if (!STOP_PATTERN.test(body)) parts.push(UNSUBSCRIBE_NOTICE);
-  return parts.join("\n\n");
 }
 
 export const LOUIS_DECISION_TEXTS = {

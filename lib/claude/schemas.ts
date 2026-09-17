@@ -83,6 +83,31 @@ export const SALE_TIMELINE_LABELS: Readonly<Record<SaleTimelineValue, string>> =
 /** Timelines that make a project urgent enough to be treated as "chaud". */
 export const HOT_SALE_TIMELINES: readonly SaleTimelineValue[] = ["immediat", "moins_de_3_mois"];
 
+/**
+ * Closed vocabulary of what a seller decided at the end of an estimation
+ * appointment. Used by Sarah to CLASSIFY a human-written report — never to
+ * decide anything: the pipeline stage is chosen by the code from a whitelist,
+ * and `mandat_signe` is not in it (a mandate is confirmed by a human).
+ */
+export const SELLER_DECISIONS = [
+  "mandat_envisage",
+  "hesite",
+  "compare_autre_agence",
+  "attend_evenement",
+  "refus",
+  "non_precise",
+] as const;
+export type SellerDecisionValue = (typeof SELLER_DECISIONS)[number];
+
+export const SELLER_DECISION_LABELS: Readonly<Record<SellerDecisionValue, string>> = {
+  mandat_envisage: "Mandat envisagé",
+  hesite: "Le vendeur hésite encore",
+  compare_autre_agence: "Comparaison avec une autre agence",
+  attend_evenement: "Décision suspendue à un événement",
+  refus: "Refus du vendeur",
+  non_precise: "Décision non précisée dans le compte-rendu",
+};
+
 /** Non-empty, trimmed, length-bounded free text. */
 export function boundedText(max: number) {
   return z.string().trim().min(1).max(max);
@@ -95,3 +120,30 @@ export function nullableText(max: number) {
 
 /** Self-reported reliability of the answer, between 0 and 1. */
 export const confidenceSchema = z.number().min(0).max(1);
+
+/**
+ * No URL may come out of a model. A link is the easiest way to turn a
+ * human-validated message into a phishing vector; the links the product needs
+ * (unsubscribe page) are added by the code.
+ */
+export const URL_PATTERN = /(https?:\/\/|www\.)/i;
+
+/**
+ * No amount in euros may come out of a model either. `estimated_value_eur` is
+ * the figure that engages the agency in front of a seller: the database refuses
+ * to let an agent write it, and this refinement makes sure one cannot slip into
+ * a free-text field instead (a summary, a message, a task title).
+ */
+export const MONEY_PATTERN = /(\d[\d\s.,]*\s*(?:€|eur\b|euros?\b)|(?:€|eur\b|euros?\b)\s*\d)/i;
+
+export function noUrl<T extends z.ZodType<string>>(schema: T) {
+  return schema.refine((value) => !URL_PATTERN.test(value), {
+    message: "aucun lien n'est autorisé dans un texte rédigé par l'IA",
+  });
+}
+
+export function noMoney<T extends z.ZodType<string>>(schema: T) {
+  return schema.refine((value) => !MONEY_PATTERN.test(value), {
+    message: "aucun montant en euros n'est autorisé dans un texte rédigé par l'IA",
+  });
+}

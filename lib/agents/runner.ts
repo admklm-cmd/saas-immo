@@ -14,6 +14,19 @@
  *
  * Every attempt is journaled in `ai_agent_runs`: refused attempts as `blocked`
  * with the reason, accepted ones as `running` then `succeeded` / `failed`.
+ *
+ * Two entry points, same guard rails:
+ *   * `startGuardedRun` — the agent works on an existing contact (Hugo, Emma,
+ *     Louis, Sarah): checks 2 and 5 above apply;
+ *   * `startGuardedContactlessRun` — the agent runs BEFORE a contact exists
+ *     (Léa, on a raw inbound lead): the run is journaled with `contact_id =
+ *     null`, and checks 2 and 5 simply have no subject.
+ *
+ * Each attempt also opens a STEP JOURNAL (`ai_agent_run_steps`, see steps.ts):
+ * `startGuardedRun` records the `guardrails` step itself — `ok` when the run is
+ * allowed to start, `blocked` with the reason when it is not — and hands the
+ * recorder back so the agent journals the rest of its sequence. A run that was
+ * refused therefore still shows the user WHY it stopped.
  */
 
 import type { AiProvider, AiUsage } from "@/lib/claude/provider";
@@ -21,7 +34,13 @@ import { ok, type Result } from "@/lib/utils/result";
 import type { Json } from "@/types/database";
 
 import { databaseErrorCode, failFromDatabase, failWith } from "./errors";
-import { AGENT_ERROR_MESSAGES, type AgentErrorCode } from "./messages";
+import {
+  AGENT_ERROR_MESSAGES,
+  AGENT_STEP_BLOCK_LABELS,
+  AGENT_STEP_LABELS,
+  type AgentErrorCode,
+} from "./messages";
+import { createStepRecorder, type AgentStepRecorder } from "./steps";
 import { parisDayStart } from "./time";
 import {
   AGENT_CONTACT_COLUMNS,
@@ -42,11 +61,28 @@ export type GuardedRunInput = {
   now?: Date;
 };
 
-export type GuardedRun = {
+/** Same thing for an agent that runs BEFORE any contact exists (Léa). */
+export type GuardedContactlessRunInput = Omit<GuardedRunInput, "contactId">;
+
+type GuardedRunBase = {
   runId: string;
-  contact: AgentContact;
   agency: AgentAgency;
+  /**
+   * Step journal of this run. The `guardrails` step is already recorded; the
+   * agent records `context_loaded`, `prompt_built`, `ai_call`,
+   * `output_validated`, `decision` and `persisted` as it goes.
+   */
+  steps: AgentStepRecorder;
 };
+
+export type GuardedRun = GuardedRunBase & { contact: AgentContact };
+
+/**
+ * A run that is not attached to any contact. `ai_agent_runs.contact_id` is
+ * nullable precisely for this case: Léa processes a raw inbound lead, and the
+ * contact record is what she may (or may not) create at the end.
+ */
+export type GuardedContactlessRun = GuardedRunBase & { contact: null };
 
 /** Codes that are journaled as a `blocked` run rather than a plain failure. */
 const BLOCKING_CODES = ["ai_paused", "ai_daily_run_limit_reached", "human_takeover"] as const;
@@ -87,28 +123,43 @@ export async function journalBlockedRun(
   return data.id;
 }
 
-export async function startGuardedRun(
+type AnyGuardedRun = GuardedRunBase & { contact: AgentContact | null };
+
+/**
+ * The guard rails themselves. `contactId` is `null` for an agent that works
+ * before any contact exists (Léa): the ownership and human-takeover checks
+ * simply do not apply, every other check does, unchanged.
+ */
+async function startRun(
   client: TypedClient,
   context: AgentContext,
-  input: GuardedRunInput,
-): Promise<Result<GuardedRun>> {
-  // --- 2. the contact must belong to the caller's agency ---------------------
-  const contactQuery = await client
-    .from("contacts")
-    .select(AGENT_CONTACT_COLUMNS)
-    .eq("agency_id", context.agencyId)
-    .eq("id", input.contactId)
-    .maybeSingle();
+  input: GuardedRunInput | (GuardedContactlessRunInput & { contactId: null }),
+): Promise<Result<AnyGuardedRun>> {
+  // Start of the `guardrails` step. Deliberately the real clock, never
+  // `input.now` (which tests may move around to exercise the Paris day
+  // boundary): a journaled duration must be a measurement, not a parameter.
+  const guardStartedAt = new Date();
 
-  if (contactQuery.error) {
-    return failFromDatabase<GuardedRun>("startGuardedRun.contact", contactQuery.error);
+  // --- 2. the contact must belong to the caller's agency ---------------------
+  let contact: AgentContact | null = null;
+  if (input.contactId !== null) {
+    const contactQuery = await client
+      .from("contacts")
+      .select(AGENT_CONTACT_COLUMNS)
+      .eq("agency_id", context.agencyId)
+      .eq("id", input.contactId)
+      .maybeSingle();
+
+    if (contactQuery.error) {
+      return failFromDatabase<AnyGuardedRun>("startGuardedRun.contact", contactQuery.error);
+    }
+    if (!contactQuery.data) {
+      // Same answer whether the contact does not exist or belongs to another
+      // agency: no information leak.
+      return failWith<AnyGuardedRun>("contact_not_found");
+    }
+    contact = contactQuery.data as AgentContact;
   }
-  if (!contactQuery.data) {
-    // Same answer whether the contact does not exist or belongs to another
-    // agency: no information leak.
-    return failWith<GuardedRun>("contact_not_found");
-  }
-  const contact = contactQuery.data as AgentContact;
 
   const agencyQuery = await client
     .from("agencies")
@@ -117,22 +168,39 @@ export async function startGuardedRun(
     .maybeSingle();
 
   if (agencyQuery.error) {
-    return failFromDatabase<GuardedRun>("startGuardedRun.agency", agencyQuery.error);
+    return failFromDatabase<AnyGuardedRun>("startGuardedRun.agency", agencyQuery.error);
   }
   if (!agencyQuery.data) {
-    return failWith<GuardedRun>("forbidden");
+    return failWith<AnyGuardedRun>("forbidden");
   }
   const agency: AgentAgency = agencyQuery.data;
 
-  const block = async (reason: BlockingCode): Promise<Result<GuardedRun>> => {
-    await journalBlockedRun(client, context, {
+  /**
+   * Journals the refused attempt AND its explanatory step. The user must be
+   * able to see why an execution stopped, not just that nothing happened.
+   */
+  const block = async (reason: BlockingCode): Promise<Result<AnyGuardedRun>> => {
+    const blockedRunId = await journalBlockedRun(client, context, {
       agent: input.agent,
-      contactId: contact.id,
+      contactId: contact?.id ?? null,
       provider: input.provider,
       reason,
       details: input.input,
     });
-    return failWith<GuardedRun>(reason);
+    if (blockedRunId) {
+      const steps = createStepRecorder(client, {
+        agencyId: context.agencyId,
+        runId: blockedRunId,
+        startedAt: guardStartedAt,
+      });
+      await steps.step({
+        phase: "guardrails",
+        label: AGENT_STEP_BLOCK_LABELS[reason],
+        status: "blocked",
+        detail: { agent: input.agent, reason, contact_id: contact?.id ?? null },
+      });
+    }
+    return failWith<AnyGuardedRun>(reason);
   };
 
   // --- 3. kill switch --------------------------------------------------------
@@ -150,14 +218,14 @@ export async function startGuardedRun(
     .gte("started_at", dayStart.toISOString());
 
   if (countQuery.error) {
-    return failFromDatabase<GuardedRun>("startGuardedRun.count", countQuery.error);
+    return failFromDatabase<AnyGuardedRun>("startGuardedRun.count", countQuery.error);
   }
   if ((countQuery.count ?? 0) >= agency.ai_daily_run_limit) {
     return block("ai_daily_run_limit_reached");
   }
 
   // --- 5. human takeover -----------------------------------------------------
-  if (contact.human_takeover) {
+  if (contact?.human_takeover) {
     return block("human_takeover");
   }
 
@@ -167,7 +235,7 @@ export async function startGuardedRun(
     .insert({
       agency_id: context.agencyId,
       agent: input.agent,
-      contact_id: contact.id,
+      contact_id: contact?.id ?? null,
       triggered_by_user_id: context.userId,
       status: "running",
       input: input.input,
@@ -183,19 +251,60 @@ export async function startGuardedRun(
     // the start. Journal it as blocked so the agency sees the attempt.
     const code: AgentErrorCode = databaseErrorCode(runInsert.error);
     if ((BLOCKING_CODES as readonly string[]).includes(code)) {
-      await journalBlockedRun(client, context, {
-        agent: input.agent,
-        contactId: contact.id,
-        provider: input.provider,
-        reason: code as BlockingCode,
-        details: input.input,
-      });
-      return failWith<GuardedRun>(code);
+      return block(code as BlockingCode);
     }
-    return failFromDatabase<GuardedRun>("startGuardedRun.insert", runInsert.error);
+    return failFromDatabase<AnyGuardedRun>("startGuardedRun.insert", runInsert.error);
   }
 
-  return ok({ runId: runInsert.data.id, contact, agency });
+  const runId = runInsert.data.id;
+  const steps = createStepRecorder(client, {
+    agencyId: context.agencyId,
+    runId,
+    startedAt: guardStartedAt,
+  });
+  await steps.step({
+    phase: "guardrails",
+    label: AGENT_STEP_LABELS.guardrails_ok,
+    detail: {
+      agent: input.agent,
+      contact_id: contact?.id ?? null,
+      ai_paused: agency.ai_paused,
+      human_takeover: contact?.human_takeover ?? false,
+      runs_today: countQuery.count ?? 0,
+      daily_limit: agency.ai_daily_run_limit,
+      provider: input.provider.name,
+      model: input.provider.model,
+      is_simulation: input.provider.isSimulation,
+    },
+  });
+
+  return ok({ runId, contact, agency, steps });
+}
+
+export async function startGuardedRun(
+  client: TypedClient,
+  context: AgentContext,
+  input: GuardedRunInput,
+): Promise<Result<GuardedRun>> {
+  const started = await startRun(client, context, input);
+  if (started.error) return { data: null, error: started.error };
+  // `contactId` was given, so the contact was read and is non-null.
+  return ok(started.data as GuardedRun);
+}
+
+/**
+ * Guard rails for an agent that has no contact yet (Léa, on an inbound lead).
+ * Everything that protects the agency still applies — kill switch, daily
+ * volume, membership — and the attempt is journaled exactly the same way.
+ */
+export async function startGuardedContactlessRun(
+  client: TypedClient,
+  context: AgentContext,
+  input: GuardedContactlessRunInput,
+): Promise<Result<GuardedContactlessRun>> {
+  const started = await startRun(client, context, { ...input, contactId: null });
+  if (started.error) return { data: null, error: started.error };
+  return ok(started.data as GuardedContactlessRun);
 }
 
 export type FinishRunInput = {
