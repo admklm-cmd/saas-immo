@@ -77,27 +77,114 @@ Boutons et badges : `rounded-full`.
 
 ### 2.5 Mouvement
 
-| Token | Valeur | Utilitaire Tailwind |
-|---|---|---|
-| `--duration-fast` | 150 ms | `duration-150` |
-| `--duration-base` | 220 ms | `duration-200` |
-| `--duration-slow` | 300 ms | `duration-300` |
-| `--ease-standard` | `cubic-bezier(.22,.61,.36,1)` | `ease-standard` |
-| `--ease-exit` | `cubic-bezier(.4,0,1,1)` | `ease-exit` |
+Le mouvement sert deux choses, et rien d'autre : la **finition perçue** et la
+**lisibilité d'un changement d'état**. Une animation qui ne sert ni l'une ni l'autre
+n'est pas ajoutée. Plan de travail associé : `docs/plans/2026-09-18-animations.md`.
+
+#### 2.5.1 Tokens réels et quand les utiliser
+
+Ces cinq tokens existent aujourd'hui dans `@theme` (`app/globals.css`). Aucun autre.
+
+| Token | Valeur | Utilitaire | Quand l'utiliser |
+|---|---|---|---|
+| `--duration-fast` | 150 ms | `duration-150` | Réaction directe au doigt ou au clavier : survol, pression, focus, changement de fond d'une ligne de tableau |
+| `--duration-base` | 220 ms | `duration-200` | Apparition d'un élément dans un écran déjà affiché : alerte, panneau de confirmation, étape de rejeu |
+| `--duration-slow` | 300 ms | `duration-300` | Entrée d'une section entière au chargement : en-tête de page, carte, tableau, état vide |
+| `--ease-standard` | `cubic-bezier(.22,.61,.36,1)` | `ease-standard` | **Toute entrée** : l'élément démarre vite puis se pose. C'est la courbe par défaut du projet |
+| `--ease-exit` | `cubic-bezier(.4,0,1,1)` | `ease-exit` | **Toute sortie** : l'élément part et accélère. Token disponible, **aucun composant ne l'utilise encore** |
 
 > Tailwind v4 n'expose pas d'espace de noms `--duration-*` : on utilise l'utilitaire
-> numérique correspondant, dont la valeur **est** celle du token.
+> numérique correspondant, dont la valeur **est** celle du token. Les courbes, elles,
+> sont bien exposées (`ease-standard`, `ease-exit`).
 
-Animations nommées : `animate-rise` (entrée de section), `animate-fade` (apparition
-d'alerte et d'étape de rejeu), `animate-shimmer` (squelettes), `animate-spin-slow`
-(bouton en cours), `animate-pulse` (étape de rejeu en cours — indicateur d'activité,
-jamais une mesure d'avancement).
+Règle simple : au doute, prendre la durée **inférieure**. Une interface de travail
+utilisée toute la journée doit paraître instantanée, pas cinématographique.
+
+#### 2.5.2 Animations nommées disponibles
+
+| Utilitaire | Ce qu'il anime | Durée | Où il est utilisé aujourd'hui |
+|---|---|---|---|
+| `animate-rise` | Opacité 0 → 1 et translation de 8 px vers le haut | `--duration-slow` | `PageHeader`, `EmptyState`, `ContactsTable`, écran de connexion, accueil public |
+| `animate-fade` | Opacité 0 → 1, sans déplacement | `--duration-base` | `Alert`, étape de rejeu, formulaire de refus |
+| `animate-shimmer` | Position d'un dégradé de fond | 1,4 s, en boucle | `Skeleton` uniquement |
+| `animate-spin-slow` | Rotation | 700 ms, en boucle | Spinner du `Button` en cours de chargement |
+| `animate-pulse` (Tailwind) | Opacité, en boucle | Tailwind | Étape de rejeu **en cours** : indicateur d'activité, jamais une mesure d'avancement |
+
+**Manquant, à ajouter en phase 1 s'il est validé** : une variante d'entrée courte
+(4 px) pour les lignes de liste, un échelonnement de liste sans JavaScript, et une
+mise en avant du changement d'état d'une carte. Ces trois éléments **n'existent pas**
+aujourd'hui : voir le plan du 2026-09-18. Tant qu'ils ne sont pas ajoutés, on se
+limite au tableau ci-dessus.
+
+#### 2.5.3 Inventaire des mouvements autorisés
+
+Rien en dehors de cette liste. Pour chaque catégorie : ce qu'on anime, l'amplitude
+maximale, la durée, un écran concerné.
+
+| Catégorie | On anime | Amplitude max | Durée | Exemple |
+|---|---|---|---|---|
+| Entrée de page ou de section | Opacité + translation verticale | 8 px | `--duration-slow` | En-tête de la liste des contacts (`PageHeader`) |
+| Apparition d'une alerte ou d'une confirmation | Opacité seule | aucune translation | `--duration-base` | `Alert` d'erreur après une action ; panneau de confirmation du coupe-circuit |
+| Échelonnement d'une liste | Décalage du départ de l'entrée de chaque élément | pas de 40 ms, plafonné | `--duration-base` par élément | Lignes de la liste des contacts *(nécessite l'ajout de phase 1)* |
+| Survol ou pression d'un élément interactif | Fond, texte, bordure, ombre, `transform: scale` | `scale(0.98)` à la pression | `--duration-fast` | `Button` (`active:scale-[0.98]`), lignes de `ContactsTable` et `AgentRunsTable`, liens de `AppNav` |
+| Champ de formulaire | Couleur de bordure (et ombre pour `Field`) | aucune | `--duration-fast` | `Field`, `Select`, `Textarea`. **L'anneau de focus global (`:focus-visible`), lui, n'est jamais animé** : il apparaît instantanément |
+| Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
+| Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(nécessite l'ajout de phase 1 ; écran hors périmètre tant que l'étape A n'est pas auditée)* |
+
+#### 2.5.4 Interdits
+
+1. **Jamais d'animation sur une propriété qui recalcule la mise en page.**
+   Interdits : `height`, `width`, `margin`, `padding`, `top`, `left`, `font-size`.
+   Autorisés : `opacity`, `transform`, et les propriétés de peinture pure
+   (`background-color`, `color`, `border-color`, `box-shadow`).
+2. **Jamais d'animation qui retarde une action ou masque une erreur.** Un bouton est
+   cliquable dès qu'il est affiché. Un message d'erreur n'attend aucune animation :
+   il apparaît en opacité, immédiatement.
+3. **Jamais de fausse progression.** Règle déjà posée pour le rejeu au § 3.1 :
+   « Le rejeu ne ment pas sur le rythme. […] Pas de fausse barre de progression, pas
+   de durée arrondie, pas de pause décorative. » Elle vaut pour toute l'interface :
+   pas de compteur qui défile jusqu'à sa valeur, pas de barre qui se remplit sans
+   mesure réelle derrière.
+4. **Jamais d'animation infinie hors indicateur de chargement.** Seuls
+   `animate-shimmer` (squelette), `animate-spin-slow` (bouton en cours) et
+   `animate-pulse` (étape en cours) tournent en boucle. Rien d'autre.
+5. **Jamais le mouvement comme seul porteur d'information.** C'est le corollaire de
+   la règle noir et blanc (§ 1) : ce qu'une animation raconte doit aussi être écrit
+   en toutes lettres, ou annoncé dans une zone `aria-live`.
+6. **Jamais de valeur de durée ou de courbe en dur** dans un composant : les tokens
+   du § 2.5.1 existent pour ça.
+
+#### 2.5.5 `prefers-reduced-motion`
+
+`app/globals.css` ramène toutes les animations et transitions à 0,01 ms et coupe le
+défilement fluide quand le réglage système est actif.
+
+**Ce qui reste** : l'information, le changement d'état, et l'élément lui-même —
+affiché immédiatement, dans son état final. Un composant qui pilote son animation en
+JavaScript doit lire le réglage et se passer de tout minuteur (`AgentRunReplay` le
+fait déjà : § 3.1, règle 2).
+
+**Ce qui disparaît** : l'entrée progressive, l'échelonnement, le scintillement du
+squelette, le retour de pression.
+
+**Règle d'or** : l'interface doit être **entièrement utilisable et testable sans
+aucune animation**. Un test Playwright ne doit jamais attendre la fin d'une
+animation pour trouver un élément.
 
 **Exception assumée** : le rejeu d'une exécution d'agent n'utilise aucune durée de
-token. Ses délais sont les durées réellement mesurées par le serveur (voir 3.1).
+token. Ses délais sont les durées réellement mesurées par le serveur (voir § 3.1).
 
-`prefers-reduced-motion: reduce` ramène toutes les animations et transitions à
-0,01 ms (`app/globals.css`).
+#### 2.5.6 Checklist de revue d'un écran animé
+
+À appliquer avant de livrer.
+
+1. Chaque durée et chaque courbe vient d'un token du § 2.5.1 — aucune valeur en dur.
+2. Chaque mouvement entre dans une catégorie du § 2.5.3 — sinon il est retiré.
+3. Seules `opacity` et `transform` bougent ; rien ne décale la mise en page.
+4. Avec `prefers-reduced-motion` actif, l'écran est complet, lisible et utilisable.
+5. Aucun contenu n'est rendu conditionnellement à la fin d'une animation.
+6. L'anneau de focus reste visible et instantané ; l'ordre de tabulation est inchangé.
+7. Les tests Playwright du parcours passent sans attente liée à une animation.
 
 ### 2.6 Utilitaires maison
 
@@ -226,3 +313,16 @@ Chaque écran gère quatre états :
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
 - Pas de police de marque (choix assumé, voir 2.2).
+- **Mouvement : la spécification (§ 2.5) est écrite, l'outillage ne l'est pas.**
+  Les phases 1 à 3 du plan `docs/plans/2026-09-18-animations.md` ne sont pas faites :
+  - il n'existe ni variante d'entrée courte, ni échelonnement de liste, ni mise en
+    avant du changement d'état d'une carte — les trois ajouts sont proposés et
+    attendent une validation ;
+  - il n'existe pas de primitive d'apparition à l'entrée dans la fenêtre
+    (`Reveal`) ;
+  - la galerie de développement `/dev/animations` n'existe pas ;
+  - aucun écran n'a encore été repris écran par écran : le mouvement actuel se
+    limite à `animate-rise`, `animate-fade`, `animate-shimmer`, `animate-spin-slow`
+    et aux transitions de survol et de focus déjà présentes.
+- `--ease-exit` est défini mais n'est utilisé par aucun composant : aucune sortie
+  n'est animée pour l'instant.
