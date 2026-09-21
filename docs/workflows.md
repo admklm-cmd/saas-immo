@@ -176,11 +176,12 @@ vue `current_consents`.
   `runId`…).
 
 ### Condition de passage à l'étape / à l'agent suivant
-**Le contact ne passe pas en `rdv_planifie`.** Cette étape signifie « rendez-vous confirmé » et
-exige une **confirmation humaine** : un membre de l'agence valide le message, l'envoie, puis
-confirme le rendez-vous (itération suivante). Tant que ce n'est pas fait, le rendez-vous reste
-`proposed` et le message `pending_validation`. **Rien n'est envoyé à personne.**
-Une fois le rendez-vous réalisé, le dossier passe à **Sarah** (suivi).
+**Louis ne passe pas lui-même le contact en `rdv_planifie`.** Cette étape signifie « rendez-vous
+confirmé » et exige une **confirmation humaine** dans `/agents-ia/suivi-rendez-vous`. La base fait
+alors progresser atomiquement `appointments.status` de `proposed` à `confirmed`, le contact à
+`rdv_planifie`, et ajoute l'activité d'audit. Le rendez-vous confirmé doit ensuite être marqué
+`done` dans le même écran avec un compte-rendu humain obligatoire et estampillé. **Rien n'est envoyé
+à personne.** Une fois ce pont humain terminé, Sarah devient disponible.
 
 ### Conditions d'arrêt
 - Coupe-circuit actif, limite quotidienne atteinte, reprise humaine.
@@ -417,8 +418,10 @@ vers **Hugo** (qualification) ou **Louis** (rendez-vous).
 > Code : `features/agents-ia/sarah-suivi/` · Entrée : `followThroughAppointment(appointmentId)`
 
 ### Déclencheur
-Action humaine depuis le rendez-vous ou la fiche contact (bouton « Lancer Sarah »), via la server
-action `followThroughAppointment(appointmentId)`. Aucun déclenchement automatique à ce stade.
+Action humaine depuis `/agents-ia/suivi-rendez-vous` (bouton « Lancer Sarah »), via la server action
+`followThroughAppointment(appointmentId)`. Avant cela, le même écran expose les deux actions humaines
+`confirmAppointment(appointmentId)` puis `completeAppointment(appointmentId, { reportNotes })`.
+Aucun déclenchement automatique à ce stade.
 
 ### Entrées
 - Un rendez-vous de l'agence de l'appelant, au statut **`done`**, dont `report_notes` est
@@ -443,7 +446,8 @@ action `followThroughAppointment(appointmentId)`. Aucun déclenchement automatiq
    montant en euros, aucun lien, vocabulaire fermé pour la position du vendeur).
 9. **Décision d'étape (code)** : liste blanche `SARAH_ALLOWED_TARGET_STAGES = ["estimation_faite"]`.
    Voir « condition de passage ».
-10. Écrire l'étape éventuellement, les tâches de suivi, l'entrée d'historique, clôturer le run.
+10. Écrire l'étape éventuellement avec un verrou optimiste sur l'étape lue avant l'appel IA : une
+    décision humaine concurrente gagne toujours. Écrire les tâches et l'historique, puis clôturer le run.
 
 ### Outils utilisés
 `features/agents-ia/sarah-suivi/decision.ts` (liste blanche d'étapes, plan de tâches) ·
@@ -478,6 +482,8 @@ La signature du mandat est **toujours** confirmée par un humain de l'agence.
 - Coupe-circuit actif, limite quotidienne atteinte, reprise humaine.
 - Rendez-vous inexistant ou appartenant à une autre agence.
 - Rendez-vous non réalisé ou sans compte-rendu (`appointment_report_missing`).
+- Étape modifiée par un humain pendant l'analyse (`contact_stage_changed`) : aucune décision humaine
+  n'est remplacée, aucune tâche de succès n'est créée.
 - Confiance insuffisante : étape inchangée, tâche de vérification.
 - Sortie IA invalide, y compris une classification hors vocabulaire ou un montant en euros glissé
   dans un texte.

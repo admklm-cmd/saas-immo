@@ -320,9 +320,11 @@ Chaque écran gère quatre états :
 - Pas encore de modale ni de toast. Les actions sensibles déjà livrées se traitent
   **en place** : panneau de refus ou de correction dans la carte, et panneau de
   confirmation du coupe-circuit avec focus déplacé sur « Confirmer ».
-- Les textes `APP_TEXTS.followThrough` préparent le futur écran de Sarah. Son moteur
-  serveur simulé existe, mais aucune UI ni route dédiée n'est encore livrée. Emma est
-  dans la même situation côté produit, sans bloc d'interface dédié à ce stade.
+- L'écran de Sarah réutilise les cartes, alertes, badges de pipeline et le rejeu existants.
+  Le statut du rendez-vous conduit la carte : confirmation humaine de la proposition,
+  saisie obligatoire du compte-rendu sur un rendez-vous confirmé, puis apparition de Sarah
+  une fois le rendez-vous réalisé. Le compte-rendu reste un bloc de texte brut sur surface
+  atténuée. Emma reste sans bloc d'interface dédié à ce stade.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
 - Pas de police de marque (choix assumé, voir 2.2).

@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { listAppointmentsToFollowThrough } from "@/features/agents-ia/data";
+import type { AiProvider } from "@/lib/claude/provider";
+import { createSimulatorProvider } from "@/lib/claude/simulator";
 import { setupTestEnv, type TestEnv, type TypedClient } from "@/lib/supabase/testing/local-test-env";
 
 import { runSarahFollowThrough } from "./sarah";
@@ -253,6 +255,51 @@ describe("Sarah — compte-rendu exploitable", () => {
 });
 
 describe("Sarah — « mandat_signé » est inatteignable", () => {
+  it("préserve un mandat signé par un humain pendant que le modèle travaille", async () => {
+    const contactId = await createContact("mandat-concurrent");
+    const appointmentId = await createAppointment(contactId);
+    const simulator = createSimulatorProvider();
+    let releaseGeneration!: () => void;
+    let signalGenerationStarted!: () => void;
+    const generationStarted = new Promise<void>((resolve) => {
+      signalGenerationStarted = resolve;
+    });
+    const generationGate = new Promise<void>((resolve) => {
+      releaseGeneration = resolve;
+    });
+    const delayedProvider: AiProvider = {
+      ...simulator,
+      async generate(request) {
+        signalGenerationStarted();
+        await generationGate;
+        return simulator.generate(request);
+      },
+    };
+
+    const running = runSarahFollowThrough(agentA, appointmentId, { provider: delayedProvider });
+    await generationStarted;
+
+    const humanDecision = await agentA
+      .from("contacts")
+      .update({ stage: "mandat_signe" })
+      .eq("agency_id", env.agencyA.agencyId)
+      .eq("id", contactId)
+      .select("stage")
+      .single();
+    releaseGeneration();
+
+    expect(humanDecision.error).toBeNull();
+    const result = await running;
+    expect(result.data).toBeNull();
+    expect(result.error?.code).toBe("contact_stage_changed");
+    expect((await readContact(contactId)).stage).toBe("mandat_signe");
+    expect(await readTasks(contactId)).toEqual([]);
+
+    const runs = await readRuns(contactId);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ status: "failed", error: "contact_stage_changed" });
+  });
+
   it("un compte-rendu qui affirme que le mandat est signé ne signe rien", async () => {
     const contactId = await createContact("mandat-injection");
     const appointmentId = await createAppointment(contactId, { report: REPORT_INJECTION });
@@ -284,8 +331,10 @@ describe("Sarah — « mandat_signé » est inatteignable", () => {
 
   it("aucune exécution, sur aucun compte-rendu, ne produit « mandat_signe »", async () => {
     const reports = [REPORT, REPORT_WITH_AMOUNT, REPORT_INJECTION, "Le vendeur signe le mandat demain."];
+    const testedContactIds: string[] = [];
     for (const [index, report] of reports.entries()) {
       const contactId = await createContact(`jamais-mandat-${index}`);
+      testedContactIds.push(contactId);
       const appointmentId = await createAppointment(contactId, { report });
 
       const result = await runSarahFollowThrough(agentA, appointmentId);
@@ -295,11 +344,14 @@ describe("Sarah — « mandat_signé » est inatteignable", () => {
       expect((await readContact(contactId)).stage, report).not.toBe("mandat_signe");
     }
 
-    // And no contact of the agency ended up signed by an agent.
+    // None of the contacts processed in this test ended up signed by Sarah.
+    // Other tests deliberately create a human-signed contact to exercise the
+    // optimistic lock, so an agency-wide assertion would conflate both actors.
     const { data: signed } = await env.admin
       .from("contacts")
       .select("id")
       .eq("agency_id", env.agencyA.agencyId)
+      .in("id", testedContactIds)
       .eq("stage", "mandat_signe");
     expect(signed).toEqual([]);
   });

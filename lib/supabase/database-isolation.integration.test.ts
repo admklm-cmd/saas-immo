@@ -682,7 +682,7 @@ describe("double réservation", () => {
 
     const overlap = await client
       .from("appointments")
-      .insert({ ...base, status: "confirmed", ...slot("2030-02-04T09:30:00Z", "2030-02-04T10:30:00Z") });
+      .insert({ ...base, ...slot("2030-02-04T09:30:00Z", "2030-02-04T10:30:00Z") });
     expect(overlap.error?.code).toBe("23P01");
 
     const adjacent = await client
@@ -696,11 +696,6 @@ describe("double réservation", () => {
       ...slot("2030-02-04T09:30:00Z", "2030-02-04T10:30:00Z"),
     });
     expect(otherAdvisor.error).toBeNull();
-
-    const cancelledOverlap = await client
-      .from("appointments")
-      .insert({ ...base, status: "cancelled", ...slot("2030-02-04T09:15:00Z", "2030-02-04T09:45:00Z") });
-    expect(cancelledOverlap.error).toBeNull();
 
     const cancel = await client.from("appointments").update({ status: "cancelled" }).eq("id", first.data!.id);
     expect(cancel.error).toBeNull();
@@ -1258,17 +1253,52 @@ describe("valeur estimée d'un bien", () => {
 describe("compte-rendu de rendez-vous", () => {
   it("estampille l'auteur et la date, refuse une attribution forgée", async () => {
     const agent = env.users.agentA.client;
-    const id = env.agencyA.appointmentId;
+    const contact = await env.admin
+      .from("contacts")
+      .insert({
+        agency_id: env.agencyA.agencyId,
+        first_name: "Preuve",
+        last_name: "Compte-rendu",
+        source: "manual_entry",
+        stage: "rdv_planifie",
+        assigned_user_id: env.users.agentA.id,
+      })
+      .select("id")
+      .single();
+    expect(contact.error).toBeNull();
+
+    // Dedicated confirmed fixture: the lifecycle now requires the report and
+    // `confirmed -> done` to be written in the same statement.
+    const appointment = await env.admin
+      .from("appointments")
+      .insert({
+        agency_id: env.agencyA.agencyId,
+        contact_id: contact.data!.id,
+        assigned_user_id: env.users.agentA.id,
+        starts_at: "2042-01-07T09:00:00Z",
+        ends_at: "2042-01-07T10:00:00Z",
+        status: "confirmed",
+        is_simulation: true,
+      })
+      .select("id")
+      .single();
+    expect(appointment.error).toBeNull();
+    const id = appointment.data!.id;
 
     const forged = await agent
       .from("appointments")
-      .update({ report_notes: "Compte-rendu forgé", report_recorded_by: env.users.directorA.id })
+      .update({
+        status: "done",
+        report_notes: "Compte-rendu forgé",
+        report_recorded_by: env.users.directorA.id,
+      })
       .eq("id", id);
     expect(forged.error?.message).toBe("report_recorded_by_must_be_caller");
 
     const written = await agent
       .from("appointments")
       .update({
+        status: "done",
         report_notes: "Estimation réalisée, le vendeur réfléchit au prix de présentation.",
         // Ignored: the server stamps the date itself.
         report_recorded_at: "2000-01-01T00:00:00Z",
@@ -1280,26 +1310,26 @@ describe("compte-rendu de rendez-vous", () => {
     expect(written.data!.report_recorded_by).toBe(env.users.agentA.id);
     expect(new Date(written.data!.report_recorded_at!).getUTCFullYear()).toBeGreaterThanOrEqual(2026);
 
-    // Touching another column leaves the report stamps untouched.
+    // A completed appointment is terminal: neither its lifecycle nor its
+    // report evidence can be touched afterward.
     const untouched = await agent
       .from("appointments")
       .update({ status: "done" })
       .eq("id", id)
       .select("report_recorded_at, report_recorded_by")
       .single();
-    expect(untouched.data).toEqual({
-      report_recorded_at: written.data!.report_recorded_at,
-      report_recorded_by: env.users.agentA.id,
-    });
+    expect(untouched.error?.message).toBe("appointment_terminal");
+    expect(untouched.data).toBeNull();
 
-    // Erasing the report erases its stamps, all three together.
+    // Erasing the report is the same forbidden terminal rewrite.
     const erased = await agent
       .from("appointments")
       .update({ report_notes: null })
       .eq("id", id)
       .select("report_notes, report_recorded_by, report_recorded_at")
       .single();
-    expect(erased.data).toEqual({ report_notes: null, report_recorded_by: null, report_recorded_at: null });
+    expect(erased.error?.message).toBe("appointment_terminal");
+    expect(erased.data).toBeNull();
   });
 });
 

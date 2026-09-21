@@ -54,6 +54,7 @@ import {
   type InboundLeadView,
   type PendingMessageView,
   type ReportedAppointmentView,
+  APPOINTMENT_STATUS_LABELS,
 } from "./types";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -295,12 +296,13 @@ export async function listInboundLeads(client: TypedClient): Promise<Result<Inbo
 // Sarah — estimation appointments and their reports
 // -----------------------------------------------------------------------------
 
-/** How many past appointments the follow-through screen shows at once. */
+/** How many appointments the Louis → human → Sarah screen shows at once. */
 export const REPORTED_APPOINTMENTS_PAGE_SIZE = 50;
 
 /**
- * Past estimation appointments of the agency, most recent first, with the
- * report a human wrote (or the fact that it is still missing).
+ * Active and completed estimation appointments of the agency, most recent
+ * first. `proposed` and `confirmed` expose the human actions needed before a
+ * `done` appointment becomes Sarah's input.
  *
  * `canBeFollowedThrough` is the exact condition Sarah checks server-side, so the
  * UI can grey out a button instead of inviting a refusal — but the refusal is
@@ -320,7 +322,7 @@ export async function listAppointmentsToFollowThrough(
         "id, contact_id, status, starts_at, report_notes, report_recorded_at, contacts!appointments_contact_fkey(first_name, last_name, stage)",
       )
       .eq("agency_id", context.agencyId)
-      .eq("status", "done")
+      .in("status", ["proposed", "confirmed", "done"])
       .order("starts_at", { ascending: false })
       .limit(REPORTED_APPOINTMENTS_PAGE_SIZE);
 
@@ -351,15 +353,23 @@ export async function listAppointmentsToFollowThrough(
           .map((part) => (part ?? "").trim())
           .filter((part) => part.length > 0)
           .join(" ");
+        const canBeConfirmed =
+          row.status === "proposed" &&
+          (contact?.stage === "qualifie" ||
+            contact?.stage === "chaud" ||
+            contact?.stage === "rdv_planifie");
         return {
           id: row.id,
           contactId: row.contact_id,
           contactName: name.length > 0 ? name : "Contact sans nom",
           stage: contact?.stage ?? "nouveau",
           status: row.status,
+          statusLabel: APPOINTMENT_STATUS_LABELS[row.status],
           startsAt: isoUtc(row.starts_at),
           reportNotes: row.report_notes,
           reportRecordedAt: row.report_recorded_at ? isoUtc(row.report_recorded_at) : null,
+          canBeConfirmed,
+          canBeCompleted: row.status === "confirmed",
           canBeFollowedThrough: row.status === "done" && row.report_notes !== null,
           lastFollowThroughRunId: lastRuns.get(row.contact_id) ?? null,
         };

@@ -127,4 +127,8 @@ export const SARAH_DECISION_TEXTS: Readonly<Record<SarahDecisionReason, string>>
 export const SARAH_STEP_LABELS = {
   report_loaded: "Rendez-vous et compte-rendu rédigé par un conseiller chargés.",
   persisted: "Suivi enregistré : étape, tâches de suivi et historique CRM mis à jour.",
+  concurrent_stage_change:
+    "Dossier modifié pendant l'analyse : la décision humaine est conservée et Sarah n'écrit rien.",
+  persistence_failed:
+    "Suivi interrompu : une écriture ou sa journalisation a échoué, l'exécution n'est pas déclarée réussie.",
 } as const;

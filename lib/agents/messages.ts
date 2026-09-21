@@ -39,9 +39,13 @@ export const AGENT_ERROR_CODES = [
   "appointment_slot_taken",
   "appointment_no_available_slot",
   "appointment_no_reachable_channel",
+  "appointment_not_proposed",
+  "appointment_not_confirmed",
+  "appointment_report_invalid",
   // --- follow-through rules (Sarah) ---
   "appointment_not_found",
   "appointment_report_missing",
+  "contact_stage_changed",
   // --- human validation of a draft (file d'attente « à valider ») ---
   // One vocabulary only for this queue: `outbound_message_*`. A parallel set of
   // `message_*` codes existed for a while and said exactly the same things; it
@@ -107,11 +111,19 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
     "Aucun créneau libre sur les prochains jours ouvrés : rien n'a été réservé, une tâche a été créée pour qu'un conseiller propose une date.",
   appointment_no_reachable_channel:
     "Aucun canal de contact utilisable pour ce contact (adresse email ou numéro manquant) : aucun message n'a été préparé.",
+  appointment_not_proposed:
+    "Ce rendez-vous n'est plus en attente de confirmation : son état a déjà changé.",
+  appointment_not_confirmed:
+    "Ce rendez-vous doit être confirmé avant de pouvoir être marqué comme réalisé.",
+  appointment_report_invalid:
+    "Le compte-rendu est vide ou trop long : le rendez-vous n'a pas été marqué comme réalisé.",
   // Same reasoning as `contact_not_found`: identical answer for "unknown" and
   // "belongs to another agency".
   appointment_not_found: "Rendez-vous introuvable.",
   appointment_report_missing:
     "Aucun compte-rendu n'a encore été saisi pour ce rendez-vous : Sarah n'en déduit rien et n'invente rien. Une tâche a été créée pour le conseiller qui l'a réalisé.",
+  contact_stage_changed:
+    "Le dossier a été modifié par un conseiller pendant l'analyse. Sarah n'a pas remplacé cette décision : rechargez la fiche avant de relancer.",
   // Same reasoning as `contact_not_found`: identical answer for "unknown" and
   // "belongs to another agency".
   outbound_message_not_found: "Message introuvable.",

@@ -38,7 +38,7 @@ import type { RecordedRunStep } from "@/lib/agents/steps";
 import type { AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
 import type { AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
-import { ok, type Result } from "@/lib/utils/result";
+import { ok, type Result, type ResultError } from "@/lib/utils/result";
 import type { Json } from "@/types/database";
 
 import { buildSarahPromptContext } from "../prompt-context";
@@ -160,6 +160,27 @@ export async function runSarahFollowThrough(
 
     const now = options.now ?? new Date();
 
+    /** A failed task/activity write must never be reported as a successful run. */
+    const stopAfterPersistenceFailure = async (
+      error: ResultError,
+      usage?: AiUsage,
+      stageChanged = false,
+    ): Promise<Result<SarahRunResult>> => {
+      await steps.step({
+        phase: "persisted",
+        label: SARAH_STEP_LABELS.persistence_failed,
+        status: "failed",
+        detail: { error_code: error.code, stage_changed: stageChanged },
+      });
+      await finishRun(client, runId, {
+        status: "failed",
+        error: error.code,
+        decision: SARAH_STEP_LABELS.persistence_failed,
+        usage,
+      });
+      return { data: null, error };
+    };
+
     /** Closes the run without any business write, optionally opening a task. */
     const abort = async (input: {
       code: AgentErrorCode;
@@ -179,7 +200,7 @@ export async function runSarahFollowThrough(
         },
       });
       if (input.task) {
-        await openHumanTask(client, context, {
+        const task = await openHumanTask(client, context, {
           contactId: contact.id,
           type: input.task.type,
           title: AGENT_TASK_TEXTS[input.task.type].title,
@@ -187,7 +208,9 @@ export async function runSarahFollowThrough(
           agent: SARAH_AGENT,
           assignedUserId: appointment.assigned_user_id,
         });
-        await logAgentActivity(client, context, {
+        if (task.error) return stopAfterPersistenceFailure(task.error, input.usage);
+
+        const activity = await logAgentActivity(client, context, {
           contactId: contact.id,
           type: input.task.activityType,
           summary: `Sarah — suivi : ${SARAH_DECISION_TEXTS[input.decision]}`,
@@ -200,6 +223,7 @@ export async function runSarahFollowThrough(
           agent: SARAH_AGENT,
           isSimulation: provider.isSimulation,
         });
+        if (activity.error) return stopAfterPersistenceFailure(activity.error, input.usage);
       }
       await finishRun(client, runId, {
         status: "failed",
@@ -317,7 +341,9 @@ export async function runSarahFollowThrough(
         agent: SARAH_AGENT,
         assignedUserId: appointment.assigned_user_id,
       });
-      await logAgentActivity(client, context, {
+      if (task.error) return stopAfterPersistenceFailure(task.error, generation.usage);
+
+      const activity = await logAgentActivity(client, context, {
         contactId: contact.id,
         type: "ai_response_invalid",
         summary:
@@ -331,6 +357,7 @@ export async function runSarahFollowThrough(
         agent: SARAH_AGENT,
         isSimulation: provider.isSimulation,
       });
+      if (activity.error) return stopAfterPersistenceFailure(activity.error, generation.usage);
       await steps.step({
         phase: "persisted",
         label: AGENT_STEP_LABELS.no_write,
@@ -383,11 +410,16 @@ export async function runSarahFollowThrough(
     // Belt and braces: even if the decision above were ever broken by a future
     // change, an unauthorised stage never reaches the database.
     if (stageDecision.changed && isStageAllowedForSarah(stageDecision.stage)) {
-      const { error } = await client
+      const { data: updatedContact, error } = await client
         .from("contacts")
         .update({ stage: stageDecision.stage })
         .eq("agency_id", context.agencyId)
-        .eq("id", contact.id);
+        .eq("id", contact.id)
+        // Optimistic lock: a human decision made while the model was working
+        // always wins, especially `mandat_signe` and `perdu`.
+        .eq("stage", contact.stage)
+        .select("stage")
+        .maybeSingle();
       if (error) {
         await steps.step({
           phase: "persisted",
@@ -403,6 +435,21 @@ export async function runSarahFollowThrough(
         });
         return failFromDatabase<SarahRunResult>("runSarahFollowThrough.contactUpdate", error);
       }
+      if (!updatedContact) {
+        await steps.step({
+          phase: "persisted",
+          label: SARAH_STEP_LABELS.concurrent_stage_change,
+          status: "failed",
+          detail: { error_code: "contact_stage_changed", stage_changed: false },
+        });
+        await finishRun(client, runId, {
+          status: "failed",
+          error: "contact_stage_changed",
+          decision: SARAH_STEP_LABELS.concurrent_stage_change,
+          usage: generation.usage,
+        });
+        return failWith<SarahRunResult>("contact_stage_changed");
+      }
     }
 
     const tasks: HumanTaskResult[] = [];
@@ -416,6 +463,9 @@ export async function runSarahFollowThrough(
         agent: SARAH_AGENT,
         assignedUserId: appointment.assigned_user_id,
       });
+      if (created.error) {
+        return stopAfterPersistenceFailure(created.error, generation.usage, stageDecision.changed);
+      }
       if (created.data) tasks.push(created.data);
     }
 
@@ -431,6 +481,9 @@ export async function runSarahFollowThrough(
         agent: SARAH_AGENT,
         assignedUserId: appointment.assigned_user_id,
       });
+      if (created.error) {
+        return stopAfterPersistenceFailure(created.error, generation.usage, stageDecision.changed);
+      }
       if (created.data) tasks.push(created.data);
     }
 
@@ -446,12 +499,15 @@ export async function runSarahFollowThrough(
         agent: SARAH_AGENT,
         assignedUserId: appointment.assigned_user_id,
       });
+      if (created.error) {
+        return stopAfterPersistenceFailure(created.error, generation.usage, stageDecision.changed);
+      }
       if (created.data) tasks.push(created.data);
     }
 
     // --- CRM history -----------------------------------------------------------
     const decisionText = SARAH_DECISION_TEXTS[stageDecision.reason];
-    await logAgentActivity(client, context, {
+    const activity = await logAgentActivity(client, context, {
       contactId: contact.id,
       type: "ai_follow_through_done",
       summary: `Sarah — suivi : ${followThrough.summary} ${decisionText}`,
@@ -471,6 +527,9 @@ export async function runSarahFollowThrough(
       agent: SARAH_AGENT,
       isSimulation: provider.isSimulation,
     });
+    if (activity.error) {
+      return stopAfterPersistenceFailure(activity.error, generation.usage, stageDecision.changed);
+    }
 
     await steps.step({
       phase: "persisted",

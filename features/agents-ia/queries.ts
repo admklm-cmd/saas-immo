@@ -59,10 +59,11 @@ export async function getInboundLeads(): Promise<Result<InboundLeadView[]>> {
 }
 
 /**
- * Sarah's working list: past estimation appointments and their reports.
+ * Human bridge from Louis to Sarah: proposed, confirmed and completed
+ * estimation appointments.
  *
- * `canBeFollowedThrough` is true only when a human has written the report;
- * `followThroughAppointment(id)` refuses otherwise, whatever the UI shows.
+ * The three flags tell the UI which next action is available. Every action
+ * rechecks the same condition server-side and in PostgreSQL.
  */
 export async function getAppointmentsToFollowThrough(): Promise<Result<ReportedAppointmentView[]>> {
   const client = await createClient();

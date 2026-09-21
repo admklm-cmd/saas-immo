@@ -12,11 +12,13 @@
  */
 
 import { failWith } from "@/lib/agents/errors";
-import { parseContactId } from "@/lib/agents/input";
+import { parseContactId, parseUuid } from "@/lib/agents/input";
 import { createClient } from "@/lib/supabase/server";
 import type { Result } from "@/lib/utils/result";
 
 import { runLouisAppointment, type LouisRunResult } from "./louis";
+import { confirmProposedAppointment } from "../appointment-workflow";
+import type { HumanAppointmentResult } from "../types";
 
 export async function proposeAppointment(contactId: string): Promise<Result<LouisRunResult>> {
   // A server action is a public endpoint: the argument is validated at runtime,
@@ -26,4 +28,15 @@ export async function proposeAppointment(contactId: string): Promise<Result<Loui
 
   const client = await createClient();
   return runLouisAppointment(client, id);
+}
+
+/** Human confirmation of the slot proposed by Louis. */
+export async function confirmAppointment(
+  appointmentId: string,
+): Promise<Result<HumanAppointmentResult>> {
+  const id = parseUuid(appointmentId);
+  if (id === null) return failWith<HumanAppointmentResult>("appointment_not_found");
+
+  const client = await createClient();
+  return confirmProposedAppointment(client, id);
 }

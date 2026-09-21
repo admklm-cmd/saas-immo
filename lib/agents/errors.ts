@@ -38,6 +38,14 @@ const DATABASE_MESSAGE_TO_CODE: Readonly<Record<string, AgentErrorCode>> = {
   ai_agent_run_already_finished: "forbidden",
   ai_agent_run_immutable_fields: "forbidden",
   ai_agent_run_invalid_transition: "forbidden",
+  appointment_must_start_proposed: "forbidden",
+  appointment_must_be_simulation: "forbidden",
+  appointment_identity_immutable: "forbidden",
+  appointment_invalid_transition: "forbidden",
+  appointment_terminal: "forbidden",
+  appointment_report_required_for_completion: "appointment_report_invalid",
+  appointment_report_only_on_completion: "forbidden",
+  appointment_contact_stage_not_confirmable: "appointment_stage_not_ready",
 };
 
 /** Postgres SQLSTATE fallbacks when the message is not one of ours. */

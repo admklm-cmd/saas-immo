@@ -19,6 +19,7 @@ const ITEMS: readonly NavItem[] = [
   // message goes to a human for validation.
   { href: "/agents-ia/leads-entrants", label: TEXTS.agentsLeads },
   { href: "/agents-ia/a-valider", label: TEXTS.agentsToValidate },
+  { href: "/agents-ia/suivi-rendez-vous", label: TEXTS.agentsFollowThrough },
   { href: "/parametres", label: TEXTS.settings },
 ];
 

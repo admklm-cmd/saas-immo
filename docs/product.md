@@ -8,8 +8,8 @@
 > (connexion → contacts → fiche → Hugo → Louis → historique), la boîte « Leads entrants »
 > de Léa, la file « Messages à valider » avec correction humaine des brouillons, et le
 > module « Agents IA » (les cinq agents, le coupe-circuit, le journal des exécutions et le
-> rejeu animé d'une exécution). Emma et Sarah ont leur moteur serveur simulé, mais pas
-> encore d'écran dédié. Estimation, tableau de bord, pipeline et paramètres utilisent
+> rejeu animé d'une exécution), ainsi que le suivi post-estimation de Sarah. Emma a son
+> moteur serveur simulé, mais pas encore d'écran dédié. Estimation, tableau de bord, pipeline et paramètres utilisent
 > explicitement `ComingSoon`.
 
 ## 1. À qui on vend
@@ -63,7 +63,7 @@ Deux règles produit :
 | **Hugo** — qualification | Type de bien, secteur, motivation, délai. Ne comble jamais un trou : il le signale | **Implémenté (simulateur)**, lançable depuis la fiche contact |
 | **Emma** — relation | Prépare les relances et adapte le contenu | Serveur fait (simulateur), **sans UI ni route dédiée** |
 | **Louis** — rendez-vous | Propose un créneau d'estimation libre et rédige le message | **Implémenté (simulateur)**, lançable depuis la fiche contact |
-| **Sarah** — suivi | Exploite le compte-rendu de RDV, suit jusqu'au mandat | Serveur fait (simulateur), **sans UI ni route dédiée** ; textes préparatoires centralisés uniquement |
+| **Sarah** — suivi | Exploite le compte-rendu de RDV, suit jusqu'au mandat | **Implémenté (simulateur)**, lançable depuis « Suivi des rendez-vous » quand le compte-rendu humain est présent |
 
 Les cinq agents sont visibles sur l'écran « Agents IA » avec leur activité réelle,
 qu'ils aient déjà tourné ou non.
@@ -87,6 +87,7 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Rejeu d'une exécution | `/agents-ia/executions/[runId]` | **Fait** | Étapes réellement enregistrées, rejouées avec les durées mesurées |
 | Leads entrants | `/agents-ia/leads-entrants` | **Fait** | Demandes brutes : source, données non fiables, dédoublonnage par Léa, création ou rattachement de fiche, tâche de consentement et rejeu |
 | Messages à valider | `/agents-ia/a-valider` | **Fait** | File d'attente : contact, canal, consentement, message proposé ; corriger, valider, refuser (motif obligatoire) ou déclencher un envoi **simulé** |
+| Suivi des rendez-vous | `/agents-ia/suivi-rendez-vous` | **Fait** | Proposition confirmée par un humain, compte-rendu obligatoire à la clôture, puis résultat et rejeu de Sarah |
 | Paramètres | `/parametres` | `ComingSoon` | Agence, utilisateurs, intégrations, conservation |
 
 ## 6. Parcours implémenté : « premier parcours complet »
@@ -194,8 +195,6 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
 
 ## 8. Prochaines itérations (proposition)
 
-1. Écran de suivi de rendez-vous (Sarah) : le serveur et les textes préparatoires existent,
-   mais aucune UI ni route dédiée n'est livrée.
-2. Écran de relances (Emma) : le serveur existe, mais aucune UI ni route dédiée n'est livrée.
-3. Formulaire d'estimation public avec consentement par canal (cases non précochées).
-4. Remplacer les coquilles `ComingSoon` du tableau de bord, du pipeline et des paramètres.
+1. Écran de relances (Emma) : le serveur existe, mais aucune UI ni route dédiée n'est livrée.
+2. Formulaire d'estimation public avec consentement par canal (cases non précochées).
+3. Remplacer les coquilles `ComingSoon` du tableau de bord, du pipeline et des paramètres.

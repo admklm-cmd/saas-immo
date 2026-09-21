@@ -319,11 +319,13 @@ le même `npm run db:seed`.
   valider) : `create unique index … on public.appointments (agency_id, contact_id) where status in
   ('proposed','confirmed');`. À arbitrer avec le métier : une agence peut légitimement vouloir deux
   rendez-vous actifs (estimation puis signature).
-- La boîte `/agents-ia/leads-entrants`, la file `/agents-ia/a-valider` et le coupe-circuit sont
-  implémentés. Emma et Sarah disposent de leur moteur serveur simulé mais d'aucune UI ni route dédiée ;
-  le tableau de bord, le pipeline et les paramètres restent des routes `ComingSoon`.
-- Pas encore : confirmation humaine d'un rendez-vous (passage en `rdv_planifie`), désinscription
-  entrante (STOP reçu), purge RGPD automatique, chiffrement applicatif des jetons d'intégration.
+- La boîte `/agents-ia/leads-entrants`, la file `/agents-ia/a-valider`, le suivi humain des rendez-vous
+  puis Sarah dans `/agents-ia/suivi-rendez-vous`, et le coupe-circuit sont implémentés. Emma dispose
+  de son moteur serveur simulé mais d'aucune UI dédiée ; le tableau de bord, le pipeline et les
+  paramètres restent des routes `ComingSoon`.
+- Pas encore : désinscription entrante (STOP reçu), purge RGPD automatique, chiffrement applicatif
+  des jetons d'intégration, et transaction SQL unique pour regrouper toutes les écritures du suivi
+  de Sarah (l'échec est propagé aujourd'hui, mais plusieurs requêtes PostgREST restent nécessaires).
 - **Dédoublonnage de Léa borné à 5 000 fiches par agence** (`LEAD_DEDUPE_SCAN_LIMIT`) : la
   comparaison se fait dans le code, sur la liste des contacts de l'agence. Au-delà, l'exécution
   **refuse de conclure** plutôt que de comparer une liste tronquée (un doublon manqué crée une

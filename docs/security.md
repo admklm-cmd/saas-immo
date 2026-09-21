@@ -156,6 +156,10 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   une preuve (contrainte de base). Un consentement ne peut pas être daté dans le futur.
 - **Aucun double envoi** : clé d'idempotence unique par agence ; un message envoyé est immuable.
 - **Aucune double réservation** : contrainte d'exclusion GiST sur (agence, conseiller, plage horaire).
+- **Preuve de rendez-vous non effaçable directement** : les membres peuvent faire progresser un
+  rendez-vous dans la machine d'état, mais n'ont plus le privilège `DELETE` sur `appointments`. Un
+  rendez-vous réalisé et son compte-rendu restent donc intacts. L'effacement RGPD par un directeur
+  part toujours du contact et conserve la cascade de clé étrangère.
 - **Mandat signé jamais auto-déclaré par une IA** : Hugo ne peut sortir que de `nouveau`/`qualifie`, et
   seulement vers `qualifie`/`chaud` ; Louis et Emma ne changent aucune étape ; **Sarah** ne peut écrire
   qu'une seule étape, `estimation_faite`, choisie par le code dans une liste blanche
@@ -163,6 +167,10 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   champ d'étape. Un **humain** peut bien sûr passer un contact en `mandat_signe` : c'est exactement ce
   que la règle produit demande. Testé sur des comptes-rendus malveillants
   (`features/agents-ia/sarah-suivi/sarah.integration.test.ts`).
+- **Une décision humaine concurrente gagne toujours sur Sarah** : son écriture vers
+  `estimation_faite` vérifie encore l'étape qu'elle avait lue avant l'appel IA. Si un conseiller passe
+  entre-temps le dossier à `mandat_signe`, `perdu` ou une autre étape, l'update ne touche aucune ligne,
+  le run échoue explicitement et l'étape humaine reste intacte.
 - **Aucun montant en euros écrit par une IA, même en texte libre** : en plus du refus de la base sur
   `properties.estimated_value_eur`, les schémas d'Emma et de Sarah rejettent tout montant en euros dans
   un message, un résumé, une objection ou une tâche (`noMoney`, `lib/claude/schemas.ts`). Sarah dit
@@ -267,6 +275,11 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
   `tasks.created_by_agent` et `outbound_messages.created_by_agent` restent déclaratifs — un membre peut
   créer une tâche ou un brouillon en l'attribuant à un agent IA. Impact faible (ces lignes sont
   modifiables et ne constituent pas la preuve d'une action), à durcir de la même façon plus tard.
+- **Atomicité du suivi de Sarah** : les erreurs de création de tâche ou d'activité sont désormais
+  vérifiées et empêchent de déclarer le run réussi. L'étape, les tâches et l'activité restent toutefois
+  écrites par plusieurs requêtes PostgREST : une panne après le changement d'étape peut laisser un
+  suivi partiel, clairement marqué en échec. Le durcissement complet demande un RPC transactionnel
+  unique qui applique l'étape avec verrou optimiste, crée les tâches idempotentes et ajoute l'activité.
 - **Pas de journal d'audit des accès en lecture** (qui a consulté quelle fiche).
 - Aucun test de charge, aucune revue d'infrastructure : hors périmètre de ce skill et de ce prototype.
 

@@ -464,7 +464,7 @@ export const draftEditSchema = z
 export type DraftEditInput = z.input<typeof draftEditSchema>;
 export type DraftEdit = z.output<typeof draftEditSchema>;
 
-/** One estimation appointment whose report is written (or still missing). */
+/** One appointment in the human bridge from Louis's proposal to Sarah. */
 export type ReportedAppointmentView = {
   id: string;
   contactId: string;
@@ -472,13 +472,70 @@ export type ReportedAppointmentView = {
   contactName: string;
   stage: Enums["pipeline_stage"];
   status: Enums["appointment_status"];
+  /** French lifecycle label, ready to display. */
+  statusLabel: string;
   /** Canonical ISO-8601 UTC. */
   startsAt: string;
   /** Report written by a human of the agency. Never written by an AI agent. */
   reportNotes: string | null;
   reportRecordedAt: string | null;
+  /** Exact server-side precondition for `confirmAppointment(id)`. */
+  canBeConfirmed: boolean;
+  /** Exact server-side precondition for `completeAppointment(id, input)`. */
+  canBeCompleted: boolean;
   /** True when Sarah can be launched on it (done + report written). */
   canBeFollowedThrough: boolean;
   /** Most recent run of Sarah on this contact, if any. */
   lastFollowThroughRunId: string | null;
+};
+
+// -----------------------------------------------------------------------------
+// Passage humain entre Louis et Sarah
+// -----------------------------------------------------------------------------
+
+export const APPOINTMENT_REPORT_MAX_LENGTH = 5_000;
+
+/**
+ * The only browser input needed to close a confirmed appointment.
+ *
+ * The report is written by a member, never by Sarah. Control characters are
+ * removed so the append-only CRM history and the later prompt stay readable.
+ */
+export const appointmentCompletionSchema = z
+  .object({
+    reportNotes: z
+      .unknown()
+      .transform((value) =>
+        typeof value === "string"
+          ? value.replace(/[\u0000-\u001F\u007F]/g, " ").trim()
+          : "",
+      )
+      .refine(
+        (value) => value.length >= 1 && value.length <= APPOINTMENT_REPORT_MAX_LENGTH,
+        { message: "Compte-rendu vide ou trop long." },
+      ),
+  })
+  .strict();
+
+export type AppointmentCompletionInput = z.input<typeof appointmentCompletionSchema>;
+export type AppointmentCompletion = z.output<typeof appointmentCompletionSchema>;
+
+export const APPOINTMENT_STATUS_LABELS = {
+  proposed: "Proposé",
+  confirmed: "Confirmé",
+  cancelled: "Annulé",
+  done: "Réalisé",
+} as const;
+
+export type HumanAppointmentResult = {
+  appointmentId: string;
+  contactId: string;
+  status: "confirmed" | "done";
+  statusLabel: (typeof APPOINTMENT_STATUS_LABELS)["confirmed" | "done"];
+  /** The contact stage after the atomic database transition. */
+  stage: Enums["pipeline_stage"];
+  /** True in this prototype. No real calendar provider is connected. */
+  isSimulation: boolean;
+  /** Present only after completion; canonical ISO-8601 UTC. */
+  reportRecordedAt: string | null;
 };

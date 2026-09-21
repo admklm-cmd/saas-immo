@@ -17,6 +17,20 @@ import { createClient } from "@/lib/supabase/server";
 import type { Result } from "@/lib/utils/result";
 
 import { runSarahFollowThrough, type SarahRunResult } from "./sarah";
+import { completeConfirmedAppointment } from "../appointment-workflow";
+import type { AppointmentCompletionInput, HumanAppointmentResult } from "../types";
+
+/** Records the completed meeting and its human-written report before Sarah. */
+export async function completeAppointment(
+  appointmentId: string,
+  input: AppointmentCompletionInput,
+): Promise<Result<HumanAppointmentResult>> {
+  const id = parseUuid(appointmentId);
+  if (id === null) return failWith<HumanAppointmentResult>("appointment_not_found");
+
+  const client = await createClient();
+  return completeConfirmedAppointment(client, id, input);
+}
 
 export async function followThroughAppointment(
   appointmentId: string,
