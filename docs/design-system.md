@@ -18,6 +18,25 @@
    clavier complète, libellés de formulaire réels.
 6. **Aucune valeur en dur** dans un composant s'il existe un token.
 
+### 1.1 Direction de la landing publique
+
+La page d'accueil adopte un rythme éditorial premium : titres de très grande taille,
+composition asymétrique, longues respirations et séparateurs fins. Cette direction
+s'inspire du niveau de contraste et du rythme des studios numériques contemporains,
+sans reprendre leurs contenus, compositions ou effets propriétaires.
+
+- Thème unique clair, strictement monochrome, sans image ni ressource distante.
+- Le récit suit le travail réel de Léa, Hugo, Emma, Louis puis Sarah.
+- Les preuves restent vérifiables dans le prototype : cinq rôles bornés, validation
+  humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
+  témoignage n'est inventé.
+- La grande typographie utilise une échelle fluide propre au marketing. Elle complète
+  `text-display`, dimensionné pour les autres pages, et conserve la pile système.
+- Les sections utilisent `Reveal`, `rise-soft` et `stagger`. Le contenu reste visible
+  sans JavaScript et immédiatement disponible avec `prefers-reduced-motion`.
+- Sur mobile, toutes les compositions reviennent à une colonne, les actions peuvent
+  passer à la ligne et aucune zone ne dépend d'une hauteur d'écran fixe.
+
 ## 2. Tokens
 
 Tous les tokens vivent dans `@theme` (`app/globals.css`) et Tailwind v4 génère les

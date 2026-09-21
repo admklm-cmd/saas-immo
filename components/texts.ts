@@ -495,11 +495,67 @@ export const APP_TEXTS = {
   },
 
   marketing: {
-    heroTitle: "AiaA",
-    heroSubtitle:
-      "Le CRM et les agents IA qui aident les agences immobilières indépendantes à gagner plus de mandats.",
+    heroKicker: "Le cycle vendeur, orchestré",
+    heroTitle: "De la demande vendeur au mandat, sans lâcher le contrôle.",
+    heroSubtitle: "Cinq agents spécialisés préparent le travail. Votre équipe garde chaque décision sensible.",
     heroNote: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
     signIn: "Espace agence",
     estimation: "Estimer mon bien",
+    proofTitle: "Ce que la démonstration prouve",
+    proofs: [
+      { value: "5", label: "rôles bornés, du lead au mandat" },
+      { value: "100 %", label: "des premiers messages validés par un humain" },
+      { value: "Journalisé", label: "décisions, blocages et erreurs consultables" },
+      { value: "Simulation", label: "aucune action externe réelle" },
+    ],
+    storyKicker: "Un dossier, cinq relais",
+    storyTitle: "Chaque agent sait où son travail commence. Et où il s'arrête.",
+    storyBody:
+      "Le dossier avance dans un ordre lisible. Les informations manquantes deviennent des tâches, jamais des suppositions.",
+    agents: [
+      {
+        name: "Léa",
+        role: "Acquisition",
+        action: "Vérifie la source, dédoublonne et crée une fiche propre.",
+        boundary: "Ne transforme jamais une demande en consentement.",
+      },
+      {
+        name: "Hugo",
+        role: "Qualification",
+        action: "Structure le bien, le secteur, la motivation et le délai.",
+        boundary: "Signale ce qui manque au lieu de l'inventer.",
+      },
+      {
+        name: "Emma",
+        role: "Relation",
+        action: "Prépare une relance adaptée au contexte enregistré.",
+        boundary: "Le premier message reste soumis à validation.",
+      },
+      {
+        name: "Louis",
+        role: "Rendez-vous",
+        action: "Propose un créneau d'estimation et prépare le dossier.",
+        boundary: "Ne réserve jamais deux fois le même créneau.",
+      },
+      {
+        name: "Sarah",
+        role: "Suivi",
+        action: "Transforme le compte-rendu humain en prochaines actions.",
+        boundary: "Ne déclare jamais seule un mandat signé.",
+      },
+    ],
+    controlKicker: "Le contrôle reste humain",
+    controlTitle: "L'automatisation accélère. Elle ne décide pas à votre place.",
+    controlBody:
+      "Consentement, premier contact et mandat signé restent sous contrôle de l'agence. Un coupe-circuit suspend les cinq agents immédiatement.",
+    controls: [
+      "Validation humaine avant le premier envoi",
+      "Décisions, blocages et erreurs journalisés",
+      "Informations du prospect traitées comme des données non fiables",
+      "Mode simulation visible dans toute la démonstration",
+    ],
+    finalTitle: "Voyez le parcours complet avec un bien fictif.",
+    finalBody:
+      "Commencez par une demande d'estimation, puis retrouvez le dossier dans l'espace agence.",
   },
 } as const;

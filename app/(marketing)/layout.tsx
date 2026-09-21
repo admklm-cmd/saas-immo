@@ -32,7 +32,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
 
       <footer className="border-t border-line px-6 py-8">
         <p className="mx-auto w-full max-w-6xl text-xs text-ink-subtle">
-          {APP_TEXTS.brand.name} — {APP_TEXTS.brand.tagline}. {APP_TEXTS.marketing.heroNote}
+          {APP_TEXTS.brand.name} · {APP_TEXTS.brand.tagline}. {APP_TEXTS.marketing.heroNote}
         </p>
       </footer>
     </div>
