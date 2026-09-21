@@ -151,7 +151,7 @@ describe("Hugo — journal des étapes", () => {
 
     // The displayable detail says what happened, never the prospect's text.
     const promptStep = steps.find((step) => step.phase === "prompt_built")!;
-    expect(promptStep.detail).toMatchObject({ untrusted_blocks: 2 });
+    expect(promptStep.detail).toMatchObject({ untrusted_blocks: 6 });
     expect(JSON.stringify(steps)).not.toContain("Mutation professionnelle à Lyon");
 
     const decisionStep = steps.find((step) => step.phase === "decision")!;

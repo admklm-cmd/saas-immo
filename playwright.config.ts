@@ -9,6 +9,10 @@ const BASE_URL = `http://127.0.0.1:${PORT}`;
  */
 export default defineConfig({
   testDir: "./e2e",
+  // Reloads the fictitious fixtures before the suite, so that the E2E run never
+  // inherits the state left by a Vitest integration run on the same local
+  // database (see e2e/global-setup.ts).
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

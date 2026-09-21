@@ -50,6 +50,7 @@ export const AGENT_ERROR_CODES = [
   "outbound_message_not_found",
   "outbound_message_not_pending",
   "outbound_message_not_approved",
+  "outbound_message_invalid_content",
   // --- AI provider ---
   "ai_provider_not_configured",
   "ai_provider_unavailable",
@@ -118,6 +119,8 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
     "Ce message n'est plus en attente de validation : il a déjà été traité par un membre de l'agence.",
   outbound_message_not_approved:
     "Ce message doit d'abord être validé par un membre de l'agence avant tout envoi.",
+  outbound_message_invalid_content:
+    "Le texte du message est vide ou trop long : il n'a pas été enregistré.",
   ai_provider_not_configured:
     "Fournisseur d'IA non configuré : aucun appel payant n'est possible. Les agents IA fonctionnent uniquement avec le simulateur (AI_PROVIDER=simulator).",
   ai_provider_unavailable:

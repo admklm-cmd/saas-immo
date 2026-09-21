@@ -29,8 +29,10 @@ import type { AgentContext, TypedClient } from "@/lib/agents/types";
 import { ok, type Result } from "@/lib/utils/result";
 
 import {
+  draftEditSchema,
   MESSAGE_REJECTION_REASON_LABELS,
   messageRejectionSchema,
+  type DraftEditInput,
   type MessageRejection,
   type MessageRejectionInput,
 } from "./types";
@@ -60,6 +62,9 @@ const STATUS_LABELS = {
   rejected: "Refusé",
   sent_simulated: "Envoyé (simulation)",
 } as const;
+
+/** Label of the state an edited draft always returns to. */
+const PENDING_STATUS_LABEL = "À valider";
 
 type MessageRow = {
   id: string;
@@ -154,7 +159,13 @@ async function decide(
 
     const { data, error } = await client
       .from("outbound_messages")
-      .update({ status, validated_by: context.userId })
+      .update({
+        status,
+        validated_by: context.userId,
+        rejection_reason: rejection?.reason ?? null,
+        rejection_reason_label: rejection ? MESSAGE_REJECTION_REASON_LABELS[rejection.reason] : null,
+        rejection_note: rejection?.note ?? null,
+      })
       .eq("agency_id", context.agencyId)
       .eq("id", messageId)
       // Optimistic lock: if somebody decided in between, no row is updated.
@@ -166,22 +177,6 @@ async function decide(
     if (!data) return failWith<MessageDecisionResult>("outbound_message_not_pending");
 
     const reasonLabel = rejection ? MESSAGE_REJECTION_REASON_LABELS[rejection.reason] : null;
-
-    await logHumanDecision(client, context, {
-      contactId: data.contact_id,
-      messageId,
-      type: status === "approved" ? "message_approved" : "message_rejected",
-      summary:
-        status === "approved"
-          ? "Message validé par un membre de l'agence. Rien n'a encore été envoyé."
-          : `Message refusé par un membre de l'agence : il ne partira pas. Motif : ${reasonLabel}.`,
-      isSimulation: message.is_simulation,
-      agent: message.created_by_agent,
-      // Journaled in the append-only CRM history: a refusal that cannot be
-      // explained afterwards teaches the agency nothing about its agents.
-      rejection,
-      reasonLabel,
-    });
 
     return ok({
       messageId: data.id,
@@ -253,16 +248,6 @@ export async function sendApprovedMessage(
     }
     if (!data) return failWith<MessageDecisionResult>("outbound_message_not_approved");
 
-    await logHumanDecision(client, context, {
-      contactId: data.contact_id,
-      messageId,
-      type: "message_sent_simulated",
-      summary:
-        "Message envoyé en simulation après validation humaine. Aucun envoi réel : aucun fournisseur n'est branché.",
-      isSimulation: true,
-      agent: message.created_by_agent,
-    });
-
     return ok({
       messageId: data.id,
       contactId: data.contact_id,
@@ -277,46 +262,100 @@ export async function sendApprovedMessage(
   }
 }
 
+export type DraftEditResult = {
+  messageId: string;
+  contactId: string;
+  /** Always `pending_validation`: an edited draft is validated again. */
+  status: "pending_validation";
+  statusLabel: string;
+  subject: string | null;
+  body: string;
+  /** True when the edit cancelled a validation that had already been given. */
+  revalidationRequired: boolean;
+};
+
 /**
- * CRM history of a HUMAN decision. `actor_type = 'user'` and `actor_user_id` is
- * the caller: the database refuses a forged author
- * (`activity_actor_forged`), so this entry really proves a human acted.
+ * A member of the agency rewrites a draft before it is validated.
+ *
+ * Why this exists: an agency must be able to correct a sentence written by an
+ * AI without throwing the whole draft away — and the correction must be as
+ * traceable as a refusal.
+ *
+ * Two rules are held here, and again by the database:
+ *   * only the SUBJECT and the BODY can change. Not the channel, not the
+ *     contact, not the status: correcting a sentence must never become
+ *     "sending something else to somebody else";
+ *   * an edited draft ALWAYS goes back to `pending_validation`. Editing an
+ *     approved message cancels its approval — the database refuses any other
+ *     outcome (`outbound_message_edit_requires_revalidation`), and the trigger
+ *     clears `validated_by` / `validated_at` itself.
+ *
+ * A refused or already sent message cannot be edited at all.
  */
-async function logHumanDecision(
+export async function updateDraftContent(
   client: TypedClient,
-  context: AgentContext,
-  input: {
-    contactId: string;
-    messageId: string;
-    type: string;
-    summary: string;
-    isSimulation: boolean;
-    agent: MessageRow["created_by_agent"];
-    rejection?: MessageRejection | null;
-    reasonLabel?: string | null;
-  },
-): Promise<void> {
-  const { error } = await client.from("activities").insert({
-    agency_id: context.agencyId,
-    contact_id: input.contactId,
-    type: input.type,
-    summary: input.summary,
-    payload: {
-      message_id: input.messageId,
-      drafted_by_agent: input.agent,
-      // Stable machine code + French label, so the journal stays readable and
-      // the refusals stay countable.
-      rejection_reason: input.rejection?.reason ?? null,
-      rejection_reason_label: input.reasonLabel ?? null,
-      rejection_note: input.rejection?.note ?? null,
-    },
-    actor_type: "user",
-    actor_user_id: context.userId,
-    is_simulation: input.isSimulation,
-  });
-  if (error) {
-    // Same rule as finishRun: a journalling failure must not hide the result.
-    console.error(`[agents] logHumanDecision failed (${error.code ?? "?"}): ${error.message}`);
+  messageId: string,
+  input: DraftEditInput,
+): Promise<Result<DraftEditResult>> {
+  try {
+    if (!UUID_PATTERN.test(messageId)) {
+      return failWith<DraftEditResult>("outbound_message_not_found");
+    }
+
+    // The text comes from a browser: bounded, trimmed and stripped of control
+    // characters before anything else (CLAUDE.md — every client input is
+    // validated by a schema first).
+    const parsed = draftEditSchema.safeParse(input);
+    if (!parsed.success) return failWith<DraftEditResult>("outbound_message_invalid_content");
+
+    const contextResult = await resolveAgentContext(client);
+    if (contextResult.error) return { data: null, error: contextResult.error };
+    const context: AgentContext = contextResult.data;
+
+    const loaded = await loadMessage(client, context, messageId);
+    if (loaded.error) return { data: null, error: loaded.error };
+    const message = loaded.data;
+
+    // Rejected and sent messages are final: there is nothing left to correct.
+    if (message.status !== "pending_validation" && message.status !== "approved") {
+      return failWith<DraftEditResult>("outbound_message_not_pending");
+    }
+
+    const { data, error } = await client
+      .from("outbound_messages")
+      .update({
+        subject: parsed.data.subject,
+        body: parsed.data.body,
+        // An edited draft is never "already validated".
+        status: "pending_validation",
+      })
+      .eq("agency_id", context.agencyId)
+      .eq("id", messageId)
+      // Optimistic lock: if somebody decided in between, no row is updated.
+      .eq("status", message.status)
+      .select("id, contact_id, subject, body, is_simulation")
+      .maybeSingle();
+
+    if (error) {
+      const code: AgentErrorCode = databaseErrorCode(error);
+      console.error(`[agents] updateDraftContent refused (${error.code ?? "?"}): ${error.message}`);
+      return failWith<DraftEditResult>(code);
+    }
+    if (!data) return failWith<DraftEditResult>("outbound_message_not_pending");
+
+    const revalidationRequired = message.status === "approved";
+
+    return ok({
+      messageId: data.id,
+      contactId: data.contact_id,
+      status: "pending_validation",
+      statusLabel: PENDING_STATUS_LABEL,
+      subject: data.subject,
+      body: data.body,
+      revalidationRequired,
+    });
+  } catch (cause) {
+    return failFromUnexpected<DraftEditResult>("updateDraftContent", cause);
   }
 }
 

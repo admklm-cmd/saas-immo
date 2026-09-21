@@ -114,7 +114,8 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   d'une étape du pipeline, d'un destinataire, d'un canal ou d'un envoi.
 - **Coupe-circuit** (`agencies.ai_paused`) et **limite quotidienne** par agence : vérifiés par le code
   *et* par la base (trigger sous verrou de ligne, donc deux exécutions concurrentes ne peuvent pas
-  dépasser la limite). Une tentative refusée est journalisée en `blocked`.
+  dépasser la limite). Une tentative refusée est journalisée en `blocked`. Le panneau de
+  `/agents-ia` permet à tout membre de suspendre les agents ; seul un directeur peut les réactiver.
 - **Reprise en main humaine** (`contacts.human_takeover`) : aucune action automatique.
 - Chaque exécution est journalisée (`ai_agent_runs`) avec entrée (métadonnées seulement, jamais le texte
   libre du prospect), sortie, décision, fournisseur, modèle et tokens — le suivi de coût par agence
@@ -190,6 +191,10 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   de contrôle. Motif et commentaire sont écrits dans `activities` (en ajout seul) avec l'auteur humain
   estampillé par la base. Un motif hors liste est refusé (`invalid_reason`) et le brouillon reste en
   attente : aucune décision n'est enregistrée sans sa justification.
+- **Correction avant validation** : l'écran permet de modifier uniquement l'objet et le corps via
+  `updateDraftContent`. L'entrée est validée et bornée par zod, la lecture et l'écriture sont limitées
+  à l'agence de l'appelant, et un message corrigé revient toujours à `pending_validation`. Corriger un
+  message déjà approuvé annule donc son approbation ; un message refusé ou envoyé reste final.
 - **Aucun chiffre inventé sur l'écran « Agents IA »** : tous les compteurs sont des agrégats SQL
   exacts sur des fenêtres parisiennes nommées, `runsToday` compte exactement ce que compte le
   garde-fou de la base pour la limite quotidienne, et **une lecture en erreur n'est jamais affichée
@@ -251,14 +256,6 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
 - **Durées de conservation, purge automatique, export des données d'une personne** : non implémentés.
   L'effacement est possible (suppression d'un contact par un directeur, cascade), mais il n'y a ni
   export RGPD, ni politique de rétention, ni **journal des accès sensibles**.
-- **Validation du premier contact** : le **moteur** est désormais complet et testé
-  (`features/agents-ia/validation.ts` : valider / refuser avec motif obligatoire / envoyer en
-  simulation, avec relecture du consentement au moment de l'envoi et estampille serveur de l'auteur
-  de la validation). Il ne manque plus que l'écran `agents-ia/a-valider` lui-même.
-- **Coupe-circuit** : la fonction serveur (`set_ai_paused`) et l'action applicative
-  (`setAgencyAiPaused`) existent, sont testées et protégées par rôle — tout membre peut suspendre,
-  seul un directeur peut réactiver. Il ne manque que le bouton (page « Agents IA » à venir).
-
 ### 3.4 Limites techniques connues
 
 - **La CSP autorise encore `'unsafe-inline'` pour les scripts**, parce que Next.js injecte des scripts

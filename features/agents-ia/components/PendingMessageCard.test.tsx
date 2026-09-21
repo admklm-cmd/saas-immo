@@ -13,17 +13,20 @@ const TEXTS = APP_TEXTS.validationQueue;
 const validateMessage = vi.hoisted(() => vi.fn());
 const refuseMessage = vi.hoisted(() => vi.fn());
 const sendValidatedMessage = vi.hoisted(() => vi.fn());
+const editDraft = vi.hoisted(() => vi.fn());
 
 vi.mock("@/features/agents-ia/actions", () => ({
   validateMessage,
   refuseMessage,
   sendValidatedMessage,
+  editDraft,
 }));
 
 beforeEach(() => {
   validateMessage.mockReset().mockResolvedValue({ data: {}, error: null });
   refuseMessage.mockReset().mockResolvedValue({ data: {}, error: null });
   sendValidatedMessage.mockReset().mockResolvedValue({ data: {}, error: null });
+  editDraft.mockReset().mockResolvedValue({ data: {}, error: null });
 });
 
 afterEach(() => {
@@ -169,6 +172,58 @@ describe("PendingMessageCard", () => {
     expect(sendValidatedMessage).toHaveBeenCalledWith("message-1");
     expect(onDecided).toHaveBeenCalledWith(TEXTS.successSent);
     expect(TEXTS.successSent).toContain("simulé");
+  });
+
+  it("lets a member correct the text, and only the text", async () => {
+    const onDecided = vi.fn();
+    render(<PendingMessageCard message={message()} onDecided={onDecided} />);
+
+    fireEvent.click(screen.getByTestId("edit-message"));
+    const form = screen.getByTestId("draft-edit-form");
+    expect(form).toBeDefined();
+    // Nothing that would change the recipient or the channel is offered.
+    expect(screen.queryByLabelText(TEXTS.channel)).toBeNull();
+
+    fireEvent.change(screen.getByLabelText(TEXTS.editBody), {
+      target: { value: "Bonjour Sophie,\nTexte corrigé par un conseiller." },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("draft-edit-save"));
+    });
+
+    expect(editDraft).toHaveBeenCalledWith("message-1", {
+      subject: "Estimation de votre appartement",
+      body: "Bonjour Sophie,\nTexte corrigé par un conseiller.",
+    });
+    expect(onDecided).toHaveBeenCalledWith(TEXTS.editSuccess);
+  });
+
+  it("says that correcting an approved draft cancels its validation", async () => {
+    const onDecided = vi.fn();
+    render(
+      <PendingMessageCard
+        message={message({ status: "approved", statusLabel: "Validé", canBeSent: true })}
+        onDecided={onDecided}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("edit-message"));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("draft-edit-save"));
+    });
+
+    expect(onDecided).toHaveBeenCalledWith(TEXTS.editSuccessRevalidation);
+    expect(TEXTS.editSuccessRevalidation).toContain("validé de nouveau");
+  });
+
+  it("refuses to save an empty message", () => {
+    render(<PendingMessageCard message={message()} onDecided={() => {}} />);
+
+    fireEvent.click(screen.getByTestId("edit-message"));
+    fireEvent.change(screen.getByLabelText(TEXTS.editBody), { target: { value: "   " } });
+
+    expect(screen.getByTestId("draft-edit-save").hasAttribute("disabled")).toBe(true);
+    expect(editDraft).not.toHaveBeenCalled();
   });
 
   it("displays the server refusal unchanged and keeps the draft in place", async () => {

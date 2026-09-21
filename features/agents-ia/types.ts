@@ -418,6 +418,52 @@ export const messageRejectionSchema = z
 export type MessageRejectionInput = z.input<typeof messageRejectionSchema>;
 export type MessageRejection = z.output<typeof messageRejectionSchema>;
 
+// -----------------------------------------------------------------------------
+// Réécriture d'un brouillon par un humain, avant validation
+// -----------------------------------------------------------------------------
+
+/** Same bounds as the database columns (`outbound_messages`). */
+export const DRAFT_SUBJECT_MAX_LENGTH = 300;
+export const DRAFT_BODY_MAX_LENGTH = 5_000;
+
+/**
+ * Control characters are stripped, the text is trimmed, and an empty subject
+ * becomes `null` (the column is nullable, an empty string is not a subject).
+ */
+function cleanDraftText(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.replace(/[ --]/g, " ").trim();
+}
+
+/**
+ * What a member of the agency may rewrite in a draft: the subject and the body.
+ *
+ * Deliberately NOT the channel, the contact or the status: changing those would
+ * turn "correcting a sentence" into "sending something else to somebody else".
+ * The server re-reads the draft, and the database refuses an edit that would
+ * skip a new validation (`outbound_message_edit_requires_revalidation`).
+ */
+export const draftEditSchema = z
+  .object({
+    subject: z
+      .unknown()
+      .transform(cleanDraftText)
+      .transform((value) => (value.length === 0 ? null : value))
+      .refine((value) => value === null || value.length <= DRAFT_SUBJECT_MAX_LENGTH, {
+        message: "Objet trop long.",
+      }),
+    body: z
+      .unknown()
+      .transform(cleanDraftText)
+      .refine((value) => value.length >= 1 && value.length <= DRAFT_BODY_MAX_LENGTH, {
+        message: "Message vide ou trop long.",
+      }),
+  })
+  .strict();
+
+export type DraftEditInput = z.input<typeof draftEditSchema>;
+export type DraftEdit = z.output<typeof draftEditSchema>;
+
 /** One estimation appointment whose report is written (or still missing). */
 export type ReportedAppointmentView = {
   id: string;

@@ -15,13 +15,17 @@ const ITEMS: readonly NavItem[] = [
   { href: "/contacts", label: TEXTS.contacts },
   { href: "/pipeline", label: TEXTS.pipeline },
   { href: "/agents-ia", label: TEXTS.agents },
+  // Order of the real work: a lead arrives, a record is created, then a first
+  // message goes to a human for validation.
+  { href: "/agents-ia/leads-entrants", label: TEXTS.agentsLeads },
   { href: "/agents-ia/a-valider", label: TEXTS.agentsToValidate },
   { href: "/parametres", label: TEXTS.settings },
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  // "Agents IA" owns the replay of one execution, but not the validation queue,
-  // which is a menu entry of its own.
+  // "Agents IA" owns the replay of one execution, but none of its sub-screens
+  // that have a menu entry of their own (inbound leads, validation queue):
+  // without this, two entries would carry aria-current at the same time.
   if (href === "/agents-ia") {
     return pathname === href || pathname.startsWith("/agents-ia/executions");
   }

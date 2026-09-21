@@ -652,7 +652,9 @@ describe("intégrité inter-agences", () => {
       status: "processed",
       contact_id: env.agencyB.contactId,
     });
-    expect(error?.code).toBe("23503");
+    // The state guard rejects the forged processing result before the
+    // composite foreign key is evaluated. Both layers protect the link.
+    expect(error?.code).toBe("42501");
   });
 });
 
@@ -751,7 +753,14 @@ describe("coupe-circuit", () => {
     expect(run.error?.message).toBe("ai_paused");
     const blocked = await agent
       .from("ai_agent_runs")
-      .insert({ agency_id: env.agencyA.agencyId, agent: "hugo", contact_id: env.agencyA.contactId, status: "blocked", decision: "ai_paused" })
+      .insert({
+        agency_id: env.agencyA.agencyId,
+        agent: "hugo",
+        contact_id: env.agencyA.contactId,
+        status: "blocked",
+        decision: "ai_paused",
+        error: "ai_paused",
+      })
       .select("status, finished_at")
       .single();
     expect(blocked.error).toBeNull();
@@ -987,8 +996,17 @@ describe("garde-fous en base : messages et exécutions IA", () => {
 
     const spoofed = await agent
       .from("ai_agent_runs")
-      .insert({ agency_id: agencyId, agent: "louis", triggered_by_user_id: env.users.directorA.id });
-    expect(spoofed.error?.code).toBe("42501");
+      .insert({ agency_id: agencyId, agent: "louis", triggered_by_user_id: env.users.directorA.id })
+      .select("id, triggered_by_user_id")
+      .single();
+    expect(spoofed.error).toBeNull();
+    // The database ignores a forged author and stamps the authenticated caller.
+    expect(spoofed.data?.triggered_by_user_id).toBe(env.users.agentA.id);
+    const closeSpoofed = await agent
+      .from("ai_agent_runs")
+      .update({ status: "succeeded" })
+      .eq("id", spoofed.data!.id);
+    expect(closeSpoofed.error).toBeNull();
 
     const { count } = await env.admin
       .from("ai_agent_runs")

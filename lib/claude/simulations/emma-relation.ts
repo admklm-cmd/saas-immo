@@ -11,6 +11,7 @@
  * pipeline stage: those fields do not exist in Emma's schema.
  */
 
+import { untrustedFieldText } from "../prompt";
 import type { AiGenerationRequest } from "../provider";
 import { PROPERTY_TYPE_LABELS, type PropertyTypeValue } from "../schemas";
 
@@ -27,7 +28,7 @@ function propertyLabel(request: AiGenerationRequest): string {
     type && type in PROPERTY_TYPE_LABELS
       ? PROPERTY_TYPE_LABELS[type].toLocaleLowerCase("fr-FR")
       : "bien";
-  const city = fact(request, "property_city");
+  const city = untrustedFieldText(request.untrusted, "property_city");
   return city ? `votre ${label} à ${city}` : `votre ${label}`;
 }
 
@@ -57,8 +58,8 @@ export function simulateEmmaFollowUp(request: AiGenerationRequest): unknown {
 
   const channel = fact(request, "message_channel") ?? "email";
   const stage = fact(request, "contact_stage");
-  const firstName = fact(request, "contact_first_name");
-  const agency = fact(request, "agency_name");
+  const firstName = untrustedFieldText(request.untrusted, "contact_first_name");
+  const agency = untrustedFieldText(request.untrusted, "agency_name");
   const greeting = firstName ? `Bonjour ${firstName},` : "Bonjour,";
 
   const angle =

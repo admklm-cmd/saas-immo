@@ -33,11 +33,13 @@ import {
 } from "@/lib/agents/messages";
 import { finishRun, startGuardedRun } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
-import type { AgentContact, AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
+import type { AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
-import type { AiFacts, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
+import type { AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result } from "@/lib/utils/result";
 import type { Json } from "@/types/database";
+
+import { buildHugoPromptContext } from "../prompt-context";
 
 import {
   decideStage,
@@ -93,24 +95,6 @@ type PropertyRow = Pick<
 >;
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function buildFacts(contact: AgentContact, property: PropertyRow | null): AiFacts {
-  return {
-    contact_stage: contact.stage,
-    contact_source: contact.source,
-    contact_has_email: contact.email !== null,
-    contact_has_phone: contact.phone !== null,
-    contact_sale_motivation: contact.sale_motivation,
-    contact_sale_timeline: contact.sale_timeline,
-    property_known: property !== null,
-    property_type: property?.property_type ?? null,
-    property_city: property?.city ?? null,
-    property_sector: property?.sector ?? null,
-    property_postal_code: property?.postal_code ?? null,
-    property_surface_m2: property?.surface_m2 ?? null,
-    property_rooms: property?.rooms ?? null,
-  };
-}
 
 export async function runHugoQualification(
   client: TypedClient,
@@ -200,10 +184,27 @@ export async function runHugoQualification(
     });
 
     // --- AI call: prospect content is passed as untrusted DATA ----------------
-    const untrusted = [
-      { label: "contact_notes", content: contact.notes ?? "" },
-      { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
-    ];
+    const { facts, untrusted } = buildHugoPromptContext({
+      stage: contact.stage,
+      source: contact.source,
+      hasEmail: contact.email !== null,
+      hasPhone: contact.phone !== null,
+      saleMotivation: contact.sale_motivation,
+      saleTimeline: contact.sale_timeline,
+      property: {
+        known: property !== null,
+        type: property?.property_type ?? null,
+        city: property?.city ?? null,
+        sector: property?.sector ?? null,
+        postalCode: property?.postal_code ?? null,
+        surfaceM2: property?.surface_m2 ?? null,
+        rooms: property?.rooms ?? null,
+      },
+      contactText: {
+        notes: contact.notes,
+        historySummaries: history.map((entry) => entry.summary),
+      },
+    });
 
     await steps.step({
       phase: "prompt_built",
@@ -223,7 +224,7 @@ export async function runHugoQualification(
         task: HUGO_TASK,
         systemPrompt: HUGO_SYSTEM_PROMPT,
         promptVersion: HUGO_PROMPT_VERSION,
-        facts: buildFacts(contact, property),
+        facts,
         untrusted,
         scenario: options.scenario,
       },

@@ -218,9 +218,9 @@ export function simulateHugoQualification(request: AiGenerationRequest): unknown
   const text = normalise(rawText);
 
   const propertyType = (factString(request, "property_type") as PropertyTypeValue | null) ?? detectPropertyType(text);
-  const city = factString(request, "property_city") ?? detectCity(text);
+  const city = detectCity(text);
   // Known sector in the CRM first; otherwise only an explicitly written one.
-  const sector = factString(request, "property_sector") ?? detectSector(rawText);
+  const sector = detectSector(rawText);
   const motivation = detectMotivation(text);
   const timeline = detectTimeline(text);
 

@@ -23,10 +23,12 @@ import {
   rejectOutboundMessage,
   sendApprovedMessage,
   setAiPaused,
+  updateDraftContent,
   type AiPausedResult,
+  type DraftEditResult,
   type MessageDecisionResult,
 } from "./validation";
-import type { MessageRejectionInput } from "./types";
+import type { DraftEditInput, MessageRejectionInput } from "./types";
 
 /** Validates a draft. It is NOT sent by this: it becomes « Validé » and waits. */
 export async function validateMessage(messageId: string): Promise<Result<MessageDecisionResult>> {
@@ -55,6 +57,26 @@ export async function refuseMessage(
   const client = await createClient();
   // The motive itself is validated by zod inside `rejectOutboundMessage`.
   return rejectOutboundMessage(client, id, rejection);
+}
+
+/**
+ * Rewrites the subject and the body of a draft, before it goes out.
+ *
+ * Correcting an AI sentence must not become a way to bypass the human
+ * validation: an edited draft always returns to « À valider », even if it had
+ * already been approved (the database refuses anything else). Only the text
+ * changes — never the channel, never the contact.
+ */
+export async function editDraft(
+  messageId: string,
+  draft: DraftEditInput,
+): Promise<Result<DraftEditResult>> {
+  const id = parseUuid(messageId);
+  if (id === null) return failWith<DraftEditResult>("outbound_message_not_found");
+
+  const client = await createClient();
+  // The text itself is validated by zod inside `updateDraftContent`.
+  return updateDraftContent(client, id, draft);
 }
 
 /**

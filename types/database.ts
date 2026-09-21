@@ -595,6 +595,9 @@ export type Database = {
           id: string
           idempotency_key: string
           is_simulation: boolean
+          rejection_note: string | null
+          rejection_reason: string | null
+          rejection_reason_label: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["outbound_message_status"]
           subject: string | null
@@ -612,6 +615,9 @@ export type Database = {
           id?: string
           idempotency_key: string
           is_simulation?: boolean
+          rejection_note?: string | null
+          rejection_reason?: string | null
+          rejection_reason_label?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["outbound_message_status"]
           subject?: string | null
@@ -629,6 +635,9 @@ export type Database = {
           id?: string
           idempotency_key?: string
           is_simulation?: boolean
+          rejection_note?: string | null
+          rejection_reason?: string | null
+          rejection_reason_label?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["outbound_message_status"]
           subject?: string | null
@@ -1090,4 +1099,3 @@ export const Constants = {
     },
   },
 } as const
-

@@ -35,11 +35,13 @@ import { logAgentActivity, openHumanTask } from "@/lib/agents/journal";
 import { AGENT_STEP_LABELS, AGENT_TASK_TEXTS, type AgentErrorCode } from "@/lib/agents/messages";
 import { finishRun, startGuardedRun } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
-import type { AgentContact, AgentContext, Tables, TypedClient } from "@/lib/agents/types";
+import type { AgentContext, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
-import type { AiFacts, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
+import type { AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result } from "@/lib/utils/result";
 import type { Database, Json } from "@/types/database";
+
+import { buildEmmaPromptContext } from "../prompt-context";
 
 import {
   CHANNELS_WITH_SUBJECT,
@@ -104,34 +106,6 @@ export type RunEmmaOptions = {
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function buildFacts(input: {
-  contact: AgentContact;
-  property: PropertyRow | null;
-  agencyName: string;
-  channel: MessageChannel;
-  daysSinceLastMessage: number | null;
-  hasPendingAppointment: boolean;
-}): AiFacts {
-  return {
-    agency_name: input.agencyName,
-    // First name only: the minimum needed to write a personalised message.
-    contact_first_name: input.contact.first_name,
-    contact_stage: input.contact.stage,
-    contact_source: input.contact.source,
-    contact_sale_motivation: input.contact.sale_motivation,
-    contact_sale_timeline: input.contact.sale_timeline,
-    property_known: input.property !== null,
-    property_type: input.property?.property_type ?? null,
-    property_city: input.property?.city ?? null,
-    property_sector: input.property?.sector ?? null,
-    property_surface_m2: input.property?.surface_m2 ?? null,
-    property_rooms: input.property?.rooms ?? null,
-    message_channel: input.channel,
-    days_since_last_message: input.daysSinceLastMessage,
-    has_pending_appointment: input.hasPendingAppointment,
-  };
-}
 
 export async function runEmmaFollowUp(
   client: TypedClient,
@@ -391,10 +365,29 @@ export async function runEmmaFollowUp(
 
     const history = historyQuery.data ?? [];
 
-    const untrusted = [
-      { label: "contact_notes", content: contact.notes ?? "" },
-      { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
-    ];
+    const { facts, untrusted } = buildEmmaPromptContext({
+      agencyName: agency.name,
+      contactFirstName: contact.first_name,
+      contactStage: contact.stage,
+      contactSource: contact.source,
+      saleMotivation: contact.sale_motivation,
+      saleTimeline: contact.sale_timeline,
+      property: {
+        known: property !== null,
+        type: property?.property_type ?? null,
+        city: property?.city ?? null,
+        sector: property?.sector ?? null,
+        surfaceM2: property?.surface_m2 ?? null,
+        rooms: property?.rooms ?? null,
+      },
+      channel,
+      daysSinceLastMessage,
+      hasPendingAppointment,
+      contactText: {
+        notes: contact.notes,
+        historySummaries: history.map((entry) => entry.summary),
+      },
+    });
 
     await steps.step({
       phase: "prompt_built",
@@ -415,14 +408,7 @@ export async function runEmmaFollowUp(
         task: EMMA_TASK,
         systemPrompt: EMMA_SYSTEM_PROMPT,
         promptVersion: EMMA_PROMPT_VERSION,
-        facts: buildFacts({
-          contact,
-          property,
-          agencyName: agency.name,
-          channel,
-          daysSinceLastMessage,
-          hasPendingAppointment,
-        }),
+        facts,
         untrusted,
         scenario: options.scenario,
       },

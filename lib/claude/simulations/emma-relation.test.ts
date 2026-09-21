@@ -18,14 +18,15 @@ function request(overrides: Partial<AiGenerationRequest> = {}): AiGenerationRequ
     systemPrompt: "prompt système de test",
     promptVersion: "test-v1",
     facts: {
-      agency_name: "Calanques Immobilier (fictive)",
-      contact_first_name: "Sophie",
       contact_stage: "qualifie",
       property_type: "apartment",
-      property_city: "La Ciotat",
       message_channel: "email",
     },
-    untrusted: [],
+    untrusted: [
+      { label: "agency_name", content: "Calanques Immobilier (fictive)" },
+      { label: "contact_first_name", content: "Sophie" },
+      { label: "property_city", content: "La Ciotat" },
+    ],
     ...overrides,
   };
 }
@@ -66,7 +67,7 @@ describe("simulation d'Emma — brouillon exploitable", () => {
 
 describe("simulation d'Emma — aucune invention", () => {
   it("n'écrit ni montant, ni date, ni surface absente des faits", () => {
-    const result = draft({ facts: { ...request().facts, property_city: null, property_type: null } });
+    const result = draft({ facts: { ...request().facts, property_type: null }, untrusted: [] });
     expect(result.message_body).not.toMatch(/€|euros?/i);
     expect(result.message_body).not.toMatch(/\d{2}\/\d{2}/);
     expect(result.message_body).toContain("votre bien");

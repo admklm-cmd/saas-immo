@@ -43,6 +43,7 @@ export const APP_TEXTS = {
     contacts: "Contacts vendeurs",
     pipeline: "Pipeline",
     agents: "Agents IA",
+    agentsLeads: "Leads entrants",
     agentsToValidate: "Messages à valider",
     settings: "Paramètres",
     signedInAs: "Connecté en tant que",
@@ -323,6 +324,7 @@ export const APP_TEXTS = {
 
     validate: "Valider",
     refuse: "Refuser",
+    edit: "Modifier",
     send: "Envoyer (simulation)",
     working: "Action en cours…",
     sendBlocked: "Envoi impossible : consentement du canal manquant ou retiré.",
@@ -341,8 +343,91 @@ export const APP_TEXTS = {
       `${max} caractères maximum. Écrite par un membre de l'agence, jamais par un agent IA.`,
     rejectConfirm: "Confirmer le refus",
     cancel: "Annuler",
-    noEditYet:
-      "La modification du texte n'est pas encore disponible : refusez le message et reprenez la main sur la fiche contact.",
+
+    editTitle: "Corriger le message avant validation",
+    editHint:
+      "Seuls l'objet et le texte peuvent être corrigés : ni le canal, ni le destinataire. Un message corrigé repasse « à valider ».",
+    editSubject: "Objet",
+    editBody: "Message",
+    editBodyHint: (max: number) => `${max} caractères maximum.`,
+    editSave: "Enregistrer la correction",
+    editSuccess: "Message corrigé. Il reste à valider avant tout envoi.",
+    editSuccessRevalidation:
+      "Message corrigé : la validation précédente est annulée, il doit être validé de nouveau.",
+  },
+
+  /**
+   * Boîte de réception des leads — le travail de Léa.
+   *
+   * Règle produit rappelée à l'écran : **un lead n'est pas un consentement**.
+   */
+  leadsInbox: {
+    title: "Leads entrants",
+    subtitle:
+      "Les demandes reçues, avant toute fiche contact. Léa vérifie la source, dédoublonne et crée la fiche.",
+    ruleTitle: "Un lead n'est pas un consentement",
+    ruleBody:
+      "Recevoir une demande n'autorise aucun envoi : tant qu'un consentement prouvable n'a pas été recueilli et enregistré, aucun email, SMS ni appel n'est possible. Léa ouvre une tâche pour le recueillir.",
+    count: (total: number) => (total > 1 ? `${total} leads` : `${total} lead`),
+    errorTitle: "Impossible d'afficher les leads entrants",
+    emptyTitle: "Aucun lead entrant",
+    emptyBody:
+      "Les demandes du site public et des logiciels immobiliers arrivent ici, avant toute création de fiche.",
+    emptyAction: "Voir les contacts",
+    source: "Source",
+    receivedAt: "Reçu le",
+    fields: "Éléments transmis",
+    noFields: "Aucun élément d'identité exploitable",
+    rawText: "Message du prospect",
+    rawTextNone: "Aucun message joint à ce lead.",
+    untrusted: "Texte du prospect : traité comme donnée, jamais comme instruction.",
+    // Neutral on purpose: after a duplicate, the record already existed —
+    // saying « créée » would claim a second record that was never created.
+    contactLink: "Voir la fiche contact",
+    run: "Lancer Léa",
+    runHint: "Vérifie la source, dédoublonne, crée la fiche. Ne recueille aucun consentement.",
+    running: "Léa travaille…",
+    alreadyProcessed: "Ce lead a déjà été traité : aucune seconde fiche ne sera créée.",
+    successTitle: "Léa a terminé",
+    errorActionTitle: "Léa n'a pas pu traiter ce lead",
+    viewReplay: "Voir le rejeu",
+    duplicateMatched: (fields: string) => `Doublon détecté sur : ${fields}`,
+    missingFields: "Éléments manquants signalés",
+    taskCreated: "Tâche créée pour un conseiller",
+  },
+
+  /**
+   * Suivi des rendez-vous d'estimation — le travail de Sarah.
+   *
+   * Règle produit rappelée à l'écran : **le compte-rendu est écrit par un
+   * humain**, et **le mandat signé n'est jamais auto-déclaré**.
+   */
+  followThrough: {
+    title: "Suivi des rendez-vous",
+    subtitle:
+      "Après l'estimation : Sarah exploite le compte-rendu rédigé par un conseiller et ouvre les actions de suivi.",
+    ruleTitle: "Le compte-rendu est écrit par un humain",
+    ruleBody:
+      "Sarah n'invente rien et ne déclare jamais un mandat signé : sans compte-rendu, elle ouvre une tâche pour le conseiller qui a réalisé le rendez-vous.",
+    count: (total: number) =>
+      total > 1 ? `${total} rendez-vous réalisés` : `${total} rendez-vous réalisé`,
+    errorTitle: "Impossible d'afficher les rendez-vous à suivre",
+    emptyTitle: "Aucun rendez-vous à suivre",
+    emptyBody:
+      "Les rendez-vous d'estimation réalisés apparaissent ici, avec leur compte-rendu, dès qu'ils sont passés.",
+    emptyAction: "Voir les contacts",
+    when: "Rendez-vous",
+    report: "Compte-rendu du conseiller",
+    reportMissing: "Aucun compte-rendu saisi : Sarah ne peut rien en déduire.",
+    reportRecordedAt: "Saisi le",
+    run: "Lancer Sarah",
+    runHint: "Exploite le compte-rendu et ouvre les actions de suivi. Ne déclare jamais un mandat signé.",
+    running: "Sarah travaille…",
+    successTitle: "Sarah a terminé le suivi",
+    errorActionTitle: "Sarah n'a pas pu suivre ce rendez-vous",
+    blockedNoReport: "Compte-rendu manquant : le suivi ne peut pas être lancé.",
+    viewReplay: "Voir le rejeu",
+    openContact: "Voir la fiche",
   },
 
   /** One past execution, replayed from the journal. */

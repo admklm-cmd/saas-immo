@@ -31,11 +31,13 @@ import { logAgentActivity, openHumanTask } from "@/lib/agents/journal";
 import { AGENT_STEP_LABELS, AGENT_TASK_TEXTS, type AgentErrorCode } from "@/lib/agents/messages";
 import { finishRun, startGuardedRun } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
-import type { AgentContact, AgentContext, Tables, TypedClient } from "@/lib/agents/types";
+import type { AgentContext, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
-import type { AiChoice, AiFacts, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
+import type { AiChoice, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result } from "@/lib/utils/result";
 import type { Database, Json } from "@/types/database";
+
+import { buildLouisPromptContext } from "../prompt-context";
 
 import {
   checkEligibility,
@@ -136,30 +138,6 @@ function appointmentConflictCode(error: { code?: string | null; message?: string
     default:
       return databaseErrorCode(error);
   }
-}
-
-function buildFacts(input: {
-  contact: AgentContact;
-  property: PropertyRow | null;
-  agencyName: string;
-  channel: MessageChannel;
-}): AiFacts {
-  return {
-    agency_name: input.agencyName,
-    // First name only: the minimum needed to write a personalised message.
-    contact_first_name: input.contact.first_name,
-    contact_stage: input.contact.stage,
-    contact_sale_motivation: input.contact.sale_motivation,
-    contact_sale_timeline: input.contact.sale_timeline,
-    property_known: input.property !== null,
-    property_type: input.property?.property_type ?? null,
-    property_city: input.property?.city ?? null,
-    property_sector: input.property?.sector ?? null,
-    property_surface_m2: input.property?.surface_m2 ?? null,
-    property_rooms: input.property?.rooms ?? null,
-    message_channel: input.channel,
-    appointment_duration_minutes: APPOINTMENT_DURATION_MINUTES,
-  };
 }
 
 export async function runLouisAppointment(
@@ -414,10 +392,28 @@ export async function runLouisAppointment(
     const history = historyQuery.data ?? [];
 
     // --- AI call: it may only choose a slot and write the wording --------------
-    const untrusted = [
-      { label: "contact_notes", content: contact.notes ?? "" },
-      { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
-    ];
+    const { facts, untrusted } = buildLouisPromptContext({
+      agencyName: agency.name,
+      contactFirstName: contact.first_name,
+      contactStage: contact.stage,
+      saleMotivation: contact.sale_motivation,
+      saleTimeline: contact.sale_timeline,
+      property: {
+        known: property !== null,
+        type: property?.property_type ?? null,
+        city: property?.city ?? null,
+        sector: property?.sector ?? null,
+        postalCode: property?.postal_code ?? null,
+        surfaceM2: property?.surface_m2 ?? null,
+        rooms: property?.rooms ?? null,
+      },
+      channel,
+      appointmentDurationMinutes: APPOINTMENT_DURATION_MINUTES,
+      contactText: {
+        notes: contact.notes,
+        historySummaries: history.map((entry) => entry.summary),
+      },
+    });
 
     await steps.step({
       phase: "prompt_built",
@@ -438,7 +434,7 @@ export async function runLouisAppointment(
         task: LOUIS_TASK,
         systemPrompt: LOUIS_SYSTEM_PROMPT,
         promptVersion: LOUIS_PROMPT_VERSION,
-        facts: buildFacts({ contact, property, agencyName: agency.name, channel }),
+        facts,
         choices,
         untrusted,
         scenario: options.scenario,

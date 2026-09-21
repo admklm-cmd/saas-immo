@@ -185,6 +185,12 @@ ne peut atterrir dans un journal en ajout seul. Un commentaire libre facultatif 
 300 caractères et débarrassé des caractères de contrôle. Motif et commentaire sont journalisés dans
 `activities` avec l'auteur humain estampillé par la base.
 
+**Corriger un brouillon ne vaut jamais validation.** `updateDraftContent(client, id, input)` accepte
+uniquement l'objet et le corps validés par zod. La server action recharge le message dans l'agence de
+l'appelant, refuse les messages déjà refusés ou envoyés et applique un verrou optimiste sur leur état.
+Toute correction aboutit à `pending_validation` : si le message était `approved`, le trigger efface
+`validated_by` et `validated_at`. L'interface exige alors une nouvelle validation avant l'envoi simulé.
+
 **Ce qu'une IA ne peut pas écrire, même par erreur de code.** `properties.estimated_value_eur` est
 la donnée qui engage l'agence devant un vendeur : la base refuse toute écriture de cette colonne
 pendant qu'une exécution d'agent de la session appelante est ouverte
@@ -253,22 +259,52 @@ Jetons OAuth et clés : côté serveur uniquement, jamais renvoyés au navigateu
   parcours basculent le coupe-circuit de la **même** agence fictive, et en parallèle ils se
   refuseraient mutuellement des exécutions.
 
-### 10.1 Ordre d'exécution des suites (ce n'est pas un bug)
-
-Les tests d'intégration vérifient que la base locale ne contient **que** des données fictives,
-notamment qu'aucune activité n'est enregistrée hors simulation. Or certains parcours E2E
-actionnent de vraies commandes humaines : le coupe-circuit passe par le RPC `set_ai_paused`, qui
-journalise `ai_paused` / `ai_resumed` avec `is_simulation = false` — c'est **correct**, un humain a
-réellement suspendu les agents.
-
-Conséquence, l'ordre à respecter localement :
+### 10.1 Lancer les tests
 
 ```
-npm run db:reset   →   npx vitest run   →   npx playwright test
+npm run db:start   # une fois : la base locale doit tourner
+npx vitest run     # unitaires + intégration
+npx playwright test
+npm run test:all   # raccourci : les deux, dans cet ordre
 ```
 
-Après un passage Playwright, relancer `npm run db:reset` **avant** de relancer les tests
-d'intégration. Aucun correctif de code n'est attendu ici : c'est l'ordre normal.
+Les deux commandes s'enchaînent **dans n'importe quel ordre, autant de fois qu'on veut**, sans
+rechargement manuel des données entre les deux.
+
+### 10.2 Pourquoi un `globalSetup` Playwright
+
+Les tests d'intégration (Vitest) et les tests E2E (Playwright) tapent la **même** base Supabase
+locale, et les deux consomment des données fixtures : un brouillon validé passe à `sent_simulated`,
+un créneau proposé est réservé. Enchaînés, les seconds trouvaient donc une base déjà entamée par
+les premiers — par exemple le test « isolation : la file d'une agence ne montre jamais le brouillon
+d'une autre » ne trouvait plus le brouillon fixture de l'agence B. Défaut d'outillage, pas défaut
+produit : l'isolation entre agences, elle, est vérifiée par les tests d'intégration RLS.
+
+`e2e/global-setup.ts` (déclaré dans `playwright.config.ts`) recharge donc les fixtures avant chaque
+suite E2E — l'état de départ est **établi**, jamais hérité. Il lance `npm run db:seed` dans un
+processus enfant plutôt que d'importer `fixtures/load-fixtures.ts` : ce module est en ESM
+(`import.meta.url`) alors que Playwright transpile en CommonJS les fichiers qu'il charge. Le
+chargeur de fixtures reste ainsi l'unique source de vérité, inchangé. Coût : environ 5 secondes par
+run.
+
+Deux détails qui comptent :
+
+- **Base locale arrêtée** : le setup le détecte avant la suite et échoue une fois, en français
+  (« La base Supabase locale est injoignable… Démarrez-la avec `npm run db:start` »), au lieu de
+  laisser 17 tests expirer un par un.
+- **Jamais autre chose que le local** : le setup passe par `assertNotProduction` et
+  `assertLocalSupabaseUrl` (`lib/supabase/local-only.ts`), les mêmes gardes que le chargeur de
+  fixtures et les tests d'intégration. La sortie du chargeur (qui affiche les mots de passe fictifs
+  générés) est capturée et n'est montrée qu'en cas d'échec : les identifiants restent dans
+  `fixtures/.generated-credentials.json` (mode 0600, ignoré par git).
+
+Réciproque (Vitest lancé après Playwright) : **pas de setup symétrique**, il n'est pas nécessaire
+aujourd'hui. Les tests d'intégration créent leurs propres agences jetables, et la vérification des
+fixtures accepte déjà les traces laissées par les parcours E2E (les activités `ai_paused` /
+`ai_resumed` du coupe-circuit sont de vraies actions humaines, voir
+`fixtures/fixtures.integration.test.ts`). Si un jour un test d'intégration se met à dépendre d'une
+fixture non consommée, la réponse sera un `globalSetup` de projet dans `vitest.config.mts` appelant
+le même `npm run db:seed`.
 
 ---
 
@@ -283,9 +319,11 @@ d'intégration. Aucun correctif de code n'est attendu ici : c'est l'ordre normal
   valider) : `create unique index … on public.appointments (agency_id, contact_id) where status in
   ('proposed','confirmed');`. À arbitrer avec le métier : une agence peut légitimement vouloir deux
   rendez-vous actifs (estimation puis signature).
-- Pas encore : file d'attente de validation des premiers contacts, confirmation humaine d'un
-  rendez-vous (passage en `rdv_planifie`), désinscription entrante (STOP reçu), purge RGPD
-  automatique, chiffrement applicatif des jetons d'intégration.
+- La boîte `/agents-ia/leads-entrants`, la file `/agents-ia/a-valider` et le coupe-circuit sont
+  implémentés. Emma et Sarah disposent de leur moteur serveur simulé mais d'aucune UI ni route dédiée ;
+  le tableau de bord, le pipeline et les paramètres restent des routes `ComingSoon`.
+- Pas encore : confirmation humaine d'un rendez-vous (passage en `rdv_planifie`), désinscription
+  entrante (STOP reçu), purge RGPD automatique, chiffrement applicatif des jetons d'intégration.
 - **Dédoublonnage de Léa borné à 5 000 fiches par agence** (`LEAD_DEDUPE_SCAN_LIMIT`) : la
   comparaison se fait dans le code, sur la liste des contacts de l'agence. Au-delà, l'exécution
   **refuse de conclure** plutôt que de comparer une liste tronquée (un doublon manqué crée une

@@ -41,8 +41,9 @@ export default async function MessagesToValidatePage() {
 
       <Alert tone="info" title={TEXTS.ruleTitle} className="mt-8" testId="validation-rule">
         {TEXTS.ruleBody}
-        {/* Said once, at the top: what this screen cannot do yet. */}
-        <span className="mt-2 block text-ink-subtle">{TEXTS.noEditYet}</span>
+        {/* Said once, at the top: correcting a draft is allowed, and it always
+            sends the message back to the queue. */}
+        <span className="mt-2 block text-ink-subtle">{TEXTS.editHint}</span>
       </Alert>
 
       <div className="mt-8">

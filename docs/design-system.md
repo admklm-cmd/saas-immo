@@ -129,7 +129,7 @@ maximale, la durée, un écran concerné.
 | Survol ou pression d'un élément interactif | Fond, texte, bordure, ombre, `transform: scale` | `scale(0.98)` à la pression | `--duration-fast` | `Button` (`active:scale-[0.98]`), lignes de `ContactsTable` et `AgentRunsTable`, liens de `AppNav` |
 | Champ de formulaire | Couleur de bordure (et ombre pour `Field`) | aucune | `--duration-fast` | `Field`, `Select`, `Textarea`. **L'anneau de focus global (`:focus-visible`), lui, n'est jamais animé** : il apparaît instantanément |
 | Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
-| Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(nécessite l'ajout de phase 1 ; écran hors périmètre tant que l'étape A n'est pas auditée)* |
+| Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(écran livré ; variante `settle` encore attendue en phase 1)* |
 
 #### 2.5.4 Interdits
 
@@ -232,6 +232,8 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `PendingMessagesList` | `PendingMessagesList.tsx` (client) | File « à valider » : confirmation persistante (`aria-live`) + rafraîchissement serveur |
 | `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |
 | `MessageRejectionForm` | `MessageRejectionForm.tsx` (client) | Motif obligatoire (liste fermée, `fieldset`/`legend`) + note facultative bornée |
+| `DraftEditForm` | `DraftEditForm.tsx` (client) | Correction en place de l'objet et du corps ; le canal et le destinataire restent hors du formulaire, puis le brouillon repasse « à valider » |
+| `InboundLeadCard` | `InboundLeadCard.tsx` (client) | Un lead entrant : source, date, éléments transmis, message du prospect en **texte brut**, « Lancer Léa », résultat et rejeu de l'exécution |
 
 #### Règles de ce module (non négociables)
 
@@ -254,6 +256,11 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
    que rien n'est parti.
 7. Un **refus** demande toujours un motif (liste fermée) ; la note reste
    facultative et bornée.
+8. **Un lead n'est pas un consentement.** L'écran « Leads entrants » affiche
+   cette règle en tête (`data-testid="leads-rule"`) et la répète sous la seule
+   action possible : Léa crée la fiche, elle ne recueille aucun consentement.
+9. **Corriger n'est pas valider.** Seuls l'objet et le corps sont proposés à
+   l'édition. Toute correction laisse ou remet le brouillon « à valider ».
 
 ### 3.2 Le badge « simulation » est une règle produit
 
@@ -301,18 +308,28 @@ Chaque écran gère quatre états :
 - Écran Agents IA : bandeau `lg:grid-cols-2` (coupe-circuit + activité), grille des
   cinq agents `lg:grid-cols-2 2xl:grid-cols-3`, journal pleine largeur.
 - Rejeu d'une exécution : colonne unique `max-w-4xl` (la lecture prime).
+- Files de travail (« Leads entrants », « Messages à valider ») : colonne unique
+  `max-w-4xl`, une carte par élément, règle produit en `Alert tone="info"` en tête.
 - Navigation : barre horizontale défilante sous 1024 px, colonne fixe de 256 px au-dessus.
 - Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
 
 ## 8. Limites connues (à traiter plus tard)
 
 - Pas de thème sombre : les tokens sont prêts (surfaces inverses), le basculement ne l'est pas.
-- Pas encore de modale ni de toast : à ajouter avec l'écran de validation du premier
-  contact. En attendant, une action sensible se confirme **en place** (panneau de
-  confirmation dans la carte, focus déplacé sur « Confirmer »), comme le coupe-circuit.
+- Pas encore de modale ni de toast. Les actions sensibles déjà livrées se traitent
+  **en place** : panneau de refus ou de correction dans la carte, et panneau de
+  confirmation du coupe-circuit avec focus déplacé sur « Confirmer ».
+- Les textes `APP_TEXTS.followThrough` préparent le futur écran de Sarah. Son moteur
+  serveur simulé existe, mais aucune UI ni route dédiée n'est encore livrée. Emma est
+  dans la même situation côté produit, sans bloc d'interface dédié à ce stade.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
 - Pas de police de marque (choix assumé, voir 2.2).
+- **Niveaux de titre des files de travail** : « Leads entrants » et « Messages à
+  valider » enchaînent `h1` → `h3` (les cartes), sans `h2` intermédiaire, alors
+  que le § 5 demande `h2` pour une carte. Le contournement n'est pas fait :
+  corriger un seul des deux écrans les rendrait incohérents entre eux. À
+  reprendre d'un coup, avec les deux fichiers dans le même lot.
 - **Mouvement : la spécification (§ 2.5) est écrite, l'outillage ne l'est pas.**
   Les phases 1 à 3 du plan `docs/plans/2026-09-18-animations.md` ne sont pas faites :
   - il n'existe ni variante d'entrée courte, ni échelonnement de liste, ni mise en

@@ -107,6 +107,37 @@ test("refus : motif obligatoire, note facultative, le message ne partira pas", a
     .toBe(before - 1);
 });
 
+test("correction : le texte est réécrit par un humain et le brouillon reste à valider", async ({ page }) => {
+  const user = await fixtureUser("agentA");
+  await resetValidationQueue(user.agencyId, CONTACT_ID, 2);
+
+  await signIn(page, "agentA");
+  await openQueue(page);
+
+  const target = pendingCards(page).first();
+  await expect(target).toBeVisible({ timeout: COLD_START });
+  const before = await pendingCards(page).count();
+
+  await target.getByTestId("edit-message").click();
+  const form = target.getByTestId("draft-edit-form");
+  await expect(form).toBeVisible();
+  const corrected = "Bonjour, texte corrigé par un conseiller avant validation.";
+  await form.getByLabel(TEXTS.editBody).fill(corrected);
+  await form.getByTestId("draft-edit-save").click();
+
+  const summary = page.getByTestId("decision-summary");
+  await expect(summary).toBeVisible({ timeout: COLD_START });
+  await expect(summary).toContainText(TEXTS.editSuccess);
+
+  // The corrected text is persisted, and the draft still waits for a decision:
+  // correcting is never a way around the human validation.
+  await page.reload();
+  await expect(page.getByText(corrected)).toBeVisible({ timeout: COLD_START });
+  await expect
+    .poll(async () => pendingCards(page).count(), { timeout: COLD_START })
+    .toBe(before);
+});
+
 test("cas d'erreur : un brouillon déjà traité par un collègue, message du serveur affiché", async ({
   page,
   context,

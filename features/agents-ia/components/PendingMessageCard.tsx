@@ -9,9 +9,15 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
-import { refuseMessage, sendValidatedMessage, validateMessage } from "@/features/agents-ia/actions";
+import {
+  editDraft,
+  refuseMessage,
+  sendValidatedMessage,
+  validateMessage,
+} from "@/features/agents-ia/actions";
 
 import { MESSAGE_REJECTION_REASON_LABELS, type PendingMessageView } from "../types";
+import { DraftEditForm } from "./DraftEditForm";
 import { MessageRejectionForm } from "./MessageRejectionForm";
 
 const TEXTS = APP_TEXTS.validationQueue;
@@ -19,6 +25,7 @@ const TEXTS = APP_TEXTS.validationQueue;
 type CardState =
   | { kind: "idle" }
   | { kind: "rejecting" }
+  | { kind: "editing" }
   | { kind: "pending" }
   | { kind: "error"; message: string };
 
@@ -134,6 +141,19 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
             )
           }
         />
+      ) : state.kind === "editing" ? (
+        <DraftEditForm
+          message={message}
+          isPending={busy}
+          onCancel={() => setState({ kind: "idle" })}
+          onSave={(draft) =>
+            void run(
+              () => editDraft(message.id, draft),
+              // Editing an approved draft cancels its approval: say it.
+              message.status === "approved" ? TEXTS.editSuccessRevalidation : TEXTS.editSuccess,
+            )
+          }
+        />
       ) : (
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {message.status === "pending_validation" ? (
@@ -164,6 +184,14 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
               {busy ? TEXTS.working : TEXTS.send}
             </Button>
           )}
+          <Button
+            variant="ghost"
+            disabled={busy}
+            onClick={() => setState({ kind: "editing" })}
+            data-testid="edit-message"
+          >
+            {TEXTS.edit}
+          </Button>
           {message.status === "approved" && !message.canBeSent ? (
             <p className="text-xs text-ink-muted">{TEXTS.sendBlocked}</p>
           ) : null}

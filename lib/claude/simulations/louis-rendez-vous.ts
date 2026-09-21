@@ -12,6 +12,7 @@
  * untrusted data and could contain anything.
  */
 
+import { untrustedFieldText } from "../prompt";
 import type { AiGenerationRequest } from "../provider";
 import { PROPERTY_TYPE_LABELS, type PropertyTypeValue } from "../schemas";
 
@@ -25,8 +26,8 @@ function fact(request: AiGenerationRequest, key: string): string | null {
 function propertyLabel(request: AiGenerationRequest): string {
   const type = fact(request, "property_type") as PropertyTypeValue | null;
   const label = type && type in PROPERTY_TYPE_LABELS ? PROPERTY_TYPE_LABELS[type].toLocaleLowerCase("fr-FR") : "bien";
-  const city = fact(request, "property_city");
-  const sector = fact(request, "property_sector");
+  const city = untrustedFieldText(request.untrusted, "property_city");
+  const sector = untrustedFieldText(request.untrusted, "property_sector");
 
   if (city && sector) return `votre ${label} à ${city} (${sector})`;
   if (city) return `votre ${label} à ${city}`;
@@ -77,9 +78,9 @@ export function simulateLouisAppointment(request: AiGenerationRequest): unknown 
     return { slot_id: "", message_subject: "", message_body: "", reason: "", confidence: 0 };
   }
 
-  const firstName = fact(request, "contact_first_name");
+  const firstName = untrustedFieldText(request.untrusted, "contact_first_name");
   const greeting = firstName ? `Bonjour ${firstName},` : "Bonjour,";
-  const agency = fact(request, "agency_name");
+  const agency = untrustedFieldText(request.untrusted, "agency_name");
   const duration = fact(request, "appointment_duration_minutes") ?? "60";
 
   const body = [

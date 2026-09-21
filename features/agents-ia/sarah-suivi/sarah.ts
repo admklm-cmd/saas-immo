@@ -37,9 +37,11 @@ import { finishRun, startGuardedRun } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
 import type { AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
-import type { AiFacts, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
+import type { AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result } from "@/lib/utils/result";
 import type { Json } from "@/types/database";
+
+import { buildSarahPromptContext } from "../prompt-context";
 
 import {
   decideFollowThroughStage,
@@ -101,26 +103,6 @@ export type RunSarahOptions = {
 };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function buildFacts(input: {
-  stage: PipelineStage;
-  appointment: AppointmentRow;
-  property: PropertyRow | null;
-  daysSinceAppointment: number;
-}): AiFacts {
-  return {
-    contact_stage: input.stage,
-    appointment_status: input.appointment.status,
-    days_since_appointment: input.daysSinceAppointment,
-    report_chars: (input.appointment.report_notes ?? "").length,
-    property_known: input.property !== null,
-    property_type: input.property?.property_type ?? null,
-    property_city: input.property?.city ?? null,
-    property_sector: input.property?.sector ?? null,
-    property_surface_m2: input.property?.surface_m2 ?? null,
-    property_rooms: input.property?.rooms ?? null,
-  };
-}
 
 export async function runSarahFollowThrough(
   client: TypedClient,
@@ -281,11 +263,24 @@ export async function runSarahFollowThrough(
     // --- AI call: the report is isolated as untrusted DATA --------------------
     // It is written by a member of the agency, but it quotes the seller and can
     // contain anything: it gets the same treatment as any prospect content.
-    const untrusted = [
-      { label: "compte_rendu_rendez_vous", content: appointment.report_notes },
-      { label: "contact_notes", content: contact.notes ?? "" },
-      { label: "historique_recent", content: history.map((entry) => entry.summary).join("\n") },
-    ];
+    const { facts, untrusted } = buildSarahPromptContext({
+      stage: contact.stage,
+      appointmentStatus: appointment.status,
+      daysSinceAppointment,
+      report: appointment.report_notes,
+      property: {
+        known: property !== null,
+        type: property?.property_type ?? null,
+        city: property?.city ?? null,
+        sector: property?.sector ?? null,
+        surfaceM2: property?.surface_m2 ?? null,
+        rooms: property?.rooms ?? null,
+      },
+      contactText: {
+        notes: contact.notes,
+        historySummaries: history.map((entry) => entry.summary),
+      },
+    });
 
     await steps.step({
       phase: "prompt_built",
@@ -304,7 +299,7 @@ export async function runSarahFollowThrough(
         task: SARAH_TASK,
         systemPrompt: SARAH_SYSTEM_PROMPT,
         promptVersion: SARAH_PROMPT_VERSION,
-        facts: buildFacts({ stage: contact.stage, appointment, property, daysSinceAppointment }),
+        facts,
         untrusted,
         scenario: options.scenario,
       },

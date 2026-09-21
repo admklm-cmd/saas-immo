@@ -26,15 +26,16 @@ function request(overrides: Partial<AiGenerationRequest> = {}): AiGenerationRequ
     systemPrompt: "prompt système de test",
     promptVersion: "test-v1",
     facts: {
-      agency_name: "Calanques Immobilier (fictive)",
-      contact_first_name: "Élodie",
       property_type: "house",
-      property_city: "La Ciotat",
-      property_sector: "Quartier de la gare",
       appointment_duration_minutes: 60,
     },
     choices: CHOICES,
-    untrusted: [],
+    untrusted: [
+      { label: "agency_name", content: "Calanques Immobilier (fictive)" },
+      { label: "contact_first_name", content: "Élodie" },
+      { label: "property_city", content: "La Ciotat" },
+      { label: "property_sector", content: "Quartier de la gare" },
+    ],
     ...overrides,
   };
 }
@@ -67,6 +68,7 @@ describe("simulateur — Louis, proposition de rendez-vous", () => {
   it("n'invente aucune donnée absente du dossier", async () => {
     const generation = await propose({
       facts: { appointment_duration_minutes: 60 },
+      untrusted: [],
     });
     const parsed = schema.parse(generation.raw);
     expect(parsed.message_body).toContain("Bonjour,");

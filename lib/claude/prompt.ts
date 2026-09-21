@@ -106,3 +106,15 @@ export function buildPromptInput(input: {
 export function untrustedText(fields: readonly AiUntrustedField[] | undefined): string {
   return (fields ?? []).map((field) => sanitizeUntrusted(field.content)).join("\n");
 }
+
+/** Reads one named data block for deterministic simulators. */
+export function untrustedFieldText(
+  fields: readonly AiUntrustedField[] | undefined,
+  label: string,
+): string | null {
+  const values = (fields ?? [])
+    .filter((field) => field.label === label)
+    .map((field) => sanitizeUntrusted(field.content).trim())
+    .filter((value) => value.length > 0);
+  return values.length > 0 ? values.join("\n") : null;
+}

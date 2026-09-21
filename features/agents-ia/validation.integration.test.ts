@@ -8,6 +8,7 @@ import {
   rejectOutboundMessage,
   sendApprovedMessage,
   setAiPaused,
+  updateDraftContent,
 } from "./validation";
 
 /**
@@ -453,3 +454,151 @@ describe("Isolation entre agences sur la validation", () => {
   });
 });
 
+
+/**
+ * Rewriting a draft before it goes out.
+ *
+ * The rule this section proves: correcting an AI sentence is allowed, but it is
+ * never a way around the human validation — an edited draft always goes back to
+ * « à valider », and a message already refused or already sent is final.
+ */
+describe("Réécriture d'un brouillon par un humain", () => {
+  it("réécrit le texte d'un brouillon en attente, et le journalise", async () => {
+    const contactId = await createContact("edit-pending");
+    const messageId = await createDraft(contactId);
+
+    const result = await updateDraftContent(agentA, messageId, {
+      subject: "  Votre estimation à La Ciotat  ",
+      body: "Bonjour,\n\nTexte corrigé par un conseiller.\n\nRépondez STOP pour ne plus être contacté.",
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.status).toBe("pending_validation");
+    expect(result.data?.revalidationRequired).toBe(false);
+    // Trimmed, never stored with the spaces the browser sent.
+    expect(result.data?.subject).toBe("Votre estimation à La Ciotat");
+
+    const { data } = await env.admin
+      .from("outbound_messages")
+      .select("subject, body, status, validated_by")
+      .eq("id", messageId)
+      .single();
+    expect(data?.body).toContain("Texte corrigé par un conseiller.");
+    expect(data?.status).toBe("pending_validation");
+    expect(data?.validated_by).toBeNull();
+
+    const activities = await readActivities(contactId);
+    expect(activities.some((activity) => activity.type === "message_edited")).toBe(true);
+    // The edit is a human act, and is journaled as one.
+    expect(activities.every((activity) => activity.actor_type === "user")).toBe(true);
+  });
+
+  it("annule la validation précédente : un brouillon modifié repasse « à valider »", async () => {
+    const contactId = await createContact("edit-approved");
+    const messageId = await createDraft(contactId);
+    expect((await approveOutboundMessage(agentA, messageId)).error).toBeNull();
+    expect((await readMessage(messageId)).status).toBe("approved");
+
+    const result = await updateDraftContent(agentA, messageId, {
+      subject: null,
+      body: "Texte revu après validation : il doit être revalidé.",
+    });
+
+    expect(result.error).toBeNull();
+    expect(result.data?.revalidationRequired).toBe(true);
+
+    const message = await readMessage(messageId);
+    expect(message.status).toBe("pending_validation");
+    // The previous approval is gone: nobody can send this without deciding again.
+    expect(message.validated_by).toBeNull();
+    expect(message.validated_at).toBeNull();
+  });
+
+  it("refuse de réécrire un message déjà refusé ou déjà envoyé", async () => {
+    const rejectedContact = await createContact("edit-rejected");
+    const rejectedId = await createDraft(rejectedContact);
+    expect((await rejectOutboundMessage(agentA, rejectedId, { reason: "other" })).error).toBeNull();
+
+    const sentContact = await createContact("edit-sent");
+    const sentId = await createDraft(sentContact);
+    expect((await approveOutboundMessage(agentA, sentId)).error).toBeNull();
+    expect((await sendApprovedMessage(agentA, sentId)).error).toBeNull();
+
+    for (const messageId of [rejectedId, sentId]) {
+      const result = await updateDraftContent(agentA, messageId, { subject: null, body: "Trop tard." });
+      expect(result.data).toBeNull();
+      expect(result.error?.code).toBe("outbound_message_not_pending");
+    }
+
+    const { data } = await env.admin
+      .from("outbound_messages")
+      .select("body")
+      .eq("id", sentId)
+      .single();
+    expect(data?.body).not.toContain("Trop tard.");
+  });
+
+  it("refuse un texte vide ou trop long, et laisse le brouillon intact", async () => {
+    const contactId = await createContact("edit-invalid");
+    const messageId = await createDraft(contactId);
+
+    for (const body of ["   ", "x".repeat(5_001)]) {
+      const result = await updateDraftContent(agentA, messageId, { subject: null, body });
+      expect(result.data).toBeNull();
+      expect(result.error?.code).toBe("outbound_message_invalid_content");
+    }
+
+    const { data } = await env.admin
+      .from("outbound_messages")
+      .select("body")
+      .eq("id", messageId)
+      .single();
+    expect(data?.body).toContain("souhaitez-vous que nous fassions le point");
+  });
+
+  it("ne change jamais le canal ni le destinataire d'un brouillon", async () => {
+    const contactId = await createContact("edit-scope");
+    const messageId = await createDraft(contactId);
+    const otherContact = await createContact("edit-scope-other");
+
+    // Unknown keys are refused by the schema rather than silently dropped.
+    const result = await updateDraftContent(agentA, messageId, {
+      subject: null,
+      body: "Texte corrigé.",
+      channel: "sms",
+      contact_id: otherContact,
+    } as never);
+
+    expect(result.data).toBeNull();
+    expect(result.error?.code).toBe("outbound_message_invalid_content");
+
+    const { data } = await env.admin
+      .from("outbound_messages")
+      .select("channel, contact_id")
+      .eq("id", messageId)
+      .single();
+    expect(data?.channel).toBe("email");
+    expect(data?.contact_id).toBe(contactId);
+  });
+
+  it("un membre d'une autre agence ne peut pas réécrire un brouillon", async () => {
+    const contactId = await createContact("edit-isolation");
+    const messageId = await createDraft(contactId);
+
+    const result = await updateDraftContent(userB, messageId, {
+      subject: null,
+      body: "Texte injecté depuis une autre agence.",
+    });
+
+    expect(result.data).toBeNull();
+    expect(result.error?.code).toBe("outbound_message_not_found");
+    expect(JSON.stringify(result.error)).not.toContain(env.agencyA.agencyId);
+
+    const { data } = await env.admin
+      .from("outbound_messages")
+      .select("body")
+      .eq("id", messageId)
+      .single();
+    expect(data?.body).not.toContain("injecté");
+  });
+});

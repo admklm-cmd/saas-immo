@@ -50,12 +50,10 @@ describe("simulateur — entrées complètes", () => {
     facts: {
       contact_stage: "nouveau",
       property_type: "apartment",
-      property_city: "La Ciotat",
-      property_sector: "La Ciotat — Gare",
-      contact_sale_motivation: null,
-      contact_sale_timeline: null,
     },
     untrusted: [
+      { label: "property_city", content: "La Ciotat" },
+      { label: "property_sector", content: "La Ciotat — Gare" },
       {
         label: "contact_notes",
         content:
@@ -72,7 +70,7 @@ describe("simulateur — entrées complètes", () => {
     expect(parsed.data).toMatchObject({
       property_type: "apartment",
       city: "La Ciotat",
-      sector: "La Ciotat — Gare",
+      sector: "Quartier de la gare",
       sale_motivation: "mutation_professionnelle",
       sale_timeline: "3_a_6_mois",
       missing_fields: [],
@@ -88,8 +86,12 @@ describe("simulateur — entrées complètes", () => {
 
   it("déduit « chaud » uniquement quand le texte le dit", async () => {
     const generation = await qualify({
-      facts: { property_type: "house", property_city: "Cassis", property_sector: "Cassis — Centre" },
-      untrusted: [{ label: "contact_notes", content: "Divorce, doit vendre sous 2 mois." }],
+      facts: { property_type: "house" },
+      untrusted: [
+        { label: "property_city", content: "Cassis" },
+        { label: "property_sector", content: "Cassis — Centre" },
+        { label: "contact_notes", content: "Divorce, doit vendre sous 2 mois." },
+      ],
     });
     const parsed = hugoQualificationSchema.parse(generation.raw);
     expect(parsed.sale_timeline).toBe("moins_de_3_mois");
