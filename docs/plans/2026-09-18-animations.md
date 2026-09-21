@@ -2,7 +2,7 @@
 
 - **Date** : 2026-09-18
 - **Auteur du plan** : agent `frontend-ux`
-- **Statut** : phase 0 (documentation) faite. Les phases 1 à 3 attendent le push et l'audit de l'étape A.
+- **Statut** : phases 0 et 1 faites. Les phases 2 et 3 restent à réaliser écran par écran.
 
 ## Objectif
 
@@ -32,7 +32,7 @@ Donner à toute l'interface un mouvement cohérent et sobre, qui rend les change
 - **Aucun code.**
 - **Critère de fin** : `git status --short` ne montre que ces deux fichiers en plus des fichiers déjà modifiés par l'étape A. Chaque token cité dans la documentation existe réellement dans `app/globals.css`.
 
-### Phase 1 — Socle technique (`frontend-ux`), après l'étape A
+### Phase 1 — Socle technique (`frontend-ux`), après l'étape A — FAITE
 
 - **Périmètre** : tokens complémentaires, primitives réutilisables, galerie de développement. **Aucun écran produit n'est modifié dans cette phase.**
 - **Fichiers visés** :
@@ -40,7 +40,7 @@ Donner à toute l'interface un mouvement cohérent et sobre, qui rend les change
   - `components/ui/Reveal.tsx` (nouveau, client).
   - `app/dev/animations/page.tsx` (nouveau) et son fichier de garde.
   - `docs/design-system.md` : mise à jour avec les nouveaux tokens et la nouvelle primitive.
-- **Tokens proposés** (à faire valider par l'utilisateur avant écriture) :
+- **Tokens livrés** :
 
   | Ajout proposé | Raison |
   |---|---|
@@ -122,8 +122,8 @@ Ordre recommandé, du plus fort au plus faible retour sur effort :
 | Régression des tests E2E existants à cause des délais | Les tests ne doivent dépendre d'aucune animation. Proposition de phase 3 : `reducedMotion: "reduce"` dans `playwright.config.ts`. Relancer `e2e/agents-ia.spec.ts`, `e2e/parcours-hugo-louis.spec.ts` et `e2e/smoke.spec.ts` après chaque écran animé. |
 | Conflit avec l'étape A en cours | Aucune écriture sur les fichiers de l'étape A avant son push et son audit. La phase 2 les place explicitement hors périmètre. |
 
-## Questions ouvertes pour l'utilisateur
+## Décisions confirmées par l'implémentation
 
-1. Valides-tu les trois ajouts de tokens de la phase 1 (`rise-soft`, `.stagger` + `--stagger-step`, `settle`) ? Sinon, la phase 2 se fait avec les tokens actuels.
-2. La galerie `/dev/animations` doit-elle être livrée, ou est-ce un confort que l'on coupe pour tenir le délai ? Elle ne sert qu'aux agents de développement.
-3. Y a-t-il un cas où tu accepterais une dépendance d'animation ? Par défaut, la réponse de ce plan est non.
+1. Les trois ajouts (`rise-soft`, `.stagger` + `--stagger-step`, `settle`) sont livrés.
+2. La galerie `/dev/animations` est livrée avec une garde de production testée.
+3. Aucune dépendance d'animation n'a été ajoutée.

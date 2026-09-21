@@ -110,11 +110,11 @@ utilisée toute la journée doit paraître instantanée, pas cinématographique.
 | `animate-spin-slow` | Rotation | 700 ms, en boucle | Spinner du `Button` en cours de chargement |
 | `animate-pulse` (Tailwind) | Opacité, en boucle | Tailwind | Étape de rejeu **en cours** : indicateur d'activité, jamais une mesure d'avancement |
 
-**Manquant, à ajouter en phase 1 s'il est validé** : une variante d'entrée courte
-(4 px) pour les lignes de liste, un échelonnement de liste sans JavaScript, et une
-mise en avant du changement d'état d'une carte. Ces trois éléments **n'existent pas**
-aujourd'hui : voir le plan du 2026-09-18. Tant qu'ils ne sont pas ajoutés, on se
-limite au tableau ci-dessus.
+La phase 1 ajoute `animate-rise-soft` (4 px, 220 ms), `animate-settle`
+(`scale(.98)` vers l'état final, 220 ms) et `.stagger` (pas de 40 ms, plafonné à
+200 ms). `Reveal` utilise `IntersectionObserver` pour appliquer `rise-soft` sans
+jamais retirer les enfants du HTML ; sans JavaScript, sans API disponible ou avec
+un mouvement réduit, le contenu reste immédiatement visible.
 
 #### 2.5.3 Inventaire des mouvements autorisés
 
@@ -198,6 +198,7 @@ token. Ses délais sont les durées réellement mesurées par le serveur (voir �
 | `Button` | `Button.tsx` | `primary` / `secondary` / `ghost` × `sm` / `md` / `lg` ; repos, survol, focus visible, actif (`scale .98`), `isLoading` (spinner + `aria-busy`), `disabled` (opacité 40 %) |
 | `ButtonLink` | `ButtonLink.tsx` | Mêmes styles, mais reste une ancre `next/link` |
 | `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3 |
+| `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge |
 | `Badge` | `Badge.tsx` | `neutral`, `outline`, `solid`, `dashed` (information absente) |
 | `PipelineStageBadge` | `PipelineStageBadge.tsx` | 7 étapes ; barre de 6 points pour la progression, `perdu` en pointillés, `mandat_signé` en plein noir |
 | `SimulationBadge` | `SimulationBadge.tsx` | Unique, toujours visible, toujours accompagné du mot « Simulation » |

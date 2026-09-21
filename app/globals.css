@@ -74,9 +74,12 @@
   --duration-fast: 150ms;
   --duration-base: 220ms;
   --duration-slow: 300ms;
+  --stagger-step: 40ms;
 
   --animate-rise: rise var(--duration-slow) var(--ease-standard) both;
+  --animate-rise-soft: rise-soft var(--duration-base) var(--ease-standard) both;
   --animate-fade: fade var(--duration-base) var(--ease-standard) both;
+  --animate-settle: settle var(--duration-base) var(--ease-standard) both;
   --animate-shimmer: shimmer 1.4s linear infinite;
   --animate-spin-slow: spin 700ms linear infinite;
 
@@ -97,6 +100,28 @@
     }
     to {
       opacity: 1;
+    }
+  }
+
+  @keyframes rise-soft {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 4px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes settle {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -146,6 +171,26 @@
     background-color: color-mix(in srgb, var(--color-inverse) 82%, transparent);
     backdrop-filter: saturate(180%) blur(20px);
   }
+
+  /* Visible by default: without JavaScript, Reveal never hides its content. */
+  .reveal[data-reveal="hidden"] {
+    opacity: 0;
+    transform: translate3d(0, 4px, 0);
+  }
+
+  .reveal[data-reveal="entering"] {
+    animation: var(--animate-rise-soft);
+  }
+
+  .stagger > * {
+    animation: var(--animate-rise-soft);
+  }
+
+  .stagger > :nth-child(2) { animation-delay: calc(var(--stagger-step) * 1); }
+  .stagger > :nth-child(3) { animation-delay: calc(var(--stagger-step) * 2); }
+  .stagger > :nth-child(4) { animation-delay: calc(var(--stagger-step) * 3); }
+  .stagger > :nth-child(5) { animation-delay: calc(var(--stagger-step) * 4); }
+  .stagger > :nth-child(n + 6) { animation-delay: calc(var(--stagger-step) * 5); }
 }
 
 /* Motion is decoration: honour the OS setting (WCAG 2.3.3). */
