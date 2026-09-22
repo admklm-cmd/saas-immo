@@ -1,4 +1,4 @@
-# Architecture d'AiaA — choix techniques et pourquoi
+# Architecture d'Ascend Strategy — choix techniques et pourquoi
 
 Document de référence technique du prototype. Il explique **pourquoi** chaque choix a été fait,
 ce qu'il protège, et ce qu'il ne couvre pas encore. Il est tenu à jour à chaque changement

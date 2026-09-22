@@ -1,4 +1,4 @@
-# Contexte de reprise — AiaA
+# Contexte de reprise — Ascend Strategy
 
 Dernière mise à jour : 22 septembre 2026.
 
@@ -164,7 +164,7 @@ background-size: 60px 60px;
 background-position: 14px 20px;
 ```
 
-Améliorations réalisées : fond responsive, cinq étapes métier AiaA reliées par une ligne,
+Améliorations réalisées : fond responsive, cinq étapes métier Ascend Strategy reliées par une ligne,
 signal traversant, activité discrète, version mobile verticale et arrêt des animations avec
 `prefers-reduced-motion`.
 

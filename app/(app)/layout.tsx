@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AppNav } from "@/components/app/AppNav";
 import { SignOutButton } from "@/components/app/SignOutButton";
 import { APP_TEXTS } from "@/components/texts";
+import { Logo } from "@/components/ui/Logo";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -37,10 +38,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="panel-blur sticky top-0 z-40 border-b border-line lg:h-dvh lg:w-64 lg:shrink-0 lg:border-r lg:border-b-0">
         <div className="flex h-full flex-col gap-6 px-4 py-4 lg:px-5 lg:py-6">
           <div className="flex items-center justify-between gap-4">
-            <Link href="/dashboard" className="inline-flex items-baseline gap-2 rounded-xs">
-              <span className="text-heading font-semibold tracking-tight text-ink">
-                {APP_TEXTS.brand.name}
-              </span>
+            <Link href="/dashboard" className="inline-flex items-center gap-3 rounded-xs">
+              <Logo />
               <span className="text-xs text-ink-subtle">{APP_TEXTS.brand.prototype}</span>
             </Link>
           </div>

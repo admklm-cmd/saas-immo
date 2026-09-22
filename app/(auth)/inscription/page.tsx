@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: `${APP_TEXTS.shells.signUpTitle} — ${APP_TEXTS.brand.name}`,
 };
 
-/** Shell: agency accounts are created by AiaA during onboarding, not self-served. */
+/** Shell: agency accounts are created by Ascend Strategy during onboarding, not self-served. */
 export default function SignUpPage() {
   return (
     <div className="w-full max-w-sm animate-rise text-center">

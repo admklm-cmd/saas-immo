@@ -1,6 +1,6 @@
 # Workflows des agents IA
 
-Source de vérité des workflows d'AiaA. **Tout** agent (Léa, Hugo, Emma, Louis, Sarah ou un futur
+Source de vérité des workflows d'Ascend Strategy. **Tout** agent (Léa, Hugo, Emma, Louis, Sarah ou un futur
 agent) est documenté ici avec les **9 champs obligatoires** définis dans `CLAUDE.md` :
 déclencheur, entrées, étapes, outils utilisés, sorties, condition de passage à l'étape/agent
 suivant, conditions d'arrêt, gestion des erreurs, critères de réussite.

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /*
- * AiaA design tokens — see docs/design-system.md (owned by the frontend-ux agent).
+ * Ascend Strategy design tokens — see docs/design-system.md (frontend-ux agent).
  *
  * Strictly black, white and greys. No hue is used to carry meaning: status is
  * expressed with fill, weight, border and iconography, so the interface stays
@@ -170,6 +170,37 @@
   .panel-blur-inverse {
     background-color: color-mix(in srgb, var(--color-inverse) 82%, transparent);
     backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  /*
+   * Brand symbol (`LogoSymbol`, `Logo`).
+   *
+   * The master artwork is used as a MASK, and the mark itself is painted with
+   * `currentColor`. Consequence: the symbol inverts itself with the text
+   * around it — black on a light surface, white on `bg-inverse` — from a
+   * single file, with no theme prop and no JavaScript.
+   *
+   * When a vector master is delivered, only the two URLs below change (plus
+   * `BRAND.symbol` in components/brand.ts). No screen is touched.
+   *
+   * `background-color` is scoped to the @supports block on purpose: where
+   * masking is unavailable the element simply stays empty, instead of painting
+   * a solid black rectangle over the interface. The brand name written next to
+   * it in `Logo` — and the accessible name — remain.
+   */
+  @supports (mask-image: url("/brand/ascend-symbol-black.png")) or
+    (-webkit-mask-image: url("/brand/ascend-symbol-black.png")) {
+    .brand-symbol {
+      background-color: currentColor;
+      -webkit-mask-image: url("/brand/ascend-symbol-black.png");
+      mask-image: url("/brand/ascend-symbol-black.png");
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+    }
   }
 
   /* Visible by default: without JavaScript, Reveal never hides its content. */

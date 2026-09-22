@@ -9,6 +9,7 @@
  * `features/contacts/types.ts` and `lib/agents/messages.ts`.
  */
 
+import { BRAND } from "@/components/brand";
 import type { ConsentStatus, PropertyType } from "@/features/contacts/types";
 import type { EstimationConsentChannel } from "@/features/estimation/consent-texts";
 import type { PropertyTypeChoice } from "@/features/estimation/types";
@@ -48,11 +49,12 @@ export const ESTIMATION_CONSENT_CHANNEL_LABELS: Readonly<Record<EstimationConsen
 };
 
 export const APP_TEXTS = {
-  brand: {
-    name: "AiaA",
-    tagline: "CRM et agents IA pour agences immobilières indépendantes",
-    prototype: "Prototype",
-  },
+  /**
+   * Brand elements — re-exported from `components/brand.ts`, never retyped.
+   * The product name is a proper noun, not French copy: it lives in one file
+   * so that renaming it can never leave a stale spelling behind.
+   */
+  brand: BRAND,
 
   nav: {
     primaryLabel: "Navigation principale",
@@ -533,7 +535,7 @@ export const APP_TEXTS = {
       "Chaque premier contact préparé par un agent IA est validé par un humain avant tout envoi.",
     settings: "Agence, utilisateurs, intégrations et conservation des données.",
     signUpTitle: "Inscription",
-    signUpBody: "La création de compte d'agence se fait avec l'équipe AiaA lors de la mise en place.",
+    signUpBody: `La création de compte d'agence se fait avec l'équipe ${BRAND.name} lors de la mise en place.`,
   },
 
   marketing: {
@@ -729,7 +731,7 @@ export const APP_TEXTS = {
     sections: [
       {
         heading: "Qui traite vos données",
-        body: "L'agence immobilière propriétaire du compte AiaA est seule responsable du traitement des données recueillies par ce formulaire.",
+        body: `L'agence immobilière propriétaire du compte ${BRAND.name} est seule responsable du traitement des données recueillies par ce formulaire.`,
       },
       {
         heading: "Quelles données",

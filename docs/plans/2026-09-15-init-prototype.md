@@ -1,4 +1,4 @@
-# Plan validé — Initialisation du prototype AiaA
+# Plan validé — Initialisation du prototype Ascend Strategy
 
 - **Validé par l'utilisateur le** : 2026-09-15
 - **Branche** : `feat/init-prototype`
@@ -19,7 +19,7 @@
 4. Premier parcours de bout en bout : contact fictif → qualification par Hugo → proposition de rendez-vous par Louis → historique dans le CRM. Hugo et Louis tournent sur un simulateur (aucun budget API défini).
 5. Tester chaque pièce isolément, puis en intégration, et rapporter les résultats réels.
 
-**Objectif** : poser le socle d'AiaA et faire tourner le parcours Hugo → Louis → historique CRM, entièrement simulé et réellement testé.
+**Objectif** : poser le socle d'Ascend Strategy et faire tourner le parcours Hugo → Louis → historique CRM, entièrement simulé et réellement testé.
 
 ## Tâches
 

@@ -1,4 +1,4 @@
-# Produit — AiaA
+# Produit — Ascend Strategy
 
 > Source de vérité produit : écrans, personas, parcours.
 > Propriétaire : agent `frontend-ux`. Les workflows détaillés des agents IA vivent dans
@@ -81,7 +81,7 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Accueil public | `/` | Coquille soignée | Promesse, accès estimation et espace agence |
 | Estimation | `/estimation` | `ComingSoon` | Formulaire progressif, consentement par canal, cases **non précochées** |
 | Connexion | `/connexion` | **Fait** | Email + mot de passe, session Supabase réelle |
-| Inscription | `/inscription` | Coquille | Création de compte accompagnée par AiaA |
+| Inscription | `/inscription` | Coquille | Création de compte accompagnée par Ascend Strategy |
 | Tableau de bord | `/dashboard` | `ComingSoon` | Statistiques calculées sur données réelles |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |

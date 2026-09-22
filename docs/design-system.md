@@ -1,4 +1,4 @@
-# Système de design — AiaA
+# Système de design — Ascend Strategy
 
 > Propriétaire : agent `frontend-ux`. Toute évolution visuelle passe par ce document.
 > Source technique : `app/globals.css` (tokens Tailwind v4) et `components/ui/`.
@@ -209,6 +209,89 @@ token. Ses délais sont les durées réellement mesurées par le serveur (voir �
 
 - `.panel-blur` / `.panel-blur-inverse` : fond translucide + `backdrop-filter`, réservés
   aux barres fixes (navigation de l'espace connecté, en-tête du site public).
+- `.brand-symbol` : peint le symbole de marque avec `currentColor` à travers l'alpha du
+  fichier maître, utilisé comme masque CSS (voir § 2.7).
+
+### 2.7 Marque
+
+**Source unique : `components/brand.ts`.** Le nom du produit n'est écrit en dur nulle
+part ailleurs — ni dans un écran, ni dans un `metadata`, ni dans un test. `APP_TEXTS.brand`
+ne fait que réexporter cet objet. Renommer le produit est un changement d'un seul fichier,
+et un test (`components/brand.test.ts`) échoue si un ancien nom réapparaît dans les textes.
+
+#### 2.7.1 Le symbole
+
+Un « A » massif au sommet tronqué, dont la jambe gauche s'incurve en pied, avec une
+contre-forme interne en goutte. Fichiers maîtres, dans `public/brand/` :
+
+| Fichier | Contenu | Usage |
+|---|---|---|
+| `ascend-symbol-black.png` | 992 × 770, fond transparent, tracé `--color-ink` | Masque CSS de `.brand-symbol` **et** export pour fond clair |
+| `ascend-symbol-white.png` | idem, tracé `--color-ink-inverse` | Export pour fond sombre (support qui ne sait pas masquer : e-mail, présentation) |
+
+Ces deux PNG sont obtenus par **transformation mécanique** du fichier fourni par
+l'agence : rampe linéaire du blanc papier vers le noir d'encre pour reconstituer le
+canal alpha (l'anticrénelage des courbes est conservé), puis découpe à la boîte
+englobante exacte du dessin. Aucune courbe n'a été redessinée ni vectorisée.
+
+**Inversion automatique.** L'interface n'utilise qu'un seul fichier : `.brand-symbol`
+applique l'alpha comme masque et remplit avec `currentColor`. Le symbole prend donc la
+couleur du texte qui l'entoure — noir sur surface claire, blanc dans un panneau
+`bg-inverse` — sans variante de composant, sans prop de thème et sans JavaScript.
+Le `background-color` est confiné dans un `@supports` : là où le masquage n'existe pas,
+l'élément reste vide plutôt que de peindre un rectangle noir plein.
+
+#### 2.7.2 Le verrouillage
+
+`Logo` = symbole + « Ascend » / « Strategy » composés **en typographie** sur deux lignes,
+à sa droite. Les mots ne sont jamais une image : ils restent nets à tout zoom et suivent
+la pile système. Les deux moitiés héritent de `currentColor` : `Logo` ne pose aucune
+couleur, sinon il se peindrait en noir sur noir.
+
+| Taille | Symbole | Mots | Où |
+|---|---|---|---|
+| `sm` (défaut) | `h-7` (28 px) | `text-xs`, `leading-tight` | Barres fixes : en-tête public, colonne de l'espace connecté, en-tête de connexion |
+| `md` | `h-10` (40 px) | `text-sm`, `leading-tight` | Écrans calmes, compositions marketing |
+
+**Zone de respiration** : au moins la hauteur du symbole de chaque côté du verrouillage.
+L'écart interne symbole ↔ mots (`gap-2.5` / `gap-3`) ne se modifie pas au cas par cas.
+
+**Tailles minimales** : symbole seul 20 px (`LogoSymbol size="sm"`) ; en dessous, la
+contre-forme en goutte se referme et le dessin cesse de se lire comme une lettre.
+Verrouillage complet : 28 px de symbole. Plus petit, on utilise `LogoSymbol` seul.
+
+#### 2.7.3 Accessibilité
+
+Un logo porte le nom du produit : il n'est **jamais** décoratif.
+
+- `LogoSymbol` seul : `role="img"` + `aria-label` = nom du produit (valeur par défaut).
+- `Logo` : le nom accessible est porté **une seule fois**, par le verrouillage entier
+  (`role="img"` + `aria-label`), et le symbole y est `aria-hidden`. Sans ce rôle, le nom
+  serait reconstitué à partir de deux lignes séparées et les navigateurs ne s'accordent
+  pas sur l'espace entre elles (« Ascend Strategy » ou « AscendStrategy »). Le libellé
+  reprend le texte visible mot pour mot (WCAG 2.5.3, *label in name*).
+- `LogoSymbol label={null}` rend le symbole décoratif : à n'utiliser que lorsque le nom
+  est déjà écrit juste à côté.
+
+#### 2.7.4 Icônes de site
+
+Conventions de fichiers de l'App Router (Next.js 16) — aucune balise `<link>` écrite à
+la main, aucune entrée `icons` dans `metadata` :
+
+| Fichier | Taille | Composition |
+|---|---|---|
+| `app/favicon.ico` | 16, 32, 48 | Carré `--color-ink` plein, symbole blanc centré |
+| `app/icon.png` | 512 | idem |
+| `app/apple-icon.png` | 180 | idem (opaque : Apple n'accepte pas la transparence) |
+
+Le carré noir plein est un choix : un symbole transparent disparaîtrait sur une barre
+d'onglets sombre. À 16 px, la contre-forme se referme partiellement — le « A » reste
+reconnaissable, mais c'est la limite basse assumée du dessin.
+
+#### 2.7.5 Le jour où un SVG arrive
+
+Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAND.symbol`
+(`components/brand.ts`) et à l'URL de `.brand-symbol` (`app/globals.css`).
 
 ## 3. Composants (`components/ui/`)
 
@@ -217,6 +300,8 @@ token. Ses délais sont les durées réellement mesurées par le serveur (voir �
 | `Button` | `Button.tsx` | `primary` / `secondary` / `ghost` × `sm` / `md` / `lg` ; repos, survol, focus visible, actif (`scale .98`), `isLoading` (spinner + `aria-busy`), `disabled` (opacité 40 %) |
 | `ButtonLink` | `ButtonLink.tsx` | Mêmes styles, mais reste une ancre `next/link` |
 | `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3 |
+| `LogoSymbol` | `LogoSymbol.tsx` | Symbole seul, `sm` / `md` / `lg` ; nommé par défaut, silencieux avec `label={null}` ; inversion par `currentColor` (§ 2.7) |
+| `Logo` | `Logo.tsx` | Verrouillage complet (symbole + nom sur deux lignes), `sm` / `md` ; un seul nom accessible (§ 2.7.2) |
 | `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge |
 | `Badge` | `Badge.tsx` | `neutral`, `outline`, `solid`, `dashed` (information absente) |
 | `PipelineStageBadge` | `PipelineStageBadge.tsx` | 7 étapes ; barre de 6 points pour la progression, `perdu` en pointillés, `mandat_signé` en plein noir |
@@ -434,7 +519,15 @@ Chaque écran gère quatre états :
   lançable depuis `AgentActionsPanel` de la fiche contact, à côté de Hugo et Louis.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
-- Pas de police de marque (choix assumé, voir 2.2).
+- Pas de police de marque (choix assumé, voir 2.2). Le verrouillage compose donc « Ascend »
+  et « Strategy » dans la pile système, pas dans un caractère dessiné pour la marque.
+- Le symbole est **matriciel**, pas vectoriel : le fichier fourni était un PNG sans canal
+  alpha et aucun outil de traçage n'est installé. Le redessiner à la main aurait approximé
+  la jambe incurvée et la contre-forme. Conséquence acceptée : au-delà d'environ 300 px de
+  large, le tracé s'adoucit. Aucun usage actuel n'y arrive (§ 2.7.5).
+- Le masque CSS n'a pas de repli visuel : sur un navigateur sans `mask-image`, le symbole
+  n'est pas peint. Le nom écrit à côté dans `Logo` et le nom accessible restent, donc rien
+  n'est perdu — mais un symbole seul y serait invisible.
 - **Niveaux de titre des files de travail** : « Leads entrants » et « Messages à
   valider » enchaînent `h1` → `h3` (les cartes), sans `h2` intermédiaire, alors
   que le § 5 demande `h2` pour une carte. Le contournement n'est pas fait :
