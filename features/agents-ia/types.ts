@@ -449,7 +449,7 @@ export const DRAFT_BODY_MAX_LENGTH = 5_000;
  */
 function cleanDraftText(value: unknown): string {
   if (typeof value !== "string") return "";
-  return value.replace(/[ --]/g, " ").trim();
+  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ").trim();
 }
 
 /**
