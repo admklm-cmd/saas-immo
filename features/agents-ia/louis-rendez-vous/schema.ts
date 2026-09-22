@@ -13,11 +13,21 @@
  * The object is STRICT, so any extra key smuggled in by a prompt injection
  * invalidates the whole answer — and an invalid answer means "no action at all
  * plus a task for a human".
+ *
+ * The message fields carry the same guard rails as Emma's and Sarah's:
+ *   * no link, no amount in euros (`noMoney` — an AI never announces a price
+ *     to a seller, that is an explicit product promise, and Louis had been
+ *     missed by this rule even though Emma and Sarah already had it);
+ *   * no control character (an agency member reads this before it can be
+ *     sent);
+ *   * `message_subject` is additionally a single line, because it becomes an
+ *     email header the day a real provider is connected, and `\r\n` there is
+ *     the classic way to smuggle in a hidden `Bcc:`.
  */
 
 import { z } from "zod";
 
-import { boundedText, confidenceSchema, noUrl } from "@/lib/claude/schemas";
+import { boundedText, confidenceSchema, noControlCharacters, noMoney, noUrl, singleLine } from "@/lib/claude/schemas";
 
 export const LOUIS_SLOT_ID_MAX = 60;
 export const LOUIS_SUBJECT_MAX = 150;
@@ -26,8 +36,8 @@ export const LOUIS_REASON_MAX = 300;
 
 const baseShape = {
   slot_id: z.string().trim().min(1).max(LOUIS_SLOT_ID_MAX),
-  message_subject: noUrl(boundedText(LOUIS_SUBJECT_MAX)),
-  message_body: noUrl(boundedText(LOUIS_BODY_MAX)),
+  message_subject: noMoney(noUrl(singleLine(noControlCharacters(boundedText(LOUIS_SUBJECT_MAX))))),
+  message_body: noMoney(noUrl(noControlCharacters(boundedText(LOUIS_BODY_MAX)))),
   /** Short, factual justification of the chosen slot, journaled with the run. */
   reason: boundedText(LOUIS_REASON_MAX),
   confidence: confidenceSchema,

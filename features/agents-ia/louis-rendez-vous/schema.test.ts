@@ -105,6 +105,47 @@ describe("schéma de Louis — sortie invalide", () => {
       expect(schema.safeParse(raw).success, JSON.stringify(raw)).toBe(false);
     }
   });
+
+  it("refuse tout montant en euros : Louis ne doit jamais annoncer un prix", () => {
+    for (const body of [
+      "Nous estimons votre bien à 450 000 €.",
+      "Comptez environ 450000 euros pour ce bien.",
+      "Autour de € 450 000, à confirmer lors du rendez-vous.",
+    ]) {
+      expect(schema.safeParse({ ...VALID, message_body: body }).success, body).toBe(false);
+    }
+    expect(
+      schema.safeParse({ ...VALID, message_subject: "Estimation autour de 450 000 €" }).success,
+    ).toBe(false);
+  });
+
+  it("refuse un objet multi-ligne : \\r\\n y est une injection d'en-tête d'email", () => {
+    expect(
+      schema.safeParse({ ...VALID, message_subject: "RDV estimation\r\nBcc: pirate@exemple.test" })
+        .success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({ ...VALID, message_subject: "Proposition de rendez-vous\nd'estimation" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("refuse un caractère de contrôle dans l'objet ou dans le corps", () => {
+    expect(
+      schema.safeParse({ ...VALID, message_subject: "RDV\u0000estimation" }).success,
+    ).toBe(false);
+    expect(
+      schema.safeParse({ ...VALID, message_body: "Bonjour,\u0007 voici le créneau proposé." }).success,
+    ).toBe(false);
+  });
+
+  it("accepte un corps légitime sur plusieurs lignes (sauts de ligne et tabulations conservés)", () => {
+    const parsed = schema.safeParse({
+      ...VALID,
+      message_body: "Bonjour Élodie,\n\n\tVoici le créneau proposé.\n\nCordialement,\nLouis",
+    });
+    expect(parsed.success).toBe(true);
+  });
 });
 
 describe("schéma de Louis — contenu malveillant", () => {

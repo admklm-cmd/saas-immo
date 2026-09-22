@@ -93,7 +93,16 @@ nul ou étranger, table `auth.users`, buckets de stockage.
 - **CSRF** : les server actions Next.js sont protégées nativement ; les seules routes API sont les
   trois webhooks, qui ne traitent rien (voir 3.2).
 - **Redirection ouverte** : `?suivant=` filtré par `lib/utils/safe-redirect.ts` (rejette `//`, `/\`,
-  les antislashs et les caractères de contrôle).
+  les antislashs et les caractères de contrôle, plage exacte `\u0000`-` ` (espace comprise) et
+  `\u007F`).
+- **Garde-fous écrits en octets bruts, corrigés (22/09/2026)** : `features/agents-ia/types.ts`
+  (`cleanDraftText`), `lib/utils/safe-redirect.ts` (`FORBIDDEN_CHARACTERS`) et leurs tests
+  contenaient des caractères de contrôle **écrits en octets bruts dans le source** (NUL, ESC, US,
+  DEL) plutôt qu'en séquences d'échappement `\uXXXX`. Conséquence corrigée : Git et les outils de
+  recherche voyaient ces fichiers comme binaires (`file` les classait `data`), ce qui les rendait
+  illisibles en revue et exposés à une corruption silencieuse par un éditeur ou un formateur — un
+  risque direct pour deux garde-fous de sécurité. Remplacés par leurs échappements textuels, à
+  comportement runtime strictement identique (vérifié par test).
 - **En-têtes de sécurité** : appliqués à **toutes** les réponses via `next.config.ts` — CSP
   (`default-src 'self'`, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`, `connect-src` limité au site et au projet Supabase), `X-Frame-Options: DENY`,
@@ -173,9 +182,20 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   entre-temps le dossier à `mandat_signe`, `perdu` ou une autre étape, l'update ne touche aucune ligne,
   le run échoue explicitement et l'étape humaine reste intacte.
 - **Aucun montant en euros écrit par une IA, même en texte libre** : en plus du refus de la base sur
-  `properties.estimated_value_eur`, les schémas d'Emma et de Sarah rejettent tout montant en euros dans
-  un message, un résumé, une objection ou une tâche (`noMoney`, `lib/claude/schemas.ts`). Sarah dit
-  seulement qu'une estimation *a été présentée*, jamais laquelle.
+  `properties.estimated_value_eur`, les schémas d'Emma, de Louis et de Sarah rejettent tout montant en
+  euros dans un message, un résumé, une objection ou une tâche (`noMoney`, `lib/claude/schemas.ts`).
+  Sarah dit seulement qu'une estimation *a été présentée*, jamais laquelle. Louis en avait été oublié
+  jusqu'au 22/09/2026 : son schéma ne portait pas le garde-fou alors qu'annoncer un prix à un vendeur
+  est une promesse explicite du produit — corrigé, couvert par `louis-rendez-vous/schema.test.ts`.
+- **Injection d'en-tête d'email impossible depuis un objet rédigé par l'IA (22/09/2026)** : l'objet
+  (`message_subject`) écrit par Emma et par Louis deviendra un en-tête d'email le jour où un vrai
+  fournisseur sera branché, et le corps du message est assemblé à partir de valeurs CRM que le
+  prospect peut influencer. Deux garde-fous partagés (`noControlCharacters`, `singleLine`,
+  `lib/claude/schemas.ts`) interdisent désormais tout caractère de contrôle dans l'objet et le corps,
+  et imposent que l'objet tienne sur **une seule ligne** (aucun `\r\n`, méthode classique pour
+  glisser un `Bcc:` caché). Le corps conserve volontairement les sauts de ligne et les tabulations
+  d'un message légitime. Couvert par `emma-relation/schema.test.ts` et
+  `louis-rendez-vous/schema.test.ts`.
 - **Dédoublonnage jamais confié à un modèle** : Léa rapproche deux fiches par correspondance **exacte**
   de l'email et du téléphone normalisés, dans le code (`lea-acquisition/dedupe.ts`). Son schéma de
   sortie n'a aucun champ permettant d'affirmer que deux personnes sont la même, et le nom n'est jamais
@@ -243,9 +263,13 @@ nul ou étranger, table `auth.users`, buckets de stockage.
 
 ### 2.7 Dépendances
 
-`npm audit` : **0 vulnérabilité** (16/09/2026). Dépendances peu nombreuses, toutes largement utilisées
+`npm audit` : **0 vulnérabilité** (22/09/2026). Dépendances peu nombreuses, toutes largement utilisées
 et directement justifiées par la stack (`next`, `react`, `@supabase/*`, `zod`, `@date-fns/tz`,
 `server-only`). Aucun SDK de fournisseur d'IA payant n'est installé.
+**Toutes les dépendances sont épinglées à une version exacte** (`package.json` et `package-lock.json`) :
+`@radix-ui/react-icons` portait encore un intervalle (`^1.3.2`), seule exception restante,
+corrigée le 22/09/2026 — une version exacte partout évite qu'une mise à jour mineure non revue
+change silencieusement ce qui est réellement installé.
 
 ---
 
@@ -341,3 +365,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 |---|---|---|
 | 2026-09-16 | Branche `feat/init-prototype`, audit complet (isolation, RLS, secrets, `service_role`, validation, injection de prompt, garde-fous produit, RGPD, en-têtes HTTP, dépendances) | Aucun problème critique. 1 problème élevé et 3 moyens corrigés (en-têtes de sécurité non appliqués, forge de l'auteur d'une entrée d'historique, inscription self-service ouverte, longueur minimale de mot de passe). Livraison autorisée. |
 | 2026-09-22 | Jalon « Relances Emma » : `/agents-ia/relances`, `listEmmaFollowUpCandidates`, `prepareFollowUp`, `AgentActionsPanel`, helper E2E `clearEmmaArtefacts` | Aucun problème critique. 1 problème élevé corrigé (mention de désinscription supprimable par une donnée contrôlée par le prospect, `lib/agents/consent.ts`). Isolation, coupe-circuit, consentement, premier contact humain et injection de prompt vérifiés. Restent 4 points faibles documentés en 3.4. Livraison autorisée. |
+| 2026-09-22 | Réconciliation `feat/agents-et-ecrans-reconcile` : rejeu chirurgical de 3 correctifs identifiés sur la branche de sauvegarde locale (sans écraser le travail distant, dont `hasOptOutInstruction`) | Octets de contrôle bruts remplacés par leurs échappements dans 3 fichiers dont 2 garde-fous (`features/agents-ia/types.ts`, `lib/utils/safe-redirect.ts`, leurs tests). `noMoney` ajouté au schéma de Louis (oublié jusqu'ici). Deux garde-fous partagés `noControlCharacters`/`singleLine` ajoutés contre l'injection d'en-tête d'email dans les objets d'Emma et de Louis. `@radix-ui/react-icons` épinglé en version exacte. 813 → 822 tests verts (`tsc`, lint et Vitest silencieux/verts), aucune régression. |

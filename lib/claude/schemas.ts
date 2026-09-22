@@ -147,3 +147,37 @@ export function noMoney<T extends z.ZodType<string>>(schema: T) {
     message: "aucun montant en euros n'est autorisé dans un texte rédigé par l'IA",
   });
 }
+
+/**
+ * Raw control characters an AI output may legitimately need for formatting: a
+ * tab and a line break (LF or CR). Same allowed set as `cleanDraftText`
+ * (features/agents-ia/types.ts, the human-rewrite path): whatever a human may
+ * safely read and correct. Everything else in the C0 range, plus DEL, is
+ * refused outright rather than silently stripped — a refused answer means "no
+ * draft at all + a task for a human" (CLAUDE.md), which is the right outcome
+ * for a value a model was never supposed to produce.
+ */
+export const CONTROL_CHARACTER_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/;
+
+export function noControlCharacters<T extends z.ZodType<string>>(schema: T) {
+  return schema.refine((value) => !CONTROL_CHARACTER_PATTERN.test(value), {
+    message: "aucun caractère de contrôle n'est autorisé dans un texte rédigé par l'IA",
+  });
+}
+
+/**
+ * A subject becomes an email header the day a real provider is connected: a
+ * `\r\n` inside it is the classic way to smuggle in a second header (a hidden
+ * `Bcc:`, most notably). The body the message is built from can come from
+ * CRM values a prospect controls (their own name, their message), so this
+ * path exists even before any real send. Combine with `noControlCharacters`
+ * for a subject: the two are deliberately layered rather than merged, so a
+ * lone newline (not a full control character) is still caught by this one.
+ */
+export const LINE_BREAK_PATTERN = /[\r\n]/;
+
+export function singleLine<T extends z.ZodType<string>>(schema: T) {
+  return schema.refine((value) => !LINE_BREAK_PATTERN.test(value), {
+    message: "une seule ligne est autorisée : aucun retour à la ligne dans ce texte",
+  });
+}

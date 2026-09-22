@@ -11,17 +11,31 @@
  * smuggled in by a prompt injection invalidates the whole answer, and an
  * invalid answer means "no draft at all + a task for a human".
  *
- * Two refinements protect the draft itself:
+ * Refinements protect the draft itself:
  *   * no link (a link in a message a human will approve is a phishing vector);
  *   * no amount in euros (an estimation figure is what engages the agency in
  *     front of a seller; an AI never produces one — the database refuses it on
  *     `properties.estimated_value_eur`, and this refusal closes the free-text
- *     way round).
+ *     way round);
+ *   * no control character anywhere (an agency member reads this before it can
+ *     be sent, so it must display as plain text — not be corrupted by one);
+ *   * `message_subject` is additionally a single line: it becomes an email
+ *     header the day a real provider is connected, and `\r\n` there is the
+ *     classic way to smuggle in a hidden `Bcc:`. The body is built partly from
+ *     CRM values a prospect controls, so this path exists even in the
+ *     prototype.
  */
 
 import { z } from "zod";
 
-import { boundedText, confidenceSchema, noMoney, noUrl } from "@/lib/claude/schemas";
+import {
+  boundedText,
+  confidenceSchema,
+  noControlCharacters,
+  noMoney,
+  noUrl,
+  singleLine,
+} from "@/lib/claude/schemas";
 
 export const EMMA_SUBJECT_MAX = 150;
 export const EMMA_BODY_MAX = 900;
@@ -49,8 +63,10 @@ export const emmaFollowUpSchema = z
      * `null` for a channel that has no subject (SMS, WhatsApp). The CODE
      * decides whether the subject is kept, from the channel it chose itself.
      */
-    message_subject: noMoney(noUrl(boundedText(EMMA_SUBJECT_MAX))).nullable(),
-    message_body: noMoney(noUrl(boundedText(EMMA_BODY_MAX))),
+    message_subject: noMoney(
+      noUrl(singleLine(noControlCharacters(boundedText(EMMA_SUBJECT_MAX)))),
+    ).nullable(),
+    message_body: noMoney(noUrl(noControlCharacters(boundedText(EMMA_BODY_MAX)))),
     /** How Emma framed the message. Journaled, never used to decide anything. */
     angle: z.enum(FOLLOW_UP_ANGLES),
     /** Short, factual justification, journaled with the run. */

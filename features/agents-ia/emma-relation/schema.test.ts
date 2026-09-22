@@ -91,6 +91,34 @@ describe("schéma de sortie d'Emma — contenu interdit dans un message", () => 
       }).success,
     ).toBe(true);
   });
+
+  it("refuse un objet multi-ligne : \\r\\n y est une injection d'en-tête d'email", () => {
+    expect(
+      emmaFollowUpSchema.safeParse({ ...VALID, message_subject: "Suivi\r\nBcc: pirate@exemple.test" })
+        .success,
+    ).toBe(false);
+    expect(
+      emmaFollowUpSchema.safeParse({ ...VALID, message_subject: "Suivi de votre projet\nà La Ciotat" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("refuse un caractère de contrôle dans l'objet ou dans le corps", () => {
+    expect(
+      emmaFollowUpSchema.safeParse({ ...VALID, message_subject: "Suivi\u0000de votre projet" }).success,
+    ).toBe(false);
+    expect(
+      emmaFollowUpSchema.safeParse({ ...VALID, message_body: "Bonjour,\u0007 voici le point." }).success,
+    ).toBe(false);
+  });
+
+  it("accepte un corps légitime sur plusieurs lignes (sauts de ligne et tabulations conservés)", () => {
+    const parsed = emmaFollowUpSchema.safeParse({
+      ...VALID,
+      message_body: "Bonjour Sophie,\n\n\tVoici le point sur votre dossier.\n\nCordialement,\nEmma",
+    });
+    expect(parsed.success).toBe(true);
+  });
 });
 
 describe("schéma de sortie d'Emma — réponses malveillantes", () => {
