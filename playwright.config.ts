@@ -26,6 +26,11 @@ export default defineConfig({
     locale: "fr-FR",
     timezoneId: "Europe/Paris",
     trace: "on-first-retry",
+    // No journey may depend on an animation to be usable or testable: the
+    // suite runs in reduced motion by default (see docs/design-system.md).
+    // Tests that specifically exercise a real animation opt back in locally
+    // with `test.use({ reducedMotion: "no-preference" })`.
+    reducedMotion: "reduce",
   },
   projects: [
     {

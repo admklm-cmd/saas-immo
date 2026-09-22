@@ -67,7 +67,65 @@ test("écran Agents IA : les cinq agents, l'activité de l'agence et l'historiqu
   await expect(page.getByTestId("run-history")).toBeVisible();
 });
 
-test("rejeu animé : Hugo lancé depuis une fiche contact, puis rejoué depuis le journal", async ({ page }) => {
+// The replay only unfolds step by step under real motion: reduced motion (the
+// default for this whole file, see playwright.config.ts) shows every step at
+// once by design (see the accessibility test below). This group opts back
+// into real motion, locally, to exercise the actual animation.
+test.describe("rejeu animé (mouvement complet)", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("rejeu animé : Hugo lancé depuis une fiche contact, puis rejoué depuis le journal", async ({
+    page,
+  }) => {
+    await signIn(page, "agentA");
+    await page.goto(`/contacts/${CONTACT_ID}`);
+    await expect(page.getByTestId("agent-actions")).toBeVisible({ timeout: COLD_START });
+
+    await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
+
+    const replay = page.getByTestId("agent-replay");
+    await expect(replay).toBeVisible({ timeout: COLD_START });
+    // The replay says how it is played back: real speed, or an announced slowdown.
+    await expect(replay).toContainText(/Rejeu (ralenti ×\d+|à vitesse réelle)/);
+
+    // It unfolds: the steps appear one after the other, they are not dumped at once.
+    const steps = replay.getByTestId("replay-step");
+    const firstCount = await steps.count();
+    expect(firstCount).toBeGreaterThan(0);
+    await expect.poll(async () => steps.count(), { timeout: 30_000 }).toBeGreaterThan(firstCount);
+
+    // "Tout afficher" ends the animation immediately when the user asks.
+    const showAll = replay.getByTestId("replay-show-all");
+    if (await showAll.isVisible()) {
+      await showAll.click();
+    }
+    await expect(replay.getByTestId("replay-restart")).toBeVisible({ timeout: 30_000 });
+
+    const finalCount = await steps.count();
+    expect(finalCount).toBeGreaterThanOrEqual(5);
+    // The decision is a step of its own, distinct from the call to the provider.
+    await expect(replay).toContainText(AGENT_RUN_PHASE_LABELS.decision);
+    await expect(replay).toContainText(AGENT_RUN_PHASE_LABELS.ai_call);
+    await expect(replay).toContainText(APP_TEXTS.replay.decisionMarker);
+
+    // Same execution, replayed later from the journal: same steps, persisted.
+    await replay.getByRole("link", { name: APP_TEXTS.agentsIa.viewReplay }).click();
+    await expect(page).toHaveURL(/\/agents-ia\/executions\//, { timeout: COLD_START });
+    const journalReplay = page.getByTestId("replay");
+    await expect(journalReplay).toBeVisible({ timeout: COLD_START });
+    await expect(page.getByText(APP_TEXTS.states.simulation).first()).toBeVisible();
+    await expect
+      .poll(async () => journalReplay.getByTestId("replay-step").count(), { timeout: 30_000 })
+      .toBe(finalCount);
+  });
+});
+
+test("accessibilité : mouvement réduit — le rejeu montre toutes les étapes d'emblée, sans étape par étape", async ({
+  page,
+}) => {
+  // Default project setting (playwright.config.ts): reducedMotion "reduce".
+  // A person sensitive to motion must get the full, finished execution the
+  // instant it renders — never a partial list waiting on a timer.
   await signIn(page, "agentA");
   await page.goto(`/contacts/${CONTACT_ID}`);
   await expect(page.getByTestId("agent-actions")).toBeVisible({ timeout: COLD_START });
@@ -76,38 +134,23 @@ test("rejeu animé : Hugo lancé depuis une fiche contact, puis rejoué depuis l
 
   const replay = page.getByTestId("agent-replay");
   await expect(replay).toBeVisible({ timeout: COLD_START });
-  // The replay says how it is played back: real speed, or an announced slowdown.
-  await expect(replay).toContainText(/Rejeu (ralenti ×\d+|à vitesse réelle)/);
 
-  // It unfolds: the steps appear one after the other, they are not dumped at once.
+  // Every step is already there — no polling for growth, unlike the real-motion
+  // test above: there is nothing left to unfold.
   const steps = replay.getByTestId("replay-step");
-  const firstCount = await steps.count();
-  expect(firstCount).toBeGreaterThan(0);
-  await expect.poll(async () => steps.count(), { timeout: 30_000 }).toBeGreaterThan(firstCount);
-
-  // "Tout afficher" ends the animation immediately when the user asks.
-  const showAll = replay.getByTestId("replay-show-all");
-  if (await showAll.isVisible()) {
-    await showAll.click();
-  }
-  await expect(replay.getByTestId("replay-restart")).toBeVisible({ timeout: 30_000 });
-
-  const finalCount = await steps.count();
-  expect(finalCount).toBeGreaterThanOrEqual(5);
-  // The decision is a step of its own, distinct from the call to the provider.
+  const immediateCount = await steps.count();
+  expect(immediateCount).toBeGreaterThanOrEqual(5);
   await expect(replay).toContainText(AGENT_RUN_PHASE_LABELS.decision);
   await expect(replay).toContainText(AGENT_RUN_PHASE_LABELS.ai_call);
-  await expect(replay).toContainText(APP_TEXTS.replay.decisionMarker);
 
-  // Same execution, replayed later from the journal: same steps, persisted.
-  await replay.getByRole("link", { name: APP_TEXTS.agentsIa.viewReplay }).click();
-  await expect(page).toHaveURL(/\/agents-ia\/executions\//, { timeout: COLD_START });
-  const journalReplay = page.getByTestId("replay");
-  await expect(journalReplay).toBeVisible({ timeout: COLD_START });
-  await expect(page.getByText(APP_TEXTS.states.simulation).first()).toBeVisible();
-  await expect
-    .poll(async () => journalReplay.getByTestId("replay-step").count(), { timeout: 30_000 })
-    .toBe(finalCount);
+  // Nothing is mid-animation: the list isn't flagged busy, and there is
+  // nothing left to skip, so "Tout afficher" has no reason to exist.
+  await expect(replay.getByTestId("replay-steps")).not.toHaveAttribute("aria-busy", "true");
+  await expect(replay.getByTestId("replay-show-all")).toHaveCount(0);
+
+  // The live region used to announce each step during playback already
+  // reads "finished": there is no step-by-step narration to catch up on.
+  await expect(replay).toContainText(APP_TEXTS.replay.finished);
 });
 
 test("coupe-circuit : suspendu depuis l'écran, un agent refuse de tourner et le blocage est rejouable", async ({
