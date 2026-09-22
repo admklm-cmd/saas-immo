@@ -1,7 +1,8 @@
 # Sécurité — état des lieux
 
-**Dernière revue** : 2026-09-16 — audit complet de la branche `feat/init-prototype` (tâche 7 du plan
-`docs/plans/2026-09-15-init-prototype.md`), par l'agent `cybersecurite`.
+**Dernière revue** : 2026-09-22 — audit du jalon « Relances Emma » (écran `/agents-ia/relances`,
+lecture serveur `listEmmaFollowUpCandidates`, chemin `prepareFollowUp`), par l'agent `cybersecurite`.
+Revue complète précédente : 2026-09-16, branche `feat/init-prototype`.
 
 Ce document décrit **ce qui est réellement couvert aujourd'hui** et **ce qui ne l'est pas encore**.
 Il ne promet aucune sécurité absolue : aucun système n'est inviolable, et une partie des protections
@@ -186,6 +187,18 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   courant du canal (vue `current_consents`) **avant** d'appeler le modèle ; sans lui, aucun brouillon
   n'est écrit et une tâche est ouverte. Un consentement retiré invalide le canal, et un consentement
   `phone` n'autorise jamais un message.
+- **Mention de désinscription impossible à supprimer par le contenu du prospect** : la mention est
+  ajoutée par le code (`lib/agents/consent.ts`) à tout message qui ne porte pas déjà une **consigne**
+  de désinscription. Jusqu'au 22/09/2026 la détection se contentait du mot `STOP` : une valeur
+  contrôlée par le prospect et recopiée dans le corps (prénom, nom de l'agence, texte repris par le
+  modèle) suffisait à faire sauter une mention légalement obligatoire. Corrigé et couvert par
+  `lib/agents/consent.test.ts` et `features/agents-ia/emma-relation/emma.integration.test.ts`
+  (prénom `« STOP Jean »`).
+- **L'écran de relances ne décide rien** : `listEmmaFollowUpCandidates` (lecture) ne sert qu'à
+  l'affichage ; `prepareFollowUp` revérifie session, agence, coupe-circuit, quota, reprise humaine,
+  étape, double brouillon et consentement courant au moment du clic. La RLS reste la frontière : la
+  lecture le prouve sans son filtre applicatif dans
+  `features/agents-ia/emma-follow-ups.integration.test.ts`.
 - **Aucun double brouillon de relance** : garanti deux fois — par le code (un brouillon déjà en attente
   bloque une seconde exécution) et par la base (clé d'idempotence `emma-<contact>-<jour parisien>`,
   unique par agence).
@@ -281,6 +294,19 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
   suivi partiel, clairement marqué en échec. Le durcissement complet demande un RPC transactionnel
   unique qui applique l'étape avec verrou optimiste, crée les tâches idempotentes et ajoute l'activité.
 - **Pas de journal d'audit des accès en lecture** (qui a consulté quelle fiche).
+- **L'écran de relances n'affiche pas le coupe-circuit** : `EmmaFollowUpCandidateView.canPrepare` ne
+  lit pas `agencies.ai_paused`. Un dossier apparaît donc « prêt » alors que l'agence a suspendu ses
+  agents ; le clic est refusé côté serveur, journalisé en `blocked` avec son étape explicative, et
+  l'écran affiche le refus. Défaut d'ergonomie et de confiance dans le coupe-circuit, pas de faille :
+  aucun écran ne peut de toute façon être autoritaire (la pause peut survenir entre l'affichage et le
+  clic).
+- **Un accès à un contact d'une autre agence n'est pas journalisé** : la réponse est générique
+  (`contact_not_found`, identique à « n'existe pas »), mais aucune trace n'est écrite — il n'y a donc
+  pas de détection d'un balayage d'identifiants. À traiter avec le journal des accès sensibles.
+- **Aucune règle de lint n'interdit d'importer `e2e/` ou `fixtures/` depuis le code applicatif.** Les
+  outils qui utilisent la clé de service (`e2e/helpers/local-supabase.ts`,
+  `lib/supabase/testing/`) sont protégés à l'exécution (`assertNotProduction` +
+  `assertLocalSupabaseUrl`), mais la barrière reste conventionnelle à la compilation.
 - Aucun test de charge, aucune revue d'infrastructure : hors périmètre de ce skill et de ce prototype.
 
 ---
@@ -314,3 +340,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 | Date | Portée | Résultat |
 |---|---|---|
 | 2026-09-16 | Branche `feat/init-prototype`, audit complet (isolation, RLS, secrets, `service_role`, validation, injection de prompt, garde-fous produit, RGPD, en-têtes HTTP, dépendances) | Aucun problème critique. 1 problème élevé et 3 moyens corrigés (en-têtes de sécurité non appliqués, forge de l'auteur d'une entrée d'historique, inscription self-service ouverte, longueur minimale de mot de passe). Livraison autorisée. |
+| 2026-09-22 | Jalon « Relances Emma » : `/agents-ia/relances`, `listEmmaFollowUpCandidates`, `prepareFollowUp`, `AgentActionsPanel`, helper E2E `clearEmmaArtefacts` | Aucun problème critique. 1 problème élevé corrigé (mention de désinscription supprimable par une donnée contrôlée par le prospect, `lib/agents/consent.ts`). Isolation, coupe-circuit, consentement, premier contact humain et injection de prompt vérifiés. Restent 4 points faibles documentés en 3.4. Livraison autorisée. |

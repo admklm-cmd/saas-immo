@@ -75,12 +75,29 @@ export function chooseChannel(input: ChannelInput): ChannelResult {
  */
 export const UNSUBSCRIBE_NOTICE = "Pour ne plus recevoir de messages de notre part, répondez STOP.";
 
-/** Detects an opt-out keyword already present in the body (avoids duplicates). */
-const STOP_PATTERN = /\bSTOP\b/;
+/**
+ * Detects an opt-out INSTRUCTION already present in the body, so the notice is
+ * not written twice.
+ *
+ * Deliberately NOT a bare `\bSTOP\b` match. The body is assembled from values a
+ * prospect can influence (first name, agency name, free text echoed by the
+ * model), so the mere word "STOP" anywhere — `first_name = "STOP Jean"` is
+ * enough — must never be able to suppress a legally required mention. Only a
+ * real instruction ("répondez STOP", "envoyez STOP"…) counts, plus the exact
+ * notice the code itself adds.
+ */
+const OPT_OUT_INSTRUCTION =
+  /(?:r[ée]pond(?:ez|re)|renvoy(?:ez|er)|envoy(?:ez|er)|[ée]criv(?:ez|re)|tapez|texto?)[^.!?\n]{0,40}\bSTOP\b/i;
+
+/** True when the body already carries a usable opt-out instruction. */
+export function hasOptOutInstruction(body: string): boolean {
+  const text = body.normalize("NFC");
+  return text.includes(UNSUBSCRIBE_NOTICE) || OPT_OUT_INSTRUCTION.test(text);
+}
 
 export function composeMessageBody(body: string, signature?: string | null): string {
   const parts = [body.trim()];
   if (signature && signature.trim().length > 0) parts.push(signature.trim());
-  if (!STOP_PATTERN.test(body)) parts.push(UNSUBSCRIBE_NOTICE);
+  if (!hasOptOutInstruction(body)) parts.push(UNSUBSCRIBE_NOTICE);
   return parts.join("\n\n");
 }

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { UNSUBSCRIBE_NOTICE } from "@/lib/agents/consent";
 import { setupTestEnv, type TestEnv, type TypedClient } from "@/lib/supabase/testing/local-test-env";
 
 import { runEmmaFollowUp } from "./emma";
@@ -31,6 +32,8 @@ let userB: TypedClient;
 
 type Seed = {
   notes?: string;
+  /** Prospect-controlled value: it reaches the prompt as untrusted data. */
+  firstName?: string;
   stage?: "nouveau" | "qualifie" | "chaud" | "rdv_planifie" | "estimation_faite" | "mandat_signe" | "perdu";
   email?: string | null;
   phone?: string | null;
@@ -45,7 +48,7 @@ async function createContact(label: string, seed: Seed = {}): Promise<string> {
     .from("contacts")
     .insert({
       agency_id: agency.agencyId,
-      first_name: "Emma",
+      first_name: seed.firstName ?? "Emma",
       last_name: `Test ${label}`,
       email: seed.email === undefined ? `emma-${label}.${env.runId}@example.test` : seed.email,
       phone: seed.phone === undefined ? "06 39 98 20 01" : seed.phone,
@@ -373,6 +376,36 @@ describe("Emma — texte malveillant", () => {
       .eq("id", contactId)
       .single();
     expect(contact!.stage).toBe("qualifie");
+  });
+
+  /**
+   * Security regression: the opt-out mention is added by the code and must not
+   * be suppressible by a value the prospect controls. The first name travels to
+   * the prompt as untrusted data and is echoed into the body, so a first name
+   * containing the bare word "STOP" used to make the code believe an opt-out
+   * was already there — and the draft went out without any.
+   */
+  it("un prénom contenant « STOP » ne supprime pas la mention de désinscription", async () => {
+    const contactId = await createContact("stop-dans-le-prenom", { firstName: "STOP Jean" });
+
+    const result = await runEmmaFollowUp(agentA, contactId);
+
+    expect(result.error).toBeNull();
+    expect(result.data!.messageBody).toContain(UNSUBSCRIBE_NOTICE);
+
+    const messages = await readMessages(contactId);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]!.body).toContain(UNSUBSCRIBE_NOTICE);
+    expect(messages[0]!.status).toBe("pending_validation");
+  });
+
+  it("chaque brouillon porte la mention de désinscription, sans doublon", async () => {
+    const contactId = await createContact("mention-desinscription");
+
+    const result = await runEmmaFollowUp(agentA, contactId);
+
+    expect(result.error).toBeNull();
+    expect(result.data!.messageBody.split(UNSUBSCRIBE_NOTICE)).toHaveLength(2);
   });
 });
 
