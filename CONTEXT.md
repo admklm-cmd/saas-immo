@@ -164,13 +164,14 @@ signal traversant, activité discrète, version mobile verticale et arrêt des a
 `prefers-reduced-motion`.
 
 Révision demandée ensuite : les cinq cases sont désormais alignées. Elles utilisent des glyphes
-monochromes techniques (`⬡`, `▥`, `</>`, `✦`, `✓`). Le cycle dure 10 secondes : toutes les deux
+monochromes Radix 15 × 15 (`LockClosedIcon`, `FileTextIcon`, `CodeIcon`, `MagicWandIcon`,
+`CheckCircledIcon`). Le cycle dure 10 secondes : toutes les deux
 secondes, le signal rejoint la case suivante, qui se soulève légèrement et renforce son contraste.
 Chaque case commence par une nano-sphère ; au passage du signal, elle se dilate et révèle l’icône,
 qui reste visible jusqu’à la fin du cycle. La longue barre inférieure se remplit continuellement,
-comme un téléchargement. Une installation de `@phosphor-icons/react` a été tentée,
-mais npm l’a refusée avec `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. La jonction `node_modules` a été
-restaurée immédiatement et `package.json`/`package-lock.json` n’ont pas été modifiés.
+comme un téléchargement. `@radix-ui/react-icons@1.3.2` a été ajouté aux dépendances. L’installation
+a été faite dans le dépôt original avec `NODE_OPTIONS=--use-system-ca` et un cache npm placé dans le
+workspace, puis `package.json` et `package-lock.json` ont été synchronisés vers le clone.
 
 Le prototype est visible sur `http://127.0.0.1:3201/dev/animations` lorsque le serveur clone tourne.
 Il a été ouvert et contrôlé visuellement dans le navigateur. **Ne pas l’intégrer dans
