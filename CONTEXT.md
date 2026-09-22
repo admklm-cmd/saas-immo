@@ -31,7 +31,7 @@ externe reste simulée.
 `C:\Users\admha\Documents\Codex\2026-09-18\fa\saas-immo-work-local2`
 
 - Branche : `feat/agents-et-ecrans`
-- HEAD : `7523683 feat: redesign public landing around agent journey`
+- HEAD avant le présent jalon : `d72167e docs: record Radix icon prototype`
 - Remote : `https://github.com/admklm-cmd/saas-immo.git`
 - État distant : branche locale en avance de 5 commits sur `origin/feat/agents-et-ecrans`.
 - Le push a échoué auparavant avec `SEC_E_NO_CREDENTIALS` ; `gh` n’est pas installé.
@@ -39,13 +39,14 @@ externe reste simulée.
   build et le serveur (`npm run build -- --webpack`, `npm run dev -- --webpack`). Turbopack refuse
   la dépendance externe liée.
 
-Commits créés pendant la reprise :
+Principaux commits créés pendant la reprise :
 
 1. `4ee0e4a feat: complete Lea inbox and secure agent workflows`
 2. `622ac81 feat: add accessible motion foundation`
 3. `7a4a4fc chore: add portable agent development harness`
 4. `6e7433d feat: complete human appointment follow-through with Sarah`
 5. `7523683 feat: redesign public landing around agent journey`
+6. `cef6e3e` à `d72167e` : documentation du passage de relais et itérations du prototype motion
 
 ### Dépôt original ouvert habituellement dans VS Code
 
@@ -139,7 +140,7 @@ Attention produit : aucune cadence de relance n’est définie. Ne jamais affich
 « due ». Le MVP est déclenché manuellement ; le serveur choisit le canal et revérifie consentement,
 doublon, quota, coupe-circuit et reprise humaine au clic.
 
-### 4.2 Prototype d’animation fourni par l’utilisateur
+### 4.2 Animation du processus agent
 
 Référence utilisateur : `D:\Telechargements\agent_process_motion (1).html`.
 
@@ -148,8 +149,12 @@ Fichiers ajoutés/modifiés :
 - `app/dev/animations/AgentProcessMotionPrototype.tsx`
 - `app/dev/animations/AgentProcessMotionPrototype.module.css`
 - `app/dev/animations/AnimationGallery.tsx`
+- `features/agents-ia/components/AgentRunProcessTrack.tsx`
+- `features/agents-ia/components/AgentRunProcessTrack.module.css`
+- `features/agents-ia/components/AgentRunReplay.tsx`
+- `features/agents-ia/components/AgentRunReplay.test.tsx`
 
-Demande exacte : tester et montrer le rendu avant de l’intégrer dans les écrans réels. Le prototype
+Demande initiale : tester et montrer le rendu avant de l’intégrer dans les écrans réels. Le prototype
 reprend la carte extensible et place le processus sur un fond pointillé basé sur :
 
 ```css
@@ -173,10 +178,17 @@ comme un téléchargement. `@radix-ui/react-icons@1.3.2` a été ajouté aux dé
 a été faite dans le dépôt original avec `NODE_OPTIONS=--use-system-ca` et un cache npm placé dans le
 workspace, puis `package.json` et `package-lock.json` ont été synchronisés vers le clone.
 
-Le prototype est visible sur `http://127.0.0.1:3201/dev/animations` lorsque le serveur clone tourne.
-Il a été ouvert et contrôlé visuellement dans le navigateur. **Ne pas l’intégrer dans
-`AgentRunReplay` avant validation explicite du rendu par l’utilisateur.** Le fond pointillé doit rester
-derrière la partie processus, pas devenir le fond global du produit.
+Le rendu a été validé explicitement par l’utilisateur puis intégré dans `AgentRunReplay` via
+`AgentRunProcessTrack`. Les écrans qui utilisent le rejeu réel en bénéficient automatiquement.
+La vue affiche toutes les phases enregistrées, garde les nano-sphères pour les étapes en attente,
+révèle les icônes Radix au passage et conserve la liste détaillée sous le flux.
+
+Le signal et la barre inférieure ne simulent aucune durée : ils utilisent `durationMs` et le même
+facteur de ralentissement annoncé que le rejeu. « Tout afficher » et le mouvement réduit placent
+immédiatement la vue dans son état final, sans minuteur. La galerie montre maintenant le prototype
+de référence et une démonstration du composant réellement partagé. Contrôle visuel effectué sur
+`http://127.0.0.1:3201/dev/animations` : sept cases alignées, aucun débordement horizontal sur bureau,
+signal court de 26 px et barre mesurée fonctionnels. Le fond pointillé reste limité au processus.
 
 ## 5. Tests réellement exécutés
 
@@ -194,8 +206,10 @@ Travail courant :
 
 - `EmmaFollowUpCard.test.tsx` + garde de la galerie : **2 fichiers, 4 tests réussis** ;
 - `npm run typecheck` après l’ajout de la query Emma : **réussi le 22/09/2026** ;
-- `npm run lint` après la révision du prototype : **réussi le 22/09/2026** ;
-- aucun build complet n’a encore été relancé sur Emma + prototype.
+- rejeu intégré : `AgentRunReplay.test.tsx` + garde galerie, **2 fichiers, 8 tests réussis** ;
+- `npm run typecheck` après l’intégration du flux : **réussi le 22/09/2026** ;
+- `npm run lint` après l’intégration du flux : **réussi le 22/09/2026** ;
+- `npm run build -- --webpack` sur Emma + flux intégré : **réussi le 22/09/2026**.
 
 Playwright : la préparation des fixtures fonctionne, mais le lancement de Chromium a été bloqué par
 le sandbox Windows avec `spawn EPERM`. Commande à relancer dans un terminal utilisateur normal :
@@ -259,7 +273,5 @@ consentements par canal avec cases non précochées. Il faut ensuite démontrer 
 - Le premier message et le mandat signé restent humains.
 - Garder tous les envois et rendez-vous marqués Simulation.
 - Aucun déploiement distant ni migration distante sans demande explicite.
-- Corriger la section « limites connues » de `docs/design-system.md` : elle affirme encore que
-  `Reveal`, `rise-soft`, `stagger` et la galerie ne sont pas livrés, alors qu’ils existent.
 - `playwright.config.ts` ne force pas encore `reducedMotion: "reduce"` ; la phase 3 du plan motion
   reste donc incomplète.

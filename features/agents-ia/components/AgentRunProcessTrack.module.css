@@ -1,0 +1,226 @@
+.process {
+  margin-top: 16px;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  background-color: #fff;
+  background-image: radial-gradient(circle, rgb(181 181 181 / 58%) 1.5px, transparent 2px);
+  background-position: 14px 20px;
+  background-size: 60px 60px;
+}
+
+.heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgb(228 228 226 / 88%);
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(8px);
+}
+
+.title {
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+}
+
+.subtitle,
+.state,
+.activityMeta {
+  color: var(--color-ink-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.subtitle { margin-top: 3px; }
+
+.state {
+  flex: none;
+  padding-top: 2px;
+  font-weight: 600;
+}
+
+.scroller {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.system {
+  position: relative;
+  display: grid;
+  min-width: max(560px, calc(var(--step-count) * 92px));
+  min-height: 184px;
+  grid-template-columns: repeat(var(--step-count), minmax(0, 1fr));
+  align-items: center;
+  padding: 28px 18px 20px;
+}
+
+.rail {
+  position: absolute;
+  top: 73px;
+  right: calc(50% / var(--step-count));
+  left: calc(50% / var(--step-count));
+  height: 7px;
+  overflow: hidden;
+  background: linear-gradient(transparent 3px, #d7d7d4 3px, #d7d7d4 4px, transparent 4px);
+}
+
+.signalTravel {
+  display: block;
+  width: calc(100% - 26px);
+  transform: translateX(calc(var(--signal-ratio) * 100%));
+  transition: transform var(--signal-duration) linear;
+}
+
+.signal {
+  display: block;
+  width: 26px;
+  height: 3px;
+  transform: translateY(2px);
+  border-radius: 999px;
+  background: #111;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 82%);
+}
+
+.node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+}
+
+.nodeCore {
+  position: relative;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border: 1px solid #d8d8d5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 5%);
+  color: #171717;
+  transition:
+    transform var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
+}
+
+.nodeOrb {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #737371;
+  box-shadow: 0 0 0 3px rgb(0 0 0 / 4%);
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.nodeIcon {
+  opacity: 0;
+  transform: scale(.55);
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.node[data-state="done"] .nodeOrb,
+.node[data-state="active"] .nodeOrb {
+  opacity: 0;
+  transform: scale(4.2);
+}
+
+.node[data-state="done"] .nodeIcon,
+.node[data-state="active"] .nodeIcon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.node[data-state="active"] .nodeCore {
+  transform: translateY(-3px) scale(1.07);
+  border-color: #8e8e8a;
+  box-shadow: 0 10px 25px rgb(0 0 0 / 10%), 0 0 0 5px rgb(255 255 255 / 84%);
+}
+
+.node[data-status="blocked"] .nodeCore,
+.node[data-status="failed"] .nodeCore {
+  border-style: dashed;
+}
+
+.nodeLabel {
+  max-width: 88px;
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  text-overflow: ellipsis;
+}
+
+.activity {
+  padding: 13px 20px 18px;
+  border-top: 1px solid rgb(228 228 226 / 88%);
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(8px);
+}
+
+.activityMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.activityBar {
+  height: 4px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9e9e7;
+}
+
+.activityBar > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  border-radius: inherit;
+  background: #111;
+  box-shadow: 8px 0 16px rgb(0 0 0 / 16%);
+}
+
+.progressRunning {
+  animation: measured-progress var(--replay-duration) linear forwards;
+}
+
+.progressComplete { transform: scaleX(1); }
+
+@keyframes measured-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@media (max-width: 640px) {
+  .heading { padding-inline: 16px; }
+  .activity { padding-inline: 16px; }
+  .system { min-width: max(520px, calc(var(--step-count) * 84px)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signalTravel,
+  .nodeCore,
+  .nodeOrb,
+  .nodeIcon { transition: none; }
+  .progressRunning { animation: none; transform: scaleX(1); }
+}

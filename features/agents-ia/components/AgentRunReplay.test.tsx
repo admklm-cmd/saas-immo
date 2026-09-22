@@ -73,12 +73,25 @@ describe("AgentRunReplay", () => {
       vi.advanceTimersByTime(0);
     });
     expect(visibleSteps()).toHaveLength(1);
+    expect(screen.getAllByTestId("replay-process-node")).toHaveLength(4);
+    expect(screen.getAllByTestId("replay-process-node").map((node) => node.getAttribute("data-state"))).toEqual([
+      "active",
+      "pending",
+      "pending",
+      "pending",
+    ]);
 
     // 100 ms measured × 10 = the first step closes, the second opens.
     act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(visibleSteps()).toHaveLength(2);
+    expect(screen.getAllByTestId("replay-process-node").map((node) => node.getAttribute("data-state"))).toEqual([
+      "done",
+      "active",
+      "pending",
+      "pending",
+    ]);
 
     // Not a millisecond earlier: the second step lasted 200 ms (× 10).
     act(() => {
@@ -96,6 +109,9 @@ describe("AgentRunReplay", () => {
     });
     expect(visibleSteps()).toHaveLength(4);
     expect(screen.getByTestId("replay-restart")).toBeDefined();
+    expect(screen.getAllByTestId("replay-process-node").every((node) => node.getAttribute("data-state") === "done")).toBe(
+      true,
+    );
   });
 
   it("separates what the code does from the single call to the AI provider", () => {
@@ -123,6 +139,7 @@ describe("AgentRunReplay", () => {
     });
     expect(visibleSteps()).toHaveLength(4);
     expect(screen.queryByTestId("replay-show-all")).toBeNull();
+    expect(screen.getByRole("progressbar", { name: TEXTS.measuredProgress }).getAttribute("aria-valuenow")).toBe("4");
   });
 
   it("honours prefers-reduced-motion: no animation, the whole list is there", () => {
@@ -135,6 +152,9 @@ describe("AgentRunReplay", () => {
     expect(vi.getTimerCount()).toBe(0);
     expect(screen.queryByTestId("replay-show-all")).toBeNull();
     expect(screen.queryByTestId("replay-restart")).toBeNull();
+    expect(screen.getAllByTestId("replay-process-node").every((node) => node.getAttribute("data-state") === "done")).toBe(
+      true,
+    );
   });
 
   it("shows where and why a blocked run stopped", () => {

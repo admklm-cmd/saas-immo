@@ -191,6 +191,11 @@ export const APP_TEXTS = {
     speedFactorHint:
       "Seule la vitesse du rejeu est ralentie : les durées affichées restent les durées réellement mesurées.",
     realSpeed: "Rejeu à vitesse réelle",
+    flowTitle: "Flux d’exécution",
+    flowSubtitle: "Chaque passage correspond à une étape réellement enregistrée.",
+    activityRunning: "Activité en cours",
+    activityComplete: "Exécution complète",
+    measuredProgress: "Progression mesurée",
     showAll: "Tout afficher",
     replayAgain: "Rejouer",
     playing: "Rejeu en cours…",

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
 import { AgentRunStepRow } from "./AgentRunStepRow";
+import { AgentRunProcessTrack } from "./AgentRunProcessTrack";
 import {
   buildReplaySchedule,
   replayLengthMs,
@@ -74,6 +75,7 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
   const [doneCount, setDoneCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [announced, setAnnounced] = useState("");
+  const [replayCycle, setReplayCycle] = useState(0);
 
   // Kept in a ref so a re-render of the parent never restarts a replay in
   // progress: the schedule is built once, from the steps of this run.
@@ -122,6 +124,7 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
     setDoneCount(0);
     setActiveIndex(null);
     setAnnounced("");
+    setReplayCycle((cycle) => cycle + 1);
     setMode("play");
   }, []);
 
@@ -165,6 +168,16 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
       </div>
 
       {factor > 1 ? <p className="pt-3 text-xs text-ink-subtle">{TEXTS.speedFactorHint}</p> : null}
+
+      <AgentRunProcessTrack
+        steps={steps}
+        activeIndex={activeIndex}
+        doneCount={doneCount}
+        animating={animating}
+        replayDurationMs={replayLengthMs(steps, factor)}
+        speedFactor={factor}
+        replayCycle={replayCycle}
+      />
 
       <ol className="mt-4 flex flex-col" aria-busy={animating || undefined} data-testid="replay-steps">
         {visible.map(({ step, index }) => (

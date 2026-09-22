@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { AgentRunReplay } from "@/features/agents-ia/components/AgentRunReplay";
+import type { ReplayStep } from "@/features/agents-ia/components/replay";
+
+import { AgentProcessMotionPrototype } from "./AgentProcessMotionPrototype";
 
 const DEMOS = [
   { name: "rise", detail: "300 ms · entrée de section", className: "animate-rise" },
@@ -10,6 +14,16 @@ const DEMOS = [
   { name: "fade", detail: "220 ms · alerte ou confirmation", className: "animate-fade" },
   { name: "settle", detail: "220 ms · changement d’état", className: "animate-settle" },
 ] as const;
+
+const PROCESS_DEMO: ReplayStep[] = [
+  { key: "demo-guardrails", phase: "guardrails", phaseLabel: "Garde-fous", label: "Règles de l’agence vérifiées.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.000Z", finishedAt: "2026-09-22T08:00:00.100Z", durationMs: 100 },
+  { key: "demo-context", phase: "context_loaded", phaseLabel: "Dossier chargé", label: "Contexte utile chargé.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.100Z", finishedAt: "2026-09-22T08:00:00.250Z", durationMs: 150 },
+  { key: "demo-prompt", phase: "prompt_built", phaseLabel: "Prompt construit", label: "Instructions bornées préparées.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.250Z", finishedAt: "2026-09-22T08:00:00.350Z", durationMs: 100 },
+  { key: "demo-ai", phase: "ai_call", phaseLabel: "Appel du fournisseur IA", label: "Brouillon demandé au simulateur.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.350Z", finishedAt: "2026-09-22T08:00:00.700Z", durationMs: 350 },
+  { key: "demo-validation", phase: "output_validated", phaseLabel: "Sortie validée", label: "Format et contenu contrôlés.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.700Z", finishedAt: "2026-09-22T08:00:00.820Z", durationMs: 120 },
+  { key: "demo-decision", phase: "decision", phaseLabel: "Décision du code", label: "Le code autorise le brouillon.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.820Z", finishedAt: "2026-09-22T08:00:00.900Z", durationMs: 80 },
+  { key: "demo-persisted", phase: "persisted", phaseLabel: "Écritures", label: "Brouillon enregistré pour validation.", status: "ok", statusLabel: "Terminé", detail: {}, startedAt: "2026-09-22T08:00:00.900Z", finishedAt: "2026-09-22T08:00:01.000Z", durationMs: 100 },
+];
 
 export function AnimationGallery() {
   const [replay, setReplay] = useState(0);
@@ -56,6 +70,21 @@ export function AnimationGallery() {
           {["Ligne 1", "Ligne 2", "Ligne 3"].map((label) => (
             <div key={label} className="bg-inverse-soft px-5 py-7 text-sm font-medium">{label}</div>
           ))}
+        </div>
+      </section>
+
+      <AgentProcessMotionPrototype />
+
+      <section className="mt-20" aria-labelledby="integrated-process-title">
+        <p className="text-overline font-semibold uppercase text-ink-subtle">Intégration produit</p>
+        <h2 id="integrated-process-title" className="mt-3 text-heading font-semibold text-ink">
+          Rejeu réel avec ses étapes mesurées
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-ink-muted">
+          Cette démonstration utilise le composant désormais partagé par les écrans des agents.
+        </p>
+        <div className="mt-7 rounded-xl border border-line bg-surface p-5 shadow-subtle">
+          <AgentRunReplay key={`integrated-${replay}`} steps={PROCESS_DEMO} />
         </div>
       </section>
     </main>

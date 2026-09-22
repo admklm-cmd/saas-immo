@@ -241,7 +241,8 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 
 | Composant | Fichier | Rôle |
 |---|---|---|
-| `AgentRunReplay` | `AgentRunReplay.tsx` (client) | Rejeu animé d'une exécution : barre d'outils (facteur de ralenti, durée mesurée, « Tout afficher » / « Rejouer »), frise des étapes, zone `aria-live` |
+| `AgentRunReplay` | `AgentRunReplay.tsx` (client) | Rejeu animé d'une exécution : barre d'outils (facteur de ralenti, durée mesurée, « Tout afficher » / « Rejouer »), flux visuel pointillé, liste détaillée et zone `aria-live` |
+| `AgentRunProcessTrack` | `AgentRunProcessTrack.tsx` | Vue compacte du journal : icônes Radix, nano-sphères en attente, signal et progression pilotés par les mêmes durées mesurées que le rejeu |
 | `AgentRunStepRow` | `AgentRunStepRow.tsx` | Une étape : phase, auteur (`Code` / `Fournisseur IA`), statut, durée mesurée, détail technique replié |
 | `AgentRunHead` | `AgentRunHead.tsx` | Carte d'identité d'une exécution (dates, contact ou « Lead entrant », fournisseur, jetons, décision) |
 | `AgentOverviewCard` | `AgentOverviewCard.tsx` | Un agent : prénom, mission, statut, compteurs par fenêtre, dernière exécution, dernières erreurs |
@@ -343,7 +344,7 @@ Chaque écran gère quatre états :
   Le statut du rendez-vous conduit la carte : confirmation humaine de la proposition,
   saisie obligatoire du compte-rendu sur un rendez-vous confirmé, puis apparition de Sarah
   une fois le rendez-vous réalisé. Le compte-rendu reste un bloc de texte brut sur surface
-  atténuée. Emma reste sans bloc d'interface dédié à ce stade.
+  atténuée. L'espace de relances Emma est en cours de finition.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
 - Pas de police de marque (choix assumé, voir 2.2).
@@ -352,16 +353,8 @@ Chaque écran gère quatre états :
   que le § 5 demande `h2` pour une carte. Le contournement n'est pas fait :
   corriger un seul des deux écrans les rendrait incohérents entre eux. À
   reprendre d'un coup, avec les deux fichiers dans le même lot.
-- **Mouvement : la spécification (§ 2.5) est écrite, l'outillage ne l'est pas.**
-  Les phases 1 à 3 du plan `docs/plans/2026-09-18-animations.md` ne sont pas faites :
-  - il n'existe ni variante d'entrée courte, ni échelonnement de liste, ni mise en
-    avant du changement d'état d'une carte — les trois ajouts sont proposés et
-    attendent une validation ;
-  - il n'existe pas de primitive d'apparition à l'entrée dans la fenêtre
-    (`Reveal`) ;
-  - la galerie de développement `/dev/animations` n'existe pas ;
-  - aucun écran n'a encore été repris écran par écran : le mouvement actuel se
-    limite à `animate-rise`, `animate-fade`, `animate-shimmer`, `animate-spin-slow`
-    et aux transitions de survol et de focus déjà présentes.
+- La galerie `/dev/animations`, `Reveal`, `rise-soft`, `settle` et `stagger` sont livrés.
+  La reprise écran par écran reste progressive ; chaque ajout doit conserver l'information
+  immédiatement disponible avec mouvement réduit.
 - `--ease-exit` est défini mais n'est utilisé par aucun composant : aucune sortie
   n'est animée pour l'instant.
