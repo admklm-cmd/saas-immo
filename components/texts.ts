@@ -498,7 +498,8 @@ export const APP_TEXTS = {
     agentsToValidate:
       "Chaque premier contact préparé par un agent IA est validé par un humain avant tout envoi.",
     settings: "Agence, utilisateurs, intégrations et conservation des données.",
-    estimation: "Formulaire d'estimation en ligne, avec recueil du consentement canal par canal.",
+    estimation:
+      "Demande d'estimation avec recueil du consentement canal par canal : un conseiller de l'agence vous recontacte pour la suite.",
     signUpTitle: "Inscription",
     signUpBody: "La création de compte d'agence se fait avec l'équipe AiaA lors de la mise en place.",
   },
@@ -509,7 +510,7 @@ export const APP_TEXTS = {
     heroSubtitle: "Cinq agents spécialisés préparent le travail. Votre équipe garde chaque décision sensible.",
     heroNote: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
     signIn: "Espace agence",
-    estimation: "Estimer mon bien",
+    estimation: "Demander une estimation",
     proofTitle: "Ce que la démonstration prouve",
     proofs: [
       { value: "5", label: "rôles bornés, du lead au mandat" },

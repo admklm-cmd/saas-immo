@@ -29,7 +29,7 @@ it("presents the complete agent journey and its safeguards", () => {
 it("offers both public estimation and agency access", () => {
   render(<HomePage />);
 
-  const estimationLinks = screen.getAllByRole("link", { name: "Estimer mon bien" });
+  const estimationLinks = screen.getAllByRole("link", { name: "Demander une estimation" });
   const signInLinks = screen.getAllByRole("link", { name: "Espace agence" });
 
   expect(estimationLinks.every((link) => link.getAttribute("href") === "/estimation")).toBe(true);
