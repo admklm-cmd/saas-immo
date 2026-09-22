@@ -147,6 +147,23 @@ export const APP_TEXTS = {
     notFoundBody: "Ce contact n'existe pas ou n'appartient pas à votre agence.",
   },
 
+  /**
+   * Pipeline — vue par étape, en lecture seule.
+   *
+   * Aucun changement d'étape ne se fait depuis cet écran : une carte mène à la
+   * fiche contact, jamais à une écriture. `perdu` est affiché à part, avec
+   * moins de poids visuel que les étapes actives (CLAUDE.md : le pipeline
+   * s'arrête à `perdu`, il ne s'y "travaille" plus).
+   */
+  pipeline: {
+    title: "Pipeline",
+    subtitle: "Vue par étape, du premier contact au mandat signé.",
+    errorTitle: "Impossible d'afficher le pipeline",
+    columnCount: (total: number) => (total > 1 ? `${total} dossiers` : `${total} dossier`),
+    columnEmpty: "Aucun dossier à cette étape.",
+    lostSubtitle: "Affichée à part : cette étape n'est plus travaillée activement.",
+  },
+
   agents: {
     panelTitle: "Agents IA",
     panelSubtitle:
@@ -492,7 +509,6 @@ export const APP_TEXTS = {
   /** One-line promises of the screens that are still shells. */
   shells: {
     dashboard: "Statistiques de l'agence, calculées uniquement à partir des données réellement enregistrées.",
-    pipeline: "Vue par étape, du premier contact au mandat signé.",
     agents:
       "Léa, Hugo, Emma, Louis et Sarah : mission, statut, historique, erreurs — et coupe-circuit de l'agence.",
     agentsToValidate:

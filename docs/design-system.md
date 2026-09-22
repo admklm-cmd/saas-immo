@@ -283,7 +283,32 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 9. **Corriger n'est pas valider.** Seuls l'objet et le corps sont proposés à
    l'édition. Toute correction laisse ou remet le brouillon « à valider ».
 
-### 3.2 Le badge « simulation » est une règle produit
+### 3.2 Composants du module « Pipeline » (`features/pipeline/components/`)
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `PipelineBoard` | `PipelineBoard.tsx` | Répartit les contacts par étape (`groupContactsByStage`) et pose la grille des six étapes actives, puis `perdu` à part |
+| `PipelineColumn` | `PipelineColumn.tsx` | Une étape : `section`/`h2` (landmark correctement annoncé), compteur réel, état vide, `emphasis="muted"` pour `perdu` |
+| `PipelineContactCard` | `PipelineContactCard.tsx` | Une carte compacte, cliquable dans son intégralité vers `/contacts/[id]` : nom, bien (`propertySummary`, réutilisé depuis `ContactsTable`), badge de reprise humaine et de tâches ouvertes |
+
+**Lecture seule, décision assumée.** `/pipeline` ne propose ni glisser-déposer,
+ni menu « changer l'étape », aucun bouton qui écrit : chaque carte est un lien
+vers la fiche contact. Déplacer un contact d'une étape à l'autre est une
+écriture qui exige une server action côté back (`mandat_signe` doit rester
+confirmé par un humain) — tâche ultérieure, hors périmètre de cet écran.
+
+**`perdu` n'a pas le même poids visuel que les étapes actives.** Elle est
+affichée à part, sur une largeur contrainte (`max-w-sm`), en bordure
+pointillée et texte atténué — jamais seulement par la couleur : le libellé
+« Perdu » et la bordure pointillée le disent tous les deux, comme pour
+`PipelineStageBadge`.
+
+**Compteurs réels uniquement.** Chaque colonne affiche le nombre de dossiers
+réellement lus par `getContacts()`. Aucun taux de conversion, aucune durée
+moyenne, aucune évolution : ce que l'écran ne peut pas compter, il ne
+l'affiche pas.
+
+### 3.3 Le badge « simulation » est une règle produit
 
 Toute action simulée (message, rendez-vous, exécution d'agent IA) affiche
 `SimulationBadge`. C'est un garde-fou de `CLAUDE.md` : on ne doit **jamais** confondre
@@ -331,6 +356,10 @@ Chaque écran gère quatre états :
 - Rejeu d'une exécution : colonne unique `max-w-4xl` (la lecture prime).
 - Files de travail (« Leads entrants », « Messages à valider ») : colonne unique
   `max-w-4xl`, une carte par élément, règle produit en `Alert tone="info"` en tête.
+- Tableau de pipeline (`/pipeline`) : `max-w-7xl`, grille des six étapes actives
+  `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3` (deux rangées de trois à partir de
+  1280 px, jamais de défilement horizontal disgracieux), `perdu` en dessous sur
+  une colonne unique `max-w-sm`.
 - Navigation : barre horizontale défilante sous 1024 px, colonne fixe de 256 px au-dessus.
 - Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
 

@@ -4,11 +4,12 @@
 > Propriétaire : agent `frontend-ux`. Les workflows détaillés des agents IA vivent dans
 > `docs/workflows.md`, les choix techniques dans `docs/architecture.md`.
 >
-> **État au 18/09/2026** : prototype. Sont réellement implémentés : le premier parcours
+> **État au 22/09/2026** : prototype. Sont réellement implémentés : le premier parcours
 > (connexion → contacts → fiche → Hugo → Louis → historique), la boîte « Leads entrants »
-> de Léa, la file « Messages à valider » avec correction humaine des brouillons, et le
+> de Léa, la file « Messages à valider » avec correction humaine des brouillons, le
 > module « Agents IA » (les cinq agents, le coupe-circuit, le journal des exécutions et le
-> rejeu animé d'une exécution), ainsi que les relances d'Emma et le suivi post-estimation de Sarah. Estimation, tableau de bord, pipeline et paramètres utilisent
+> rejeu animé d'une exécution), les relances d'Emma, le suivi post-estimation de Sarah et
+> le pipeline en lecture seule. Estimation, tableau de bord et paramètres utilisent
 > explicitement `ComingSoon`.
 
 ## 1. À qui on vend
@@ -54,6 +55,9 @@ Deux règles produit :
 - **`rdv_planifié`** n'est atteint qu'après confirmation humaine du créneau.
 - **`mandat_signé`** est toujours confirmé par un humain, jamais auto-déclaré par un agent IA.
 
+`/pipeline` affiche cette répartition en lecture seule (voir § 5) : aucun changement
+d'étape ne se fait depuis cet écran tant que la server action correspondante n'existe pas.
+
 ## 4. Les agents IA du produit
 
 | Agent | Mission | État |
@@ -81,7 +85,7 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Tableau de bord | `/dashboard` | `ComingSoon` | Statistiques calculées sur données réelles |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |
-| Pipeline | `/pipeline` | `ComingSoon` | Vue par étape |
+| Pipeline | `/pipeline` | **Fait (lecture seule)** | Contacts réels de `getContacts()` répartis par étape, `perdu` affiché à part avec moins de poids visuel, compteurs réels uniquement, une carte mène à la fiche contact — aucun changement d'étape depuis cet écran |
 | Agents IA | `/agents-ia` | **Fait** | Les 5 agents (mission, statut, compteurs, dernière exécution, erreurs), activité de l'agence, **coupe-circuit**, journal filtrable et paginé |
 | Rejeu d'une exécution | `/agents-ia/executions/[runId]` | **Fait** | Étapes réellement enregistrées, rejouées avec les durées mesurées |
 | Leads entrants | `/agents-ia/leads-entrants` | **Fait** | Demandes brutes : source, données non fiables, dédoublonnage par Léa, création ou rattachement de fiche, tâche de consentement et rejeu |
@@ -196,4 +200,6 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
 ## 8. Prochaines itérations (proposition)
 
 1. Formulaire d'estimation public avec consentement par canal (cases non précochées).
-2. Remplacer les coquilles `ComingSoon` du tableau de bord, du pipeline et des paramètres.
+2. Remplacer les coquilles `ComingSoon` du tableau de bord et des paramètres.
+3. Changement d'étape depuis `/pipeline` : server action dédiée, avec les garde-fous
+   attendus sur `mandat_signe` (voir « À transmettre » du jalon pipeline).

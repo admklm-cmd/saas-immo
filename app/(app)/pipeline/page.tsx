@@ -1,16 +1,64 @@
 import type { Metadata } from "next";
 
 import { APP_TEXTS } from "@/components/texts";
-import { ComingSoon } from "@/components/ui/ComingSoon";
+import { Alert } from "@/components/ui/Alert";
+import { Badge } from "@/components/ui/Badge";
+import { ButtonLink } from "@/components/ui/ButtonLink";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { getContacts } from "@/features/contacts/queries";
+import { PipelineBoard } from "@/features/pipeline/components/PipelineBoard";
 
-export const metadata: Metadata = { title: `${APP_TEXTS.nav.pipeline} — ${APP_TEXTS.brand.name}` };
+const TEXTS = APP_TEXTS.pipeline;
+const CONTACTS_TEXTS = APP_TEXTS.contacts;
 
-/** Shell (out of scope of this iteration). */
-export default function PipelinePage() {
+export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand.name}` };
+
+/**
+ * `/pipeline` — read-only view of the agency's contacts by stage.
+ *
+ * No drag-and-drop, no menu to change a stage: every card only links to the
+ * contact file. Moving a contact from one stage to another is a write and
+ * needs a server action, which belongs to a later iteration.
+ */
+export default async function PipelinePage() {
+  const { data: contacts, error } = await getContacts();
+
   return (
-    <ComingSoon
-      title={APP_TEXTS.nav.pipeline}
-      description={APP_TEXTS.shells.pipeline}
-    />
+    <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-12">
+      <PageHeader
+        title={TEXTS.title}
+        description={TEXTS.subtitle}
+        meta={contacts && contacts.length > 0 ? <Badge tone="outline">{CONTACTS_TEXTS.count(contacts.length)}</Badge> : null}
+      />
+
+      <div className="mt-8">
+        {error ? (
+          <Alert
+            tone="error"
+            title={TEXTS.errorTitle}
+            action={
+              <ButtonLink href="/pipeline" variant="secondary" size="sm">
+                {APP_TEXTS.states.retry}
+              </ButtonLink>
+            }
+          >
+            {error.message}
+          </Alert>
+        ) : contacts.length === 0 ? (
+          <EmptyState
+            title={CONTACTS_TEXTS.emptyTitle}
+            description={CONTACTS_TEXTS.emptyBody}
+            action={
+              <ButtonLink href="/estimation" variant="secondary">
+                {APP_TEXTS.marketing.estimation}
+              </ButtonLink>
+            }
+          />
+        ) : (
+          <PipelineBoard contacts={contacts} />
+        )}
+      </div>
+    </div>
   );
 }

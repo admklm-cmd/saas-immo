@@ -8,7 +8,8 @@ import { CONTACT_SOURCE_LABELS, type ContactListItem } from "@/features/contacts
 
 const TEXTS = APP_TEXTS.contacts;
 
-function propertySummary(contact: ContactListItem): string {
+/** Reused by the pipeline board, so both screens describe a property the same way. */
+export function propertySummary(contact: ContactListItem): string {
   const property = contact.property;
   if (!property) return TEXTS.noProperty;
   const parts = [
