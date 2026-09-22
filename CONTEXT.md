@@ -164,9 +164,9 @@ signal traversant, activité discrète, version mobile verticale et arrêt des a
 `prefers-reduced-motion`.
 
 Révision demandée ensuite : les cinq cases sont désormais alignées. Elles utilisent des glyphes
-monochromes sobres (`◇`, `▤`, `{ }`, `✦`, `✓`). Toutes les 1,35 seconde, le signal rejoint la case
-suivante, qui se soulève légèrement et renforce son contraste ; la longue barre inférieure progresse
-en cinq paliers comme un téléchargement. Une installation de `@phosphor-icons/react` a été tentée,
+monochromes techniques (`⬡`, `▥`, `</>`, `✦`, `✓`). Toutes les 1,35 seconde, le signal rejoint la
+case suivante, qui se soulève légèrement et renforce son contraste ; la longue barre inférieure se
+remplit continuellement pendant les 6,75 secondes du cycle, comme un téléchargement. Une installation de `@phosphor-icons/react` a été tentée,
 mais npm l’a refusée avec `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. La jonction `node_modules` a été
 restaurée immédiatement et `package.json`/`package-lock.json` n’ont pas été modifiés.
 
