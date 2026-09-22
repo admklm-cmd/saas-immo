@@ -159,9 +159,16 @@ background-size: 60px 60px;
 background-position: 14px 20px;
 ```
 
-Améliorations réalisées : fond responsive, cinq étapes métier AiaA alternées autour d’une ligne,
+Améliorations réalisées : fond responsive, cinq étapes métier AiaA reliées par une ligne,
 signal traversant, activité discrète, version mobile verticale et arrêt des animations avec
 `prefers-reduced-motion`.
+
+Révision demandée ensuite : les cinq cases sont désormais alignées. Elles utilisent des glyphes
+monochromes sobres (`◇`, `▤`, `{ }`, `✦`, `✓`). Toutes les 1,35 seconde, le signal rejoint la case
+suivante, qui se soulève légèrement et renforce son contraste ; la longue barre inférieure progresse
+en cinq paliers comme un téléchargement. Une installation de `@phosphor-icons/react` a été tentée,
+mais npm l’a refusée avec `UNABLE_TO_VERIFY_LEAF_SIGNATURE`. La jonction `node_modules` a été
+restaurée immédiatement et `package.json`/`package-lock.json` n’ont pas été modifiés.
 
 Le prototype est visible sur `http://127.0.0.1:3201/dev/animations` lorsque le serveur clone tourne.
 Il a été ouvert et contrôlé visuellement dans le navigateur. **Ne pas l’intégrer dans
@@ -184,7 +191,7 @@ Travail courant :
 
 - `EmmaFollowUpCard.test.tsx` + garde de la galerie : **2 fichiers, 4 tests réussis** ;
 - `npm run typecheck` après l’ajout de la query Emma : **réussi le 22/09/2026** ;
-- lint a réussi avant les derniers ajouts de query ; il doit être relancé ;
+- `npm run lint` après la révision du prototype : **réussi le 22/09/2026** ;
 - aucun build complet n’a encore été relancé sur Emma + prototype.
 
 Playwright : la préparation des fixtures fonctionne, mais le lancement de Chromium a été bloqué par
