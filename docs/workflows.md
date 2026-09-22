@@ -230,8 +230,16 @@ alors progresser atomiquement `appointments.status` de `proposed` à `confirmed`
 
 ### Déclencheur
 Action humaine depuis la boîte de réception des leads (bouton « Lancer Léa »), via la server action
-`processInboundLead(leadId)`. Aucun déclenchement automatique à ce stade : il n'existe pas encore de
-formulaire public alimentant `inbound_leads` (`anon` n'a aucun privilège).
+`processInboundLead(leadId)`. Aucun déclenchement automatique à ce stade — y compris pour un lead
+créé par le formulaire public : Léa ne tourne jamais toute seule, un membre de l'agence lance
+toujours l'exécution.
+
+Le lead peut désormais aussi arriver du formulaire public d'estimation (`/estimation`), via
+`public.submit_estimation_request` (`SECURITY DEFINER`, `anon` n'a toujours **aucun privilège
+direct** sur `inbound_leads` — voir `docs/architecture.md` §3.1). Cette fonction écrit un lead au
+statut `pending` **strictement identique** à un lead saisi manuellement (même colonnes, mêmes
+règles) : Léa le traite sans aucune adaptation de son code, prouvé par
+`features/estimation/estimation.integration.test.ts`.
 
 ### Entrées
 - Un lead de `inbound_leads` appartenant à l'agence de l'appelant et au statut **`pending`** :
@@ -274,9 +282,15 @@ formulaire public alimentant `inbound_leads` (`anon` n'a aucun privilège).
   - **`contact_created`** : une ligne `contacts` (étape `nouveau`, `notes` = texte brut du lead),
     le lead passe à `processed` avec `contact_id` et `processed_run_id`, une tâche
     **`collect_consent`** est ouverte — *un lead n'est pas un consentement* — et une entrée
-    `contact_created_from_lead` est écrite.
+    `contact_created_from_lead` est écrite. Si le lead vient du formulaire public d'estimation et
+    portait déjà un consentement (recueilli au moment de la soumission, avant que ce contact
+    n'existe), un trigger de la base (`private.reconcile_lead_consents()`, hors du code de Léa) le
+    rattache au contact **au même instant** que cette mise à jour : la tâche `collect_consent` peut
+    donc apparaître alors qu'un consentement existe déjà — un humain qui ouvre le dossier le voit
+    dans l'historique des consentements et peut classer la tâche sans relancer le prospect.
   - **`duplicate_found`** : **aucune fiche créée**, le lead passe à `duplicate` et pointe la fiche
-    existante, tâche `lead_duplicate`, entrée `lead_duplicate_detected`.
+    existante, tâche `lead_duplicate`, entrée `lead_duplicate_detected`. Le même rattachement de
+    consentement pré-contact s'applique ici aussi.
   - **`incomplete`** : **rien n'est écrit**, le lead **reste `pending`**, tâche `lead_incomplete`
     listant les champs manquants, entrée `ai_information_missing`.
 - Une ligne `ai_agent_runs` (sans contact) avec entrée, sortie, décision, fournisseur et tokens.

@@ -10,6 +10,8 @@
  */
 
 import type { ConsentStatus, PropertyType } from "@/features/contacts/types";
+import type { EstimationConsentChannel } from "@/features/estimation/consent-texts";
+import type { PropertyTypeChoice } from "@/features/estimation/types";
 
 /**
  * Two label maps are missing from `features/contacts/types.ts` (owned by the
@@ -27,6 +29,22 @@ export const PROPERTY_TYPE_LABELS: Readonly<Record<PropertyType, string>> = {
 export const CONSENT_STATUS_LABELS: Readonly<Record<ConsentStatus, string>> = {
   granted: "Accordé",
   withdrawn: "Retiré",
+};
+
+/** Choice labels of the public estimation form's property type selector. */
+export const ESTIMATION_PROPERTY_TYPE_LABELS: Readonly<Record<PropertyTypeChoice, string>> = {
+  maison: "Maison",
+  appartement: "Appartement",
+  terrain: "Terrain",
+  autre: "Autre",
+};
+
+/** Visible channel name shown above each consent checkbox of `/estimation`. */
+export const ESTIMATION_CONSENT_CHANNEL_LABELS: Readonly<Record<EstimationConsentChannel, string>> = {
+  email: "Email",
+  sms: "SMS",
+  whatsapp: "WhatsApp",
+  phone: "Téléphone",
 };
 
 export const APP_TEXTS = {
@@ -514,8 +532,6 @@ export const APP_TEXTS = {
     agentsToValidate:
       "Chaque premier contact préparé par un agent IA est validé par un humain avant tout envoi.",
     settings: "Agence, utilisateurs, intégrations et conservation des données.",
-    estimation:
-      "Demande d'estimation avec recueil du consentement canal par canal : un conseiller de l'agence vous recontacte pour la suite.",
     signUpTitle: "Inscription",
     signUpBody: "La création de compte d'agence se fait avec l'équipe AiaA lors de la mise en place.",
   },
@@ -621,5 +637,133 @@ export const APP_TEXTS = {
     openContact: "Ouvrir la fiche",
     openQueue: "Valider le message",
     viewReplay: "Voir le rejeu",
+  },
+
+  /**
+   * Formulaire public de demande d'estimation (`/estimation`) — le principal
+   * canal d'acquisition de leads. Aucun prix ni fourchette n'est jamais
+   * affiché ici : la promesse est un rappel humain, jamais un chiffre.
+   *
+   * Les textes de consentement eux-mêmes ne viennent PAS d'ici : ils viennent
+   * mot pour mot de `features/estimation/consent-texts.ts`, pour rester
+   * identiques à ce qui est enregistré en base comme preuve.
+   */
+  estimation: {
+    eyebrow: "Demande d'estimation",
+    title: "Parlez-nous de votre bien",
+    subtitle:
+      "Quelques informations suffisent pour démarrer. Un conseiller de l'agence étudie votre demande et vous recontacte — aucune estimation chiffrée n'est communiquée par ce formulaire.",
+
+    metaDescription:
+      "Demandez l'étude de votre bien par un conseiller de l'agence. Aucun prix n'est calculé ni communiqué par ce formulaire.",
+
+    // Visible required marker, part of the label text: the `required`
+    // attribute alone is only announced to screen readers (WCAG 3.3.2).
+    requiredMark: "(obligatoire)",
+
+    identityTitle: "Vos coordonnées",
+    identitySubtitle: "Pour que l'agence sache qui recontacter, et comment.",
+    firstName: "Prénom",
+    lastName: "Nom",
+    email: "Adresse email",
+    phone: "Téléphone",
+    contactHint: "Indiquez au moins une adresse email ou un numéro de téléphone.",
+
+    propertyTitle: "Votre bien",
+    propertySubtitle: "Ce que vous savez déjà. Le reste se précise avec l'agence.",
+    propertyType: "Type de bien",
+    city: "Ville",
+    postalCode: "Code postal",
+    surface: "Surface habitable",
+    surfaceHint: "Facultatif, en m².",
+    rooms: "Nombre de pièces",
+    roomsHint: "Facultatif.",
+    message: "Message",
+    messageHint: "Facultatif : précisez ce qui vous semble utile, en toute liberté.",
+
+    consentTitle: "Comment pouvons-nous vous recontacter ?",
+    consentSubtitle:
+      "Cochez chaque moyen de contact que vous autorisez. Aucune case n'est cochée par défaut : sans case cochée, l'agence ne peut vous recontacter par aucun moyen.",
+    consentGroupError: "Cochez au moins un moyen de contact autorisé.",
+    privacyPolicyIntro: "En envoyant ce formulaire, vous acceptez le traitement de vos données selon notre",
+    privacyPolicyLink: "politique de confidentialité",
+
+    submit: "Envoyer ma demande",
+    submitting: "Envoi en cours…",
+    // True by construction, not a marketing promise: the first message to a
+    // contact is always validated by a human (CLAUDE.md, garde-fous produit).
+    submitNote:
+      "Votre demande est transmise à l'agence. Aucun message ne vous est adressé avant qu'un conseiller ne l'ait validé.",
+
+    formErrorTitle: "Certaines informations doivent être corrigées",
+    formErrorBody: "Vérifiez les champs signalés ci-dessous avant d'envoyer votre demande.",
+    // Shown when nothing could be pointed at a precise field: never leave the
+    // visitor looking for a message that is not displayed.
+    formErrorBodyGeneric: "Relisez les informations saisies avant d'envoyer votre demande.",
+    serverErrorTitle: "Votre demande n'a pas pu être envoyée",
+
+    successTitle: "Demande envoyée",
+    successBody:
+      "Un conseiller de l'agence va étudier votre demande et vous recontacte prochainement, par les moyens que vous avez autorisés.",
+    successNote: "Aucune estimation chiffrée n'est communiquée par ce formulaire.",
+
+    // Format hints only (never a business rule): the authoritative bounds
+    // live in `estimationRequestSchema`, reused as-is by the form.
+    surfaceInvalid: "Indiquez une surface positive, en mètres carrés (100 000 m² maximum).",
+    roomsInvalid: "Indiquez un nombre de pièces entier et positif (50 maximum).",
+  },
+
+  /**
+   * Politique de confidentialité liée depuis le formulaire d'estimation.
+   *
+   * Prototype de démonstration : aucun contact réel, aucune donnée réelle.
+   * Contenu volontairement prudent, à faire valider par un juriste avant
+   * toute mise en production (voir CLAUDE.md, « Socle légal et sécurité »).
+   */
+  privacy: {
+    title: "Politique de confidentialité",
+    metaDescription:
+      "Données recueillies par le formulaire d'estimation, finalité, consentement par canal, conservation et droits.",
+    prototypeNotice:
+      "Prototype de démonstration : ce site ne contacte personne et ne traite aucune donnée personnelle réelle. Ce texte doit être validé par un juriste avant toute mise en production.",
+    sections: [
+      {
+        heading: "Qui traite vos données",
+        body: "L'agence immobilière propriétaire du compte AiaA est seule responsable du traitement des données recueillies par ce formulaire.",
+      },
+      {
+        heading: "Quelles données",
+        body: "Identité, coordonnées, informations sur le bien à estimer, et le message libre que vous rédigez éventuellement.",
+      },
+      {
+        heading: "Pourquoi",
+        body: "Recontacter au sujet de votre demande d'estimation, uniquement par les canaux que vous avez explicitement autorisés.",
+      },
+      {
+        heading: "Ce que ce formulaire ne fait pas",
+        body: "Il ne calcule aucun prix et ne communique aucune estimation chiffrée : il transmet votre demande à l'agence, qui l'étudie. Aucune donnée n'est vendue, et aucun canal que vous n'avez pas coché n'est utilisé.",
+      },
+      {
+        heading: "Base légale",
+        body: "Votre consentement, donné canal par canal. Aucune case n'est cochée par défaut, et vous pouvez le retirer à tout moment (voir le texte présenté à côté de chaque case).",
+      },
+      {
+        heading: "Preuve de votre consentement",
+        body: "Pour chaque case cochée, nous enregistrons la date, le canal concerné, le texte exact qui vous a été présenté et sa version, ainsi qu'une trace technique de l'envoi : une empreinte non réversible de votre adresse IP et l'identification de votre navigateur. Ces éléments servent uniquement à prouver votre accord.",
+      },
+      {
+        heading: "Retirer votre consentement",
+        body: "Chaque case indique comment revenir en arrière : lien de désinscription dans les emails, réponse STOP pour les SMS et WhatsApp, simple demande pour le téléphone. Un retrait arrête les relances immédiatement, sans avoir à justifier votre choix.",
+      },
+      {
+        heading: "Conservation",
+        body: "Les données sont conservées le temps nécessaire au traitement de votre demande, puis selon la politique de conservation de l'agence. La preuve d'un consentement est conservée aussi longtemps qu'elle peut devoir être produite.",
+      },
+      {
+        heading: "Vos droits",
+        body: "Vous pouvez demander l'accès, la rectification ou l'effacement de vos données en contactant directement l'agence.",
+      },
+    ],
+    backToEstimation: "Retour au formulaire d'estimation",
   },
 } as const;

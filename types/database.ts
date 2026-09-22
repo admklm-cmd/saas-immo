@@ -356,7 +356,7 @@ export type Database = {
         Row: {
           agency_id: string
           channel: Database["public"]["Enums"]["consent_channel"]
-          contact_id: string
+          contact_id: string | null
           created_at: string
           id: string
           presented_text: string | null
@@ -370,7 +370,7 @@ export type Database = {
         Insert: {
           agency_id: string
           channel: Database["public"]["Enums"]["consent_channel"]
-          contact_id: string
+          contact_id?: string | null
           created_at?: string
           id?: string
           presented_text?: string | null
@@ -384,7 +384,7 @@ export type Database = {
         Update: {
           agency_id?: string
           channel?: Database["public"]["Enums"]["consent_channel"]
-          contact_id?: string
+          contact_id?: string | null
           created_at?: string
           id?: string
           presented_text?: string | null
@@ -878,6 +878,28 @@ export type Database = {
         Args: { paused: boolean; target_agency: string }
         Returns: boolean
       }
+      submit_estimation_request: {
+        Args: {
+          p_city: string
+          p_consent_email: boolean
+          p_consent_phone: boolean
+          p_consent_sms: boolean
+          p_consent_whatsapp: boolean
+          p_email: string
+          p_first_name: string
+          p_ip_hash: string
+          p_last_name: string
+          p_message: string
+          p_phone: string
+          p_postal_code: string
+          p_property_type: Database["public"]["Enums"]["property_type"]
+          p_rooms: number
+          p_surface_m2: number
+          p_user_agent: string
+          p_website: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       activity_actor_type: "user" | "ai_agent" | "system"
@@ -1099,3 +1121,4 @@ export const Constants = {
     },
   },
 } as const
+

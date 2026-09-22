@@ -77,6 +77,78 @@ paramètre envoyé par le client. En complément :
 Le client `service_role` (`lib/supabase/admin.ts`) refuse de s'exécuter côté navigateur et n'est
 utilisé que pour le chargement des données de test en local et les tests d'intégration.
 
+### 3.1 Le seul chemin d'écriture public : `/estimation`
+
+**Le problème.** `/estimation` doit fonctionner pour un visiteur **non connecté**. Or `anon` n'a
+aucun privilège sur aucune table (règle ci-dessus) et il n'existe pas de session à qui appliquer
+une politique RLS. Il faut donc un chemin d'écriture qui reste sûr **sans** session — et qui reste
+sûr même appelé directement, en contournant totalement Next.js.
+
+**Pourquoi une fonction `SECURITY DEFINER`, pas la clé `service_role` côté serveur Next.js.** La
+clé secrète contourne RLS *entièrement* : l'exposer, même seulement dans une server action, veut
+dire qu'un bug de validation y ouvrirait un accès total à la base. Une fonction Postgres
+`SECURITY DEFINER`, elle, n'ouvre que ce qu'elle contient explicitement : elle écrit exactement un
+`inbound_leads` et les `consents` correspondants, dans **une seule transaction**, et force
+elle-même les champs sensibles (agence, source, statut, horodatages) — rien d'autre n'est
+accessible par ce chemin.
+
+**La clé publique est publique : la fonction doit se défendre elle-même.**
+`public.submit_estimation_request` (`supabase/migrations/20260922120000_public_estimation_request.sql`)
+est accordée à `anon` : n'importe qui peut l'appeler directement avec la clé `publishable`, sans
+passer par `/estimation` ni par la server action. Chaque garde-fou vit donc **dans la fonction**,
+pas seulement dans `features/estimation/` :
+
+| Garde-fou | Où, et pourquoi un appel direct ne peut pas le contourner |
+|---|---|
+| Agence cible | `private.estimation_target_agency()` — valeur fixe, **jamais un paramètre** de la fonction ; un appelant direct ne peut pas rediriger une soumission vers une autre agence |
+| Texte de consentement exact | `private.estimation_consent_text(canal)` — valeur fixe par canal, **jamais un paramètre** ; un appelant direct ne peut pas forger ce qu'un visiteur a accepté |
+| Limitation de débit | comptage + insertion dans `private.estimation_submissions` (schéma `private`, absent de `schemas` dans `supabase/config.toml` — inatteignable par l'API Data même avec les bonnes clés). **Seul le plafond par agence (30/h) résiste à un appel direct** : l'empreinte IP est un *paramètre* (`p_ip_hash`), donc un appelant direct choisit son compartiment — voir `docs/security.md` §2.8 |
+| Caractères de contrôle | `private.guard_inbound_lead_text()` (migration `20260923090000`) refuse un caractère de contrôle dans le texte libre ou dans une valeur de `payload`, et tout saut de ligne dans un champ d'identité : sinon un appelant direct stockait `first_name = "Jean\r\nBcc: …"`, que Léa recopie dans `contacts.first_name` |
+| Bornes de chaque champ texte | vérifiées en PL/pgSQL, **avant toute écriture** — zod côté Next.js est une première ligne, pas la seule |
+| Champ piège invisible | vérifié en premier, rejeté avec **le même message** qu'une validation ordinaire |
+| `search_path`, privilèges | `set search_path = ''` (aucune résolution de schéma ambiguë), `revoke ... from public`, `grant execute` limité à `anon, authenticated` |
+
+**Pourquoi la validation complète se fait avant toute écriture.** La fonction ne contient **aucun**
+bloc `EXCEPTION WHEN ... THEN` : la moindre erreur, n'importe où dans son corps, annule
+**tout** ce que cet appel a fait (garantie transactionnelle standard de PL/pgSQL). En validant tout
+— piège, empreinte IP, bornes des champs, cohérence consentement/coordonnées — **avant** d'écrire
+quoi que ce soit, un appel refusé n'écrit jamais rien de partiel : il n'y a tout simplement rien à
+annuler. `features/estimation/estimation.integration.test.ts` le prouve pour de vrai (pas seulement
+par lecture du code) en forçant, via une connexion Postgres directe, un échec **au milieu** de
+l'insertion des consentements (déclencheur temporaire, propre à la transaction du test, jamais
+persisté) : le lead créé juste avant disparaît avec le reste.
+
+**Le lead reste `pending` : Léa n'est pas modifiée.** La fonction écrit `inbound_leads` avec
+`status = 'pending'`, `contact_id = null` — exactement comme un lead saisi manuellement par un
+membre de l'agence. `features/agents-ia/lea-acquisition/lea.ts` le traite donc **sans aucun
+changement** : c'est vérifié pour de vrai par le même test d'intégration, qui appelle
+`runLeaAcquisition` sur le lead que la fonction publique vient de créer.
+
+**Une conséquence : `consents.contact_id` devient nullable.** Un lead n'est pas un consentement
+(voir l'en-tête de `lea.ts`), et le contact n'existe donc pas encore au moment où le formulaire
+public recueille un vrai consentement. Cette migration rend `consents.contact_id` nullable pour
+recevoir ce consentement *avant* le contact, avec une référence au lead dans `proof->>'lead_id'`.
+`current_consents` est mis à jour pour exclure ces lignes (une « consentement courant » est une
+notion **par contact** ; une ligne sans contact n'en fait pas encore partie). Un nouveau trigger,
+`private.reconcile_lead_consents()`, copie ce consentement sur le contact **au moment précis** où
+Léa (ou un humain) l'attache au lead — sans toucher au code de Léa, puisque c'est un trigger
+`AFTER UPDATE` sur `inbound_leads`. Tant que ce rattachement n'a pas eu lieu (lead encore `pending`,
+ou `rejected`), le consentement existe comme preuve mais **n'autorise aucun envoi** : la vérification
+d'envoi (`guard_outbound_message`) ne regarde que les consentements **d'un contact**.
+
+**Empreinte IP, pas adresse IP.** L'adresse ne vient jamais d'un champ du formulaire : elle est lue
+côté serveur depuis les en-têtes de la requête (`x-forwarded-for` / `x-real-ip`), puis hachée
+(SHA-256 salé, `ESTIMATION_IP_HASH_SALT`) avant d'atteindre la base — voir
+`docs/security.md` pour ce que ça couvre et pour la durée de conservation.
+`x-forwarded-for` est une **liste** que le client commence et que chaque proxy complète : c'est donc
+l'entrée ajoutée par **notre** proxy qui est retenue (`TRUSTED_PROXY_HOPS = 1`, un nginx en frontal),
+jamais la première, sinon préfixer une valeur inventée suffirait à changer de compartiment.
+
+Le sel n'a **aucune valeur de repli** : `features/estimation/ip-hash.ts` le lit dans l'environnement
+serveur et exige au moins 32 caractères, et `submitEstimationRequestForClient` refuse la demande
+**avant toute écriture** s'il manque. Un sel codé en dur dans le dépôt serait public et rendrait les
+empreintes réversibles ; mieux vaut un formulaire momentanément indisponible qu'une pseudo-anonymisation.
+
 ---
 
 ## 4. Fournisseur d'IA interchangeable, simulateur d'abord
@@ -322,7 +394,25 @@ le même `npm run db:seed`.
 - La boîte `/agents-ia/leads-entrants`, la file `/agents-ia/a-valider`, le suivi humain des rendez-vous
   puis Sarah dans `/agents-ia/suivi-rendez-vous`, et le coupe-circuit sont implémentés. Emma dispose
   de son moteur serveur simulé mais d'aucune UI dédiée ; le tableau de bord, le pipeline et les
-  paramètres restent des routes `ComingSoon`.
+  paramètres restent des routes `ComingSoon`. Le formulaire public d'estimation a désormais un
+  chemin d'écriture fonctionnel côté serveur (`features/estimation/`,
+  `public.submit_estimation_request`) ; l'écran `/estimation` lui-même (formulaire visible, cases à
+  cocher non précochées) reste à construire par `frontend-ux` à partir de ce contrat.
+- **Formulaire public d'estimation : un seul agent cible, en dur.** `private.estimation_target_agency()`
+  renvoie un identifiant fixe (celui de l'agence fictive « Calanques Immobilier »). Une vraie
+  publication multi-agences résoudrait l'agence depuis le domaine/la configuration du site appelant,
+  pas depuis une valeur codée dans une migration — décision de schéma à valider avant tout
+  déploiement réel.
+- **Limitation de débit : pas de purge automatique.** `private.estimation_submissions` grossit sans
+  jamais être vidée dans ce prototype (voir `docs/security.md` pour la durée de conservation
+  recommandée). Pas de CAPTCHA, pas de WAF, et une empreinte IP peut être contournée par un
+  attaquant qui change d'adresse : voir `docs/security.md` pour ce que la limitation couvre
+  réellement.
+- **Consentement pré-contact non ré-attaché si le lead n'est jamais traité.** Le rattachement
+  (`private.reconcile_lead_consents()`) n'a lieu que lorsqu'un contact est effectivement créé ou
+  retrouvé pour ce lead (Léa, ou un rattachement manuel). Un lead laissé `pending` ou marqué
+  `rejected` garde son consentement comme preuve, mais ce dernier n'autorise jamais un envoi tant
+  qu'aucun contact n'existe.
 - Pas encore : désinscription entrante (STOP reçu), purge RGPD automatique, chiffrement applicatif
   des jetons d'intégration, et transaction SQL unique pour regrouper toutes les écritures du suivi
   de Sarah (l'échec est propagé aujourd'hui, mais plusieurs requêtes PostgREST restent nécessaires).

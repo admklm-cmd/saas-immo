@@ -256,10 +256,131 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   dans les journaux (`is_simulation` sur `activities`, `appointments`, `outbound_messages`,
   `ai_agent_runs`). Un message « envoyé » ne peut l'être qu'en simulation (contrainte de base).
 - **Un lead entrant n'est pas un consentement** : `inbound_leads` (migration `20260916162000`) stocke
-  la matière brute saisie par un membre de l'agence. Rien ne peut partir vers ces personnes tant
-  qu'un consentement n'est pas enregistré dans `consents` et vérifié à l'envoi par la base. `anon`
-  n'a toujours aucun privilège : il n'existe pas encore de formulaire public alimentant cette table.
+  la matière brute saisie par un membre de l'agence, ou reçue par le formulaire public d'estimation
+  (voir ci-dessous). Rien ne peut partir vers ces personnes tant qu'un consentement n'est pas
+  enregistré dans `consents` **et rattaché à un contact**, vérifié à l'envoi par la base.
 - **Pas d'extraction de portails tiers** : aucun scraping n'existe dans le code.
+
+### 2.8 Formulaire public d'estimation (`/estimation`)
+
+`anon` obtient, pour la première fois, un droit d'écriture — mais **jamais direct** : une seule
+fonction (`public.submit_estimation_request`, migration `20260922120000_public_estimation_request.sql`,
+`SECURITY DEFINER`) reste la seule porte, et elle est conçue en supposant qu'elle sera appelée
+**directement**, sans passer par `/estimation` ni par la server action (la clé `publishable` est
+publique). Voir `docs/architecture.md` §3.1 pour le détail technique ; ici, ce qui est réellement
+vérifié :
+
+- **Agence et texte de consentement non falsifiables** : ni l'agence cible, ni le texte exact
+  présenté par canal ne sont des paramètres de la fonction — ce sont des valeurs fixes lues dans le
+  code SQL (`private.estimation_target_agency()`, `private.estimation_consent_text()`). Un appel
+  direct au RPC ne peut ni rediriger une soumission vers une autre agence, ni forger ce qu'un
+  visiteur a accepté.
+- **Limitation de débit appliquée dans la base, pas seulement côté Next.js** : par empreinte IP
+  (3 soumissions / 10 minutes) et par agence (30 / heure), comptée sur
+  `private.estimation_submissions` — table du schéma `private`, absent de `schemas` dans
+  `supabase/config.toml`, donc **injoignable par l'API Data même avec une clé valide**. Testé
+  réellement : `features/estimation/estimation.integration.test.ts` pré-remplit cette table via une
+  connexion Postgres directe et vérifie que la (n+1)ᵉ soumission est refusée, pour les deux plafonds.
+  **Précision importante (audit du 23/09/2026)** : seul le plafond **par agence** résiste à un
+  appelant direct du RPC. L'empreinte IP est un **paramètre** de la fonction (`p_ip_hash`) : qui
+  appelle `submit_estimation_request` avec la clé publique choisit son compartiment et n'est donc
+  borné que par les 30 soumissions/heure de l'agence. Vérifié en base pendant l'audit (27
+  soumissions acceptées en variant l'empreinte à chaque appel, jusqu'au plafond d'agence). Le
+  plafond par empreinte ne protège donc que contre un robot naïf qui passe par le formulaire.
+- **En-tête `x-forwarded-for` : l'entrée choisie est celle ajoutée par notre propre proxy**
+  (`TRUSTED_PROXY_HOPS`, `features/estimation/ip-hash.ts`). L'en-tête est une liste que le client
+  commence et que chaque proxy complète : lire la **première** entrée, comme avant le 23/09/2026,
+  laissait n'importe qui changer de compartiment de limitation de débit en préfixant une valeur
+  inventée — y compris derrière un nginx correctement configuré. L'adresse est en plus normalisée
+  (minuscules, sans `[...]` d'IPv6, sans `:port`, longueur bornée) pour qu'une même adresse écrite
+  de plusieurs façons ne multiplie pas les compartiments. Couvert par `ip-hash.test.ts`.
+- **Caractères de contrôle refusés des deux côtés** (audit du 23/09/2026) : un appelant direct
+  pouvait enregistrer `first_name = "Jean\r\nBcc: attaquant@evil.test"` tel quel — une valeur que
+  Léa recopie dans `contacts.first_name` et qui deviendra un en-tête d'email le jour où un
+  fournisseur réel sera branché. `estimationRequestSchema` refuse maintenant tout caractère de
+  contrôle (et tout saut de ligne dans un nom, une ville, un email), et la base refuse la même
+  chose sur le chemin réellement emprunté par un attaquant
+  (`private.guard_inbound_lead_text()`, migration `20260923090000_inbound_lead_text_guard.sql`,
+  déclencheur sur `inbound_leads`) : l'exception annule toute la soumission (aucun lead, aucun
+  consentement, aucune ligne de limitation de débit) et le visiteur reçoit le message de validation
+  ordinaire. Les sauts de ligne d'un message libre restent acceptés. Couvert par
+  `types.test.ts` et `estimation.integration.test.ts`.
+- **Atomicité prouvée, pas supposée** : la fonction ne contient aucun `EXCEPTION WHEN` — une erreur
+  n'importe où annule tout ce que l'appel a écrit. Le même test force, via un déclencheur temporaire
+  propre à sa propre transaction (jamais persisté, même en cas de plantage), un échec pendant
+  l'insertion d'un consentement, et vérifie qu'aucun `inbound_leads` orphelin ne subsiste.
+- **Champ piège invisible** : vérifié en premier, rejeté avec le message générique de validation —
+  une réponse identique à un formulaire normal mal rempli. Limite assumée : un attaquant qui appelle
+  la fonction directement (donc sans jamais voir le champ) n'est pas ralenti par lui ; seule la
+  limitation de débit le concerne alors.
+- **Empreinte IP, jamais l'adresse** : SHA-256 salé (`ESTIMATION_IP_HASH_SALT`, variable serveur),
+  calculé côté Next.js depuis les en-têtes de la requête — jamais depuis un champ du formulaire.
+- **Aucun sel de repli, et rien n'est enregistré sans sel valide** : il n'existe **aucune valeur par
+  défaut** dans le code (un sel codé en dur serait public, donc les empreintes seraient réversibles
+  par force brute sur les 4 milliards d'adresses IPv4). Si `ESTIMATION_IP_HASH_SALT` est absente,
+  vide ou plus courte que 32 caractères, la demande est refusée **avant la première écriture** :
+  aucun `inbound_leads`, aucun `consents`, aucune ligne de limitation de débit. Le visiteur reçoit
+  le message générique « indisponible » (aucun nom de variable, aucun indice qu'un secret manque),
+  la cause exacte n'est écrite que dans les journaux serveur. Prouvé par comptage de lignes avant /
+  après l'appel dans `features/estimation/estimation.integration.test.ts`, et sans appel réseau du
+  tout dans `features/estimation/estimation.test.ts`.
+- **`anon` ne peut toujours rien lire** : `inbound_leads`, `contacts`, `consents` restent interdits en
+  lecture directe à `anon` — prouvé dans le même fichier de test, avec un client anonyme réel (pas
+  supposé) — et le schéma `private` est totalement hors d'atteinte de l'API Data.
+- **Léa traite le lead sans modification de son code** : vérifié pour de vrai (le test appelle
+  `runLeaAcquisition` sur le lead que la fonction publique vient de créer et attend un contact créé).
+- **Aucun prix ni fourchette ne peut sortir de ce chemin** : la fonction renvoie `void` ; il n'existe
+  ni colonne ni champ de sortie où un montant pourrait apparaître.
+
+**Ce que ce chemin ne couvre PAS**, honnêtement :
+
+- **Pas de CAPTCHA, pas de WAF.** La seule défense contre un flot de robots est la limitation de
+  débit décrite ci-dessus et le champ piège (faible contre un attaquant ciblé, voir plus haut).
+- **L'empreinte IP est contournable en une ligne**, pas seulement avec un botnet : un appelant
+  direct du RPC choisit la valeur de `p_ip_hash` (voir ci-dessus). Le plafond **par agence** borne
+  alors les dégâts sans les empêcher : **30 soumissions par heure, soit jusqu'à ~720 faux leads par
+  jour**, chacun avec des consentements enregistrés.
+- **Le plafond par agence est aussi un levier de déni de service** : 30 requêtes suffisent à
+  bloquer le formulaire pour **tous** les visiteurs légitimes pendant une heure — sur le principal
+  canal d'acquisition de l'agence. Vérifié en base pendant l'audit du 23/09/2026. Atténuation
+  nécessaire avant toute mise en ligne : limitation de débit **en frontal** (nginx/WAF) et/ou
+  CAPTCHA, plus une alerte quand le plafond est atteint (rien n'avertit l'agence aujourd'hui).
+- **Les soumissions refusées ne sont comptées par rien** : la ligne de limitation de débit est
+  écrite dans la même transaction que le lead, donc une soumission rejetée (champ piège, validation,
+  caractères de contrôle) est annulée avec le reste et ne consomme aucun quota. Un attaquant peut
+  donc envoyer des requêtes invalides sans limite : seule une limitation en frontal y répond.
+- **Comptage sans verrou** : le comptage puis l'insertion ne sont pas sérialisés, donc des appels
+  strictement simultanés peuvent dépasser légèrement un plafond. Impact volontairement accepté
+  (l'ordre de grandeur reste borné) ; à revoir si les plafonds deviennent un vrai contrôle de coût.
+- **Rien ne vérifie que le visiteur possède l'adresse ou le numéro qu'il indique**, donc un tiers
+  peut faire enregistrer un consentement au nom de quelqu'un d'autre (vérifié pendant l'audit). Le
+  premier contact validé par un humain est l'unique filet ; la double confirmation (opt-in par email
+  ou SMS) reste **obligatoire avant le premier envoi réel** — voir le point suivant.
+- **Effacement RGPD d'un lead non traité** : un lead resté `pending` porte l'identité et les
+  coordonnées de la personne sans être rattaché à un contact. La suppression d'un contact par un
+  directeur ne l'atteint donc pas. Le privilège `DELETE` existe bien pour les membres sur
+  `inbound_leads`, mais **aucun écran ni aucune procédure documentée** ne couvre ce cas, et le
+  consentement pré-contact (en ajout seul) reste conservé comme preuve. À traiter avec la politique
+  de conservation.
+- **Champ piège et remplissage automatique du navigateur** : le champ invisible s'appelle `website`
+  et porte `autocomplete="off"`, mais un gestionnaire de formulaires trop zélé pourrait le remplir
+  et faire rejeter un visiteur **légitime**, sans aucun moyen pour lui de corriger (le champ est
+  invisible). Risque de perte de lead, à surveiller par `frontend-ux` (nom de champ moins
+  attrayant, `readonly`, ou détection côté client).
+- **Aucune double confirmation (opt-in) par email ou SMS.** Un consentement enregistré par ce
+  formulaire ne prouve que « quelqu'un a coché la case avec ces coordonnées », pas que le titulaire
+  réel de l'adresse ou du numéro l'a fait. C'est une limite connue de tout formulaire public à simple
+  opt-in — atténuée mais pas résolue par la limitation de débit.
+- **`private.estimation_submissions` n'est jamais purgée automatiquement.** Aucune tâche planifiée
+  n'existe dans ce prototype. Durée de conservation recommandée avant un vrai déploiement : quelques
+  jours (assez pour couvrir les fenêtres de 10 minutes et 1 heure ci-dessus, pas plus) ; à mettre en
+  œuvre avec un job planifié (`pg_cron` ou équivalent) avant toute mise en production.
+- **Un consentement collecté avant qu'un contact existe n'autorise aucun envoi tant qu'il n'est pas
+  rattaché.** Le rattachement automatique (`private.reconcile_lead_consents()`) n'a lieu que lorsque
+  Léa (ou un humain) attache effectivement le lead à un contact ; un lead resté `pending` ou marqué
+  `rejected` garde son consentement comme preuve seulement.
+- **Un seul agent cible, en dur** (`private.estimation_target_agency()`) : adapté à ce prototype à une
+  agence, pas à une publication multi-agences réelle — voir `docs/architecture.md`.
 
 ### 2.7 Dépendances
 
@@ -277,9 +398,11 @@ change silencieusement ce qui est réellement installé.
 
 ### 3.1 Limitation de débit et anti-spam
 
-Aucun formulaire public n'existe encore (la page d'estimation est une coquille). La connexion s'appuie
-sur les limites intégrées de Supabase Auth. **Dès que le formulaire d'estimation sera écrit**, il faudra :
-limitation de débit par IP et par agence, anti-spam (pot de miel et/ou captcha), et bornes de taille.
+Le formulaire public d'estimation a désormais une limitation de débit par empreinte IP et par
+agence, et un champ piège — voir §2.8 pour ce qui est couvert et testé, et ses limites honnêtes
+(pas de CAPTCHA, pas de WAF, empreinte IP contournable, pas de purge automatique de
+`private.estimation_submissions`). La connexion, elle, s'appuie sur les limites intégrées de
+Supabase Auth ; aucune limitation de débit dédiée n'existe pour `/connexion`.
 
 ### 3.2 Webhooks
 
@@ -293,14 +416,24 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
 - **Désinscription** : la base sait enregistrer un retrait de consentement et le respecte à l'envoi,
   mais il n'existe **ni lien de désinscription, ni mot-clé STOP, ni écran de retrait**. À faire avec le
   premier canal réel.
+  **Attention (audit du 23/09/2026)** : les textes de consentement enregistrés comme preuve
+  (`features/estimation/consent-texts.ts`) et la page `politique-confidentialite` **annoncent** ces
+  moyens de retrait (« lien de désinscription présent dans chaque message », « en répondant STOP »).
+  C'est une promesse faite au visiteur que le code ne tient pas encore. Acceptable tant que rien
+  n'est mis en ligne et que la page affiche son avertissement « prototype de démonstration » ;
+  **à corriger ou à implémenter avant la première mise en ligne** (décision produit + revue
+  juridique), sans quoi la preuve de consentement décrit un dispositif inexistant.
 - **Horaires d'appel et plafond de 4 appels par mois** : aucune fonctionnalité d'appel n'existe
   (`outbound_messages` interdit explicitement le canal `phone`). À implémenter avec la téléphonie.
-- **Cases de consentement non précochées** : le formulaire d'estimation n'existe pas encore ; la règle
-  devra être appliquée et testée à ce moment-là. Le stockage du texte versionné et de la preuve est déjà
-  prêt et obligatoire.
+- **Cases de consentement non précochées** : le contrat serveur est prêt (`features/estimation/`,
+  `EstimationConsentChoices`, aucune valeur par défaut à `true`) et le stockage du texte versionné et
+  de la preuve est en place et obligatoire (voir §2.8). **L'écran `/estimation` lui-même reste à
+  construire par `frontend-ux`** : c'est lui qui devra afficher des cases réellement non précochées.
 - **Durées de conservation, purge automatique, export des données d'une personne** : non implémentés.
   L'effacement est possible (suppression d'un contact par un directeur, cascade), mais il n'y a ni
-  export RGPD, ni politique de rétention, ni **journal des accès sensibles**.
+  export RGPD, ni politique de rétention, ni **journal des accès sensibles**. S'y ajoute désormais
+  `private.estimation_submissions` (empreintes IP hachées pour la limitation de débit), jamais purgée
+  automatiquement — voir §2.8.
 ### 3.4 Limites techniques connues
 
 - **La CSP autorise encore `'unsafe-inline'` pour les scripts**, parce que Next.js injecte des scripts
@@ -365,4 +498,5 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 |---|---|---|
 | 2026-09-16 | Branche `feat/init-prototype`, audit complet (isolation, RLS, secrets, `service_role`, validation, injection de prompt, garde-fous produit, RGPD, en-têtes HTTP, dépendances) | Aucun problème critique. 1 problème élevé et 3 moyens corrigés (en-têtes de sécurité non appliqués, forge de l'auteur d'une entrée d'historique, inscription self-service ouverte, longueur minimale de mot de passe). Livraison autorisée. |
 | 2026-09-22 | Jalon « Relances Emma » : `/agents-ia/relances`, `listEmmaFollowUpCandidates`, `prepareFollowUp`, `AgentActionsPanel`, helper E2E `clearEmmaArtefacts` | Aucun problème critique. 1 problème élevé corrigé (mention de désinscription supprimable par une donnée contrôlée par le prospect, `lib/agents/consent.ts`). Isolation, coupe-circuit, consentement, premier contact humain et injection de prompt vérifiés. Restent 4 points faibles documentés en 3.4. Livraison autorisée. |
+| 2026-09-23 | Audit dédié du **formulaire public d'estimation** (`feat/public-estimation`) : `features/estimation/`, `app/(marketing)/estimation`, `politique-confidentialite`, migration `20260922120000`, privilèges réels de `anon` en base | Aucun problème critique. Isolation vérifiée **en base** : `anon` n'a aucun privilège de table dans `public`/`private`, aucun accès au schéma `private`, une seule fonction exécutable ; texte de consentement identique caractère par caractère entre SQL et TypeScript (196/154/150/231 caractères) ; `current_consents` exclut les consentements sans contact ; `guard_outbound_message` n'autorise aucun envoi depuis un consentement sans contact. **2 corrections** : entrée `x-forwarded-for` choisie (contournement du plafond par empreinte IP même derrière un proxy) et caractères de contrôle acceptés dans les noms (injection d'en-tête d'email en aval) — corrigée côté zod **et** côté base (migration `20260923090000`). **Non corrigé, assumé et documenté** : empreinte IP choisie librement par un appelant direct du RPC, plafond d'agence utilisable comme déni de service, absence de double opt-in, promesse de désinscription non implémentée. 927 → 939 tests verts. |
 | 2026-09-22 | Réconciliation `feat/agents-et-ecrans-reconcile` : rejeu chirurgical de 3 correctifs identifiés sur la branche de sauvegarde locale (sans écraser le travail distant, dont `hasOptOutInstruction`) | Octets de contrôle bruts remplacés par leurs échappements dans 3 fichiers dont 2 garde-fous (`features/agents-ia/types.ts`, `lib/utils/safe-redirect.ts`, leurs tests). `noMoney` ajouté au schéma de Louis (oublié jusqu'ici). Deux garde-fous partagés `noControlCharacters`/`singleLine` ajoutés contre l'injection d'en-tête d'email dans les objets d'Emma et de Louis. `@radix-ui/react-icons` épinglé en version exacte. 813 → 822 tests verts (`tsc`, lint et Vitest silencieux/verts), aucune régression. |

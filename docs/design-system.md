@@ -308,7 +308,53 @@ réellement lus par `getContacts()`. Aucun taux de conversion, aucune durée
 moyenne, aucune évolution : ce que l'écran ne peut pas compter, il ne
 l'affiche pas.
 
-### 3.3 Le badge « simulation » est une règle produit
+### 3.3 Composants du formulaire public d'estimation (`features/estimation/components/`)
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `EstimationForm` | `EstimationForm.tsx` (client) | Le formulaire entier : récapitulatif d'erreur, trois sections, champ piège invisible, bouton d'envoi et sa note, état de succès qui remplace le formulaire |
+| `EstimationIdentityFields` | `EstimationIdentityFields.tsx` | Prénom, nom, email, téléphone |
+| `EstimationPropertyFields` | `EstimationPropertyFields.tsx` | Type de bien (`Select`), ville, code postal, surface, pièces, message libre (`Textarea`) |
+| `EstimationConsentGroup` | `EstimationConsentGroup.tsx` | `fieldset`/`legend`, une case par canal, lien vers la politique de confidentialité |
+| `EstimationRequiredLabel` | `EstimationRequiredLabel.tsx` | Libellé d'un champ obligatoire : ajoute « (obligatoire) » **dans le texte du libellé** |
+
+#### Règles de cet écran (non négociables)
+
+1. **Aucune case n'est cochée par défaut.** C'est une exigence légale : le
+   consentement est un acte positif. L'état initial du formulaire
+   (`INITIAL_ESTIMATION_FORM_STATE`) et le composant sont couverts par des
+   tests qui échouent si une case devient cochée, y compris un balayage de
+   **toutes** les cases à cocher de l'écran (un cinquième canal serait couvert).
+2. **Le texte affiché est le texte enregistré.** Le libellé visible d'une case
+   vient mot pour mot de `features/estimation/consent-texts.ts`, jamais d'une
+   variante rédigée dans le composant : c'est ce texte que la base conserve
+   comme preuve (`consents.presented_text`).
+3. **Aucun prix, jamais.** Ni titre, ni sous-titre, ni bouton, ni confirmation,
+   ni métadonnée ne suggère un chiffre, une fourchette ou un calcul
+   automatique. La promesse est l'étude d'un conseiller humain. Un test unitaire
+   et un test E2E vérifient l'absence de « € » sur l'écran et dans la
+   confirmation.
+4. **Champ obligatoire annoncé par du texte.** `required` seul n'est perçu que
+   par les lecteurs d'écran : le marqueur « (obligatoire) » fait partie du
+   libellé, donc du nom accessible. Jamais d'astérisque seule, jamais une
+   couleur. Conséquence pour les tests : un libellé se cherche avec une
+   expression régulière ancrée (`^Nom( \(obligatoire\))?$`), sinon « Nom »
+   attrape aussi « Prénom » et « Nombre de pièces ».
+5. **Erreurs reliées au champ.** Chaque message est rendu par `Field`,
+   `Textarea` ou la case concernée, relié par `aria-describedby` avec
+   `aria-invalid`. Le récapitulatif (`Alert tone="error"`, `role="alert"`, dans
+   une zone `aria-live="polite"`) reçoit le focus. S'il ne peut désigner aucun
+   champ affiché, il affiche un texte général plutôt que d'envoyer le visiteur
+   chercher un message qui n'existe pas.
+6. **La validation navigateur est un confort.** Le formulaire réutilise
+   `estimationRequestSchema` tel quel (aucune règle réécrite côté client) et le
+   serveur, puis la base, revalident tout. Aucune vérification serveur n'est
+   contournée ou anticipée.
+7. **Le champ piège reste hors de portée** : hors écran, `aria-hidden`,
+   `tabIndex={-1}`, jamais nommé dans l'interface, et aucun message d'erreur ne
+   révèle son existence.
+
+### 3.4 Le badge « simulation » est une règle produit
 
 Toute action simulée (message, rendez-vous, exécution d'agent IA) affiche
 `SimulationBadge`. C'est un garde-fou de `CLAUDE.md` : on ne doit **jamais** confondre
@@ -333,6 +379,8 @@ Chaque écran gère quatre états :
 - Un seul `h1` par écran ; les cartes utilisent `h2`.
 - Focus visible global (`:focus-visible`, contour 2 px noir, décalage 2 px) — jamais supprimé.
 - Champs : `<label for>` réel, jamais un simple `placeholder`.
+- Champ obligatoire : marqueur textuel dans le libellé (« (obligatoire) »), en plus de
+  l'attribut `required`. Ni couleur seule, ni astérisque sans explication.
 - Tableaux : `<caption>` en `sr-only`, `<th scope>` sur les en-têtes de colonne et de ligne.
 - Les éléments décoratifs (points de progression, rails de frise, glyphes) sont `aria-hidden`.
 - État courant de navigation : `aria-current="page"`.
@@ -360,6 +408,11 @@ Chaque écran gère quatre états :
   `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3` (deux rangées de trois à partir de
   1280 px, jamais de défilement horizontal disgracieux), `perdu` en dessous sur
   une colonne unique `max-w-sm`.
+- Pages publiques de saisie (`/estimation`, `/politique-confidentialite`) : colonne
+  unique `max-w-2xl`, gouttières `px-6`, respiration `py-16` (`sm:py-20`). Le
+  formulaire vit dans une `Card` unique, ses sections espacées de `gap-10`, l'action
+  principale séparée par un filet `border-t border-line`. Les champs passent de deux
+  colonnes (`sm:grid-cols-2`) à une seule sous 640 px.
 - Navigation : barre horizontale défilante sous 1024 px, colonne fixe de 256 px au-dessus.
 - Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
 
