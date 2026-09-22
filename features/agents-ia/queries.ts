@@ -19,6 +19,7 @@ import {
   getAgentsDashboard,
   listAgentRuns,
   listAppointmentsToFollowThrough,
+  listEmmaFollowUpCandidates,
   listInboundLeads,
   listMessagesToValidate,
 } from "./data";
@@ -28,10 +29,17 @@ import type {
   AgentRunsPage,
   AgentsDashboard,
   AiPausedState,
+  EmmaFollowUpCandidateView,
   InboundLeadView,
   PendingMessageView,
   ReportedAppointmentView,
 } from "./types";
+
+/** Manual Emma workspace; the action rechecks every displayed condition. */
+export async function getEmmaFollowUpCandidates(): Promise<Result<EmmaFollowUpCandidateView[]>> {
+  const client = await createClient();
+  return listEmmaFollowUpCandidates(client);
+}
 
 /**
  * The steps really recorded during one AI run, in order, with the run head.

@@ -158,6 +158,23 @@ export type PendingMessageView = {
   createdAt: string;
 };
 
+/** One CRM file shown in Emma's manual follow-up workspace. */
+export type EmmaFollowUpCandidateView = {
+  id: string;
+  contactName: string;
+  email: string | null;
+  phone: string | null;
+  stage: Enums["pipeline_stage"];
+  humanTakeover: boolean;
+  /** Channel selected by deterministic code from current consents, never by Emma. */
+  channel: Enums["consent_channel"] | null;
+  hasPendingEmmaDraft: boolean;
+  /** Display convenience only. The server action rechecks every condition. */
+  canPrepare: boolean;
+  blockedReason: "human_takeover" | "pending_draft" | "consent_or_channel_missing" | null;
+  updatedAt: string;
+};
+
 // -----------------------------------------------------------------------------
 // Écran « Agents IA » — activité réellement enregistrée
 // -----------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import { PipelineStageBadge } from "@/components/ui/PipelineStageBadge";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { AgentRunReplay } from "@/features/agents-ia/components/AgentRunReplay";
 import { replayStepsFromRecorded } from "@/features/agents-ia/components/replay";
+import { prepareFollowUp } from "@/features/agents-ia/emma-relation/actions";
 import { qualifyContact } from "@/features/agents-ia/hugo-qualification/actions";
 import { proposeAppointment } from "@/features/agents-ia/louis-rendez-vous/actions";
 import { QUALIFICATION_FIELD_LABELS } from "@/lib/agents/messages";
@@ -25,13 +26,15 @@ const TEXTS = APP_TEXTS.agents;
  */
 type HugoResult = NonNullable<Awaited<ReturnType<typeof qualifyContact>>["data"]>;
 type LouisResult = NonNullable<Awaited<ReturnType<typeof proposeAppointment>>["data"]>;
+type EmmaResult = NonNullable<Awaited<ReturnType<typeof prepareFollowUp>>["data"]>;
 
-type AgentKey = "hugo" | "louis";
+type AgentKey = "hugo" | "louis" | "emma";
 type PanelState =
   | { kind: "idle" }
   | { kind: "error"; message: string }
   | { kind: "hugo"; result: HugoResult }
-  | { kind: "louis"; result: LouisResult };
+  | { kind: "louis"; result: LouisResult }
+  | { kind: "emma"; result: EmmaResult };
 
 function fieldLabel(field: string): string {
   return field in QUALIFICATION_FIELD_LABELS
@@ -40,7 +43,7 @@ function fieldLabel(field: string): string {
 }
 
 /**
- * The two AI actions of the first journey.
+ * The AI actions launchable from a contact record: Hugo, Louis, then Emma.
  *
  * No AI is ever called from the browser: the buttons only invoke the server
  * actions, which re-check the session, the agency and every guard rail
@@ -59,9 +62,12 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
       if (agent === "hugo") {
         const { data, error } = await qualifyContact(contactId);
         setState(error ? { kind: "error", message: error.message } : { kind: "hugo", result: data });
-      } else {
+      } else if (agent === "louis") {
         const { data, error } = await proposeAppointment(contactId);
         setState(error ? { kind: "error", message: error.message } : { kind: "louis", result: data });
+      } else {
+        const { data, error } = await prepareFollowUp(contactId);
+        setState(error ? { kind: "error", message: error.message } : { kind: "emma", result: data });
       }
       // Re-renders the server components: header, consents and timeline.
       router.refresh();
@@ -77,7 +83,7 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
   // Steps really measured during the run we just launched: the replay needs no
   // second read, and shows exactly what `getRunSteps` would show later.
   const replay =
-    state.kind === "hugo" || state.kind === "louis"
+    state.kind === "hugo" || state.kind === "louis" || state.kind === "emma"
       ? { runId: state.result.runId, steps: state.result.steps }
       : null;
 
@@ -111,6 +117,18 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
             {running === "louis" ? TEXTS.running : TEXTS.runLouis}
           </Button>
           <p className="mt-2 text-xs text-ink-muted">{TEXTS.runLouisHint}</p>
+        </div>
+        <div className="flex-1">
+          <Button
+            variant="secondary"
+            onClick={() => void run("emma")}
+            isLoading={running === "emma"}
+            disabled={running !== null}
+            className="w-full"
+          >
+            {running === "emma" ? TEXTS.running : TEXTS.runEmma}
+          </Button>
+          <p className="mt-2 text-xs text-ink-muted">{TEXTS.runEmmaHint}</p>
         </div>
       </div>
 
@@ -152,6 +170,20 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
               <span className="text-ink-subtle">{TEXTS.proposedSlot} : </span>
               {formatSlot(state.result.startsAt, state.result.endsAt)}
             </p>
+            <figure className="mt-3 rounded-lg border border-line bg-surface p-3">
+              <figcaption className="text-overline font-semibold text-ink-subtle uppercase">
+                {TEXTS.draftMessage}
+              </figcaption>
+              <p className="mt-2 text-sm whitespace-pre-line text-ink">{state.result.messageBody}</p>
+            </figure>
+            <p className="mt-3 text-xs">{TEXTS.pendingValidation}</p>
+            <p className="mt-1 text-xs text-ink-subtle">{TEXTS.refreshHint}</p>
+          </Alert>
+        ) : null}
+
+        {state.kind === "emma" ? (
+          <Alert tone="success" title={TEXTS.emmaSuccessTitle} className="mt-5" testId="agent-result">
+            <p>{state.result.decisionText}</p>
             <figure className="mt-3 rounded-lg border border-line bg-surface p-3">
               <figcaption className="text-overline font-semibold text-ink-subtle uppercase">
                 {TEXTS.draftMessage}

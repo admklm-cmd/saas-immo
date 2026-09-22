@@ -38,6 +38,27 @@ export async function clearLouisArtefacts(contactId: string): Promise<void> {
   }
 }
 
+/**
+ * Removes what a previous Emma run created for a contact (the follow-up
+ * draft), so the "relances" journey can be replayed without reloading the
+ * whole fixtures. Emma's idempotency key is `emma-<contactId>-<Paris day>`,
+ * one per contact per calendar day: without this cleanup, a second run the
+ * same day would be refused by the database as a duplicate. Fixture rows are
+ * left untouched.
+ */
+export async function clearEmmaArtefacts(contactId: string): Promise<void> {
+  const admin = adminClient();
+
+  const { error } = await admin
+    .from("outbound_messages")
+    .delete()
+    .eq("contact_id", contactId)
+    .like("idempotency_key", "emma-%");
+  if (error) {
+    throw new Error(`${CONTEXT}: could not clean Emma's drafts of ${contactId}: ${error.message}`);
+  }
+}
+
 /** Idempotency prefix of the drafts this suite creates and cleans up itself. */
 const E2E_DRAFT_PREFIX = "e2e-validation";
 

@@ -344,7 +344,12 @@ Chaque écran gère quatre états :
   Le statut du rendez-vous conduit la carte : confirmation humaine de la proposition,
   saisie obligatoire du compte-rendu sur un rendez-vous confirmé, puis apparition de Sarah
   une fois le rendez-vous réalisé. Le compte-rendu reste un bloc de texte brut sur surface
-  atténuée. L'espace de relances Emma est en cours de finition.
+  atténuée.
+- L'espace de relances Emma (`/agents-ia/relances`) lit `getEmmaFollowUpCandidates()` : le
+  canal retenu et un blocage éventuel (reprise humaine, brouillon déjà en attente, aucun
+  canal consenti) sont un confort d'affichage — le bouton désactivé porte sa raison via
+  `aria-describedby`, et le serveur revérifie tout au clic. Le même agent est aussi
+  lançable depuis `AgentActionsPanel` de la fiche contact, à côté de Hugo et Louis.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
 - Pas de police de marque (choix assumé, voir 2.2).

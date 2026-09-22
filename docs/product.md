@@ -8,8 +8,7 @@
 > (connexion → contacts → fiche → Hugo → Louis → historique), la boîte « Leads entrants »
 > de Léa, la file « Messages à valider » avec correction humaine des brouillons, et le
 > module « Agents IA » (les cinq agents, le coupe-circuit, le journal des exécutions et le
-> rejeu animé d'une exécution), ainsi que le suivi post-estimation de Sarah. Emma a son
-> moteur serveur simulé, mais pas encore d'écran dédié. Estimation, tableau de bord, pipeline et paramètres utilisent
+> rejeu animé d'une exécution), ainsi que les relances d'Emma et le suivi post-estimation de Sarah. Estimation, tableau de bord, pipeline et paramètres utilisent
 > explicitement `ComingSoon`.
 
 ## 1. À qui on vend
@@ -61,7 +60,7 @@ Deux règles produit :
 |---|---|---|
 | **Léa** — acquisition | Vérifie la source d'un lead entrant, dédoublonne, crée la fiche | **Implémenté (simulateur)**, lançable depuis « Leads entrants » |
 | **Hugo** — qualification | Type de bien, secteur, motivation, délai. Ne comble jamais un trou : il le signale | **Implémenté (simulateur)**, lançable depuis la fiche contact |
-| **Emma** — relation | Prépare les relances et adapte le contenu | Serveur fait (simulateur), **sans UI ni route dédiée** |
+| **Emma** — relation | Prépare les relances et adapte le contenu | **Implémenté (simulateur)**, lançable depuis « Relances Emma » et depuis la fiche contact |
 | **Louis** — rendez-vous | Propose un créneau d'estimation libre et rédige le message | **Implémenté (simulateur)**, lançable depuis la fiche contact |
 | **Sarah** — suivi | Exploite le compte-rendu de RDV, suit jusqu'au mandat | **Implémenté (simulateur)**, lançable depuis « Suivi des rendez-vous » quand le compte-rendu humain est présent |
 
@@ -81,11 +80,12 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Inscription | `/inscription` | Coquille | Création de compte accompagnée par AiaA |
 | Tableau de bord | `/dashboard` | `ComingSoon` | Statistiques calculées sur données réelles |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
-| Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo et Louis |
+| Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |
 | Pipeline | `/pipeline` | `ComingSoon` | Vue par étape |
 | Agents IA | `/agents-ia` | **Fait** | Les 5 agents (mission, statut, compteurs, dernière exécution, erreurs), activité de l'agence, **coupe-circuit**, journal filtrable et paginé |
 | Rejeu d'une exécution | `/agents-ia/executions/[runId]` | **Fait** | Étapes réellement enregistrées, rejouées avec les durées mesurées |
 | Leads entrants | `/agents-ia/leads-entrants` | **Fait** | Demandes brutes : source, données non fiables, dédoublonnage par Léa, création ou rattachement de fiche, tâche de consentement et rejeu |
+| Relances Emma | `/agents-ia/relances` | **Fait** | Dossiers éligibles (`getEmmaFollowUpCandidates`), canal retenu et blocage affichés lisiblement (reprise humaine, brouillon déjà en attente, aucun canal consenti — confort d'affichage, le serveur revérifie tout au clic), brouillon simulé envoyé vers la validation humaine et rejeu |
 | Messages à valider | `/agents-ia/a-valider` | **Fait** | File d'attente : contact, canal, consentement, message proposé ; corriger, valider, refuser (motif obligatoire) ou déclencher un envoi **simulé** |
 | Suivi des rendez-vous | `/agents-ia/suivi-rendez-vous` | **Fait** | Proposition confirmée par un humain, compte-rendu obligatoire à la clôture, puis résultat et rejeu de Sarah |
 | Paramètres | `/parametres` | `ComingSoon` | Agence, utilisateurs, intégrations, conservation |
@@ -195,6 +195,5 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
 
 ## 8. Prochaines itérations (proposition)
 
-1. Écran de relances (Emma) : le serveur existe, mais aucune UI ni route dédiée n'est livrée.
-2. Formulaire d'estimation public avec consentement par canal (cases non précochées).
-3. Remplacer les coquilles `ComingSoon` du tableau de bord, du pipeline et des paramètres.
+1. Formulaire d'estimation public avec consentement par canal (cases non précochées).
+2. Remplacer les coquilles `ComingSoon` du tableau de bord, du pipeline et des paramètres.

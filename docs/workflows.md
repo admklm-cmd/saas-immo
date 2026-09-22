@@ -323,8 +323,18 @@ un humain (la base le revérifie à l'envoi).
 > Code : `features/agents-ia/emma-relation/` · Entrée : `prepareFollowUp(contactId)`
 
 ### Déclencheur
-Action humaine depuis la fiche contact (bouton « Lancer Emma »), via la server action
-`prepareFollowUp(contactId)`. Aucun déclenchement automatique à ce stade.
+Action humaine depuis la fiche contact (bouton « Lancer Emma ») ou depuis l'espace de travail
+manuel `/agents-ia/relances` (« Relances Emma »), via la server action `prepareFollowUp(contactId)`.
+Aucun déclenchement automatique à ce stade, et aucune cadence de relance n'est définie : l'écran
+« Relances Emma » ne dit jamais qu'un dossier est « dû » ou « en retard », il liste les dossiers
+éligibles et pourquoi chacun peut ou non être relancé maintenant.
+
+L'écran lit `getEmmaFollowUpCandidates()`, qui calcule pour chaque contact des étapes éligibles un
+canal retenu (même règle que ci-dessous, `null` si aucun canal consenti) et un `blockedReason`
+(`human_takeover`, `pending_draft`, `consent_or_channel_missing`, ou `null`). **Ce calcul est un
+confort d'affichage uniquement** : bouton visuellement désactivé avec la raison associée, mais la
+server action ci-dessous revérifie chaque condition côté serveur au clic, y compris des conditions
+que l'écran ne connaît pas (coupe-circuit, limite quotidienne).
 
 ### Entrées
 - Le contact de l'agence de l'appelant : prénom, étape, coordonnées, source, motivation, délai.

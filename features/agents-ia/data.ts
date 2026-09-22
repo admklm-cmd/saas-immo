@@ -51,11 +51,13 @@ import {
   type AgentRunSummary,
   type AgentsDashboard,
   type AiPausedState,
+  type EmmaFollowUpCandidateView,
   type InboundLeadView,
   type PendingMessageView,
   type ReportedAppointmentView,
   APPOINTMENT_STATUS_LABELS,
 } from "./types";
+import { EMMA_ELIGIBLE_STAGES, chooseChannel } from "./emma-relation/decision";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -503,6 +505,116 @@ export async function listMessagesToValidate(
   }
 }
 
+
+/**
+ * Emma's manual workspace. It deliberately does not claim a relance is "due":
+ * no cadence policy exists yet. The action remains authoritative and rechecks
+ * every value at click time.
+ */
+export async function listEmmaFollowUpCandidates(
+  client: TypedClient,
+): Promise<Result<EmmaFollowUpCandidateView[]>> {
+  try {
+    const contextResult = await resolveAgentContext(client);
+    if (contextResult.error) return { data: null, error: contextResult.error };
+    const context: AgentContext = contextResult.data;
+
+    const contactsQuery = await client
+      .from("contacts")
+      .select("id, first_name, last_name, email, phone, stage, human_takeover, updated_at")
+      .eq("agency_id", context.agencyId)
+      .in("stage", [...EMMA_ELIGIBLE_STAGES])
+      .order("updated_at", { ascending: true })
+      .limit(100);
+    if (contactsQuery.error) {
+      return failFromDatabase<EmmaFollowUpCandidateView[]>(
+        "listEmmaFollowUpCandidates.contacts",
+        contactsQuery.error,
+      );
+    }
+
+    const contacts = contactsQuery.data ?? [];
+    if (contacts.length === 0) return ok([]);
+    const contactIds = contacts.map((contact) => contact.id);
+
+    const [consentsQuery, draftsQuery] = await Promise.all([
+      client
+        .from("current_consents")
+        .select("contact_id, channel, status")
+        .eq("agency_id", context.agencyId)
+        .in("contact_id", contactIds),
+      client
+        .from("outbound_messages")
+        .select("contact_id")
+        .eq("agency_id", context.agencyId)
+        .eq("created_by_agent", "emma")
+        .eq("status", "pending_validation")
+        .in("contact_id", contactIds),
+    ]);
+    if (consentsQuery.error) {
+      return failFromDatabase<EmmaFollowUpCandidateView[]>(
+        "listEmmaFollowUpCandidates.consents",
+        consentsQuery.error,
+      );
+    }
+    if (draftsQuery.error) {
+      return failFromDatabase<EmmaFollowUpCandidateView[]>(
+        "listEmmaFollowUpCandidates.drafts",
+        draftsQuery.error,
+      );
+    }
+
+    const consentsByContact = new Map<
+      string,
+      Partial<
+        Record<
+          Database["public"]["Enums"]["consent_channel"],
+          Database["public"]["Enums"]["consent_status"]
+        >
+      >
+    >();
+    for (const consent of consentsQuery.data ?? []) {
+      if (!consent.contact_id || !consent.channel || !consent.status) continue;
+      const current = consentsByContact.get(consent.contact_id) ?? {};
+      current[consent.channel] = consent.status;
+      consentsByContact.set(consent.contact_id, current);
+    }
+    const contactsWithDraft = new Set((draftsQuery.data ?? []).map((draft) => draft.contact_id));
+
+    return ok(
+      contacts.map((contact) => {
+        const channelChoice = chooseChannel({
+          hasEmail: Boolean(contact.email),
+          hasPhone: Boolean(contact.phone),
+          consents: consentsByContact.get(contact.id) ?? {},
+        });
+        const hasPendingEmmaDraft = contactsWithDraft.has(contact.id);
+        const blockedReason = contact.human_takeover
+          ? ("human_takeover" as const)
+          : hasPendingEmmaDraft
+            ? ("pending_draft" as const)
+            : channelChoice.channel === null
+              ? ("consent_or_channel_missing" as const)
+              : null;
+        return {
+          id: contact.id,
+          contactName: joinContactName(contact) ?? CONTACT_WITHOUT_NAME,
+          email: contact.email,
+          phone: contact.phone,
+          stage: contact.stage,
+          humanTakeover: contact.human_takeover,
+          channel: channelChoice.channel,
+          hasPendingEmmaDraft,
+          canPrepare: blockedReason === null,
+          blockedReason,
+          updatedAt: isoUtc(contact.updated_at),
+        };
+      }),
+    );
+  } catch (cause) {
+    return failFromUnexpected<EmmaFollowUpCandidateView[]>("listEmmaFollowUpCandidates", cause);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Écran « Agents IA » — réglages, coupe-circuit et activité réelle
