@@ -121,3 +121,32 @@ complet de 14 s d'Agents IA ; cycle complet de 18 s de Messages à valider ; con
 transformations et des boucles ; aucun point coupé aux bords ; navigation rapide ; redimensionnement
 et mobile ; mode réduction des animations ; vrais états chargement, succès, erreur, nouvelle
 tentative ; aucune régression des interactions existantes.
+
+## 9. Écart au plan initial — particules en fond de page (demande du 23/09/2026)
+
+**Changement de périmètre demandé par l'utilisateur, après validation du plan initial.**
+Le §1 prévoyait une « zone décorative dans l'en-tête de chaque page, à côté du titre ». Il est
+remplacé, pour le jalon 3, par : **les particules couvrent le fond de toute la page, derrière le
+contenu**. Le composant reste configurable (en-tête, bords, fond) ; le mode « fond » devient le mode
+par défaut des six pages connectées.
+
+Règles associées :
+- Un seul canvas, fixé à la fenêtre (position fixed, taille du viewport, pas de la hauteur de
+  défilement), placé derrière le contenu, dans le layout partagé ; aria-hidden, pointer-events none.
+- Lisibilité : cartes blanches opaques (inchangé). Les textes posés hors carte (titres de page,
+  descriptions, filtres, navigation) doivent rester lisibles : plafond d'opacité des particules plus
+  bas qu'en aperçu, et voile blanc dégradé (masque) sous la colonne de contenu et la navigation ;
+  contraste AA vérifié sur captures.
+- Densité revue à la baisse par rapport au bandeau (budget ci-dessous, à confirmer par l'utilisateur
+  avant implémentation) ; densité adaptative si le temps par image dépasse le seuil mesuré.
+- Les petits aperçus de la galerie de développement gardent leur densité (≈ 2 600 chacun).
+
+Budget proposé (remplace « 6 000 à 13 500 en grande zone » pour le mode fond) :
+| Contexte | Particules max | Remarques |
+|---|---|---|
+| Bureau large (≥ 1280 px) | 6 000 | opacités .08 à .35 |
+| Bureau / tablette (768 à 1279 px) | 4 000 | |
+| Mobile (< 768 px) | 1 800 | devicePixelRatio plafonné à 1,5 |
+| Réduction des animations | même nombre, une image statique | aucun rAF continu |
+| Adaptatif | baisse par paliers de 25 % | si > 8 ms par image en moyenne sur 2 s |
+Statut : **proposé, en attente de confirmation utilisateur.**
