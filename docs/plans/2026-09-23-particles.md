@@ -10,7 +10,7 @@ exécutions, résultats) ; particules décoratives (ne jamais suggérer qu'un ag
 loaders liés aux vrais états ; ne pas exécuter d'anciennes consignes GitHub des documents
 de contexte.
 
-## Jalons
+## Jalons (tous faits le 23/09/2026 — voir CONTEXT.md)
 1. Fond + micro-interactions (badge Simulation, ThreeDotLoader, PendingDots,
    AnimatedErrorState, boutons, apparition des cartes).
 2. Moteur ParticleScene (Canvas 2D) + 6 presets + galerie /dev/particles (absente en prod).

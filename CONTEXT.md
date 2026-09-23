@@ -1,7 +1,6 @@
 # Contexte de reprise — Ascend Strategy
 
-Dernière mise à jour : 23 septembre 2026 (jalon « démonstration complète », branche
-`feat/complete-demo`).
+Dernière mise à jour : 23 septembre 2026 (jalon « animations », branche `feat/particle-animations`, issue de `feat/complete-demo`).
 
 Ce document est destiné à l'agent qui reprend le développement. Lire d'abord `CLAUDE.md` et
 `AGENTS.md`, puis `docs/` (`product.md`, `workflows.md`, `architecture.md`, `security.md`,
@@ -102,3 +101,35 @@ Audits `cybersecurite` des jalons 1, 4 et final : aucun problème critique ou é
 - Premier message et mandat signé : toujours humains.
 - Tout envoi et rendez-vous reste marqué Simulation.
 - Aucune migration distante ni déploiement sans demande explicite.
+
+## 8. Jalon animations — branche `feat/particle-animations` (23/09/2026)
+
+Plan et cahier des charges : `docs/plans/2026-09-23-particles.md` et `-spec.md` (la §9 documente
+l'écart validé : particules en fond de page, budget 6 000 / 4 000 / 1 800). Point de départ : un
+brouillon Codex non relu (commit `1761166`), depuis relu et en grande partie réécrit.
+
+Livré (commits locaux) :
+- `7a348dc` fond gris perle, cartes opaques, micro-interactions liées aux vrais états
+  (ThreeDotLoader, PendingDots, AnimatedErrorState, verrou anti double clic, « Réessayer »
+  seulement pour erreurs techniques relançables, apparition des cartes, reduced motion) ;
+- `cb504ec` moteur Canvas 2D (`components/motion/`), six formes (voile, sphère, courant, agents
+  14 s, vortex→relief 18 s, grille), galerie `/dev/particles` (404 en production) ;
+- `3a1db3c` un seul moteur en fond dans le layout connecté, piloté par la route, transitions à la
+  navigation (précédent/suivant, clics rapides), lisibilité AA (≥ 5,24:1 mesuré), site public
+  inchangé.
+
+Contrôles (23/09) : tsc ✅ · lint ✅ · vitest 132 fichiers / 1 486 tests ✅ · Playwright 90 ✅ ·
+build ✅ · npm audit 0 · audit cybersecurite : livraison autorisée.
+
+Envoi GitHub **en attente** : l'utilisateur vérifie la configuration Vercel (production limitée à
+`main`, protection des aperçus, variables d'environnement) et passe le dépôt en privé. Ne rien
+pousser avant sa confirmation.
+
+Reste à ajuster (décisions visuelles utilisateur) :
+- les formes « agents » et « vortex » passent en partie sous le haut des cartes sur bureau ;
+- pendant une transition, les cartes en cours d'apparition laissent voir les particules (< 0,5 s) ;
+- intensité et taille de la zone en fond (très discrète, surtout sur mobile) ;
+- exclure `app/dev/**` du build de production avant le déploiement VPS (code de galerie livré dans
+  les fichiers statiques, page inaccessible) ;
+- performance non mesurée sur un vrai mobile ou une machine modeste ;
+- `.particle-veil` à ajouter à la main sous tout nouveau texte hors carte.
