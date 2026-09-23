@@ -149,4 +149,4 @@ Budget proposé (remplace « 6 000 à 13 500 en grande zone » pour le mode fond
 | Mobile (< 768 px) | 1 800 | devicePixelRatio plafonné à 1,5 |
 | Réduction des animations | même nombre, une image statique | aucun rAF continu |
 | Adaptatif | baisse par paliers de 25 % | si > 8 ms par image en moyenne sur 2 s |
-Statut : **proposé, en attente de confirmation utilisateur.**
+Statut : **confirmé par l'utilisateur le 23/09/2026.**
