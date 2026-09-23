@@ -318,7 +318,6 @@ Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAN
 | `Checkbox` | `Checkbox.tsx` (client) | Case de confirmation explicite : toute la zone bordée est le `<label>`, contrôlée, **jamais précochée** ; cochée = cadre noir + fond atténué (jamais la couleur seule), désactivée |
 | `Dialog` | `Dialog.tsx` (client) | Fenêtre modale sur `<dialog>` natif + `showModal()` : titre (`aria-labelledby`), résumé (`aria-describedby`), `aria-modal`, focus piégé par le navigateur, Échap et clic sur le fond pour annuler (`dismissible={false}` pendant une requête), retour du focus (`returnFocusRef`), pied d'actions empilé en mobile |
 | `Textarea` | `Textarea.tsx` | Champ multiligne : libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), `maxLength` |
-| `ComingSoon` | `ComingSoon.tsx` | Écran « À venir » soigné |
 | `Pagination` | `Pagination.tsx` | `nav[aria-label="Pagination"]` : « 26–50 sur 131 » (total exact) + Précédent / Suivant en liens d'URL. Direction inexistante : bouton atténué (`opacity-40`), `aria-hidden`, pour que les boutons ne sautent pas d'une page à l'autre ; une seule page : le décompte seul, aucun bouton |
 | `LinkTabs` | `LinkTabs.tsx` | Filtre segmenté en **liens** (pas de `tablist` : chaque choix charge une autre liste et vit dans l'URL). Piste `bg-surface-muted` arrondie, choix courant en pilule `bg-inverse` + graisse `semibold` + `aria-current="page"` (jamais la couleur seule) ; défile horizontalement si l'écran est étroit |
 | `ListTotal` | `ListTotal.tsx` | Total exact d'une liste paginée, **toujours** suivi de son périmètre — même motif « chiffre + périmètre » que le tableau de bord (§ 3.5), pour qu'un chiffre lu sur le tableau de bord se reconnaisse sur l'écran où il mène |
@@ -340,7 +339,7 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `AgentOverviewCard` | `AgentOverviewCard.tsx` | Un agent : prénom, mission, statut, compteurs par fenêtre, dernière exécution, dernières erreurs |
 | `ActivityFigure` | `ActivityFigure.tsx` | Un compteur **toujours accompagné de sa fenêtre**, « Indisponible » si la lecture a échoué |
 | `AgencyActivityCard` | `AgencyActivityCard.tsx` | Chiffres de l'agence : exécutions décomptées, limite, tentatives, brouillons à valider |
-| `KillSwitchPanel` | `KillSwitchPanel.tsx` (client) | Coupe-circuit : état, confirmation en deux temps, refus expliqué |
+| `KillSwitchPanel` | `KillSwitchPanel.tsx` (client) | Coupe-circuit : état, confirmation en deux temps, refus expliqué ; `headingLevel` 2 (défaut, `/agents-ia`) ou 3 (sous la section « Agents IA » de `/parametres`) — un seul composant, deux écrans, mêmes règles |
 | `AgentRunsHistory` / `AgentRunsFilters` / `AgentRunsTable` | — | Journal filtrable et paginé (formulaire GET, sans JavaScript) |
 | `PendingMessagesList` | `PendingMessagesList.tsx` (client) | File « à valider » : confirmation persistante (`aria-live`) + rafraîchissement serveur |
 | `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |
@@ -492,9 +491,31 @@ Ni tendance, ni flèche, ni pourcentage : l'écran n'affiche que ce que le serve
 | `TaskRow` | `TaskRow.tsx` | Server Component : titre (`h3`, texte brut), contact lié à sa fiche ou « Tâche d'agence » (texte atténué, aucun lien), échéance en heure de Paris, badge `solid` « En retard » **écrit**, agent qui a ouvert la tâche |
 | `CompleteTaskButton` | `CompleteTaskButton.tsx` (client) | « Marquer comme faite » : verrou par `ref` + `useTransition` (aucun double envoi), bouton désactivé une fois la tâche close, erreur serveur affichée telle quelle sous le bouton (`Alert error`) |
 | `TaskCompletionProvider` | `TaskCompletionProvider.tsx` (client) | Zone `aria-live` au-dessus de la liste (la ligne terminée disparaît, elle ne peut pas porter sa confirmation) : succès en `Alert success`, « déjà terminée » en `Alert info` (une information, pas une alerte) ; le focus y est déplacé puis la liste est relue (`router.refresh`) |
-| `AppointmentList` / `AppointmentRow` | — | Tuile calendrier (jour + mois court, `aria-hidden` : le créneau complet est écrit à côté), créneau avec l'année, contact lié, statut (`Proposé` contour, `Confirmé` ✓, `Réalisé` gris, `Annulé` pointillés — jamais `solid`, réservé au badge « Simulation » juste à côté), `SimulationBadge`. Lien « Confirmer / Clôturer dans le suivi » **seulement** si `canBeConfirmed` / `canBeCompleted` |
+| `AppointmentList` / `AppointmentRow` | — | Tuile calendrier (jour + mois court, `aria-hidden` : le créneau complet est écrit à côté), créneau avec l'année, contact lié, statut (`Proposé` contour, `Confirmé` ✓, `Réalisé` gris, `Annulé` pointillés — jamais `solid`, réservé au badge « Simulation » juste à côté), `SimulationBadge`. Lien vers le suivi **seulement** si une action est possible : « Confirmer » si `canBeConfirmed`, « Clôturer » si `canBeCompleted` **et** heure de début passée, sinon « Ouvrir dans le suivi » (confirmé, encore à venir). `now` est lu une fois par requête et passé en prop (`follow-through-action.ts`, rendu pur) |
 
 **Motif « liste de travail paginée ».** `PageHeader` → rangée `ListTotal` (gauche) + `LinkTabs` (droite, passe dessous en mobile) → liste → `Pagination`. Filtres, onglets et page vivent dans l'URL et sont transmis tels quels au serveur, qui les valide : un filtre inconnu donne l'erreur du serveur, aucun onglet marqué courant et un lien de retour. Une page au-delà de la fin n'est pas « aucune tâche » : elle le dit et propose la première page.
+
+### 3.7 Paramètres (`features/settings/components/`) et inscription
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `AgencyProfileCard` | `AgencyProfileCard.tsx` | `DataList` une colonne : nom, ville, secteur ; valeur vide → « Non renseigné » en `text-ink-subtle` |
+| `TeamCard` | `TeamCard.tsx` | Liste à séparateurs : email (`break-all`), « (vous) » en graisse normale atténuée, « Membre depuis le … » (heure de Paris), rôle écrit en badge (`Directeur` contour, `Conseiller` gris). Badge de rôle sous l'email en mobile, à droite dès `sm` |
+| `AgentsSettingsSection` | `AgentsSettingsSection.tsx` | Section `h2` + lien « Ouvrir les agents IA », puis `KillSwitchPanel` (`h3`, **seul contrôle actif de l'écran**) et la limite quotidienne au motif « chiffre + périmètre » (§ 3.5) |
+| `IntegrationsCard` | `IntegrationsCard.tsx` | Trois colonnes (une en mobile) par catégorie, titre en `text-overline` (`h3`) ; chaque intégration : nom, `SimulationBadge` **et** badge `dashed` « Non connectée », puis ce qui est simulé à sa place — ou « Aucun échange, même simulé » |
+| `RetentionCard` | `RetentionCard.tsx` | Valeur dans un cadre pointillé (motif « information absente », comme le badge `dashed`) : « Non définie — à valider avant mise en production », jamais une durée |
+| `SectionUnavailable` | `SectionUnavailable.tsx` | « Indisponible » + explication + « Réessayer », pour **une seule** section en échec |
+
+**Motif « écran en lecture seule ».** Badge `outline` « Lecture seule » sous le titre, puis
+`Alert info` qui dit où se font les modifications (avec Ascend Strategy, lors de la mise en
+place) — sans date ni « bientôt ». Aucun champ désactivé factice : on affiche des valeurs,
+pas des formulaires grisés. Le seul contrôle actif (coupe-circuit) garde son composant et ses
+règles d'origine.
+
+**Inscription (`/inscription`).** Même gabarit que la connexion (`max-w-sm`, titre, sous-titre,
+carte `shadow-raised`) : explication en carte avec pictogramme cadenas `aria-hidden`, séparateur,
+bouton principal pleine largeur « Se connecter », lien discret « Retour à l'accueil ». Aucun
+formulaire, aucune adresse de contact inventée.
 
 ## 4. États d'écran obligatoires
 

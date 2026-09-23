@@ -889,6 +889,15 @@ export type Database = {
           previous_stage: Database["public"]["Enums"]["pipeline_stage"]
         }[]
       }
+      list_agency_members: {
+        Args: { target_agency: string }
+        Returns: {
+          created_at: string
+          email: string
+          role: Database["public"]["Enums"]["membership_role"]
+          user_id: string
+        }[]
+      }
       set_ai_paused: {
         Args: { paused: boolean; target_agency: string }
         Returns: boolean

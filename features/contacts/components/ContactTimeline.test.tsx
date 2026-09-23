@@ -121,3 +121,38 @@ describe("ContactTimeline — human stage change", () => {
     expect(screen.queryByTestId("timeline-stage-change")).toBeNull();
   });
 });
+
+describe("ContactTimeline — author of a human stage change", () => {
+  const change = { type: "contact_stage_changed", previous_stage: "mandat_signe", stage: "chaud", reason: "Annulé" };
+
+  it("reads « Directeur » when the stage change records a director", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          entry({
+            id: "1",
+            actor: { type: "user", agent: null, userId: "u1" },
+            meta: { ...change, actor_role: "director" },
+          }),
+        ]}
+      />,
+    );
+    expect(screen.getByText("Directeur")).toBeDefined();
+    expect(screen.queryByText("Conseiller")).toBeNull();
+  });
+
+  it("keeps « Conseiller » for an agent, a missing role, or any other human entry", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          entry({ id: "1", actor: { type: "user", agent: null, userId: "u1" }, meta: { ...change, actor_role: "agent" } }),
+          entry({ id: "2", actor: { type: "user", agent: null, userId: "u1" }, meta: { ...change, actor_role: null } }),
+          // A role on another kind of entry is not trusted as a stage-change author.
+          entry({ id: "3", actor: { type: "user", agent: null, userId: "u1" }, meta: { actor_role: "director" } }),
+        ]}
+      />,
+    );
+    expect(screen.getAllByText("Conseiller")).toHaveLength(3);
+    expect(screen.queryByText("Directeur")).toBeNull();
+  });
+});

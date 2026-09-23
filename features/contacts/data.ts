@@ -246,10 +246,22 @@ function payloadString(payload: unknown, key: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/** Membership roles `public.change_contact_stage` records as `actor_role`. */
+export const STAGE_CHANGE_ACTOR_ROLES = ["agent", "director"] as const;
+export type StageChangeActorRole = (typeof STAGE_CHANGE_ACTOR_ROLES)[number];
+
+function payloadActorRole(payload: unknown): StageChangeActorRole | null {
+  const value = payloadString(payload, "actor_role");
+  return STAGE_CHANGE_ACTOR_ROLES.find((role) => role === value) ?? null;
+}
+
 /**
  * UI metadata of an activity. For a human stage change, the stages before and
- * after and the motive (exit from « Mandat signé ») are exposed so the history
- * can show them; the summary already states them in French.
+ * after, the motive (exit from « Mandat signé ») and the role of the member who
+ * made the change (`actor_role`: "agent" | "director", recorded by the database
+ * at the time of the change) are exposed so the history can show them; the
+ * summary already states them in French. Any other `actor_role` value is
+ * `null`, never guessed.
  */
 export function activityMeta(type: string, payload: unknown): TimelineEntry["meta"] {
   if (type !== STAGE_CHANGE_ACTIVITY_TYPE) return { type };
@@ -258,6 +270,7 @@ export function activityMeta(type: string, payload: unknown): TimelineEntry["met
     previous_stage: payloadString(payload, "previous_stage"),
     stage: payloadString(payload, "stage"),
     reason: payloadString(payload, "reason"),
+    actor_role: payloadActorRole(payload),
   };
 }
 

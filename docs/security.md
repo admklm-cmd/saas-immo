@@ -450,6 +450,55 @@ Lecture seule : l'écran ne déclenche aucune action, n'envoie rien et ne modifi
 - Aucune journalisation de la consultation du tableau de bord (voir « journal des accès sensibles »,
   §3.3).
 
+### 2.10 Paramètres (`/parametres`, lecture seule)
+
+Lecture seule : aucune donnée de l'écran n'est modifiable, sauf le **coupe-circuit existant**
+(`setAgencyAiPaused`, règles inchangées : suspendre = tout membre, réactiver = directeur, imposé par
+`public.set_ai_paused`).
+
+**Couvert et testé :**
+
+- **Liste des membres** : RPC `public.list_agency_members(target_agency uuid)` (migration
+  `20260923130000`). `SECURITY DEFINER` avec `search_path = ''`, nécessaire pour lire l'e-mail dans
+  `auth.users`, qu'aucun rôle client ne peut lire. Elle ne renvoie **que** `user_id`, `email`,
+  `role`, `created_at` (de l'adhésion) — ni téléphone, ni métadonnées, ni `last_sign_in_at`.
+  `target_agency` est l'agence déjà résolue par l'application (`resolveAgentContext`, adhésion la
+  plus ancienne) mais **n'est pas crue** : la fonction revérifie `private.is_agency_member` sur
+  `auth.uid()` et filtre en plus par `private.member_agency_ids()`. Agence étrangère, agence
+  inconnue et appel anonyme reçoivent la même erreur `forbidden` (42501). `EXECUTE` retiré à
+  `public`, `anon` **et `service_role`**, accordé à `authenticated` seul. Côté application, la
+  réponse est validée par un schéma zod **strict** : une colonne en trop rend la section
+  « indisponible » au lieu de la transmettre. Tests : `features/settings/settings.integration.test.ts`
+  (deux agences fictives réelles : A ne voit que A, B que B ; exactement quatre colonnes ; B qui
+  passe l'identifiant de A est refusé ; anonyme et service_role refusés ; conseiller et directeur
+  voient la même liste ; un membre de deux agences ne voit que l'agence résolue) et
+  `features/settings/data.test.ts`. **Revérifié directement en base locale** (revue du 23/09/2026,
+  `set local role` + `request.jwt.claims`) : propriétaire `postgres`, `search_path=""`, ACL
+  `authenticated` seul ; agence étrangère, identifiant aléatoire, `null` et session sans `sub`
+  renvoient tous `forbidden` sans ligne ; `anon` refusé au niveau des droits d'exécution.
+- **Agence, limite quotidienne, coupe-circuit** : lus avec le client de session (RLS), jamais
+  `admin.ts`. Chaque section est indépendante : une lecture en échec rend sa seule section
+  « indisponible » (détail logué côté serveur), le coupe-circuit reste utilisable même si le profil
+  de l'agence ne peut pas être lu.
+- **Intégrations** : liste statique typée, toutes `simulation` et non connectées ; aucune clé, aucun
+  jeton, aucune valeur de configuration n'existe ni n'est renvoyée.
+- **Conservation des données** : `{ status: "undefined" }` — l'écran affiche « Non définie — à valider
+  avant mise en production ». Aucune durée inventée.
+
+**Non couvert :**
+
+- Les e-mails de tous les membres de l'agence sont visibles par chaque membre (conseiller compris).
+  Choix produit assumé pour un écran d'équipe. Évaluation (revue du 23/09/2026) : **acceptable** pour
+  une agence de 4 à 15 personnes — adresses professionnelles de collègues qui travaillent déjà
+  ensemble, finalité légitime (savoir qui a accès aux données de l'agence), aucune autre donnée
+  (ni téléphone, ni historique de connexion), jamais visible hors de l'agence. À faire avant
+  commercialisation : mentionner ce traitement dans l'information des collaborateurs de l'agence
+  cliente (registre des traitements), le faire valider par le juriste, et le restreindre aux
+  directeurs si une agence le demande (une condition dans la fonction, via une nouvelle migration).
+- Aucune durée de conservation ni purge (voir §3.3) ; aucune gestion des membres (invitation,
+  retrait, changement de rôle) : non prévue dans ce prototype.
+- Aucune journalisation de la consultation de la liste des membres (voir §3.3).
+
 ### 2.7 Dépendances
 
 `npm audit` et `npm audit --omit=dev` : **0 vulnérabilité** (23/09/2026, audit du tableau de bord ;
@@ -543,9 +592,15 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
   prochain jalon : n'accepter un changement d'étape par session que via `change_contact_stage` **ou**
   pendant un run ouvert de Hugo/Sarah (même principe que `guard_activity_actor`), ou déplacer ces
   écritures dans des RPC transactionnels.
-- **Motif de sortie de mandat** : les caractères de contrôle sont refusés, mais pas les caractères
-  Unicode de mise en forme bidirectionnelle (U+202A–U+202E, U+2066–U+2069), qui peuvent altérer
-  l'affichage d'un motif dans l'historique (aucun risque XSS : React échappe le texte). Faible.
+- **Motif de changement d'étape — contrôles bidirectionnels refusés par l'application seulement** :
+  depuis le 23/09/2026, le schéma zod (`features/pipeline/types.ts`, `BIDI_CONTROL_PATTERN`) refuse
+  les caractères Unicode de mise en forme bidirectionnelle (propriété `Bidi_Control` complète :
+  U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+2069 ; U+061C ajouté à la revue du 23/09), qui peuvent altérer l'affichage d'un motif dans l'historique (tests :
+  `features/pipeline/types.test.ts`). **Reste à faire** : la même vérification dans la fonction
+  `change_contact_stage` (défense en base) — elle ne refuse aujourd'hui que les caractères de
+  contrôle C0 et DEL. Un appel direct au RPC par PostgREST, hors de l'application, peut donc encore
+  enregistrer un tel caractère. Pas de migration dans ce jalon (non autorisée) ; aucun risque XSS
+  (React échappe le texte). Faible.
 - **Contact « signé » sans historique supprimable par un directeur** : `DELETE` n'est pas gardé par
   `guard_contact_mandate_stage`. Un contact passé en `mandat_signe` par la fonction a toujours une
   trace, et la clé étrangère `activities_contact_fkey` (`on delete no action`) bloque alors sa
@@ -589,3 +644,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 | 2026-09-22 | Réconciliation `feat/agents-et-ecrans-reconcile` : rejeu chirurgical de 3 correctifs identifiés sur la branche de sauvegarde locale (sans écraser le travail distant, dont `hasOptOutInstruction`) | Octets de contrôle bruts remplacés par leurs échappements dans 3 fichiers dont 2 garde-fous (`features/agents-ia/types.ts`, `lib/utils/safe-redirect.ts`, leurs tests). `noMoney` ajouté au schéma de Louis (oublié jusqu'ici). Deux garde-fous partagés `noControlCharacters`/`singleLine` ajoutés contre l'injection d'en-tête d'email dans les objets d'Emma et de Louis. `@radix-ui/react-icons` épinglé en version exacte. 813 → 822 tests verts (`tsc`, lint et Vitest silencieux/verts), aucune régression. |
 | 2026-09-23 | Jalon **tableau de bord** (`feat/dashboard`, travail non commité) + passe légère sur `git diff main...HEAD` (334 fichiers) | Aucun problème critique ni élevé. Isolation (client de session, `agency_id` serveur, FK composites, RPC `security invoker`), absence de `service_role`, absence de fuite d'erreur, minimisation et badge Simulation vérifiés (§2.9). **1 durcissement faible** : identifiant encodé dans les liens de fiche + test XSS/lien. Branche : aucun `.env*` suivi hors `.env.example`, `fixtures/.generated-credentials.json` ignoré et absent de l'historique, 13/13 tables avec RLS, 17/17 fonctions `security definer` avec `search_path`, webhooks en 501, toutes les server actions passent par le client de session, `npm audit --omit=dev` : 0. 998 tests Vitest verts. Livraison autorisée. |
 | 2026-09-23 | Jalon **pipeline — changement d'étape humain et garde du mandat signé** (`feat/complete-demo`, travail non commité) : migration `20260923120000`, `features/pipeline/**`, `ContactTimeline`, `Dialog`/`Checkbox`, helper E2E `contact-stage`, couches données `features/tasks/**`, `features/appointments/**`, `lib/utils/pagination.ts`, `features/dashboard/data.ts`, garde-fous de fixtures | Aucun problème critique ni élevé. Garde du mandat éprouvée en base (contournements tentés et refusés, voir 2.6), isolation et réponse identique inconnu/autre agence, verrou `FOR UPDATE`, messages d'erreur sans détail technique, rôle utilisé côté client pour l'affichage seulement. `completeTask` : `UPDATE` conditionnel, filtre agence, horodatage par la base. `contact_stage_changed` validé comme activité réelle (décision interne, aucun envoi, réservée à la fonction). **1 test de non-régression ajouté** (UPSERT vers/depuis `mandat_signe`). **Non corrigé, documenté en 3.4** : changements d'étape hors mandat sans trace (moyen), caractères bidi dans le motif (faible), suppression d'un contact « signé » sans historique (faible). 1178 tests Vitest verts, `npm audit` : 0. Livraison autorisée. |
+| 2026-09-23 | Jalon 4 **Paramètres en lecture seule et inscription** (`feat/complete-demo`, travail non commité) : migration `20260923130000` (`list_agency_members`), `features/settings/**`, `app/(app)/parametres/**`, `app/(auth)/inscription/**`, `KillSwitchPanel` (niveau de titre), `actor_role` dans l'historique, `BIDI_CONTROL_PATTERN`, `follow-through-action`, suppression de `ComingSoon`, specs E2E `parametres`/`navigation`/`inscription` | Aucun problème critique ou élevé, aucun nouveau problème moyen. RPC éprouvée en base (voir 2.10) : pas d'énumération hors agence, réponse identique pour une agence inconnue ou étrangère et un appel sans session, 4 colonnes, `anon`/`service_role` sans droit. Écran strictement en lecture (seule mutation : `setAgencyAiPaused` existant), aucune clé ni configuration d'intégration, intégrations toutes « Simulation / Non connectée », conservation « Non définie », props client limitées à deux booléens. `actor_role` écrit par la base, jamais par le client. Specs E2E : identifiants lus dans le fichier de fixtures ignoré, aucun secret ni numéro réel. **1 correction faible** : U+061C (ALM) ajouté au refus bidi + test. E-mails de l'équipe visibles par tous les membres : jugé acceptable (voir 2.10). Restes 3.4 confirmés documentés (étape hors mandat sans trace : moyen ; bidi côté base : faible). 1275 tests Vitest verts (dont le nouveau cas ALM), `tsc` et lint propres, `npm audit --omit=dev` : 0. Livraison autorisée. |

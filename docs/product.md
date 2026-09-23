@@ -10,8 +10,8 @@
 > module « Agents IA » (les cinq agents, le coupe-circuit, le journal des exécutions et le
 > rejeu animé d'une exécution), les relances d'Emma, le suivi post-estimation de Sarah et
 > le pipeline avec changement d'étape humain (garde-fous sur « Mandat signé »), les écrans « Tâches » (`/taches`) et « Rendez-vous d'estimation » (`/rendez-vous`), le tableau de bord (comptages exacts avec périmètre
-> affiché, « Indisponible » en cas d'échec). Les paramètres utilisent explicitement
-> `ComingSoon`.
+> affiché, « Indisponible » en cas d'échec), les paramètres en lecture seule (coupe-circuit
+> utilisable) et une page d'inscription honnête. Plus aucun écran « à venir ».
 
 ## 1. À qui on vend
 
@@ -74,7 +74,8 @@ l'étape** d'un dossier (server action `changeContactStage`, voir § 5) :
   sélection ni la saisie ; le bouton est désactivé pendant la requête (pas de double envoi).
 - **Historique** : chaque changement apparaît sur la fiche contact sous la forme
   « Étape : X → Y », avec le motif le cas échéant (texte brut). C'est une décision CRM
-  humaine : aucun badge « Simulation ». L'historique est append-only : une sortie de
+  humaine : aucun badge « Simulation ». L'auteur est affiché « Directeur » quand le
+  changement enregistre ce rôle (`meta.actor_role`), « Conseiller » sinon. L'historique est append-only : une sortie de
   mandat n'efface jamais la signature.
 
 ## 4. Les agents IA du produit
@@ -98,22 +99,22 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Écran | Route | État | Contenu |
 |---|---|---|---|
 | Accueil public | `/` | Coquille soignée | Promesse, accès estimation et espace agence |
-| Estimation | `/estimation` | `ComingSoon` | Formulaire progressif, consentement par canal, cases **non précochées** |
+| Estimation | `/estimation` | **Fait** | Formulaire progressif, consentement par canal, cases **non précochées** |
 | Connexion | `/connexion` | **Fait** | Email + mot de passe, session Supabase réelle |
-| Inscription | `/inscription` | Coquille | Création de compte accompagnée par Ascend Strategy |
+| Inscription | `/inscription` | **Fait** (23/09) | Page finie et honnête : pas d'inscription en libre-service (choix de sécurité), les comptes d'agence sont créés par Ascend Strategy avec l'agence lors de la mise en place. Aucun formulaire, aucune adresse inventée ; bouton « Se connecter » vers `/connexion`, lien vers l'accueil |
 | Tableau de bord | `/dashboard` | **Fait** (23/09) | `getDashboardSummary()` : **À faire maintenant** en premier (messages à valider ou validés non envoyés, leads à traiter, tâches ouvertes, rendez-vous à confirmer et à clôturer — total exact + 5 premiers éléments liés à leur fiche, « Tout voir » vers l'écran de travail), pipeline par étape (`perdu` en retrait), agents IA (état du coupe-circuit toujours affiché, exécutions aujourd'hui et sur 7 jours : total, erreurs, blocages par garde-fou), prochains rendez-vous. Chaque bloc mène à l'écran qui liste ce qu'il compte (tâches → `/taches`, prochains rendez-vous → `/rendez-vous`, vérifié par un test E2E). Chaque chiffre affiche son périmètre ; un calcul en échec affiche « Indisponible », jamais 0, sans masquer les autres. Aucune tendance ni pourcentage |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |
 | Pipeline | `/pipeline` | **Fait** (23/09) | Contacts réels de `getContacts()` répartis par étape, `perdu` affiché à part avec moins de poids visuel, compteurs réels uniquement, une carte mène à la fiche contact. « Changer d'étape » au clavier sur chaque carte (`changeContactStage`), confirmation obligatoire pour « Mandat signé », sortie réservée au directeur avec motif (voir § 3) |
 | Tâches | `/taches` | **Fait** (23/09) | `getOpenTasks()` : total **exact** du filtre avec son périmètre (« tâches ouvertes, toutes dates » — même chiffre que la carte « Tâches ouvertes » du tableau de bord), filtres Toutes / En retard / Les miennes en liens d'URL (`aria-current`), liste triée par échéance : titre en texte brut, contact lié à sa fiche ou « Tâche d'agence », échéance en heure de Paris, « En retard » écrit en toutes lettres, agent qui a ouvert la tâche. « Marquer comme faite » (`completeTask`) : pas de double envoi, confirmation dans une zone `aria-live`, la tâche quitte la liste et le total est recompté ; « déjà terminée » est une information, pas une alerte. Pagination « 26–50 sur 131 » |
-| Rendez-vous d'estimation | `/rendez-vous` | **Fait** (23/09) | Écran 4 du produit. `getAppointments()` : onglets À venir / Passés en liens d'URL, total **exact** avec son périmètre (« à venir, à partir de maintenant » — même chiffre que « Prochains rendez-vous » du tableau de bord ; « passés, tous statuts »), créneau en heure de Paris, contact lié, statut lisible, badge « Simulation ». Lien « Confirmer / Clôturer dans le suivi » vers `/agents-ia/suivi-rendez-vous` uniquement quand l'action est possible (`canBeConfirmed` / `canBeCompleted`). Pagination |
+| Rendez-vous d'estimation | `/rendez-vous` | **Fait** (23/09) | Écran 4 du produit. `getAppointments()` : onglets À venir / Passés en liens d'URL, total **exact** avec son périmètre (« à venir, à partir de maintenant » — même chiffre que « Prochains rendez-vous » du tableau de bord ; « passés, tous statuts »), créneau en heure de Paris, contact lié, statut lisible, badge « Simulation ». Lien vers `/agents-ia/suivi-rendez-vous` uniquement quand une action est possible : « Confirmer dans le suivi » (`canBeConfirmed`), « Clôturer dans le suivi » (`canBeCompleted` et heure de début passée), « Ouvrir dans le suivi » (confirmé mais encore à venir : rien à clôturer). Pagination |
 | Agents IA | `/agents-ia` | **Fait** | Les 5 agents (mission, statut, compteurs, dernière exécution, erreurs), activité de l'agence, **coupe-circuit**, journal filtrable et paginé |
 | Rejeu d'une exécution | `/agents-ia/executions/[runId]` | **Fait** | Étapes réellement enregistrées, rejouées avec les durées mesurées |
 | Leads entrants | `/agents-ia/leads-entrants` | **Fait** | Demandes brutes : source, données non fiables, dédoublonnage par Léa, création ou rattachement de fiche, tâche de consentement et rejeu |
 | Relances Emma | `/agents-ia/relances` | **Fait** | Dossiers éligibles (`getEmmaFollowUpCandidates`), canal retenu et blocage affichés lisiblement (reprise humaine, brouillon déjà en attente, aucun canal consenti — confort d'affichage, le serveur revérifie tout au clic), brouillon simulé envoyé vers la validation humaine et rejeu |
 | Messages à valider | `/agents-ia/a-valider` | **Fait** | File d'attente : contact, canal, consentement, message proposé ; corriger, valider, refuser (motif obligatoire) ou déclencher un envoi **simulé** |
 | Suivi des rendez-vous | `/agents-ia/suivi-rendez-vous` | **Fait** | Proposition confirmée par un humain, compte-rendu obligatoire à la clôture, puis résultat et rejeu de Sarah |
-| Paramètres | `/parametres` | `ComingSoon` | Agence, utilisateurs, intégrations, conservation |
+| Paramètres | `/parametres` | **Fait** (23/09) | `getAgencySettings()`, **lecture seule**, annoncée en tête (les modifications se font avec Ascend Strategy lors de la mise en place). Agence (nom, ville, secteur ; « Non renseigné » si vide) ; Équipe de la seule agence du membre (email, Directeur / Conseiller, « (vous) », membre depuis — heure de Paris) ; Agents IA : **coupe-circuit utilisable** (panneau et action existants : suspendre = tout membre, réactiver = directeur), limite quotidienne, lien vers `/agents-ia` ; Intégrations groupées par catégorie, toutes « Simulation » + « Non connectée » (« Aucun échange, même simulé » pour les logiciels immobiliers) ; Conservation : « Non définie — à valider avant mise en production ». Une section en échec affiche « Indisponible » pour elle seule |
 
 ## 6. Parcours implémenté : « premier parcours complet »
 
@@ -220,6 +221,6 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
 
 ## 8. Prochaines itérations (proposition)
 
-1. Formulaire d'estimation public avec consentement par canal (cases non précochées).
-2. Remplacer la coquille `ComingSoon` des paramètres.
+1. ~~Formulaire d'estimation public avec consentement par canal~~ : livré.
+2. ~~Remplacer la coquille `ComingSoon` des paramètres~~ : livré le 23/09 (lecture seule, coupe-circuit utilisable).
 3. ~~Changement d'étape depuis `/pipeline`~~ : livré le 23/09 (voir § 3).

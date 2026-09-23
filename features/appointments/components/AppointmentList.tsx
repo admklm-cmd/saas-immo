@@ -7,8 +7,11 @@ import { AppointmentRow } from "./AppointmentRow";
 
 const TEXTS = APP_TEXTS.appointments;
 
-/** One page of estimation appointments, then the pagination. */
-export function AppointmentList({ page }: { page: AppointmentsPage }) {
+/**
+ * One page of estimation appointments, then the pagination. `now` (ms since
+ * epoch, read once per request) decides « Clôturer » vs « Ouvrir dans le suivi ».
+ */
+export function AppointmentList({ page, now }: { page: AppointmentsPage; now: number }) {
   return (
     <>
       <section
@@ -21,7 +24,7 @@ export function AppointmentList({ page }: { page: AppointmentsPage }) {
         <ul className="stagger divide-y divide-line" data-testid="appointment-list">
           {page.items.map((appointment) => (
             <li key={appointment.id}>
-              <AppointmentRow appointment={appointment} />
+              <AppointmentRow appointment={appointment} now={now} />
             </li>
           ))}
         </ul>

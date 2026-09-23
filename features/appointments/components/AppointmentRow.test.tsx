@@ -10,6 +10,11 @@ import { AppointmentRow } from "./AppointmentRow";
 
 const TEXTS = APP_TEXTS.appointments;
 
+/** Before the fixture slot (2026-09-29 08:00 UTC): the appointment is still to come. */
+const BEFORE = Date.parse("2026-09-25T08:00:00.000Z");
+/** After the fixture slot: the appointment has taken place. */
+const AFTER = Date.parse("2026-09-30T08:00:00.000Z");
+
 afterEach(() => cleanup());
 
 function appointment(overrides: Partial<AppointmentListItem> = {}): AppointmentListItem {
@@ -30,7 +35,7 @@ function appointment(overrides: Partial<AppointmentListItem> = {}): AppointmentL
 describe("AppointmentRow", () => {
   it("affiche le créneau en heure de Paris, le contact lié, le statut lisible et le badge Simulation", () => {
     const item = appointment();
-    render(<AppointmentRow appointment={item} />);
+    render(<AppointmentRow appointment={item} now={BEFORE} />);
 
     const row = screen.getByTestId("appointment-row");
     expect(row.textContent).toContain(formatSlotWithYear(item.startsAt, item.endsAt));
@@ -44,20 +49,20 @@ describe("AppointmentRow", () => {
   });
 
   it("n'affiche pas le badge Simulation sur un rendez-vous réel", () => {
-    render(<AppointmentRow appointment={appointment({ isSimulation: false })} />);
+    render(<AppointmentRow appointment={appointment({ isSimulation: false })} now={BEFORE} />);
 
     expect(screen.queryByText(APP_TEXTS.states.simulation)).toBeNull();
   });
 
   it("ne propose aucun lien vers le suivi quand aucune action n'est possible", () => {
-    render(<AppointmentRow appointment={appointment({ status: "done" })} />);
+    render(<AppointmentRow appointment={appointment({ status: "done" })} now={BEFORE} />);
 
     expect(screen.queryByTestId("appointment-follow-through")).toBeNull();
     expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 
   it("propose « Confirmer dans le suivi » quand le rendez-vous peut être confirmé", () => {
-    render(<AppointmentRow appointment={appointment({ status: "proposed", canBeConfirmed: true })} />);
+    render(<AppointmentRow appointment={appointment({ status: "proposed", canBeConfirmed: true })} now={BEFORE} />);
 
     const link = screen.getByTestId("appointment-follow-through");
     expect(link.getAttribute("href")).toBe("/agents-ia/suivi-rendez-vous");
@@ -66,9 +71,28 @@ describe("AppointmentRow", () => {
     expect(link.textContent).toContain("Frederic Masson");
   });
 
-  it("propose « Clôturer dans le suivi » quand le rendez-vous peut être clôturé", () => {
-    render(<AppointmentRow appointment={appointment({ canBeCompleted: true })} />);
+  it("propose « Clôturer dans le suivi » quand le rendez-vous confirmé a eu lieu", () => {
+    render(<AppointmentRow appointment={appointment({ canBeCompleted: true })} now={AFTER} />);
 
-    expect(screen.getByTestId("appointment-follow-through").textContent).toContain(TEXTS.closeInFollowThrough);
+    const link = screen.getByTestId("appointment-follow-through");
+    expect(link.textContent).toContain(TEXTS.closeInFollowThrough);
+    expect(link.getAttribute("href")).toBe("/agents-ia/suivi-rendez-vous");
+  });
+
+  it("propose « Ouvrir dans le suivi », jamais « Clôturer », pour un rendez-vous confirmé encore à venir", () => {
+    render(<AppointmentRow appointment={appointment({ canBeCompleted: true })} now={BEFORE} />);
+
+    const link = screen.getByTestId("appointment-follow-through");
+    expect(link.textContent).toContain(TEXTS.openInFollowThrough);
+    expect(link.textContent).not.toContain(TEXTS.closeInFollowThrough);
+    expect(link.getAttribute("href")).toBe("/agents-ia/suivi-rendez-vous");
+  });
+
+  it("garde « Confirmer dans le suivi » pour une proposition, qu'elle soit passée ou à venir", () => {
+    render(
+      <AppointmentRow appointment={appointment({ status: "proposed", canBeConfirmed: true })} now={AFTER} />,
+    );
+
+    expect(screen.getByTestId("appointment-follow-through").textContent).toContain(TEXTS.confirmInFollowThrough);
   });
 });

@@ -63,6 +63,8 @@ test("parcours principal : « Tout voir » du tableau de bord mène ici, avec le
   const actions = await actionLinks.count();
   for (let index = 0; index < actions; index += 1) {
     await expect(actionLinks.nth(index)).toHaveAttribute("href", "/agents-ia/suivi-rendez-vous");
+    // « À venir » only holds appointments still to come: none can be closed yet.
+    await expect(actionLinks.nth(index)).not.toContainText(TEXTS.closeInFollowThrough);
   }
 });
 

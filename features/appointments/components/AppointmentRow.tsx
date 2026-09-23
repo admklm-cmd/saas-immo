@@ -7,8 +7,15 @@ import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { APPOINTMENT_STATUS_LABELS } from "@/features/contacts/types";
 
 import type { AppointmentListItem } from "../types";
+import { followThroughAction, type FollowThroughAction } from "./follow-through-action";
 
 const TEXTS = APP_TEXTS.appointments;
+
+const ACTION_LABELS: Record<FollowThroughAction, string> = {
+  confirm: TEXTS.confirmInFollowThrough,
+  close: TEXTS.closeInFollowThrough,
+  open: TEXTS.openInFollowThrough,
+};
 
 const LINK_CLASS =
   "rounded-xs font-medium text-ink underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-standard hover:decoration-ink";
@@ -28,15 +35,14 @@ const STATUS_TONES: Record<AppointmentListItem["status"], BadgeTone> = {
 /**
  * One estimation appointment: slot in Paris time, contact, readable status,
  * « Simulation » when no real calendar holds it, and — only when a human
- * action is really possible — a link to the follow-through screen.
+ * action is really possible — a link to the follow-through screen. A
+ * confirmed appointment still to come reads « Ouvrir dans le suivi »: it
+ * cannot be closed before it has taken place.
  */
-export function AppointmentRow({ appointment }: { appointment: AppointmentListItem }) {
+export function AppointmentRow({ appointment, now }: { appointment: AppointmentListItem; now: number }) {
   const parts = formatDayParts(appointment.startsAt);
-  const action = appointment.canBeConfirmed
-    ? TEXTS.confirmInFollowThrough
-    : appointment.canBeCompleted
-      ? TEXTS.closeInFollowThrough
-      : null;
+  const kind = followThroughAction(appointment, now);
+  const action = kind ? ACTION_LABELS[kind] : null;
 
   return (
     <article
@@ -76,6 +82,7 @@ export function AppointmentRow({ appointment }: { appointment: AppointmentListIt
           <Link
             href="/agents-ia/suivi-rendez-vous"
             data-testid="appointment-follow-through"
+            data-action={kind ?? undefined}
             className="inline-flex shrink-0 items-center gap-1.5 self-start rounded-xs text-sm font-medium text-ink underline-offset-4 transition-colors duration-150 ease-standard hover:text-ink-muted hover:underline"
           >
             {action}

@@ -25,6 +25,8 @@ export type KillSwitchPanelProps = {
   paused: boolean;
   /** False when the caller may not resume: only a director may. */
   canResume: boolean;
+  /** Heading level of the panel title: 3 when it sits under a section heading (`/parametres`). */
+  headingLevel?: 2 | 3;
 };
 
 /**
@@ -37,7 +39,7 @@ export type KillSwitchPanelProps = {
  * Both directions ask for a confirmation: suspending stops work that is in
  * preparation, resuming lets automatic executions start again.
  */
-export function KillSwitchPanel({ paused, canResume }: KillSwitchPanelProps) {
+export function KillSwitchPanel({ paused, canResume, headingLevel = 2 }: KillSwitchPanelProps) {
   const router = useRouter();
   const [state, setState] = useState<PanelState>({ kind: "idle" });
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -74,6 +76,7 @@ export function KillSwitchPanel({ paused, canResume }: KillSwitchPanelProps) {
         <Badge tone={paused ? "solid" : "outline"}>{paused ? TEXTS.paused : TEXTS.running}</Badge>
       }
       testId="kill-switch"
+      headingLevel={headingLevel}
     >
       {state.kind === "confirming" ? (
         <div data-testid="kill-switch-confirm" className="animate-fade rounded-lg border border-line-strong bg-surface-muted p-4">

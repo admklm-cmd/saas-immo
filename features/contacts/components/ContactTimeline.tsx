@@ -1,5 +1,5 @@
 import { formatDateTime } from "@/components/format";
-import { APP_TEXTS } from "@/components/texts";
+import { APP_TEXTS, MEMBERSHIP_ROLE_LABELS } from "@/components/texts";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
@@ -13,14 +13,23 @@ import { AGENT_LABELS } from "@/lib/agents/messages";
 
 const TEXTS = APP_TEXTS.contact;
 
-function actorLabel(entry: TimelineEntry): string | null {
-  if (entry.actor.type === "ai_agent" && entry.actor.agent) return AGENT_LABELS[entry.actor.agent];
-  if (entry.actor.type === "user") return "Conseiller";
-  return null;
-}
-
 /** Activity type written by the human stage change (`change_contact_stage`). */
 const STAGE_CHANGE_TYPE = "contact_stage_changed";
+
+/**
+ * Who acted. A human stage change records the role of its author
+ * (`meta.actor_role`): « Directeur » only when it says so — a missing or
+ * unknown role keeps the neutral « Conseiller », never a guessed promotion.
+ */
+function actorLabel(entry: TimelineEntry): string | null {
+  if (entry.actor.type === "ai_agent" && entry.actor.agent) return AGENT_LABELS[entry.actor.agent];
+  if (entry.actor.type === "user") {
+    const isDirector =
+      entry.kind === "activity" && entry.meta.type === STAGE_CHANGE_TYPE && entry.meta.actor_role === "director";
+    return isDirector ? MEMBERSHIP_ROLE_LABELS.director : MEMBERSHIP_ROLE_LABELS.agent;
+  }
+  return null;
+}
 
 function stageLabel(value: unknown): string | null {
   return typeof value === "string" && Object.hasOwn(PIPELINE_STAGE_LABELS, value)

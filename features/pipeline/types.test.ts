@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BIDI_CONTROL_PATTERN,
   changeContactStageSchema,
   PIPELINE_STAGES,
   STAGE_CHANGE_ERROR_CODES,
@@ -57,6 +58,54 @@ describe("changeContactStageSchema", () => {
     expect(
       changeContactStageSchema.safeParse({ contactId: CONTACT_ID, stage: "perdu", mandateConfirmed: true, reason }).success,
     ).toBe(false);
+  });
+
+  it.each([
+    ["U+061C (ALM)", 0x061c],
+    ["U+200E (LRM)", 0x200e],
+    ["U+200F (RLM)", 0x200f],
+    ["U+202A (LRE)", 0x202a],
+    ["U+202B (RLE)", 0x202b],
+    ["U+202C (PDF)", 0x202c],
+    ["U+202D (LRO)", 0x202d],
+    ["U+202E (RLO)", 0x202e],
+    ["U+2066 (LRI)", 0x2066],
+    ["U+2067 (RLI)", 0x2067],
+    ["U+2068 (FSI)", 0x2068],
+    ["U+2069 (PDI)", 0x2069],
+  ])("refuse un motif contenant le contrôle bidirectionnel %s", (_label, codePoint) => {
+    const hidden = String.fromCodePoint(codePoint);
+    for (const reason of [`Motif ${hidden}inversé`, `${hidden}Motif valide`, `Motif valide${hidden}`]) {
+      expect(BIDI_CONTROL_PATTERN.test(reason)).toBe(true);
+      const result = changeContactStageSchema.safeParse({
+        contactId: CONTACT_ID,
+        stage: "perdu",
+        mandateConfirmed: true,
+        reason,
+      });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("refuse un contrôle bidirectionnel même entouré d'espaces (pas nettoyé par le trim)", () => {
+    const reason = `  ${String.fromCodePoint(0x202e)}  `;
+    expect(
+      changeContactStageSchema.safeParse({ contactId: CONTACT_ID, stage: "perdu", mandateConfirmed: true, reason }).success,
+    ).toBe(false);
+  });
+
+  it("accepte les caractères voisins légitimes (accents, arabe, hébreu, tiret, espace insécable)", () => {
+    for (const reason of [
+      "Vendeur a renoncé à la vente",
+      "Nom du vendeur : שלום",
+      "Nom du vendeur : سلام",
+      "Motif — retrait du bien",
+      "Prix trop élevé",
+    ]) {
+      expect(
+        changeContactStageSchema.safeParse({ contactId: CONTACT_ID, stage: "perdu", mandateConfirmed: true, reason }).success,
+      ).toBe(true);
+    }
   });
 
   it("accepte un motif de 3 et de 500 caractères (bornes)", () => {

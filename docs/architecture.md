@@ -72,7 +72,12 @@ paramètre envoyé par le client. En complément :
 | Aucun double envoi | `outbound_messages.idempotency_key`, unique par agence |
 | Journal d'exécution non réécrivable | `guard_ai_agent_run` : un run terminé est figé, les colonnes d'identité sont immuables |
 | Journal d'étapes non réécrivable | `ai_agent_run_steps` en ajout seul, `duration_ms` recalculé par la base |
+| Mandat signé : confirmation humaine, sortie par un directeur avec motif, trace en ajout seul | `change_contact_stage` (RPC) + triggers `guard_contact_mandate_stage` et `guard_stage_change_activity` |
 | Aucune valeur en euros écrite par une IA | `guard_property_estimated_value` : écriture refusée tant qu'une exécution d'agent de la session est ouverte |
+
+**Lecture des e-mails des membres** : `public.list_agency_members` est la seule fonction qui lit
+`auth.users` pour l'application ; elle est bornée à l'agence de l'appelant et à quatre colonnes
+(voir §6.3).
 
 Le client `service_role` (`lib/supabase/admin.ts`) refuse de s'exécuter côté navigateur et n'est
 utilisé que pour le chargement des données de test en local et les tests d'intégration.
@@ -306,6 +311,47 @@ le tableau de bord uniquement à partir des données enregistrées, avec le clie
   Seule une session ou une agence invalide fait échouer tout l'appel.
 - **Échantillons** : les listes d'action renvoient le total exact et au plus 5 éléments avec les
   identifiants nécessaires aux liens ; l'échantillon n'est jamais présenté comme la liste complète.
+
+### 6.2 Listes paginées `/taches` et `/rendez-vous` : même définition que le tableau de bord
+
+`features/tasks/` (`getOpenTasks`, `completeTask`) et `features/appointments/` (`getAppointments`)
+suivent les mêmes règles que le tableau de bord : client de session (RLS), agence résolue côté
+serveur, jamais `admin.ts`.
+
+- **Pagination validée** (`lib/utils/pagination.ts`) : `limit` 1..100, `offset` 0..5000, entiers
+  seulement ; total **exact** (`count: "exact"`), jamais déduit de la page. Une page au-delà de la
+  fin (`PGRST103`) renvoie une liste vide avec le total exact.
+- **Définitions partagées** : `OPEN_TASK_STATUS` (`features/tasks/types.ts`) et
+  `UPCOMING_APPOINTMENT_STATUSES` (`features/appointments/types.ts`) sont importées par
+  `features/dashboard/data.ts` : le total de `/taches` (portée `all`) égale `openTasks`, celui de
+  `/rendez-vous` (vue `upcoming`, même instant) égale `upcomingAppointments`. Prouvé en
+  intégration.
+- **« Marquer comme faite »** : UPDATE conditionnel (`status = open`) ; `completed_at` /
+  `completed_by` posés par le trigger `guard_task`. Second appel : « Cette tâche est déjà
+  terminée. ». Aucune ligne `activities` : l'historique du contact lit déjà la tâche et son statut.
+- **Minimisation** : ni email, ni téléphone, ni texte libre (détails de tâche, compte-rendu) dans
+  ces listes.
+
+### 6.3 Paramètres `/parametres` : lecture seule, sections indépendantes
+
+`features/settings/` (`getAgencySettings`) suit le principe du tableau de bord : client de session
+(RLS), agence résolue côté serveur (`resolveAgentContext`), jamais `admin.ts`, et chaque section
+(`agency`, `members`, `agents.killSwitch`, `agents.dailyRunLimit`) est `ok` ou `unavailable`
+indépendamment. Seule une session ou une agence invalide renvoie `{ data: null, error }`.
+
+- **Membres** : l'e-mail vit dans `auth.users`, illisible par les rôles clients. D'où un RPC étroit,
+  `public.list_agency_members(target_agency uuid)` (`SECURITY DEFINER`, `search_path = ''`), qui ne
+  renvoie que `user_id`, `email`, `role`, `created_at` de l'adhésion. **Pourquoi un paramètre
+  revérifié plutôt qu'aucun paramètre** : pour un utilisateur membre de plusieurs agences,
+  l'application choisit l'agence en TypeScript (adhésion la plus ancienne) ; refaire ce choix en SQL
+  pourrait diverger (égalité de `created_at`, évolution future de la règle) et afficher l'équipe
+  d'une autre agence que le reste de la page. Le paramètre n'est pas cru : la fonction revérifie
+  l'adhésion de `auth.uid()` et refuse sinon (`forbidden`). `EXECUTE` : `authenticated` seul.
+- **Coupe-circuit** : `findAiPausedState` (lecture dédiée, comme sur le tableau de bord) et l'action
+  existante `setAgencyAiPaused` ; rien de nouveau.
+- **Intégrations** : liste statique (`SETTINGS_INTEGRATIONS`), toutes `simulation`, non connectées,
+  sans aucune donnée de configuration. **Conservation** : `{ status: "undefined" }`, aucune durée
+  inventée.
 
 ---
 

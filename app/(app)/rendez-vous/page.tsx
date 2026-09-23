@@ -101,8 +101,13 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
   );
 }
 
+/** Read once per request, outside any render, so every row compares with the same instant. */
+function requestTime(): number {
+  return Date.now();
+}
+
 function AppointmentsContent({ page }: { page: AppointmentsPage }) {
-  if (page.items.length > 0) return <AppointmentList page={page} />;
+  if (page.items.length > 0) return <AppointmentList page={page} now={requestTime()} />;
 
   if (page.total > 0) {
     return (

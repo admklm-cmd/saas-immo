@@ -25,6 +25,20 @@ export const PIPELINE_STAGES = [
   "perdu",
 ] as const satisfies readonly PipelineStage[];
 
+/**
+ * Unicode bidirectional controls (the full `Bidi_Control` property): ALM
+ * (U+061C), LRM/RLM (U+200E, U+200F), the embeddings and overrides
+ * (U+202A..U+202E) and the isolates (U+2066..U+2069). Invisible, they
+ * can make the motive DISPLAY differently from what is stored ("Trojan Source"
+ * style reordering) in an append-only history that is read as evidence. They
+ * are refused, not stripped. Written with escapes so this file stays ASCII.
+ *
+ * Only the application enforces this for now: the database check of
+ * `change_contact_stage` refuses C0 controls and DEL, not these (see
+ * docs/security.md, remaining work).
+ */
+export const BIDI_CONTROL_PATTERN = /[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/u;
+
 /** Bounds of the motive, identical to the database check. */
 export const STAGE_CHANGE_REASON_MIN_LENGTH = 3;
 export const STAGE_CHANGE_REASON_MAX_LENGTH = 500;
@@ -36,7 +50,8 @@ export const STAGE_CHANGE_REASON_MAX_LENGTH = 500;
  *   ticked. It is required to enter `mandat_signe` and to leave it.
  * - `reason` is optional here (it is required by the database only to leave
  *   `mandat_signe`). It is trimmed; an empty text becomes `null`; a text with a
- *   control character (other than tab / line break) is REFUSED, not cleaned:
+ *   control character (other than tab / line break) or a Unicode bidirectional
+ *   control (`BIDI_CONTROL_PATTERN`) is REFUSED, not cleaned:
  *   it is written in the append-only history, what is stored must be exactly
  *   what the director typed.
  */
@@ -54,6 +69,9 @@ export const changeContactStageSchema = z
         return trimmed.length === 0 ? null : trimmed;
       })
       .refine((value) => value === null || !CONTROL_CHARACTER_PATTERN.test(value), {
+        message: "Le motif contient des caractères non autorisés.",
+      })
+      .refine((value) => value === null || !BIDI_CONTROL_PATTERN.test(value), {
         message: "Le motif contient des caractères non autorisés.",
       })
       .refine(

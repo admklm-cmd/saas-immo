@@ -15,7 +15,9 @@ import type { ConsentStatus, PropertyType } from "@/features/contacts/types";
 import type { DashboardScopeKey } from "@/features/dashboard/types";
 import type { EstimationConsentChannel } from "@/features/estimation/consent-texts";
 import type { PropertyTypeChoice } from "@/features/estimation/types";
+import type { SettingsIntegrationCategory } from "@/features/settings/types";
 import type { TaskScope } from "@/features/tasks/types";
+import type { MembershipRole } from "@/lib/agents/types";
 
 /**
  * Two label maps are missing from `features/contacts/types.ts` (owned by the
@@ -49,6 +51,15 @@ export const ESTIMATION_CONSENT_CHANNEL_LABELS: Readonly<Record<EstimationConsen
   sms: "SMS",
   whatsapp: "WhatsApp",
   phone: "Téléphone",
+};
+
+/**
+ * Role of a member in the agency, as displayed (team list, history of a
+ * contact). One source, so « Directeur » never reads differently on two screens.
+ */
+export const MEMBERSHIP_ROLE_LABELS: Readonly<Record<MembershipRole, string>> = {
+  agent: "Conseiller",
+  director: "Directeur",
 };
 
 export const APP_TEXTS = {
@@ -101,8 +112,6 @@ export const APP_TEXTS = {
     back: "Retour",
     simulation: "Simulation",
     simulationHint: "Action simulée : rien n'a été envoyé à l'extérieur.",
-    comingSoon: "À venir",
-    comingSoonBody: "Cet écran arrive dans une prochaine itération du prototype.",
     notFoundTitle: "Page introuvable",
     notFoundBody: "Le lien est peut-être obsolète, ou la page n'existe pas.",
     unexpected: "Une erreur technique est survenue. Aucune action n'a été effectuée.",
@@ -330,6 +339,7 @@ export const APP_TEXTS = {
     contactPrefix: "Contact :",
     confirmInFollowThrough: "Confirmer dans le suivi",
     closeInFollowThrough: "Clôturer dans le suivi",
+    openInFollowThrough: "Ouvrir dans le suivi",
     actionFor: (name: string) => `— ${name}`,
   },
 
@@ -776,15 +786,77 @@ export const APP_TEXTS = {
     appointmentStatusPrefix: "Statut du rendez-vous :",
   },
 
-  /** One-line promises of the screens that are still shells. */
-  shells: {
-    agents:
-      "Léa, Hugo, Emma, Louis et Sarah : mission, statut, historique, erreurs — et coupe-circuit de l'agence.",
-    agentsToValidate:
-      "Chaque premier contact préparé par un agent IA est validé par un humain avant tout envoi.",
-    settings: "Agence, utilisateurs, intégrations et conservation des données.",
-    signUpTitle: "Inscription",
-    signUpBody: `La création de compte d'agence se fait avec l'équipe ${BRAND.name} lors de la mise en place.`,
+  /**
+   * `/parametres` — read-only. Only the existing kill switch can be operated
+   * here; everything else is set with Ascend Strategy during onboarding.
+   * Nothing on this screen may suggest a real connection or a retention period.
+   */
+  settings: {
+    title: "Paramètres",
+    subtitle: "Profil de l'agence, équipe, agents IA, intégrations et conservation des données.",
+    readOnlyBadge: "Lecture seule",
+    readOnlyTitle: "Cette page est en lecture seule",
+    readOnlyBody: `Ces réglages sont définis avec ${BRAND.name} lors de la mise en place de votre agence : pour en modifier un, adressez-vous à l'équipe ${BRAND.name}. Seul le coupe-circuit des agents IA s'utilise directement ici.`,
+    errorTitle: "Impossible d'afficher les paramètres",
+    unavailable: "Indisponible",
+    unavailableHint: "Cette section n'a pas pu être lue. Les autres sections restent à jour.",
+    notProvided: "Non renseigné",
+
+    agencyTitle: "Agence",
+    agencySubtitle: "L'agence telle qu'elle est enregistrée.",
+    agencyName: "Nom",
+    agencyCity: "Ville",
+    agencySector: "Secteur",
+
+    teamTitle: "Équipe",
+    teamSubtitle: "Les membres qui ont accès à l'espace de l'agence.",
+    teamCount: (total: number) => (total > 1 ? `${total} membres` : `${total} membre`),
+    teamEmpty: "Aucun membre à afficher.",
+    you: "(vous)",
+    noEmail: "Adresse email non renseignée",
+    rolePrefix: "Rôle :",
+    memberSince: (date: string) => `Membre depuis le ${date}`,
+
+    agentsTitle: "Agents IA",
+    agentsSubtitle: "Le coupe-circuit s'utilise ici, selon votre rôle. La limite quotidienne se consulte.",
+    dailyLimitTitle: "Limite quotidienne",
+    dailyLimitSubtitle: "Exécutions maximales des agents IA par journée, heure de Paris.",
+    dailyLimitUnit: (limit: number) => (limit > 1 ? "exécutions par jour" : "exécution par jour"),
+    dailyLimitHint:
+      "Une fois la limite atteinte, les exécutions suivantes sont refusées par un garde-fou et journalisées, jusqu'au lendemain.",
+    agentsLink: "Ouvrir les agents IA",
+
+    integrationsTitle: "Intégrations",
+    integrationsSubtitle:
+      "Aucune intégration n'est connectée. Dans ce prototype, tout échange avec l'extérieur est simulé.",
+    integrationCategories: {
+      real_estate_software: "Logiciels immobiliers",
+      messaging: "Messagerie",
+      calendar: "Agendas",
+    } satisfies Record<SettingsIntegrationCategory, string>,
+    notConnected: "Non connectée",
+    integrationSimulates: {
+      outbound_messages: "Messages préparés et « envoyés » en simulation : rien ne part vers l'extérieur.",
+      appointments: "Rendez-vous réservés en simulation : aucun agenda n'est modifié.",
+      none: "Aucun échange, même simulé : ni import ni export.",
+    },
+
+    retentionTitle: "Conservation des données",
+    retentionSubtitle: "Durée pendant laquelle les données des contacts sont conservées.",
+    retentionLabel: "Durée de conservation",
+    retentionUndefined: "Non définie — à valider avant mise en production",
+  },
+
+  /** `/inscription` — no self-service sign-up, on purpose. No form, no invented address. */
+  signUp: {
+    title: "Inscription",
+    lead: "Les comptes d'agence ne se créent pas en libre-service.",
+    body: `${BRAND.name} crée le compte de votre agence et les accès de votre équipe avec vous, lors de la mise en place.`,
+    securityNote:
+      "C'est un choix de sécurité : chaque accès est rattaché à une agence vérifiée, jamais ouvert par un inconnu.",
+    alreadyMember: "Votre agence est déjà équipée ?",
+    signIn: "Se connecter",
+    backHome: "Retour à l'accueil",
   },
 
   marketing: {
