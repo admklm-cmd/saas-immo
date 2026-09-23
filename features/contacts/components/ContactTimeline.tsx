@@ -3,7 +3,12 @@ import { APP_TEXTS } from "@/components/texts";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
-import { TIMELINE_KIND_LABELS, type TimelineEntry } from "@/features/contacts/types";
+import {
+  PIPELINE_STAGE_LABELS,
+  TIMELINE_KIND_LABELS,
+  type PipelineStage,
+  type TimelineEntry,
+} from "@/features/contacts/types";
 import { AGENT_LABELS } from "@/lib/agents/messages";
 
 const TEXTS = APP_TEXTS.contact;
@@ -12,6 +17,29 @@ function actorLabel(entry: TimelineEntry): string | null {
   if (entry.actor.type === "ai_agent" && entry.actor.agent) return AGENT_LABELS[entry.actor.agent];
   if (entry.actor.type === "user") return "Conseiller";
   return null;
+}
+
+/** Activity type written by the human stage change (`change_contact_stage`). */
+const STAGE_CHANGE_TYPE = "contact_stage_changed";
+
+function stageLabel(value: unknown): string | null {
+  return typeof value === "string" && Object.hasOwn(PIPELINE_STAGE_LABELS, value)
+    ? PIPELINE_STAGE_LABELS[value as PipelineStage]
+    : null;
+}
+
+/**
+ * A human stage change, read from its metadata: « Étape : X → Y » and the
+ * motive (plain text, exactly as typed). Null when the entry is anything else
+ * or its stages are unreadable — the stored summary is then shown instead.
+ */
+function stageChangeOf(entry: TimelineEntry): { title: string; reason: string | null } | null {
+  if (entry.kind !== "activity" || entry.meta.type !== STAGE_CHANGE_TYPE) return null;
+  const from = stageLabel(entry.meta.previous_stage);
+  const to = stageLabel(entry.meta.stage);
+  if (!from || !to) return null;
+  const reason = typeof entry.meta.reason === "string" && entry.meta.reason.trim() ? entry.meta.reason : null;
+  return { title: TEXTS.timelineStageChange(from, to), reason };
 }
 
 /** Chronological history of a contact, most recent first. */
@@ -24,6 +52,7 @@ export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[]
     <ol data-testid="contact-timeline" className="relative flex flex-col">
       {entries.map((entry, index) => {
         const actor = actorLabel(entry);
+        const stageChange = stageChangeOf(entry);
         return (
           <li key={`${entry.kind}-${entry.id}`} className="relative flex gap-4 pb-6 last:pb-0">
             {/* Vertical rail, purely decorative. */}
@@ -48,8 +77,22 @@ export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[]
                 </time>
               </div>
 
-              <p className="mt-2 text-sm font-medium text-ink">{entry.title}</p>
-              {entry.description ? (
+              {stageChange ? (
+                <>
+                  <p className="mt-2 text-sm font-medium text-ink" data-testid="timeline-stage-change">
+                    {stageChange.title}
+                  </p>
+                  {stageChange.reason ? (
+                    <p className="mt-1 text-sm whitespace-pre-line text-ink-muted">
+                      <span className="font-medium text-ink">{TEXTS.timelineStageReason} : </span>
+                      {stageChange.reason}
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <p className="mt-2 text-sm font-medium text-ink">{entry.title}</p>
+              )}
+              {!stageChange && entry.description ? (
                 <p className="mt-1 text-sm whitespace-pre-line text-ink-muted">{entry.description}</p>
               ) : null}
             </div>

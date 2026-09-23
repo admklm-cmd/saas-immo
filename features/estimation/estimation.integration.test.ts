@@ -672,7 +672,8 @@ describe("preuve du consentement : texte enregistré en base", () => {
           "submit_estimation_request",
           buildArgs({
             email,
-            phone: "06 12 34 56 78",
+            // Arcep fiction block only (see fixtures/fixture-ids.ts).
+            phone: "06 39 98 50 01",
             ipHash,
             consentEmail: channel === "email",
             consentSms: channel === "sms",

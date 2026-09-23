@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { listAppointmentsToFollowThrough } from "@/features/agents-ia/data";
+import { changeStage } from "@/features/pipeline/stage-change";
 import type { AiProvider } from "@/lib/claude/provider";
 import { createSimulatorProvider } from "@/lib/claude/simulator";
 import { setupTestEnv, type TestEnv, type TypedClient } from "@/lib/supabase/testing/local-test-env";
@@ -279,13 +280,13 @@ describe("Sarah — « mandat_signé » est inatteignable", () => {
     const running = runSarahFollowThrough(agentA, appointmentId, { provider: delayedProvider });
     await generationStarted;
 
-    const humanDecision = await agentA
-      .from("contacts")
-      .update({ stage: "mandat_signe" })
-      .eq("agency_id", env.agencyA.agencyId)
-      .eq("id", contactId)
-      .select("stage")
-      .single();
+    // Since 20260923120000 a mandate can only be declared through the
+    // human stage-change RPC (explicit confirmation, append-only trace).
+    const humanDecision = await changeStage(agentA, {
+      contactId,
+      stage: "mandat_signe",
+      mandateConfirmed: true,
+    });
     releaseGeneration();
 
     expect(humanDecision.error).toBeNull();

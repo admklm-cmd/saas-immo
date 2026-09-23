@@ -163,18 +163,20 @@ export const APP_TEXTS = {
     timelineSubtitle: "Échanges, rendez-vous, tâches et exécutions des agents IA.",
     timelineEmpty: "Aucun événement pour ce contact.",
     timelineError: "Impossible d'afficher l'historique.",
+    timelineStageChange: (from: string, to: string) => `Étape : ${from} → ${to}`,
+    timelineStageReason: "Motif",
 
     notFoundTitle: "Contact introuvable.",
     notFoundBody: "Ce contact n'existe pas ou n'appartient pas à votre agence.",
   },
 
   /**
-   * Pipeline — vue par étape, en lecture seule.
+   * Pipeline — vue par étape et changement d'étape humain.
    *
-   * Aucun changement d'étape ne se fait depuis cet écran : une carte mène à la
-   * fiche contact, jamais à une écriture. `perdu` est affiché à part, avec
-   * moins de poids visuel que les étapes actives (CLAUDE.md : le pipeline
-   * s'arrête à `perdu`, il ne s'y "travaille" plus).
+   * Une carte mène à la fiche contact et porte « Changer d'étape » (server
+   * action `changeContactStage`). `perdu` est affiché à part, avec moins de
+   * poids visuel que les étapes actives. « Mandat signé » exige toujours une
+   * confirmation humaine explicite ; seul un directeur peut en sortir.
    */
   pipeline: {
     title: "Pipeline",
@@ -183,6 +185,41 @@ export const APP_TEXTS = {
     columnCount: (total: number) => (total > 1 ? `${total} dossiers` : `${total} dossier`),
     columnEmpty: "Aucun dossier à cette étape.",
     lostSubtitle: "Affichée à part : cette étape n'est plus travaillée activement.",
+
+    /** Human stage change from a pipeline card (server action `changeContactStage`). */
+    stageChange: {
+      trigger: "Changer d'étape",
+      /** Screen-reader suffix, so every trigger has a distinct accessible name. */
+      triggerFor: (name: string) => `pour ${name}`,
+      menuTitle: "Déplacer vers",
+      currentStage: "Actuelle",
+      pending: "Déplacement en cours…",
+      success: (name: string, stage: string) => `${name} : dossier déplacé vers « ${stage} ».`,
+      errorTitle: "L'étape n'a pas été modifiée",
+      exitDirectorOnly: "Seul un directeur peut sortir un dossier de « Mandat signé ».",
+      requiresConfirmation: "Confirmation demandée",
+      cancel: "Annuler",
+
+      enterTitle: "Confirmer le mandat signé",
+      enterSummary: (name: string, from: string) =>
+        `Le dossier de ${name} passera de « ${from} » à « Mandat signé ».`,
+      enterHumanRule:
+        "Un mandat signé est toujours confirmé par un membre de l'agence, jamais par un agent IA. Votre confirmation est enregistrée dans l'historique du dossier.",
+      enterCheckbox: "Je confirme qu'un mandat a été signé avec ce vendeur",
+      enterSubmit: "Confirmer le mandat signé",
+      enterBlocked: "Cochez la case de confirmation pour continuer.",
+
+      exitTitle: "Sortir du mandat signé",
+      exitSummary: (name: string, to: string) => `Le dossier de ${name} passera de « Mandat signé » à « ${to} ».`,
+      exitRule:
+        "Décision réservée à un directeur. La signature reste dans l'historique du dossier : cette sortie y est ajoutée avec votre motif.",
+      exitCheckbox: "Je confirme vouloir sortir ce dossier de « Mandat signé »",
+      reasonLabel: "Motif (obligatoire)",
+      reasonHint: "Entre 3 et 500 caractères. Enregistré tel quel dans l'historique du dossier.",
+      reasonCounter: (count: number, max: number) => `${count} / ${max} caractères`,
+      exitSubmit: "Sortir du mandat signé",
+      exitBlocked: "Cochez la confirmation et saisissez un motif d'au moins 3 caractères pour continuer.",
+    },
   },
 
   agents: {

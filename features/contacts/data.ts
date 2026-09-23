@@ -237,6 +237,30 @@ export async function findContactById(client: TypedClient, contactId: string): P
 
 const TIMELINE_LIMIT = 100;
 
+/** Activity type written by `public.change_contact_stage` (human stage change). */
+export const STAGE_CHANGE_ACTIVITY_TYPE = "contact_stage_changed";
+
+function payloadString(payload: unknown, key: string): string | null {
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const value = (payload as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
+}
+
+/**
+ * UI metadata of an activity. For a human stage change, the stages before and
+ * after and the motive (exit from « Mandat signé ») are exposed so the history
+ * can show them; the summary already states them in French.
+ */
+export function activityMeta(type: string, payload: unknown): TimelineEntry["meta"] {
+  if (type !== STAGE_CHANGE_ACTIVITY_TYPE) return { type };
+  return {
+    type,
+    previous_stage: payloadString(payload, "previous_stage"),
+    stage: payloadString(payload, "stage"),
+    reason: payloadString(payload, "reason"),
+  };
+}
+
 /**
  * Merged history of a contact: CRM activities, appointments, outbound messages,
  * tasks and AI runs, most recent first. Simulated items keep their
@@ -330,7 +354,7 @@ export async function buildContactTimeline(
         isSimulation: row.is_simulation,
         actor: { type: row.actor_type, agent: row.actor_agent, userId: row.actor_user_id },
         status: null,
-        meta: { type: row.type },
+        meta: activityMeta(row.type, row.payload),
       });
     }
 

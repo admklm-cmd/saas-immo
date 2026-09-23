@@ -4,13 +4,29 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { Database } from "@/types/database";
 
 import { assertLocalSupabaseUrl, assertNotProduction } from "../lib/supabase/local-only";
-import { FIXTURE_EXPECTED_COUNTS, NOTABLE_CONTACTS } from "./dataset";
+import { buildFixtures, FIXTURE_EXPECTED_COUNTS, NOTABLE_CONTACTS } from "./dataset";
 import { FIXTURE_AGENCY_IDS, FIXTURE_EMAIL_DOMAIN, FIXTURE_PHONE_PATTERN, FIXTURE_USERS } from "./fixture-ids";
 
 /**
  * Proves that the loaded fixtures are, and stay, 100 % synthetic:
  * reserved e-mail domain, Arcep fiction phone blocks, "(fictive)" agency names,
  * every simulated action flagged as such, and the expected volumes.
+ *
+ * Determinism: this suite runs IN PARALLEL with the other integration tests
+ * (and after the Playwright journeys) on the SAME local base. It therefore
+ *   * only inspects the contacts of the two fixture agencies
+ *     (FIXTURE_AGENCY_IDS) — the throw-away agencies of the other suites are
+ *     none of its business; the "Arcep fiction numbers only" rule for THEIR
+ *     rows is proved statically, on the test sources that write them, by
+ *     fixtures/test-phone-numbers.test.ts;
+ *   * checks the fixture rows by their deterministic identifiers
+ *     (buildFixtures) instead of assuming nobody else ever writes in the
+ *     fixture agencies: the estimation suite and the E2E journeys legitimately
+ *     append history there (consents, activities, pipeline moves);
+ *   * keeps every safety property that must hold for ANY row of the fixture
+ *     agencies (no real phone or e-mail, no non-simulated AI action, no real
+ *     AI provider) as a whole-agency check — an extra row that breaks one of
+ *     them is a real defect, not noise.
  *
  * Fails loudly (with the command to run) if the local stack is unreachable or
  * if the fixtures have not been loaded.
@@ -34,19 +50,44 @@ const AGENCY_IDS = [FIXTURE_AGENCY_IDS.a, FIXTURE_AGENCY_IDS.b];
  * proved by the tests above (reserved e-mail domain, Arcep fiction numbers,
  * "(fictive)" agency names) — not by this flag.
  *
+ * `contact_stage_changed` is the human pipeline decision journaled by
+ * `public.change_contact_stage` (migration 20260923120000_contact_stage_change.sql,
+ * rules validated by the user on 2026-09-23). It is an INTERNAL CRM decision —
+ * nothing is sent to anyone — hence real by design, and it targets a contact.
+ * The pipeline E2E journey performs exactly that on a fixture contact (then
+ * restores it), which is why such rows legitimately appear here. The type is
+ * reserved to that RPC by a trigger (`private.guard_stage_change_activity`):
+ * nobody can forge one with a plain INSERT.
+ *
  * So the assertion is narrowed, not relaxed. A non-simulated activity is
- * accepted only if it is an agency-level configuration event of a known type,
- * written by a human. What this still catches — and what it exists for:
+ * accepted only if it is of a known type, written by a human, and points where
+ * its type says it must (see REAL_ACTIVITY_SCOPE). What this still catches —
+ * and what it exists for:
  *   * an AI agent writing an action that is NOT marked as simulated
  *     (`actor_type = 'ai_agent'`) — the dangerous regression;
- *   * any real action recorded against one of the fictitious contacts
- *     (`contact_id` not null), e.g. a send that stopped being simulated;
+ *   * any real OUTBOUND action (a send, a booking…) recorded against one of
+ *     the fictitious contacts, e.g. a send that stopped being simulated;
  *   * any new activity type that starts claiming to be real.
  *
  * Do not widen this list to make a test pass: a new entry here means a new real
  * action exists in the product, and that deserves its own review.
  */
-const REAL_ACTIVITY_TYPES = ["ai_paused", "ai_resumed"] as const;
+const REAL_ACTIVITY_TYPES = ["ai_paused", "ai_resumed", "contact_stage_changed"] as const;
+type RealActivityType = (typeof REAL_ACTIVITY_TYPES)[number];
+
+/** "agency": configuration, never tied to a contact. "contact": one contact's file. */
+const REAL_ACTIVITY_SCOPE: Record<RealActivityType, "agency" | "contact"> = {
+  ai_paused: "agency",
+  ai_resumed: "agency",
+  contact_stage_changed: "contact",
+};
+
+const PIPELINE_STAGES = ["nouveau", "qualifie", "chaud", "rdv_planifie", "estimation_faite", "mandat_signe", "perdu"];
+
+/** Exactly the rows the loader writes, with their deterministic identifiers. */
+const DATASET = buildFixtures();
+const FIXTURE_CONTACTS = [...DATASET.a.contacts, ...DATASET.b.contacts];
+const FIXTURE_ACTIVITIES = [...DATASET.a.activities, ...DATASET.b.activities];
 
 type TypedClient = SupabaseClient<Database>;
 
@@ -99,6 +140,8 @@ describe("fixtures : données 100 % fictives", () => {
   });
 
   it("aucune agence en base ne porte un nom non fictif", async () => {
+    // Whole base on purpose, and stable under concurrency: every agency any
+    // test creates is named "… (fictive)" (lib/supabase/testing/local-test-env.ts).
     const { data, error } = await admin.from("agencies").select("name");
     expect(error).toBeNull();
     for (const agency of data ?? []) {
@@ -106,8 +149,8 @@ describe("fixtures : données 100 % fictives", () => {
     }
   });
 
-  it("tous les emails de contact utilisent le domaine réservé @example.test", async () => {
-    const { data, error } = await admin.from("contacts").select("id, email");
+  it("tous les emails de contact des agences de fixtures utilisent le domaine réservé @example.test", async () => {
+    const { data, error } = await admin.from("contacts").select("id, email").in("agency_id", AGENCY_IDS);
     expect(error).toBeNull();
     expect((data ?? []).length).toBeGreaterThan(0);
     for (const contact of data ?? []) {
@@ -117,13 +160,32 @@ describe("fixtures : données 100 % fictives", () => {
     }
   });
 
-  it("tous les téléphones sont dans les tranches de fiction de l'Arcep", async () => {
-    const { data, error } = await admin.from("contacts").select("id, phone");
+  it("tous les téléphones des agences de fixtures sont dans les tranches de fiction de l'Arcep", async () => {
+    const { data, error } = await admin.from("contacts").select("id, phone").in("agency_id", AGENCY_IDS);
     expect(error).toBeNull();
     const phones = (data ?? []).map((contact) => contact.phone).filter((phone): phone is string => phone !== null);
     expect(phones.length).toBeGreaterThan(0);
     for (const phone of phones) {
       expect(FIXTURE_PHONE_PATTERN.test(phone), `téléphone « ${phone} »`).toBe(true);
+    }
+  });
+
+  it("chaque fiche de fixture existe avec exactement les coordonnées fictives du jeu de données", async () => {
+    const { data, error } = await admin
+      .from("contacts")
+      .select("id, agency_id, email, phone")
+      .in("id", FIXTURE_CONTACTS.map((contact) => contact.id!));
+    expect(error).toBeNull();
+    const byId = new Map((data ?? []).map((row) => [row.id, row]));
+    for (const expected of FIXTURE_CONTACTS) {
+      const row = byId.get(expected.id!);
+      expect(row, `fiche de fixture manquante : ${expected.id}`).toBeDefined();
+      expect(row).toEqual({
+        id: expected.id,
+        agency_id: expected.agency_id,
+        email: expected.email ?? null,
+        phone: expected.phone ?? null,
+      });
     }
   });
 
@@ -152,10 +214,35 @@ describe("fixtures : données 100 % fictives", () => {
     },
   );
 
-  it("dans activities, seules les actions humaines sur la configuration de l'agence sont réelles", async () => {
+  it("chaque activité écrite par le chargeur de fixtures est présente et marquée simulation", async () => {
+    // The dataset itself only contains simulated history.
+    expect(FIXTURE_ACTIVITIES.length).toBeGreaterThan(0);
+    expect(FIXTURE_ACTIVITIES.every((activity) => activity.is_simulation === true)).toBe(true);
+
     const { data, error } = await admin
       .from("activities")
-      .select("id, type, contact_id, actor_type, actor_agent")
+      .select("id, agency_id, contact_id, type, actor_type, is_simulation")
+      .in("id", FIXTURE_ACTIVITIES.map((activity) => activity.id!));
+    expect(error).toBeNull();
+    const byId = new Map((data ?? []).map((row) => [row.id, row]));
+    for (const expected of FIXTURE_ACTIVITIES) {
+      const row = byId.get(expected.id!);
+      expect(row, `activité de fixture manquante : ${expected.type} (${expected.id})`).toBeDefined();
+      expect(row).toEqual({
+        id: expected.id,
+        agency_id: expected.agency_id,
+        contact_id: expected.contact_id ?? null,
+        type: expected.type,
+        actor_type: expected.actor_type,
+        is_simulation: true,
+      });
+    }
+  });
+
+  it("dans activities, seules des décisions humaines internes connues sont réelles (jamais un agent IA, jamais un envoi)", async () => {
+    const { data, error } = await admin
+      .from("activities")
+      .select("id, type, contact_id, actor_type, actor_agent, actor_user_id, payload")
       .in("agency_id", AGENCY_IDS)
       .eq("is_simulation", false);
     expect(error).toBeNull();
@@ -166,25 +253,45 @@ describe("fixtures : données 100 % fictives", () => {
       expect(REAL_ACTIVITY_TYPES, `${where} : type inattendu`).toContain(activity.type);
       expect(activity.actor_type, `${where} : auteur non humain`).toBe("user");
       expect(activity.actor_agent, `${where} : un agent IA en est l'auteur`).toBeNull();
-      // Agency-level configuration only: nothing real may target a fictitious
-      // person, since no real person exists behind these contacts.
-      expect(activity.contact_id, `${where} : rattachée à un contact`).toBeNull();
+      expect(activity.actor_user_id, `${where} : aucun humain identifié`).not.toBeNull();
+
+      if (REAL_ACTIVITY_SCOPE[activity.type as RealActivityType] === "agency") {
+        // Agency-level configuration: nothing real targets a fictitious person.
+        expect(activity.contact_id, `${where} : rattachée à un contact`).toBeNull();
+      } else {
+        // One contact's pipeline move, with its before/after stages.
+        expect(activity.contact_id, `${where} : sans contact`).not.toBeNull();
+        const payload = activity.payload as Record<string, unknown>;
+        expect(PIPELINE_STAGES, `${where} : étape d'origine`).toContain(payload.previous_stage);
+        expect(PIPELINE_STAGES, `${where} : étape d'arrivée`).toContain(payload.stage);
+        expect(payload.stage, `${where} : aucun changement d'étape`).not.toBe(payload.previous_stage);
+      }
     }
   });
 });
 
 describe("fixtures : volumes attendus", () => {
-  it("25 contacts pour l'agence A, 5 pour l'agence B", async () => {
-    const countFor = async (agencyId: string) => {
+  it("25 contacts de fixtures pour l'agence A, 5 pour l'agence B", async () => {
+    // Counted by their deterministic identifiers: another suite or an E2E
+    // journey may legitimately add a contact to a fixture agency (public
+    // estimation form + Léa) without the fixtures being wrong.
+    expect(DATASET.a.contacts).toHaveLength(FIXTURE_EXPECTED_COUNTS.a.contacts);
+    expect(DATASET.b.contacts).toHaveLength(FIXTURE_EXPECTED_COUNTS.b.contacts);
+    const countFor = async (agencyId: string, ids: string[]) => {
       const { count, error } = await admin
         .from("contacts")
         .select("id", { count: "exact", head: true })
-        .eq("agency_id", agencyId);
+        .eq("agency_id", agencyId)
+        .in("id", ids);
       expect(error).toBeNull();
       return count;
     };
-    expect(await countFor(FIXTURE_AGENCY_IDS.a)).toBe(FIXTURE_EXPECTED_COUNTS.a.contacts);
-    expect(await countFor(FIXTURE_AGENCY_IDS.b)).toBe(FIXTURE_EXPECTED_COUNTS.b.contacts);
+    expect(await countFor(FIXTURE_AGENCY_IDS.a, DATASET.a.contacts.map((contact) => contact.id!))).toBe(
+      FIXTURE_EXPECTED_COUNTS.a.contacts,
+    );
+    expect(await countFor(FIXTURE_AGENCY_IDS.b, DATASET.b.contacts.map((contact) => contact.id!))).toBe(
+      FIXTURE_EXPECTED_COUNTS.b.contacts,
+    );
   });
 
   it("toutes les étapes du pipeline sont représentées dans l'agence A", async () => {

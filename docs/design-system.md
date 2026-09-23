@@ -92,7 +92,7 @@ Boutons et badges : `rounded-full`.
 |---|---|
 | `shadow-subtle` | Cartes, boutons au repos |
 | `shadow-raised` | Panneau de connexion, tableau flottant |
-| `shadow-overlay` | Modales et panneaux superposés (à venir) |
+| `shadow-overlay` | Éléments superposés : `Dialog`, panneau « Changer d'étape » du pipeline, pastille de confirmation du pipeline |
 
 ### 2.5 Mouvement
 
@@ -148,6 +148,8 @@ maximale, la durée, un écran concerné.
 | Survol ou pression d'un élément interactif | Fond, texte, bordure, ombre, `transform: scale` | `scale(0.98)` à la pression | `--duration-fast` | `Button` (`active:scale-[0.98]`), lignes de `ContactsTable` et `AgentRunsTable`, liens de `AppNav` |
 | Champ de formulaire | Couleur de bordure (et ombre pour `Field`) | aucune | `--duration-fast` | `Field`, `Select`, `Textarea`. **L'anneau de focus global (`:focus-visible`), lui, n'est jamais animé** : il apparaît instantanément |
 | Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
+| Ouverture d'une fenêtre de confirmation (`Dialog`) | Opacité + `scale(.98)` → `scale(1)` (`animate-settle`), fond flouté fixe | `scale(0.98)` | `--duration-base` | Confirmation du mandat signé (pipeline) |
+| Ouverture d'un panneau ancré ou d'une pastille de confirmation | Opacité + translation de 4 px (`animate-rise-soft`) | 4 px | `--duration-base` | Panneau « Changer d'étape », pastille « dossier déplacé » du pipeline |
 | Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(écran livré ; variante `settle` encore attendue en phase 1)* |
 
 #### 2.5.4 Interdits
@@ -313,6 +315,8 @@ Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAN
 | `DataList` | `DataList.tsx` | `dl` 1 ou 2 colonnes |
 | `PageHeader` | `PageHeader.tsx` | Fil d'Ariane, `h1`, description, badges, actions |
 | `Select` | `Select.tsx` | `<select>` natif, `<label for>` réel, `id` obligatoire (utilisable en Server Component), survol, désactivé |
+| `Checkbox` | `Checkbox.tsx` (client) | Case de confirmation explicite : toute la zone bordée est le `<label>`, contrôlée, **jamais précochée** ; cochée = cadre noir + fond atténué (jamais la couleur seule), désactivée |
+| `Dialog` | `Dialog.tsx` (client) | Fenêtre modale sur `<dialog>` natif + `showModal()` : titre (`aria-labelledby`), résumé (`aria-describedby`), `aria-modal`, focus piégé par le navigateur, Échap et clic sur le fond pour annuler (`dismissible={false}` pendant une requête), retour du focus (`returnFocusRef`), pied d'actions empilé en mobile |
 | `Textarea` | `Textarea.tsx` | Champ multiligne : libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), `maxLength` |
 | `ComingSoon` | `ComingSoon.tsx` | Écran « À venir » soigné |
 
@@ -374,13 +378,27 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 |---|---|---|
 | `PipelineBoard` | `PipelineBoard.tsx` | Répartit les contacts par étape (`groupContactsByStage`) et pose la grille des six étapes actives, puis `perdu` à part |
 | `PipelineColumn` | `PipelineColumn.tsx` | Une étape : `section`/`h2` (landmark correctement annoncé), compteur réel, état vide, `emphasis="muted"` pour `perdu` |
-| `PipelineContactCard` | `PipelineContactCard.tsx` | Une carte compacte, cliquable dans son intégralité vers `/contacts/[id]` : nom, bien (`propertySummary`, réutilisé depuis `ContactsTable`), badge de reprise humaine et de tâches ouvertes |
+| `PipelineContactCard` | `PipelineContactCard.tsx` | Une carte compacte en deux cibles jamais imbriquées : le bloc haut est un lien vers `/contacts/[id]` (nom, bien via `propertySummary`, badges de reprise humaine et de tâches ouvertes), le pied porte « Changer d'étape » |
+| `PipelineStageMenu` | `PipelineStageMenu.tsx` (client) | Bouton de divulgation (`aria-expanded`, nom accessible « Changer d'étape pour {nom} ») + panneau ancré opaque : sept étapes, actuelle cochée (`aria-current`) et non sélectionnable, flèches / Début / Fin, Échap rend le focus. Déplacement direct avec spinner sur l'option ; erreur serveur affichée telle quelle dans le panneau, sélection conservée |
+| `MandateEnterDialog` | `MandateEnterDialog.tsx` (client) | Entrée en « Mandat signé » : rappel « décision humaine, jamais un agent IA », `Checkbox` obligatoire, bouton désactivé tant qu'elle n'est pas cochée (raison écrite sous la case) |
+| `MandateExitDialog` | `MandateExitDialog.tsx` (client) | Sortie de « Mandat signé » (directeur) : `Checkbox` + `Textarea` « Motif (obligatoire) » 3–500 caractères avec compteur, bouton désactivé tant que les deux ne sont pas remplis |
+| `PipelineStageChangeProvider` | `PipelineStageChangeProvider.tsx` (client) | Zone `role="status"` toujours présente au niveau du tableau (la carte déplacée change de colonne, elle ne peut pas porter sa propre confirmation) : pastille noire translucide en bas d'écran, 6 s ; rend le focus au bouton de la carte dans sa nouvelle colonne |
 
-**Lecture seule, décision assumée.** `/pipeline` ne propose ni glisser-déposer,
-ni menu « changer l'étape », aucun bouton qui écrit : chaque carte est un lien
-vers la fiche contact. Déplacer un contact d'une étape à l'autre est une
-écriture qui exige une server action côté back (`mandat_signe` doit rester
-confirmé par un humain) — tâche ultérieure, hors périmètre de cet écran.
+**Changer d'étape, au clavier, sans glisser-déposer.** Seul `PipelineStageMenu`
+(et ses fenêtres) est un composant client ; colonnes et cartes restent des Server
+Components, et seuls l'identifiant, le nom et l'étape du contact atteignent le
+navigateur. Règles :
+
+1. Un déplacement ordinaire part au clic ; entrer dans ou sortir de « Mandat signé »
+   passe **toujours** par un `Dialog` avec une case non précochée.
+2. Une option indisponible (sortie de mandat pour un conseiller) reste focalisable
+   (`aria-disabled`, pas `disabled`) et porte sa raison via `aria-describedby` :
+   l'explication est lue, l'action ne part pas. Le serveur refuse de toute façon.
+3. Le panneau est **opaque** (`bg-surface`) : un flou laissait transparaître les
+   cartes du dessous et nuisait à la lecture. Le flou est réservé aux barres fixes et
+   à la pastille de confirmation.
+4. Les guillemets « … » de ces textes utilisent des espaces insécables pour ne jamais couper un
+   libellé d'étape en fin de ligne.
 
 **`perdu` n'a pas le même poids visuel que les étapes actives.** Elle est
 affichée à part, sur une largeur contrainte (`max-w-sm`), en bordure
@@ -526,9 +544,11 @@ Chaque écran gère quatre états :
 ## 8. Limites connues (à traiter plus tard)
 
 - Pas de thème sombre : les tokens sont prêts (surfaces inverses), le basculement ne l'est pas.
-- Pas encore de modale ni de toast. Les actions sensibles déjà livrées se traitent
-  **en place** : panneau de refus ou de correction dans la carte, et panneau de
-  confirmation du coupe-circuit avec focus déplacé sur « Confirmer ».
+- Une seule modale (`Dialog`), réservée aux confirmations qui engagent l'agence
+  et laissent une trace définitive dans l'historique (mandat signé). Les autres actions
+  sensibles restent traitées **en place** : panneau de refus ou de correction dans la
+  carte, panneau de confirmation du coupe-circuit avec focus déplacé sur « Confirmer ».
+  Pas de système de toast générique : la pastille du pipeline est locale à cet écran.
 - L'écran de Sarah réutilise les cartes, alertes, badges de pipeline et le rejeu existants.
   Le statut du rendez-vous conduit la carte : confirmation humaine de la proposition,
   saisie obligatoire du compte-rendu sur un rendez-vous confirmé, puis apparition de Sarah

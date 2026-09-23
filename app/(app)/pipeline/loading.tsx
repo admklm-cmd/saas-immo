@@ -19,8 +19,8 @@ export default function PipelineLoading() {
               <Skeleton className="h-5 w-16 rounded-full" />
             </div>
             <div className="mt-4 flex flex-col gap-2">
-              <Skeleton className="h-14 w-full rounded-lg" />
-              <Skeleton className="h-14 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
             </div>
           </div>
         ))}
@@ -33,7 +33,7 @@ export default function PipelineLoading() {
             <Skeleton className="h-5 w-16" />
             <Skeleton className="h-5 w-16 rounded-full" />
           </div>
-          <Skeleton className="mt-4 h-14 w-full rounded-lg" />
+          <Skeleton className="mt-4 h-20 w-full rounded-lg" />
         </div>
       </div>
     </div>

@@ -1,0 +1,304 @@
+"use client";
+
+import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+
+import { APP_TEXTS } from "@/components/texts";
+import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
+import { cn } from "@/components/ui/cn";
+import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/features/contacts/types";
+import { changeContactStage } from "@/features/pipeline/actions";
+import { PIPELINE_STAGES } from "@/features/pipeline/types";
+
+import { MandateEnterDialog } from "./MandateEnterDialog";
+import { MandateExitDialog } from "./MandateExitDialog";
+import { useStageChangeAnnouncer } from "./PipelineStageChangeProvider";
+
+const TEXTS = APP_TEXTS.pipeline.stageChange;
+const SIGNED: PipelineStage = "mandat_signe";
+
+export type PipelineStageMenuProps = {
+  contactId: string;
+  contactName: string;
+  stage: PipelineStage;
+  /** Display only (the database decides): explains why leaving « Mandat signé » is disabled. */
+  canExitSignedMandate: boolean;
+};
+
+type DialogState = { kind: "enter" | "exit"; target: PipelineStage } | null;
+
+/**
+ * « Changer d'étape » on a pipeline card — keyboard first, no drag-and-drop.
+ *
+ * A disclosure button opens a small panel listing every stage (the current one
+ * is marked, not selectable). A plain move is sent at once; entering or leaving
+ * « Mandat signé » goes through a confirmation dialog. The rules shown here
+ * are explanations only: `changeContactStage` and the database enforce them.
+ */
+export function PipelineStageMenu({ contactId, contactName, stage, canExitSignedMandate }: PipelineStageMenuProps) {
+  const router = useRouter();
+  const { announce, consumeFocus } = useStageChangeAnnouncer();
+
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<PipelineStage | null>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<DialogState>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Synchronous guard: a double click fires twice before React re-renders.
+  const inFlight = useRef(false);
+
+  const panelId = useId();
+  const titleId = useId();
+  const lockedNoteId = useId();
+
+  const exitLocked = stage === SIGNED && !canExitSignedMandate;
+
+  // The card was re-rendered in its new column: give it the focus back.
+  useEffect(() => {
+    if (consumeFocus(contactId)) triggerRef.current?.focus();
+  }, [consumeFocus, contactId]);
+
+  // First selectable option gets the focus when the panel opens.
+  useEffect(() => {
+    if (!open) return;
+    const options = optionsOf(panelRef.current);
+    const first = options.find((option) => option.getAttribute("aria-current") !== "true") ?? options[0];
+    first?.focus();
+  }, [open]);
+
+  // A click outside closes the panel (never while a request is running).
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      if (inFlight.current) return;
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpen(false);
+        setSelected(null);
+        setError(null);
+      }
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open]);
+
+  function closePanel(returnFocus: boolean) {
+    setOpen(false);
+    setSelected(null);
+    setError(null);
+    if (returnFocus) triggerRef.current?.focus();
+  }
+
+  async function submit(target: PipelineStage, mandateConfirmed: boolean, reason: string | null) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setPending(true);
+    setError(null);
+    try {
+      const { data, error: actionError } = await changeContactStage({
+        contactId,
+        stage: target,
+        mandateConfirmed,
+        reason,
+      });
+      if (actionError) {
+        // Already a precise French message (STAGE_CHANGE_ERROR_MESSAGES).
+        setError(actionError.message);
+        return;
+      }
+      announce(TEXTS.success(contactName, PIPELINE_STAGE_LABELS[data.stage]), contactId);
+      setDialog(null);
+      setOpen(false);
+      setSelected(null);
+      router.refresh();
+    } catch {
+      setError(APP_TEXTS.states.unexpected);
+    } finally {
+      inFlight.current = false;
+      setPending(false);
+    }
+  }
+
+  function choose(target: PipelineStage) {
+    if (pending || target === stage || exitLocked) return;
+    setSelected(target);
+    setError(null);
+    if (stage === SIGNED) {
+      setOpen(false);
+      setDialog({ kind: "exit", target });
+    } else if (target === SIGNED) {
+      setOpen(false);
+      setDialog({ kind: "enter", target });
+    } else {
+      void submit(target, false, null);
+    }
+  }
+
+  function cancelDialog() {
+    if (inFlight.current) return;
+    setDialog(null);
+    setSelected(null);
+    setError(null);
+  }
+
+  function onPanelKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (!inFlight.current) closePanel(true);
+      return;
+    }
+    const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    const options = optionsOf(panelRef.current);
+    if (options.length === 0) return;
+    event.preventDefault();
+    const index = options.indexOf(document.activeElement as HTMLButtonElement);
+    const last = options.length - 1;
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? last
+          : event.key === "ArrowDown"
+            ? (index + 1) % options.length
+            : (index - 1 + options.length) % options.length;
+    options[next]?.focus();
+  }
+
+  return (
+    <div ref={containerRef}>
+      <Button
+        ref={triggerRef}
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2.5 text-xs"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => (open ? closePanel(false) : setOpen(true))}
+        data-testid="stage-menu-trigger"
+      >
+        {TEXTS.trigger}{" "}
+        <span className="sr-only">{TEXTS.triggerFor(contactName)}</span>
+        <ChevronDownIcon
+          aria-hidden="true"
+          className={cn(
+            "ml-1 inline size-3.5 transition-transform duration-150 ease-standard",
+            open && "rotate-180",
+          )}
+        />
+      </Button>
+
+      {open ? (
+        <div
+          ref={panelRef}
+          id={panelId}
+          role="group"
+          aria-labelledby={titleId}
+          aria-busy={pending || undefined}
+          onKeyDown={onPanelKeyDown}
+          data-testid="stage-menu"
+          className="absolute inset-x-0 top-full z-30 mt-1.5 animate-rise-soft rounded-lg border border-line bg-surface p-1.5 shadow-overlay"
+        >
+          <p id={titleId} className="px-2.5 pt-1.5 pb-1 text-overline font-semibold text-ink-subtle uppercase">
+            {TEXTS.menuTitle}
+          </p>
+
+          {exitLocked ? (
+            <p id={lockedNoteId} className="mx-1 mb-1.5 rounded-md bg-surface-sunken px-2.5 py-2 text-xs leading-relaxed text-ink-muted">
+              {TEXTS.exitDirectorOnly}
+            </p>
+          ) : null}
+
+          <ul className="flex flex-col">
+            {PIPELINE_STAGES.map((option) => {
+              const isCurrent = option === stage;
+              const isSelected = option === selected;
+              const locked = !isCurrent && exitLocked;
+              const needsDialog = !isCurrent && (option === SIGNED || stage === SIGNED);
+              return (
+                <li key={option}>
+                  <button
+                    type="button"
+                    data-stage-option={option}
+                    aria-current={isCurrent ? "true" : undefined}
+                    aria-disabled={isCurrent || locked || (pending && !isSelected) ? "true" : undefined}
+                    aria-busy={pending && isSelected ? true : undefined}
+                    aria-describedby={locked ? lockedNoteId : undefined}
+                    onClick={() => choose(option)}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm",
+                      "transition-colors duration-150 ease-standard",
+                      isCurrent || locked
+                        ? "cursor-default text-ink-subtle"
+                        : "text-ink hover:bg-surface-sunken focus-visible:bg-surface-sunken",
+                      isSelected && "bg-surface-sunken font-medium",
+                    )}
+                  >
+                    <span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center">
+                      {pending && isSelected ? (
+                        <span className="size-3 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
+                      ) : isCurrent ? (
+                        <CheckIcon className="size-4" />
+                      ) : null}
+                    </span>
+                    <span className="flex-1">{PIPELINE_STAGE_LABELS[option]}</span>
+                    {isCurrent ? <span className="text-xs text-ink-subtle">{TEXTS.currentStage}</span> : null}
+                    {needsDialog && !locked ? (
+                      <span className="text-xs text-ink-subtle">{TEXTS.requiresConfirmation}</span>
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {pending ? (
+            <p className="px-2.5 pt-1.5 pb-1 text-xs text-ink-muted" role="status">
+              {TEXTS.pending}
+            </p>
+          ) : null}
+
+          {error ? (
+            <Alert tone="error" title={TEXTS.errorTitle} className="mt-1.5" testId="stage-change-error">
+              {error}
+            </Alert>
+          ) : null}
+        </div>
+      ) : null}
+
+      {dialog?.kind === "enter" ? (
+        <MandateEnterDialog
+          contactName={contactName}
+          fromLabel={PIPELINE_STAGE_LABELS[stage]}
+          pending={pending}
+          error={error}
+          onCancel={cancelDialog}
+          onConfirm={(confirmed) => void submit(dialog.target, confirmed, null)}
+          returnFocusRef={triggerRef}
+        />
+      ) : null}
+
+      {dialog?.kind === "exit" ? (
+        <MandateExitDialog
+          contactName={contactName}
+          toLabel={PIPELINE_STAGE_LABELS[dialog.target]}
+          pending={pending}
+          error={error}
+          onCancel={cancelDialog}
+          onConfirm={(confirmed, reason) => void submit(dialog.target, confirmed, reason)}
+          returnFocusRef={triggerRef}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function optionsOf(panel: HTMLElement | null): HTMLButtonElement[] {
+  if (!panel) return [];
+  return Array.from(panel.querySelectorAll<HTMLButtonElement>("button[data-stage-option]"));
+}

@@ -9,7 +9,7 @@
 > de Léa, la file « Messages à valider » avec correction humaine des brouillons, le
 > module « Agents IA » (les cinq agents, le coupe-circuit, le journal des exécutions et le
 > rejeu animé d'une exécution), les relances d'Emma, le suivi post-estimation de Sarah et
-> le pipeline en lecture seule, le tableau de bord (comptages exacts avec périmètre
+> le pipeline avec changement d'étape humain (garde-fous sur « Mandat signé »), le tableau de bord (comptages exacts avec périmètre
 > affiché, « Indisponible » en cas d'échec). Les paramètres utilisent explicitement
 > `ComingSoon`.
 
@@ -56,8 +56,26 @@ Deux règles produit :
 - **`rdv_planifié`** n'est atteint qu'après confirmation humaine du créneau.
 - **`mandat_signé`** est toujours confirmé par un humain, jamais auto-déclaré par un agent IA.
 
-`/pipeline` affiche cette répartition en lecture seule (voir § 5) : aucun changement
-d'étape ne se fait depuis cet écran tant que la server action correspondante n'existe pas.
+`/pipeline` affiche cette répartition et permet à un membre de l'agence de **changer
+l'étape** d'un dossier (server action `changeContactStage`, voir § 5) :
+
+- **Pas de glisser-déposer.** Chaque carte porte une commande « Changer d'étape »
+  utilisable au clavier : un petit panneau liste les sept étapes, l'étape actuelle est
+  marquée et non sélectionnable. Un déplacement ordinaire part immédiatement ; la carte
+  change de colonne et une confirmation discrète est annoncée (zone `aria-live`).
+- **Entrer en « Mandat signé »** ouvre une fenêtre de confirmation : case obligatoire,
+  jamais précochée, « Je confirme qu'un mandat a été signé avec ce vendeur ». La fenêtre
+  rappelle que c'est une décision humaine, jamais celle d'un agent IA.
+- **Sortir de « Mandat signé »** est réservé au directeur : case de confirmation explicite
+  et motif obligatoire (3 à 500 caractères, compteur visible). Pour un conseiller, les
+  options sont désactivées avec l'explication « Seul un directeur peut sortir un dossier
+  de « Mandat signé ». » — la base refuse de toute façon.
+- Une erreur serveur s'affiche telle quelle, dans le panneau ou la fenêtre, sans perdre la
+  sélection ni la saisie ; le bouton est désactivé pendant la requête (pas de double envoi).
+- **Historique** : chaque changement apparaît sur la fiche contact sous la forme
+  « Étape : X → Y », avec le motif le cas échéant (texte brut). C'est une décision CRM
+  humaine : aucun badge « Simulation ». L'historique est append-only : une sortie de
+  mandat n'efface jamais la signature.
 
 ## 4. Les agents IA du produit
 
@@ -86,7 +104,7 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Tableau de bord | `/dashboard` | **Fait** (23/09) | `getDashboardSummary()` : **À faire maintenant** en premier (messages à valider ou validés non envoyés, leads à traiter, tâches ouvertes, rendez-vous à confirmer et à clôturer — total exact + 5 premiers éléments liés à leur fiche, « Tout voir » vers l'écran de travail), pipeline par étape (`perdu` en retrait), agents IA (état du coupe-circuit toujours affiché, exécutions aujourd'hui et sur 7 jours : total, erreurs, blocages par garde-fou), prochains rendez-vous. Chaque chiffre affiche son périmètre ; un calcul en échec affiche « Indisponible », jamais 0, sans masquer les autres. Aucune tendance ni pourcentage |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |
-| Pipeline | `/pipeline` | **Fait (lecture seule)** | Contacts réels de `getContacts()` répartis par étape, `perdu` affiché à part avec moins de poids visuel, compteurs réels uniquement, une carte mène à la fiche contact — aucun changement d'étape depuis cet écran |
+| Pipeline | `/pipeline` | **Fait** (23/09) | Contacts réels de `getContacts()` répartis par étape, `perdu` affiché à part avec moins de poids visuel, compteurs réels uniquement, une carte mène à la fiche contact. « Changer d'étape » au clavier sur chaque carte (`changeContactStage`), confirmation obligatoire pour « Mandat signé », sortie réservée au directeur avec motif (voir § 3) |
 | Agents IA | `/agents-ia` | **Fait** | Les 5 agents (mission, statut, compteurs, dernière exécution, erreurs), activité de l'agence, **coupe-circuit**, journal filtrable et paginé |
 | Rejeu d'une exécution | `/agents-ia/executions/[runId]` | **Fait** | Étapes réellement enregistrées, rejouées avec les durées mesurées |
 | Leads entrants | `/agents-ia/leads-entrants` | **Fait** | Demandes brutes : source, données non fiables, dédoublonnage par Léa, création ou rattachement de fiche, tâche de consentement et rejeu |
@@ -202,5 +220,4 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
 
 1. Formulaire d'estimation public avec consentement par canal (cases non précochées).
 2. Remplacer la coquille `ComingSoon` des paramètres.
-3. Changement d'étape depuis `/pipeline` : server action dédiée, avec les garde-fous
-   attendus sur `mandat_signe` (voir « À transmettre » du jalon pipeline).
+3. ~~Changement d'étape depuis `/pipeline`~~ : livré le 23/09 (voir § 3).

@@ -177,6 +177,33 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   champ d'étape. Un **humain** peut bien sûr passer un contact en `mandat_signe` : c'est exactement ce
   que la règle produit demande. Testé sur des comptes-rendus malveillants
   (`features/agents-ia/sarah-suivi/sarah.integration.test.ts`).
+- **Mandat signé gardé par la base (23/09/2026, migration `20260923120000_contact_stage_change.sql`)** :
+  entrer en `mandat_signe` ou en sortir n'est possible **que** par la fonction
+  `public.change_contact_stage` (exécutable par `authenticated` seulement). Entrée : confirmation
+  humaine explicite obligatoire. Sortie : **directeur uniquement**, confirmation explicite et motif
+  obligatoire (3 à 500 caractères, sans caractère de contrôle). Le trigger
+  `guard_contact_mandate_stage` refuse tout `UPDATE` direct d'entrée ou de sortie, pour tous les rôles
+  non superutilisateur, `service_role` et `postgres` compris ; une session ne peut pas non plus
+  **créer** un contact déjà « signé » (seul le chargeur de fixtures, sans session, le peut).
+  L'autorisation n'est pas un drapeau `set_config` (appelable par tout rôle disposant d'une connexion
+  SQL) mais une ligne à usage unique (transaction + contact) dans `private.contact_stage_change_grants`,
+  table sur laquelle aucun rôle client n'a de privilège, supprimée avant la fin de l'appel. Chaque
+  changement fait par cette fonction écrit une entrée `contact_stage_changed` en ajout seul (acteur
+  humain, étape avant/après, motif, heure serveur) ; ce type d'activité est réservé à la fonction
+  (`guard_stage_change_activity`) : une fausse trace de signature ne peut pas être insérée. Ligne
+  verrouillée (`FOR UPDATE`) : un double clic produit une seule transition. Couvert par
+  `features/pipeline/stage-change.integration.test.ts` (deux agences fictives). Reste hors garde :
+  les changements d'étape *hors mandat* par `UPDATE` direct d'un membre restent possibles sans trace
+  (politique existante), l'application passe toutefois par la fonction (voir 3.4, gravité moyenne).
+  Revue sécurité du 23/09/2026 : contournements tentés **en base** et refusés — `UPDATE` direct (agent,
+  directeur, `service_role`), `INSERT` d'un contact « signé » par une session, `UPSERT` (`ON CONFLICT
+  DO UPDATE`) vers ou depuis `mandat_signe`, réutilisation de l'autorisation dans la même transaction
+  après l'appel de la fonction, faux drapeau `set_config`, écriture dans la table d'autorisations,
+  forge d'une trace `contact_stage_changed` après un appel légitime sur un autre contact, contact
+  d'une autre agence (réponse identique à un identifiant inconnu). `postgres` (propriétaire des
+  fonctions `security definer`) n'est pas superutilisateur en local : la garde s'applique aussi à
+  l'intérieur des autres fonctions `security definer`, dont aucune n'entre ni ne sort de
+  `mandat_signe`.
 - **Une décision humaine concurrente gagne toujours sur Sarah** : son écriture vers
   `estimation_faite` vérifie encore l'étape qu'elle avait lue avant l'appel IA. Si un conseiller passe
   entre-temps le dossier à `mandat_signe`, `perdu` ou une autre étape, l'update ne touche aucune ligne,
@@ -506,6 +533,24 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
   outils qui utilisent la clé de service (`e2e/helpers/local-supabase.ts`,
   `lib/supabase/testing/`) sont protégés à l'exécution (`assertNotProduction` +
   `assertLocalSupabaseUrl`), mais la barrière reste conventionnelle à la compilation.
+- **Changements d'étape hors mandat sans trace possible (gravité moyenne)** : la politique
+  `contacts_update_members` laisse un membre modifier `contacts.stage` par `UPDATE` direct (PostgREST)
+  entre étapes autres que `mandat_signe` (ex. `perdu` → `chaud`), sans entrée d'historique. Aucune
+  fuite entre agences, aucun envoi possible par ce biais (le consentement et le coupe-circuit sont
+  revérifiés au moment de l'envoi), mais une décision humaine peut ne pas être tracée (répudiation
+  intra-agence). Hugo et Sarah écrivent aujourd'hui l'étape par `UPDATE` sous la session de
+  l'utilisateur : retirer le privilège sur la colonne les casserait. Durcissement recommandé au
+  prochain jalon : n'accepter un changement d'étape par session que via `change_contact_stage` **ou**
+  pendant un run ouvert de Hugo/Sarah (même principe que `guard_activity_actor`), ou déplacer ces
+  écritures dans des RPC transactionnels.
+- **Motif de sortie de mandat** : les caractères de contrôle sont refusés, mais pas les caractères
+  Unicode de mise en forme bidirectionnelle (U+202A–U+202E, U+2066–U+2069), qui peuvent altérer
+  l'affichage d'un motif dans l'historique (aucun risque XSS : React échappe le texte). Faible.
+- **Contact « signé » sans historique supprimable par un directeur** : `DELETE` n'est pas gardé par
+  `guard_contact_mandate_stage`. Un contact passé en `mandat_signe` par la fonction a toujours une
+  trace, et la clé étrangère `activities_contact_fkey` (`on delete no action`) bloque alors sa
+  suppression ; seul un contact créé déjà « signé » par le chargeur de fixtures, sans aucune activité,
+  peut être supprimé. Faible, à revoir avec la procédure d'effacement RGPD.
 - Aucun test de charge, aucune revue d'infrastructure : hors périmètre de ce skill et de ce prototype.
 
 ---
@@ -543,3 +588,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 | 2026-09-23 | Audit dédié du **formulaire public d'estimation** (`feat/public-estimation`) : `features/estimation/`, `app/(marketing)/estimation`, `politique-confidentialite`, migration `20260922120000`, privilèges réels de `anon` en base | Aucun problème critique. Isolation vérifiée **en base** : `anon` n'a aucun privilège de table dans `public`/`private`, aucun accès au schéma `private`, une seule fonction exécutable ; texte de consentement identique caractère par caractère entre SQL et TypeScript (196/154/150/231 caractères) ; `current_consents` exclut les consentements sans contact ; `guard_outbound_message` n'autorise aucun envoi depuis un consentement sans contact. **2 corrections** : entrée `x-forwarded-for` choisie (contournement du plafond par empreinte IP même derrière un proxy) et caractères de contrôle acceptés dans les noms (injection d'en-tête d'email en aval) — corrigée côté zod **et** côté base (migration `20260923090000`). **Non corrigé, assumé et documenté** : empreinte IP choisie librement par un appelant direct du RPC, plafond d'agence utilisable comme déni de service, absence de double opt-in, promesse de désinscription non implémentée. 927 → 939 tests verts. |
 | 2026-09-22 | Réconciliation `feat/agents-et-ecrans-reconcile` : rejeu chirurgical de 3 correctifs identifiés sur la branche de sauvegarde locale (sans écraser le travail distant, dont `hasOptOutInstruction`) | Octets de contrôle bruts remplacés par leurs échappements dans 3 fichiers dont 2 garde-fous (`features/agents-ia/types.ts`, `lib/utils/safe-redirect.ts`, leurs tests). `noMoney` ajouté au schéma de Louis (oublié jusqu'ici). Deux garde-fous partagés `noControlCharacters`/`singleLine` ajoutés contre l'injection d'en-tête d'email dans les objets d'Emma et de Louis. `@radix-ui/react-icons` épinglé en version exacte. 813 → 822 tests verts (`tsc`, lint et Vitest silencieux/verts), aucune régression. |
 | 2026-09-23 | Jalon **tableau de bord** (`feat/dashboard`, travail non commité) + passe légère sur `git diff main...HEAD` (334 fichiers) | Aucun problème critique ni élevé. Isolation (client de session, `agency_id` serveur, FK composites, RPC `security invoker`), absence de `service_role`, absence de fuite d'erreur, minimisation et badge Simulation vérifiés (§2.9). **1 durcissement faible** : identifiant encodé dans les liens de fiche + test XSS/lien. Branche : aucun `.env*` suivi hors `.env.example`, `fixtures/.generated-credentials.json` ignoré et absent de l'historique, 13/13 tables avec RLS, 17/17 fonctions `security definer` avec `search_path`, webhooks en 501, toutes les server actions passent par le client de session, `npm audit --omit=dev` : 0. 998 tests Vitest verts. Livraison autorisée. |
+| 2026-09-23 | Jalon **pipeline — changement d'étape humain et garde du mandat signé** (`feat/complete-demo`, travail non commité) : migration `20260923120000`, `features/pipeline/**`, `ContactTimeline`, `Dialog`/`Checkbox`, helper E2E `contact-stage`, couches données `features/tasks/**`, `features/appointments/**`, `lib/utils/pagination.ts`, `features/dashboard/data.ts`, garde-fous de fixtures | Aucun problème critique ni élevé. Garde du mandat éprouvée en base (contournements tentés et refusés, voir 2.6), isolation et réponse identique inconnu/autre agence, verrou `FOR UPDATE`, messages d'erreur sans détail technique, rôle utilisé côté client pour l'affichage seulement. `completeTask` : `UPDATE` conditionnel, filtre agence, horodatage par la base. `contact_stage_changed` validé comme activité réelle (décision interne, aucun envoi, réservée à la fonction). **1 test de non-régression ajouté** (UPSERT vers/depuis `mandat_signe`). **Non corrigé, documenté en 3.4** : changements d'étape hors mandat sans trace (moyen), caractères bidi dans le motif (faible), suppression d'un contact « signé » sans historique (faible). 1178 tests Vitest verts, `npm audit` : 0. Livraison autorisée. |

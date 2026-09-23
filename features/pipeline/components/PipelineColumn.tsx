@@ -16,10 +16,17 @@ export type PipelineColumnProps = {
    * label and the dashed style both say it).
    */
   emphasis?: "default" | "muted";
+  /** Display only: explains why leaving « Mandat signé » may be disabled. */
+  canExitSignedMandate?: boolean;
 };
 
 /** One pipeline column: a real landmark (`section` + `h2`), never colour-only. */
-export function PipelineColumn({ stage, contacts, emphasis = "default" }: PipelineColumnProps) {
+export function PipelineColumn({
+  stage,
+  contacts,
+  emphasis = "default",
+  canExitSignedMandate = false,
+}: PipelineColumnProps) {
   const muted = emphasis === "muted";
   const headingId = `pipeline-column-${stage}`;
 
@@ -44,7 +51,7 @@ export function PipelineColumn({ stage, contacts, emphasis = "default" }: Pipeli
       ) : (
         <ul className="mt-4 flex flex-col gap-2">
           {contacts.map((contact) => (
-            <PipelineContactCard key={contact.id} contact={contact} />
+            <PipelineContactCard key={contact.id} contact={contact} canExitSignedMandate={canExitSignedMandate} />
           ))}
         </ul>
       )}

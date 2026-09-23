@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getContacts } from "@/features/contacts/queries";
 import { PipelineBoard } from "@/features/pipeline/components/PipelineBoard";
+import { getPipelineViewer } from "@/features/pipeline/queries";
 
 const TEXTS = APP_TEXTS.pipeline;
 const CONTACTS_TEXTS = APP_TEXTS.contacts;
@@ -15,14 +16,17 @@ const CONTACTS_TEXTS = APP_TEXTS.contacts;
 export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand.name}` };
 
 /**
- * `/pipeline` — read-only view of the agency's contacts by stage.
+ * `/pipeline` — the agency's contacts by stage.
  *
- * No drag-and-drop, no menu to change a stage: every card only links to the
- * contact file. Moving a contact from one stage to another is a write and
- * needs a server action, which belongs to a later iteration.
+ * No drag-and-drop: each card links to the contact file and offers a
+ * « Changer d'étape » menu (server action `changeContactStage`). The viewer's
+ * role only EXPLAINS why leaving « Mandat signé » is reserved to a director;
+ * if it cannot be read, the menu falls back to the most restrictive display
+ * and the database decides anyway.
  */
 export default async function PipelinePage() {
-  const { data: contacts, error } = await getContacts();
+  const [{ data: contacts, error }, viewer] = await Promise.all([getContacts(), getPipelineViewer()]);
+  const canExitSignedMandate = viewer.data?.canExitSignedMandate ?? false;
 
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-12">
@@ -56,7 +60,7 @@ export default async function PipelinePage() {
             }
           />
         ) : (
-          <PipelineBoard contacts={contacts} />
+          <PipelineBoard contacts={contacts} canExitSignedMandate={canExitSignedMandate} />
         )}
       </div>
     </div>

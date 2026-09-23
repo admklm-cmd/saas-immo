@@ -63,7 +63,9 @@ async function createContact(label: string, seed: Seed = {}): Promise<string> {
       first_name: "Louis",
       last_name: `Test ${label}`,
       email: seed.email === false ? null : `louis-${label}.${env.runId}@example.test`,
-      phone: seed.phone ? "+33600000000" : null,
+      // Arcep fiction block only (see fixtures/fixture-ids.ts): never a number
+      // that could belong to a real person, even on a throw-away agency.
+      phone: seed.phone ? "06 39 98 41 01" : null,
       source: "estimation_form",
       stage: seed.stage ?? "qualifie",
       notes: seed.notes ?? NOTES,

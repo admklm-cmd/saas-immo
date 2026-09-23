@@ -874,6 +874,21 @@ export type Database = {
           window_total: number
         }[]
       }
+      change_contact_stage: {
+        Args: {
+          mandate_confirmed?: boolean
+          new_stage: Database["public"]["Enums"]["pipeline_stage"]
+          reason?: string
+          target_contact: string
+        }
+        Returns: {
+          activity_id: string
+          changed_at: string
+          contact_id: string
+          current_stage: Database["public"]["Enums"]["pipeline_stage"]
+          previous_stage: Database["public"]["Enums"]["pipeline_stage"]
+        }[]
+      }
       set_ai_paused: {
         Args: { paused: boolean; target_agency: string }
         Returns: boolean
