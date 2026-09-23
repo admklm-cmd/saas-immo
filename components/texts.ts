@@ -720,10 +720,9 @@ export const APP_TEXTS = {
     todoSubtitle: "Les dossiers qui attendent une décision humaine, du plus ancien au plus récent.",
 
     messagesTitle: "Messages à valider",
-    messagesUnit: (total: number) =>
-      total > 1 ? "messages à valider ou validés, pas encore envoyés" : "message à valider ou validé, pas encore envoyé",
-    messagesHint:
-      "Même file que l'écran « Messages à valider » : les brouillons à valider et ceux validés qui attendent encore leur envoi.",
+    messagesUnit: (total: number) => (total > 1 ? "messages pas encore envoyés" : "message pas encore envoyé"),
+    // One line on desktop, and still honest: the figure counts BOTH states.
+    messagesHint: "À valider, ou validés en attente d'envoi.",
     messagesEmpty: "Aucun message n'attend de décision.",
     messagesLink: "Ouvrir la file de validation",
     preparedBy: (agent: string) => `Préparé par ${agent}`,
@@ -739,18 +738,17 @@ export const APP_TEXTS = {
 
     toConfirmTitle: "Rendez-vous à confirmer",
     toConfirmUnit: (total: number) =>
-      total > 1 ? "propositions de créneau à confirmer par un conseiller" : "proposition de créneau à confirmer par un conseiller",
+      total > 1 ? "propositions de créneau à confirmer" : "proposition de créneau à confirmer",
     toConfirmEmpty: "Aucune proposition de rendez-vous à confirmer.",
 
     toCloseTitle: "Rendez-vous à clôturer",
-    toCloseUnit: (total: number) =>
-      total > 1 ? "rendez-vous confirmés, compte-rendu à saisir" : "rendez-vous confirmé, compte-rendu à saisir",
+    toCloseUnit: (total: number) => (total > 1 ? "confirmés, compte-rendu à saisir" : "confirmé, compte-rendu à saisir"),
     toCloseEmpty: "Aucun rendez-vous confirmé en attente de compte-rendu.",
     followThroughLink: "Ouvrir le suivi des rendez-vous",
 
     tasksTitle: "Tâches ouvertes",
     tasksUnit: (total: number) => (total > 1 ? "tâches ouvertes" : "tâche ouverte"),
-    tasksHint: "Même liste que l'écran « Tâches », où chacune se marque comme faite.",
+    tasksHint: "Même liste que l'écran « Tâches ».",
     tasksEmpty: "Aucune tâche ouverte.",
     tasksLink: "Ouvrir les tâches",
     agencyTask: "Tâche d'agence, sans contact",

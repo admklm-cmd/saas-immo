@@ -66,4 +66,16 @@ describe("AgentsSummary", () => {
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.getByText(APP_TEXTS.states.simulation)).toBeDefined();
   });
+
+  it("place le badge « Simulation » sur la ligne du titre, dans l'en-tête de la carte", () => {
+    render(<AgentsSummary agents={makeSummary().agents} />);
+
+    const heading = screen.getByRole("heading", { level: 2, name: TEXTS.agentsTitle });
+    const titleRow = heading.parentElement;
+    expect(titleRow?.textContent).toContain(APP_TEXTS.states.simulation);
+    // Never under the description: the description sits after the title row.
+    const description = screen.getByText(TEXTS.agentsSubtitle);
+    expect(titleRow?.contains(description)).toBe(false);
+    expect(titleRow?.closest("header")?.contains(description)).toBe(true);
+  });
 });

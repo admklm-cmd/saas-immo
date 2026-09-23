@@ -301,7 +301,7 @@ Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAN
 |---|---|---|
 | `Button` | `Button.tsx` | `primary` / `secondary` / `ghost` × `sm` / `md` / `lg` ; repos, survol, focus visible, actif (`scale .98`), `isLoading` (spinner + `aria-busy`), `disabled` (opacité 40 %) |
 | `ButtonLink` | `ButtonLink.tsx` | Mêmes styles, mais reste une ancre `next/link` |
-| `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3 |
+| `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3. Les actions (badge, lien court) restent **sur la ligne du titre** à toutes les largeurs ; la description passe dessous, pleine largeur — elle ne repousse jamais un badge sur une ligne à part |
 | `LogoSymbol` | `LogoSymbol.tsx` | Symbole seul, `sm` / `md` / `lg` ; nommé par défaut, silencieux avec `label={null}` ; inversion par `currentColor` (§ 2.7) |
 | `Logo` | `Logo.tsx` | Verrouillage complet (symbole + nom sur deux lignes), `sm` / `md` ; un seul nom accessible (§ 2.7.2) |
 | `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge |
@@ -471,11 +471,11 @@ réduit ni à une couleur ni à une icône.
 | Composant | Fichier | Rôle |
 |---|---|---|
 | `DashboardFigure` | `DashboardFigure.tsx` | Un chiffre **toujours suivi de son périmètre** (« en attente, toutes dates », « ouvertes, toutes dates », « état actuel », « aujourd'hui », « sur 7 jours », « à venir ») ; « Indisponible » si le calcul a échoué, jamais `0` |
-| `ActionListCard` | `ActionListCard.tsx` | Liste d'action générique : titre (`h3`, ou `h2` en bloc de premier niveau), total exact, échantillon (« Les 5 premiers sur 12 » si `hasMore`), état vide, lien vers l'écran de travail (« Tout voir » quand l'échantillon est partiel et que l'écran liste tout) |
+| `ActionListCard` | `ActionListCard.tsx` | Liste d'action générique : titre (`h3`, ou `h2` en bloc de premier niveau), total exact, aide d'**une ligne** sur bureau, échantillon (« Les 5 premiers sur 12 » si `hasMore`), lien vers l'écran de travail (« Tout voir » quand l'échantillon est partiel et que l'écran liste tout). **État vide compact** : une seule rangée (pastille ✓ `aria-hidden` + texte atténué) à la place du premier élément, sous le même filet. `layout="subgrid"` : la carte occupe trois rangées de la grille parente (`row-span-3 grid-rows-subgrid`) — en-tête, liste, pied — pour que filets et pieds des cartes d'une même rangée soient alignés au pixel |
 | `MessageItem` / `InboundLeadItem` / `AppointmentItem` / `TaskItem` / `ContactLink` | — | Un élément d'échantillon : contact lié à sa fiche, statut en badge, `SimulationBadge` si simulé. Un lead n'a pas de fiche : il mène à « Leads entrants ». Aucun texte libre du prospect |
 | `TodoSection` | `TodoSection.tsx` | Bloc « À faire maintenant », premier de l'écran : cinq `ActionListCard` |
-| `PipelineSummary` / `PipelineStageTile` | — | Un compte par étape avec `PipelineStageBadge` ; `perdu` sur une rangée à part, pointillés et texte atténué |
-| `AgentsSummary` / `RunCountsList` | — | État du coupe-circuit (lu à part, visible même si les exécutions sont indisponibles) ; exécutions aujourd'hui et sur 7 jours : total, erreurs, **bloquées par un garde-fou** (dit explicitement « pas une erreur »). Lien vers `/agents-ia`, jamais de bouton dupliqué |
+| `PipelineSummary` / `PipelineStageTile` | — | Un compte par étape avec `PipelineStageBadge` dans une grille de six tuiles ; `perdu` **intégré sous un filet léger**, sur une rangée pleine largeur et lue sur une ligne (badge, chiffre + périmètre, note « Étape qui n'est plus travaillée activement » à droite dès `sm`) — pointillés, fond atténué, chiffre en `text-ink-subtle` : en retrait, jamais une tuile orpheline |
+| `AgentsSummary` / `RunCountsList` | — | Badge « Simulation » sur la ligne du titre (actions de `Card`, comme la fiche contact). État du coupe-circuit (lu à part, visible même si les exécutions sont indisponibles) ; exécutions aujourd'hui et sur 7 jours : total, erreurs, **bloquées par un garde-fou** (dit explicitement « pas une erreur »). Lien vers `/agents-ia`, jamais de bouton dupliqué |
 | `UpcomingAppointments` | `UpcomingAppointments.tsx` | `ActionListCard` de premier niveau : total à venir + 5 prochains créneaux (heure de Paris) |
 
 **Motif « chiffre + périmètre ».** Chiffre en `text-title` (`text-heading` en tuile),
@@ -565,9 +565,11 @@ Chaque écran gère quatre états :
   1280 px, jamais de défilement horizontal disgracieux), `perdu` en dessous sur
   une colonne unique `max-w-sm`.
 - Tableau de bord (`/dashboard`) : `max-w-7xl`. « À faire maintenant » en grille
-  `md:grid-cols-2 xl:grid-cols-3` (cartes de même hauteur, lien de pied collé en bas),
-  pipeline pleine largeur en `grid-cols-2 sm:grid-cols-3 xl:grid-cols-6` avec `perdu` sur
-  une rangée séparée par un filet, puis agents IA et prochains rendez-vous en
+  `md:grid-cols-2 xl:grid-cols-3`, sans espacement vertical de grille (`gap-x-6 gap-y-0`,
+  chaque carte porte `mb-6`) : les cartes sont en `grid-rows-subgrid`, donc en-têtes, filets,
+  premiers éléments et pieds sont alignés d'une carte à l'autre d'une même rangée, et un état
+  vide tient sur une rangée. Pipeline pleine largeur en `grid-cols-2 sm:grid-cols-3 xl:grid-cols-6`
+  (tuiles `p-3`, `p-4` dès `sm`) avec `perdu` en rangée pleine largeur sous un filet, puis agents IA et prochains rendez-vous en
   `lg:grid-cols-2`. Blocs espacés de `gap-12`, entrée des blocs suivants via `Reveal`.
 - Pages publiques de saisie (`/estimation`, `/politique-confidentialite`) : colonne
   unique `max-w-2xl`, gouttières `px-6`, respiration `py-16` (`sm:py-20`). Le

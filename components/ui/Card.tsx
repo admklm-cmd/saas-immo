@@ -40,21 +40,20 @@ export function Card({
       )}
     >
       {title || actions ? (
-        <header
-          className={cn(
-            "flex flex-wrap items-start justify-between gap-4 border-b px-6 py-5",
-            inverse ? "border-white/12" : "border-line",
-          )}
-        >
-          <div className="min-w-0">
-            <Heading className="text-heading font-semibold">{title}</Heading>
-            {description ? (
-              <p className={cn("mt-1 text-sm", inverse ? "text-ink-inverse-muted" : "text-ink-muted")}>
-                {description}
-              </p>
+        <header className={cn("border-b px-6 py-5", inverse ? "border-white/12" : "border-line")}>
+          {/* Actions sit on the title line at every width; the description runs
+              full width underneath, so it can never push a badge onto its own row. */}
+          <div className="flex items-start justify-between gap-3">
+            <Heading className="min-w-0 text-heading font-semibold">{title}</Heading>
+            {actions ? (
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>
             ) : null}
           </div>
-          {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
+          {description ? (
+            <p className={cn("mt-1 text-sm", inverse ? "text-ink-inverse-muted" : "text-ink-muted")}>
+              {description}
+            </p>
+          ) : null}
         </header>
       ) : null}
       {children ? <div className="px-6 py-5">{children}</div> : null}

@@ -23,8 +23,10 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
       </h2>
       <p className="mt-1 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
 
-      <div className="mt-5 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      {/* Row gap carried by each card (mb-6) so the subgrid tracks stay tight. */}
+      <div className="mt-5 -mb-6 grid gap-x-6 gap-y-0 md:grid-cols-2 xl:grid-cols-3">
         <ActionListCard
+          layout="subgrid"
           id="messages"
           title={TEXTS.messagesTitle}
           hint={TEXTS.messagesHint}
@@ -36,6 +38,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           link={{ href: "/agents-ia/a-valider", label: TEXTS.messagesLink }}
         />
         <ActionListCard
+          layout="subgrid"
           id="leads"
           title={TEXTS.leadsTitle}
           list={todo.inboundLeadsToProcess}
@@ -46,6 +49,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           link={{ href: "/agents-ia/leads-entrants", label: TEXTS.leadsLink }}
         />
         <ActionListCard
+          layout="subgrid"
           id="tasks"
           title={TEXTS.tasksTitle}
           hint={TEXTS.tasksHint}
@@ -58,6 +62,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           sampleLabel={TEXTS.sampleFeminine}
         />
         <ActionListCard
+          layout="subgrid"
           id="appointments-to-confirm"
           title={TEXTS.toConfirmTitle}
           list={todo.appointmentsToConfirm}
@@ -69,6 +74,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           sampleLabel={TEXTS.sampleFeminine}
         />
         <ActionListCard
+          layout="subgrid"
           id="appointments-to-close"
           title={TEXTS.toCloseTitle}
           list={todo.appointmentsToClose}

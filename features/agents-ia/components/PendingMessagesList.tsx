@@ -7,6 +7,7 @@ import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SimulationBadge } from "@/components/ui/SimulationBadge";
 
 import type { PendingMessageView } from "../types";
 import { PendingMessageCard } from "./PendingMessageCard";
@@ -40,6 +41,12 @@ export function PendingMessagesList({ messages }: { messages: readonly PendingMe
         {decision ? (
           <Alert tone="success" testId="decision-summary">
             {decision}
+            {/* A send is ALWAYS simulated here: the confirmation says so with the badge too. */}
+            {decision === TEXTS.successSent ? (
+              <span className="mt-2 flex">
+                <SimulationBadge />
+              </span>
+            ) : null}
           </Alert>
         ) : null}
       </div>

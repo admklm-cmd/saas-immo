@@ -102,7 +102,7 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Estimation | `/estimation` | **Fait** | Formulaire progressif, consentement par canal, cases **non précochées** |
 | Connexion | `/connexion` | **Fait** | Email + mot de passe, session Supabase réelle |
 | Inscription | `/inscription` | **Fait** (23/09) | Page finie et honnête : pas d'inscription en libre-service (choix de sécurité), les comptes d'agence sont créés par Ascend Strategy avec l'agence lors de la mise en place. Aucun formulaire, aucune adresse inventée ; bouton « Se connecter » vers `/connexion`, lien vers l'accueil |
-| Tableau de bord | `/dashboard` | **Fait** (23/09) | `getDashboardSummary()` : **À faire maintenant** en premier (messages à valider ou validés non envoyés, leads à traiter, tâches ouvertes, rendez-vous à confirmer et à clôturer — total exact + 5 premiers éléments liés à leur fiche, « Tout voir » vers l'écran de travail), pipeline par étape (`perdu` en retrait), agents IA (état du coupe-circuit toujours affiché, exécutions aujourd'hui et sur 7 jours : total, erreurs, blocages par garde-fou), prochains rendez-vous. Chaque bloc mène à l'écran qui liste ce qu'il compte (tâches → `/taches`, prochains rendez-vous → `/rendez-vous`, vérifié par un test E2E). Chaque chiffre affiche son périmètre ; un calcul en échec affiche « Indisponible », jamais 0, sans masquer les autres. Aucune tendance ni pourcentage |
+| Tableau de bord | `/dashboard` | **Fait** (23/09) | `getDashboardSummary()` : **À faire maintenant** en premier, cartes alignées rangée par rangée, état vide sur une seule ligne (messages pas encore envoyés — à valider, ou validés en attente d'envoi —, leads à traiter, tâches ouvertes, rendez-vous à confirmer et à clôturer — total exact + 5 premiers éléments liés à leur fiche, « Tout voir » vers l'écran de travail), pipeline par étape (`perdu` en retrait), agents IA (état du coupe-circuit toujours affiché, exécutions aujourd'hui et sur 7 jours : total, erreurs, blocages par garde-fou), prochains rendez-vous. Chaque bloc mène à l'écran qui liste ce qu'il compte (tâches → `/taches`, prochains rendez-vous → `/rendez-vous`, vérifié par un test E2E). Chaque chiffre affiche son périmètre ; un calcul en échec affiche « Indisponible », jamais 0, sans masquer les autres. Aucune tendance ni pourcentage |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |
 | Pipeline | `/pipeline` | **Fait** (23/09) | Contacts réels de `getContacts()` répartis par étape, `perdu` affiché à part avec moins de poids visuel, compteurs réels uniquement, une carte mène à la fiche contact. « Changer d'étape » au clavier sur chaque carte (`changeContactStage`), confirmation obligatoire pour « Mandat signé », sortie réservée au directeur avec motif (voir § 3) |
@@ -200,6 +200,49 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
    conseiller recueille une preuve valide avant tout contact.
 5. Le résultat et les étapes réellement enregistrées sont visibles dans la carte puis dans
    le rejeu permanent de l'exécution.
+
+## 6.4 Parcours de démonstration complet
+
+**Acteurs** : Sylvie (prospect fictive, site public), Marc (conseiller, agence A).
+**Objectif** : montrer en une dizaine de minutes tout le cycle, de la demande d'estimation au
+mandat signé, avec chaque agent à sa place et chaque décision engageante prise par un humain.
+Tout envoi est **simulé** et badgé comme tel. Vérifié de bout en bout, par l'interface
+uniquement, par `e2e/demo-complete.spec.ts` (rejouable : prospect unique à chaque exécution,
+email `@example.test`, numéro dans la tranche de fiction `06 39 98`).
+
+1. **Demande d'estimation** — `/estimation`, sans compte. Sylvie décrit son bien
+   (appartement à La Ciotat, mutation, vente sous deux mois) et coche **elle-même** les canaux
+   qu'elle autorise : aucune des quatre cases n'est précochée. Dans la démonstration : email
+   et SMS cochés, WhatsApp et téléphone laissés vides.
+2. **Léa crée la fiche** — `/agents-ia/leads-entrants` → « Lancer Léa ». Source vérifiée,
+   aucun doublon, fiche créée ; lien « Voir la fiche contact ». Les consentements cochés sur le
+   formulaire sont rattachés à la fiche (email et SMS « accordé », WhatsApp et téléphone
+   « Non renseigné ») ; Léa n'en enregistre aucun elle-même.
+3. **Hugo qualifie** — fiche contact → « Lancer Hugo » : dossier complet, délai court, étape
+   « Chaud ».
+4. **Louis propose un créneau, un humain valide le premier contact** — fiche → « Lancer Louis » :
+   créneau calculé par le code, message « à valider ». Puis `/agents-ia/a-valider` : Marc
+   **valide** (« Rien n'a été envoyé »), puis déclenche l'**envoi simulé** — la confirmation
+   porte le badge « Simulation ».
+5. **Emma prépare une relance** — fiche → « Lancer Emma » : brouillon « à valider », puis même
+   geste humain en deux temps dans `/agents-ia/a-valider` (valider, puis envoi simulé).
+6. **Rendez-vous puis Sarah** — `/agents-ia/suivi-rendez-vous` : Marc **confirme** le créneau
+   (étape « RDV planifié »), puis le **clôture** avec son compte-rendu obligatoire ; « Lancer
+   Sarah » exploite ce compte-rendu et s'arrête à « Estimation faite ». Sarah ne déclare jamais
+   un mandat.
+7. **Mandat signé par un humain** — `/pipeline` → « Changer d'étape » → « Mandat signé » :
+   fenêtre de confirmation, case jamais précochée, bouton désactivé tant qu'elle n'est pas
+   cochée.
+8. **Résultat** — `/dashboard` : le compte « Mandat signé » augmente de un, plus rien de ce
+   dossier n'attend de décision. Fiche contact : l'historique montre Léa, Hugo, Louis, Emma
+   et Sarah, les deux messages « Envoyé (simulation) », le rendez-vous « Réalisé » et
+   « Étape : Estimation faite → Mandat signé » par un **Conseiller**, sans badge « Simulation »
+   (décision humaine réelle du CRM). Relancer Emma ensuite est refusé : « …son mandat est déjà
+   signé ».
+
+**Pourquoi cet ordre.** Léa ne rédige aucun message (un lead n'est pas un consentement) : le
+premier message soumis à validation est donc celui de Louis. Emma n'intervient qu'une fois
+par jour et par contact (clé d'idempotence) : une seconde relance le même jour serait refusée.
 
 ## 7. Règles produit visibles dans l'interface
 

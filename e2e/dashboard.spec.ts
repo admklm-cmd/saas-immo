@@ -69,7 +69,8 @@ test("parcours principal : le logo mène au tableau de bord, chaque bloc affiche
   }
 
   // The messages figure says honestly what it counts.
-  await expect(card(page, "messages")).toContainText(/à valider ou validés?, pas encore envoyés?/);
+  await expect(card(page, "messages")).toContainText(/pas encore envoyés?/);
+  await expect(card(page, "messages")).toContainText(TEXTS.messagesHint);
 
   // --- Pipeline: one figure per stage, with its scope ---------------------------
   const pipeline = card(page, "pipeline");

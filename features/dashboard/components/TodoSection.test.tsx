@@ -57,8 +57,35 @@ describe("TodoSection", () => {
 
     const card = screen.getByTestId("dashboard-messages");
     expect(card.textContent).toContain(TEXTS.messagesUnit(1));
-    expect(TEXTS.messagesUnit(2)).toContain("validés, pas encore envoyés");
+    expect(TEXTS.messagesUnit(2)).toContain("pas encore envoyés");
+    // The short hint still names BOTH states the figure counts.
+    expect(card.textContent).toContain(TEXTS.messagesHint);
+    expect(TEXTS.messagesHint).toMatch(/À valider/);
+    expect(TEXTS.messagesHint).toMatch(/validés en attente d'envoi/);
     expect(card.textContent).toContain(TEXTS.approvedNotSent);
+  });
+
+  it("un état vide tient en une seule rangée, à la place du premier élément", () => {
+    render(<TodoSection todo={makeSummary().todo} />);
+
+    const toClose = screen.getByTestId("dashboard-appointments-to-close");
+    const empty = within(toClose).getByTestId("dashboard-empty");
+    expect(empty.textContent).toContain(TEXTS.toCloseEmpty);
+    expect(within(toClose).queryByRole("list")).toBeNull();
+    // Cards of « À faire maintenant » share their row tracks: aligned dividers and footers.
+    expect(toClose.className).toContain("grid-rows-subgrid");
+    expect(toClose.className).toContain("row-span-3");
+  });
+
+  it("un indicateur indisponible n'affiche ni liste ni faux état vide", () => {
+    const todo = makeSummary().todo;
+    todo.appointmentsToClose = { status: "unavailable", scope: SCOPES.pending };
+
+    render(<TodoSection todo={todo} />);
+
+    const toClose = screen.getByTestId("dashboard-appointments-to-close");
+    expect(within(toClose).queryByTestId("dashboard-empty")).toBeNull();
+    expect(toClose.textContent).toContain(TEXTS.unavailable);
   });
 
   it("marque les messages et rendez-vous simulés d'un badge « Simulation »", () => {

@@ -12,7 +12,8 @@ const TEXTS = APP_TEXTS.dashboard;
 
 /**
  * « Pipeline » — one exact count per stage. `perdu` is set apart and
- * de-emphasised (dashed, muted), exactly like on `/pipeline`. A stage whose
+ * de-emphasised (dashed, muted) on one full-width row under a light divider,
+ * like on `/pipeline`. A stage whose
  * count failed reads « Indisponible »; the other stages stay.
  */
 export function PipelineSummary({ pipeline }: { pipeline: DashboardPipeline }) {
@@ -36,7 +37,7 @@ export function PipelineSummary({ pipeline }: { pipeline: DashboardPipeline }) {
         ))}
       </ul>
       {lost.length > 0 ? (
-        <ul className="mt-3 grid grid-cols-2 gap-3 border-t border-line pt-3 sm:grid-cols-3 xl:grid-cols-6">
+        <ul className="mt-4 border-t border-line pt-4">
           {lost.map((stage) => (
             <PipelineStageTile key={stage.stage} stage={stage} />
           ))}
