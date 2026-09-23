@@ -19,8 +19,10 @@ import {
   findAiPausedState,
 } from "@/features/agents-ia/data";
 import { parseAgentActivityRows, requireExactCount, type AgentActivityRow } from "@/features/agents-ia/activity";
+import { UPCOMING_APPOINTMENT_STATUSES } from "@/features/appointments/types";
 import type { AgentRunCounts } from "@/features/agents-ia/types";
 import { NO_NAME_LABEL } from "@/features/contacts/data";
+import { OPEN_TASK_STATUS } from "@/features/tasks/types";
 import { resolveAgentContext } from "@/lib/agents/context";
 import { failFromDatabase, failFromUnexpected } from "@/lib/agents/errors";
 import { AGENCY_TIME_ZONE, parisDayStart, parisWindowStart } from "@/lib/agents/time";
@@ -48,8 +50,11 @@ const TIME_ZONE: DashboardTimeZone = AGENCY_TIME_ZONE as DashboardTimeZone;
 /** Width of the « sur 7 jours » window. */
 const LAST_DAYS_WINDOW = 7;
 
-/** Statuses of an appointment that is still ahead (not cancelled, not done). */
-const ACTIVE_APPOINTMENT_STATUSES = ["proposed", "confirmed"] as const;
+/**
+ * Statuses of an appointment that is still ahead (not cancelled, not done).
+ * Shared with `/rendez-vous` (`listAppointments`, view `upcoming`).
+ */
+const ACTIVE_APPOINTMENT_STATUSES = UPCOMING_APPOINTMENT_STATUSES;
 
 // -----------------------------------------------------------------------------
 // Small helpers
@@ -340,7 +345,7 @@ export async function buildDashboardSummary(
         .from("tasks")
         .select("id", { count: "exact", head: true })
         .eq("agency_id", agencyId)
-        .eq("status", "open"),
+        .eq("status", OPEN_TASK_STATUS),
       () =>
         client
         .from("tasks")
@@ -348,7 +353,7 @@ export async function buildDashboardSummary(
           "id, contact_id, type, title, due_at, created_by_agent, created_at, contacts!tasks_contact_fkey(first_name, last_name)",
         )
         .eq("agency_id", agencyId)
-        .eq("status", "open")
+        .eq("status", OPEN_TASK_STATUS)
         .order("due_at", { ascending: true, nullsFirst: false })
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })

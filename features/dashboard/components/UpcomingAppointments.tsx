@@ -6,7 +6,10 @@ import { AppointmentItem } from "./AppointmentItem";
 
 const TEXTS = APP_TEXTS.dashboard;
 
-/** « Prochains rendez-vous » — exact total to come, and the next five. */
+/**
+ * « Prochains rendez-vous » — exact total to come, and the next five. The link
+ * leads to `/rendez-vous` (view « À venir »), which counts the same rows.
+ */
 export function UpcomingAppointments({ list }: { list: DashboardUpcomingAppointments }) {
   return (
     <ActionListCard
@@ -19,7 +22,7 @@ export function UpcomingAppointments({ list }: { list: DashboardUpcomingAppointm
       emptyText={TEXTS.upcomingEmpty}
       getKey={(item) => item.id}
       renderItem={(item) => <AppointmentItem item={item} />}
-      link={{ href: "/agents-ia/suivi-rendez-vous", label: TEXTS.followThroughLink }}
+      link={{ href: "/rendez-vous", label: TEXTS.upcomingLink }}
     />
   );
 }

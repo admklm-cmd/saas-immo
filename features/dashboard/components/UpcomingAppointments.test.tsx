@@ -31,7 +31,7 @@ describe("UpcomingAppointments", () => {
 
     expect(within(card).getByRole("link", { name: /Contact 0/ }).getAttribute("href")).toBe("/contacts/c-0");
     expect(within(card).getByRole("link", { name: new RegExp(TEXTS.viewAll) }).getAttribute("href")).toBe(
-      "/agents-ia/suivi-rendez-vous",
+      "/rendez-vous",
     );
   });
 
@@ -42,5 +42,8 @@ describe("UpcomingAppointments", () => {
     expect(card.textContent).toContain(TEXTS.unavailable);
     expect(card.textContent).toContain(TEXTS.scopes.upcoming);
     expect(card.textContent).not.toContain(TEXTS.upcomingEmpty);
+    expect(within(card).getByRole("link", { name: new RegExp(TEXTS.upcomingLink) }).getAttribute("href")).toBe(
+      "/rendez-vous",
+    );
   });
 });

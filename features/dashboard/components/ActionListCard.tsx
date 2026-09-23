@@ -24,8 +24,8 @@ export type ActionListCardProps<TItem> = {
   link: { href: string; label: string };
   /**
    * `true` when `link.href` lists EVERY item of this figure: the link then
-   * reads « Tout voir » when the sample is partial. `false` for the tasks,
-   * whose items live on each contact file (no screen lists them all).
+   * reads « Tout voir » when the sample is partial. `false` when the target
+   * screen does not list every counted item (never « Tout voir » then).
    */
   linkListsEverything?: boolean;
   /** « Les 5 premiers sur 12 » — feminine for « tâches ». */

@@ -116,6 +116,36 @@ test("les liens d'action mènent au bon écran ou à la bonne fiche", async ({ p
   await expect(page.getByTestId("kill-switch")).toBeVisible({ timeout: COLD_START });
 });
 
+test("chaque bloc renvoie vers l'écran qui liste ce qu'il compte, jamais vers une vue inadaptée", async ({ page }) => {
+  await signIn(page, "agentA");
+  await openDashboardFromLogo(page);
+
+  // Link at the foot of each block → the screen that handles that work.
+  const expected: Array<[string, string]> = [
+    ["messages", "/agents-ia/a-valider"],
+    ["leads", "/agents-ia/leads-entrants"],
+    ["tasks", "/taches"],
+    ["appointments-to-confirm", "/agents-ia/suivi-rendez-vous"],
+    ["appointments-to-close", "/agents-ia/suivi-rendez-vous"],
+    ["upcoming", "/rendez-vous"],
+    ["pipeline", "/pipeline"],
+    ["agents", "/agents-ia"],
+  ];
+  for (const [id, href] of expected) {
+    await expect(card(page, id).locator(`a[href="${href}"]`).last()).toBeVisible();
+  }
+
+  // Every link of the screen goes to one of those screens or to a contact file.
+  const allowed = new Set(expected.map(([, href]) => href));
+  const hrefs = await page.locator("main a[href]").evaluateAll((links) =>
+    links.map((link) => link.getAttribute("href") ?? ""),
+  );
+  expect(hrefs.length).toBeGreaterThan(0);
+  for (const href of hrefs) {
+    expect(allowed.has(href) || /^\/contacts\/[0-9a-f-]{36}$/.test(href), `lien inattendu : ${href}`).toBe(true);
+  }
+});
+
 test("un compte du pipeline est identique à celui de l'écran Pipeline", async ({ page }) => {
   await signIn(page, "agentA");
   await openDashboardFromLogo(page);

@@ -113,7 +113,21 @@ describe("TodoSection", () => {
 
     const tasks = screen.getByTestId("dashboard-tasks");
     expect(tasks.textContent).toContain(TEXTS.agencyTask);
-    expect(hrefs(tasks)).toEqual(["/contacts"]);
+    expect(hrefs(tasks)).toEqual(["/taches"]);
+  });
+
+  it("« Tâches ouvertes » mène à l'écran Tâches, avec « Tout voir » quand l'échantillon est partiel", () => {
+    const todo = makeSummary().todo;
+    const first = todo.openTasks.status === "ok" ? todo.openTasks.value.items[0] : undefined;
+    if (!first) throw new Error("fixture");
+    const items = Array.from({ length: 5 }, (_, index) => ({ ...first, id: `t-${index}` }));
+    todo.openTasks = okList(SCOPES.open, items, 131);
+
+    render(<TodoSection todo={todo} />);
+
+    const tasks = screen.getByTestId("dashboard-tasks");
+    expect(tasks.textContent).toContain(TEXTS.sampleFeminine(5, 131));
+    expect(within(tasks).getByRole("link", { name: new RegExp(TEXTS.viewAll) }).getAttribute("href")).toBe("/taches");
   });
 
   it("affiche « 0 » et l'état vide quand la liste mesurée est vide", () => {
@@ -135,7 +149,7 @@ describe("TodoSection", () => {
     expect(tasks.textContent).toContain(TEXTS.scopes.open_all_time);
     expect(tasks.textContent).not.toContain(TEXTS.tasksEmpty);
     // Still a way to the work.
-    expect(hrefs(tasks)).toEqual(["/contacts"]);
+    expect(hrefs(tasks)).toEqual(["/taches"]);
 
     expect(screen.getByTestId("dashboard-messages").textContent).not.toContain(TEXTS.unavailable);
     expect(screen.getByTestId("dashboard-leads").textContent).not.toContain(TEXTS.unavailable);
@@ -167,7 +181,7 @@ describe("TodoSection", () => {
     expect(tasks.textContent).toContain(payload);
     // The id stays one path segment under /contacts/.
     expect(hrefs(tasks)).toContain(`/contacts/${encodeURIComponent("../../agents-ia?x=1")}`);
-    expect(hrefs(tasks).every((href) => href === "/contacts" || href.startsWith("/contacts/"))).toBe(true);
+    expect(hrefs(tasks).every((href) => href === "/taches" || href.startsWith("/contacts/"))).toBe(true);
   });
 
   it("présente un lead par sa source et sa date, sans texte libre du prospect", () => {

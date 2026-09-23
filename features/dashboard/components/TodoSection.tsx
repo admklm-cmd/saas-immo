@@ -54,8 +54,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           emptyText={TEXTS.tasksEmpty}
           getKey={(item) => item.id}
           renderItem={(item) => <TaskItem item={item} />}
-          link={{ href: "/contacts", label: TEXTS.tasksLink }}
-          linkListsEverything={false}
+          link={{ href: "/taches", label: TEXTS.tasksLink }}
           sampleLabel={TEXTS.sampleFeminine}
         />
         <ActionListCard

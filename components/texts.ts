@@ -10,10 +10,12 @@
  */
 
 import { BRAND } from "@/components/brand";
+import type { AppointmentView } from "@/features/appointments/types";
 import type { ConsentStatus, PropertyType } from "@/features/contacts/types";
 import type { DashboardScopeKey } from "@/features/dashboard/types";
 import type { EstimationConsentChannel } from "@/features/estimation/consent-texts";
 import type { PropertyTypeChoice } from "@/features/estimation/types";
+import type { TaskScope } from "@/features/tasks/types";
 
 /**
  * Two label maps are missing from `features/contacts/types.ts` (owned by the
@@ -68,6 +70,8 @@ export const APP_TEXTS = {
     agentsFollowUps: "Relances Emma",
     agentsToValidate: "Messages à valider",
     agentsFollowThrough: "Suivi des rendez-vous",
+    tasks: "Tâches",
+    appointments: "Rendez-vous",
     settings: "Paramètres",
     signedInAs: "Connecté en tant que",
     signOut: "Se déconnecter",
@@ -220,6 +224,113 @@ export const APP_TEXTS = {
       exitSubmit: "Sortir du mandat signé",
       exitBlocked: "Cochez la confirmation et saisissez un motif d'au moins 3 caractères pour continuer.",
     },
+  },
+
+  /** Pagination of a server list (« 26–50 sur 131 », Précédent / Suivant). */
+  pagination: {
+    label: "Pagination",
+    range: (from: number, to: number, total: number) => `${from}–${to} sur ${total}`,
+    previous: "Précédent",
+    next: "Suivant",
+  },
+
+  /**
+   * Tâches (`/taches`) — the open to-do list of the agency.
+   *
+   * The figure is the EXACT total of the chosen filter, always shown with its
+   * scope. « En retard » is written in words, never carried by a colour.
+   */
+  tasks: {
+    title: "Tâches",
+    subtitle:
+      "Le travail qui attend un membre de l'agence, souvent ouvert par un agent IA qui a refusé d'inventer une information manquante.",
+    filtersLabel: "Filtrer les tâches",
+    filters: {
+      all: "Toutes",
+      overdue: "En retard",
+      mine: "Les miennes",
+    } satisfies Record<TaskScope, string>,
+    unit: (total: number) => (total > 1 ? "tâches ouvertes" : "tâche ouverte"),
+    scopes: {
+      all: "toutes dates",
+      overdue: "échéance dépassée à l'instant de la lecture",
+      mine: "qui vous sont assignées, toutes dates",
+    } satisfies Record<TaskScope, string>,
+    listLabel: "Tâches ouvertes",
+    errorTitle: "Impossible d'afficher les tâches",
+    resetFilters: "Revenir à toutes les tâches",
+    emptyTitles: {
+      all: "Aucune tâche ouverte",
+      overdue: "Aucune tâche en retard",
+      mine: "Aucune tâche ne vous est assignée",
+    } satisfies Record<TaskScope, string>,
+    emptyBodies: {
+      all: "Quand un agent IA ne peut pas compléter un dossier sans inventer, il ouvre une tâche : elle apparaîtra ici.",
+      overdue: "Toutes les tâches ouvertes sont dans les temps.",
+      mine: "Les tâches assignées à d'autres membres restent visibles dans « Toutes ».",
+    } satisfies Record<TaskScope, string>,
+    emptyAction: "Voir les contacts",
+    emptyActionOtherScope: "Voir toutes les tâches",
+    pastEndTitle: "Cette page est vide",
+    pastEndBody: "La liste a changé depuis votre dernière lecture.",
+    pastEndAction: "Revenir à la première page",
+    agencyTask: "Tâche d'agence",
+    contactPrefix: "Contact :",
+    dueAt: (when: string) => `Échéance : ${when}`,
+    noDueDate: "Sans échéance",
+    overdue: "En retard",
+    openedBy: (agent: string) => `Ouverte par ${agent}`,
+    complete: "Marquer comme faite",
+    completeFor: (title: string) => `— ${title}`,
+    completing: "Enregistrement…",
+    completed: (title: string) => `Tâche « ${title} » marquée comme faite.`,
+    alreadyDoneTitle: "Rien à faire",
+    completeErrorTitle: "La tâche n'a pas été modifiée",
+  },
+
+  /**
+   * Rendez-vous d'estimation (`/rendez-vous`).
+   *
+   * « À venir » uses the same definition as the dashboard figure. Every
+   * appointment of the prototype is simulated: no calendar is connected.
+   */
+  appointments: {
+    title: "Rendez-vous d'estimation",
+    subtitle: "Les rendez-vous d'estimation de l'agence, dans l'heure de Paris. Aucun agenda réel n'est connecté.",
+    viewsLabel: "Période des rendez-vous",
+    views: {
+      upcoming: "À venir",
+      past: "Passés",
+    } satisfies Record<AppointmentView, string>,
+    // "rendez-vous" is invariable: same unit in the singular and the plural.
+    unit: () => "rendez-vous",
+    scopes: {
+      upcoming: "à venir, à partir de maintenant — proposés ou confirmés",
+      past: "passés, tous statuts",
+    } satisfies Record<AppointmentView, string>,
+    listLabel: {
+      upcoming: "Rendez-vous à venir",
+      past: "Rendez-vous passés",
+    } satisfies Record<AppointmentView, string>,
+    errorTitle: "Impossible d'afficher les rendez-vous",
+    resetFilters: "Revenir aux rendez-vous à venir",
+    emptyTitles: {
+      upcoming: "Aucun rendez-vous à venir",
+      past: "Aucun rendez-vous passé",
+    } satisfies Record<AppointmentView, string>,
+    emptyBodies: {
+      upcoming: "Louis propose un créneau depuis la fiche d'un contact qualifié ; un conseiller le confirme ensuite.",
+      past: "Les rendez-vous dont l'heure est passée apparaîtront ici, quel que soit leur statut.",
+    } satisfies Record<AppointmentView, string>,
+    emptyAction: "Voir les contacts",
+    pastEndTitle: "Cette page est vide",
+    pastEndBody: "La liste a changé depuis votre dernière lecture.",
+    pastEndAction: "Revenir à la première page",
+    statusPrefix: "Statut du rendez-vous :",
+    contactPrefix: "Contact :",
+    confirmInFollowThrough: "Confirmer dans le suivi",
+    closeInFollowThrough: "Clôturer dans le suivi",
+    actionFor: (name: string) => `— ${name}`,
   },
 
   agents: {
@@ -629,9 +740,9 @@ export const APP_TEXTS = {
 
     tasksTitle: "Tâches ouvertes",
     tasksUnit: (total: number) => (total > 1 ? "tâches ouvertes" : "tâche ouverte"),
-    tasksHint: "Les tâches se traitent depuis la fiche du contact concerné.",
+    tasksHint: "Même liste que l'écran « Tâches », où chacune se marque comme faite.",
     tasksEmpty: "Aucune tâche ouverte.",
-    tasksLink: "Voir les contacts",
+    tasksLink: "Ouvrir les tâches",
     agencyTask: "Tâche d'agence, sans contact",
     dueAt: (when: string) => `Échéance : ${when}`,
     noDueDate: "Sans échéance",
@@ -661,6 +772,7 @@ export const APP_TEXTS = {
     // "rendez-vous" is invariable: same unit in the singular and the plural.
     upcomingUnit: () => "rendez-vous à venir",
     upcomingEmpty: "Aucun rendez-vous d'estimation à venir.",
+    upcomingLink: "Ouvrir les rendez-vous",
     appointmentStatusPrefix: "Statut du rendez-vous :",
   },
 

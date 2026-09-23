@@ -319,6 +319,9 @@ Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAN
 | `Dialog` | `Dialog.tsx` (client) | Fenêtre modale sur `<dialog>` natif + `showModal()` : titre (`aria-labelledby`), résumé (`aria-describedby`), `aria-modal`, focus piégé par le navigateur, Échap et clic sur le fond pour annuler (`dismissible={false}` pendant une requête), retour du focus (`returnFocusRef`), pied d'actions empilé en mobile |
 | `Textarea` | `Textarea.tsx` | Champ multiligne : libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), `maxLength` |
 | `ComingSoon` | `ComingSoon.tsx` | Écran « À venir » soigné |
+| `Pagination` | `Pagination.tsx` | `nav[aria-label="Pagination"]` : « 26–50 sur 131 » (total exact) + Précédent / Suivant en liens d'URL. Direction inexistante : bouton atténué (`opacity-40`), `aria-hidden`, pour que les boutons ne sautent pas d'une page à l'autre ; une seule page : le décompte seul, aucun bouton |
+| `LinkTabs` | `LinkTabs.tsx` | Filtre segmenté en **liens** (pas de `tablist` : chaque choix charge une autre liste et vit dans l'URL). Piste `bg-surface-muted` arrondie, choix courant en pilule `bg-inverse` + graisse `semibold` + `aria-current="page"` (jamais la couleur seule) ; défile horizontalement si l'écran est étroit |
+| `ListTotal` | `ListTotal.tsx` | Total exact d'une liste paginée, **toujours** suivi de son périmètre — même motif « chiffre + périmètre » que le tableau de bord (§ 3.5), pour qu'un chiffre lu sur le tableau de bord se reconnaisse sur l'écran où il mène |
 
 `Button` accepte `ref` (prop simple en React 19), pour les cas où le focus doit
 être déplacé — par exemple sur le bouton de confirmation du coupe-circuit.
@@ -481,6 +484,18 @@ unité en `text-sm text-ink-muted` sur la même ligne de base, périmètre en de
 `text-xs text-ink-subtle`, précédé d'un « Périmètre : » réservé aux lecteurs d'écran.
 Ni tendance, ni flèche, ni pourcentage : l'écran n'affiche que ce que le serveur a compté.
 
+### 3.6 Tâches (`features/tasks/components/`) et rendez-vous (`features/appointments/components/`)
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `TaskList` | `TaskList.tsx` | Une page de tâches dans une surface unique à séparateurs (`divide-y`), entrée échelonnée (`stagger`), puis `Pagination` |
+| `TaskRow` | `TaskRow.tsx` | Server Component : titre (`h3`, texte brut), contact lié à sa fiche ou « Tâche d'agence » (texte atténué, aucun lien), échéance en heure de Paris, badge `solid` « En retard » **écrit**, agent qui a ouvert la tâche |
+| `CompleteTaskButton` | `CompleteTaskButton.tsx` (client) | « Marquer comme faite » : verrou par `ref` + `useTransition` (aucun double envoi), bouton désactivé une fois la tâche close, erreur serveur affichée telle quelle sous le bouton (`Alert error`) |
+| `TaskCompletionProvider` | `TaskCompletionProvider.tsx` (client) | Zone `aria-live` au-dessus de la liste (la ligne terminée disparaît, elle ne peut pas porter sa confirmation) : succès en `Alert success`, « déjà terminée » en `Alert info` (une information, pas une alerte) ; le focus y est déplacé puis la liste est relue (`router.refresh`) |
+| `AppointmentList` / `AppointmentRow` | — | Tuile calendrier (jour + mois court, `aria-hidden` : le créneau complet est écrit à côté), créneau avec l'année, contact lié, statut (`Proposé` contour, `Confirmé` ✓, `Réalisé` gris, `Annulé` pointillés — jamais `solid`, réservé au badge « Simulation » juste à côté), `SimulationBadge`. Lien « Confirmer / Clôturer dans le suivi » **seulement** si `canBeConfirmed` / `canBeCompleted` |
+
+**Motif « liste de travail paginée ».** `PageHeader` → rangée `ListTotal` (gauche) + `LinkTabs` (droite, passe dessous en mobile) → liste → `Pagination`. Filtres, onglets et page vivent dans l'URL et sont transmis tels quels au serveur, qui les valide : un filtre inconnu donne l'erreur du serveur, aucun onglet marqué courant et un lien de retour. Une page au-delà de la fin n'est pas « aucune tâche » : elle le dit et propose la première page.
+
 ## 4. États d'écran obligatoires
 
 Chaque écran gère quatre états :
@@ -538,7 +553,8 @@ Chaque écran gère quatre états :
   formulaire vit dans une `Card` unique, ses sections espacées de `gap-10`, l'action
   principale séparée par un filet `border-t border-line`. Les champs passent de deux
   colonnes (`sm:grid-cols-2`) à une seule sous 640 px.
-- Navigation : barre horizontale défilante sous 1024 px, colonne fixe de 256 px au-dessus.
+- Listes paginées (`/taches`, `/rendez-vous`) : colonne unique `max-w-4xl`, comme les files de travail ; lignes empilées sous 640 px (action sous le texte).
+- Navigation : barre horizontale défilante sous 1024 px (l'entrée courante est ramenée dans la bande visible), colonne fixe de 256 px au-dessus.
 - Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
 
 ## 8. Limites connues (à traiter plus tard)
