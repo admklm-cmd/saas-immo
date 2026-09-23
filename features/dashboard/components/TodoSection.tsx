@@ -18,10 +18,12 @@ const FOLLOW_THROUGH = { href: "/agents-ia/suivi-rendez-vous", label: TEXTS.foll
 export function TodoSection({ todo }: { todo: DashboardTodo }) {
   return (
     <section aria-labelledby="dashboard-todo-title" data-testid="dashboard-todo">
-      <h2 id="dashboard-todo-title" className="text-heading font-semibold text-ink">
-        {TEXTS.todoTitle}
-      </h2>
-      <p className="mt-1 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
+      <div className="particle-veil w-fit max-w-full">
+        <h2 id="dashboard-todo-title" className="text-heading font-semibold text-ink">
+          {TEXTS.todoTitle}
+        </h2>
+        <p className="mt-1 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
+      </div>
 
       {/* Row gap carried by each card (mb-6) so the subgrid tracks stay tight. */}
       <div className="stagger mt-5 -mb-6 grid gap-x-6 gap-y-0 md:grid-cols-2 xl:grid-cols-3">

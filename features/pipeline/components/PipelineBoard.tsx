@@ -42,7 +42,7 @@ export function PipelineBoard({ contacts, canExitSignedMandate = false }: Pipeli
         </div>
 
         <div className="mt-8 border-t border-line pt-6">
-          <p className="max-w-sm text-xs text-ink-subtle">{TEXTS.lostSubtitle}</p>
+          <p className="particle-veil max-w-sm text-xs text-ink-subtle">{TEXTS.lostSubtitle}</p>
           <div className="mt-3 max-w-sm">
             <PipelineColumn
               stage={LOST_STAGE}

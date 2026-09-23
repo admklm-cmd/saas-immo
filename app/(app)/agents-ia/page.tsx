@@ -103,10 +103,12 @@ export default async function AgentsIaPage({ searchParams }: { searchParams: Pro
       {dashboard ? (
         <>
           <section className="mt-12" aria-labelledby="agents-section">
-            <h2 id="agents-section" className="text-heading font-semibold text-ink">
-              {TEXTS.agentsSectionTitle}
-            </h2>
-            <p className="mt-1 text-sm text-ink-muted">{TEXTS.agentsSectionSubtitle}</p>
+            <div className="particle-veil w-fit max-w-full">
+              <h2 id="agents-section" className="text-heading font-semibold text-ink">
+                {TEXTS.agentsSectionTitle}
+              </h2>
+              <p className="mt-1 text-sm text-ink-muted">{TEXTS.agentsSectionSubtitle}</p>
+            </div>
             <div className="mt-5 grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
               {dashboard.agents.map((agent) => (
                 <AgentOverviewCard

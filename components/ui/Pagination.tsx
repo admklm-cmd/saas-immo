@@ -43,7 +43,7 @@ export function Pagination({ offset, limit, count, total, hasMore, hrefFor, clas
       data-testid={testId}
       className={cn("flex flex-wrap items-center justify-between gap-3", className)}
     >
-      <p className="text-xs text-ink-muted tabular-nums" data-testid={testId ? `${testId}-range` : undefined}>
+      <p className="particle-veil text-xs text-ink-muted tabular-nums" data-testid={testId ? `${testId}-range` : undefined}>
         {TEXTS.range(from, to, total)}
       </p>
       {singlePage ? null : (

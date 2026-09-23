@@ -27,8 +27,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/connexion");
   }
 
+  // Paint order (docs/design-system.md §2.5.8): the pearl gradient lives on this
+  // wrapper, which creates no stacking context; the fixed particle canvas
+  // (z-index 0) paints above it; <main>, later in the tree, positioned with
+  // z-index auto, paints above the canvas without trapping the menus of the
+  // pages in a stacking context of its own. The navigation keeps its z-40.
   return (
-    <div className="flex min-h-dvh flex-1 flex-col lg:flex-row">
+    <div className="app-canvas flex min-h-dvh flex-1 flex-col lg:flex-row">
       <a
         href="#content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-inverse focus:px-4 focus:py-2 focus:text-sm focus:text-ink-inverse"
@@ -59,8 +64,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <main id="content" className="app-canvas particle-shell relative min-w-0 flex-1">
-        <RouteParticles />
+      {/*
+        One decorative canvas for the whole signed-in space (spec §9), fixed to the
+        viewport and out of the flow. This layout persists across navigations, so
+        the engine is never remounted: the shape morphs when the route changes.
+      */}
+      <RouteParticles />
+
+      {/* overflow-x-clip: the soft edges of `.particle-veil` never add a horizontal
+          scroll; clip (unlike hidden) creates no scroll container, so sticky
+          columns inside keep working. */}
+      <main id="content" className="relative min-w-0 flex-1 overflow-x-clip">
         {children}
         <div className="border-t border-line px-6 py-6 lg:hidden">
           <p className="text-xs text-ink-subtle">

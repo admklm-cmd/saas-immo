@@ -10,8 +10,8 @@ import { PARTICLE_GALLERY_TEXTS as T, PRESET_LABELS } from "./gallery-texts";
 
 /**
  * Development preview of the full-page background mode (spec §9): one fixed
- * canvas behind sample content, with the confirmed budget. Not the jalon 3
- * integration: the app layout is untouched.
+ * canvas behind sample content, with the confirmed budget. The app shell uses
+ * the same mode through `RouteParticles` (components/motion/RouteParticles.tsx).
  */
 export function BackgroundPreview({ initial }: { initial: ParticlePreset }) {
   const [preset, setPreset] = useState<ParticlePreset>(initial);

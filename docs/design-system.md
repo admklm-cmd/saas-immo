@@ -185,7 +185,7 @@ maximale, la durée, un écran concerné.
    boucle : `animate-shimmer` (squelette), `animate-pulse` (étape de rejeu en cours),
    `ThreeDotLoader` (requête en vol), `PendingDots` (attente d'une décision humaine)
    et `SimulationBadge` (rappel permanent qu'une action est simulée). Les particules
-   décoratives (`components/motion/`) suivent leurs propres règles
+   décoratives (`components/motion/`, § 2.5.8) suivent leurs propres règles
    (`docs/plans/2026-09-23-particles-spec.md`). Rien d'autre.
 5. **Jamais le mouvement comme seul porteur d'information.** C'est le corollaire de
    la règle noir et blanc (§ 1) : ce qu'une animation raconte doit aussi être écrit
@@ -266,10 +266,97 @@ une activité qui n'existe pas.
    arrivée des cartes sont coupés (`animation: none`) ; les libellés restent. Le
    bouton ne bouge plus au survol ni à la pression.
 
+#### 2.5.8 Particules en fond de page (espace connecté)
+
+Source : `docs/plans/2026-09-23-particles-spec.md` § 5, § 6 et **§ 9** (fait foi). Moteur :
+`components/motion/` (`ParticleEngine`, `ParticleScene`, six formes).
+
+**Intégration.** Un seul canvas pour tout l'espace connecté, rendu par `RouteParticles`
+dans `app/(app)/layout.tsx`. Ce layout persiste d'une page à l'autre : le canvas et son
+moteur ne sont **jamais remontés** à la navigation (une seule boucle
+`requestAnimationFrame`, y compris en Strict Mode). Le site public (`/`, `/estimation`,
+`/connexion`, `/inscription`) n'a **aucun** canvas.
+
+**Ordre de peinture.** Le dégradé perle (`.app-canvas`) est posé sur l'enveloppe du
+layout, qui ne crée pas de contexte d'empilement ; le canvas (`position: fixed`,
+`inset: 0`, `z-index: 0`, `pointer-events: none`, `aria-hidden`) se peint au-dessus ;
+`<main>`, plus loin dans l'arbre, positionné sans `z-index`, se peint au-dessus du canvas
+**sans** enfermer les menus des pages dans son propre contexte ; la navigation garde son
+`z-40`. Le canvas est hors flux : aucun décalage de mise en page.
+
+**Forme par route** (`components/motion/route-presets.ts`, préfixe le plus précis d'abord) :
+
+| Route | Forme |
+|---|---|
+| `/dashboard` | voile |
+| `/contacts`, `/contacts/[id]` | sphère — ouvrir une fiche depuis la liste n'est pas un changement de lieu : aucune transformation |
+| `/pipeline` | courant |
+| `/agents-ia` et ses sous-écrans `leads-entrants`, `relances`, `suivi-rendez-vous`, `executions/[id]` | agents (quatre formes) — règle : **un sous-écran garde la forme de sa section** |
+| `/agents-ia/a-valider` | vortex / relief (seule exception, forme propre) |
+| `/parametres` | grille |
+| `/taches`, `/rendez-vous`, toute nouvelle route de premier niveau | voile — règle : **un écran de premier niveau sans forme propre reprend le voile du tableau de bord** |
+
+Aucune autre forme n'est inventée.
+
+**Transitions.** Déclenchées uniquement par le changement effectif de chemin
+(`usePathname` : menu, liens, précédent / suivant du navigateur), jamais par une minuterie.
+850 ms (bornées à 700–1 000 ms), dispersion légère puis recomposition, depuis les
+positions **affichées** : une navigation rapide repart de ce qui est à l'écran vers la
+dernière destination, sans flash ni canvas vide. La navigation n'attend jamais la
+transition (le moteur enregistre seulement la demande). Une navigation interrompue ne
+crée pas d'entrée d'historique (comportement Next.js) : « précédent » revient à la
+dernière page réellement affichée, et la forme suit.
+
+**Budget** (confirmé le 23/09/2026) : 6 000 particules ≥ 1 280 px, 4 000 de 768 à 1 279 px,
+1 800 sous 768 px (`devicePixelRatio` plafonné à 1,5). Opacités .08 à .35. Densité
+adaptative : −25 % par palier si une image coûte plus de 8 ms en moyenne sur 2 s.
+
+**Placement** (`components/motion/background-layout.ts`, zone normalisée du canvas) :
+
+| Fenêtre | Zone de la forme | Intensité | Pourquoi |
+|---|---|---|---|
+| Bureau (≥ 1 024 px) | `x .54 → .98`, `y .01 → .43` | 1 | Bande d'en-tête à droite du titre : la partie de la page que les cartes ne couvrent pas au chargement ; la navigation (256 px à gauche) et les titres alignés à gauche restent dégagés |
+| Tablette (768 à 1 023 px) | `x .40 → .98`, `y .10 → .46` | .9 | Même principe, sous la barre de navigation horizontale |
+| Mobile (< 768 px) | `x .02 → .98`, `y .34 → .98` | .7 | Le texte occupe toute la largeur : forme discrète, derrière, sous la zone d'en-tête |
+
+**Lisibilité — deux voiles, jamais de transparence sur les cartes.**
+1. `.app-particles` (sur le canvas) : masque dégradé peint par le compositeur, sans
+   calque ni dessin supplémentaire. Bureau : transparent jusqu'à 36 % de la largeur,
+   plein à 66 % ; tablette : 22 % → 62 % ; mobile : vertical, transparent sur le haut
+   (26 %), plein à 62 %.
+2. `.particle-veil` (sur un bloc de texte) : pastille blanche à 90 %, bords fondus
+   (3 rem × 1,25 rem), sous **chaque bloc de texte posé hors carte**. Le canvas est fixe
+   et la page défile : n'importe quel texte hors carte peut passer sur la forme. Sur le
+   fond blanc et perle la pastille est invisible ; elle n'efface que les particules.
+   Appliquée par : `PageHeader` (lien de retour, titre, description, badges),
+   `ListTotal`, le résumé de `Pagination`, l'en-tête « À faire maintenant » du tableau de
+   bord, l'en-tête « Les cinq agents » d'Agents IA, l'en-tête « Agents IA » des
+   paramètres, la légende « perdu » du pipeline. **Tout nouveau texte hors carte doit
+   la recevoir.** Dans une carte, elle serait blanc sur blanc : sans effet.
+
+Contraste mesuré le 23/09/2026 sur captures (texte masqué, pixel **le plus sombre**
+sous chaque ligne de texte hors carte, 3 instants × 3 positions de défilement, 1 440 /
+1 280 / 1 024 / 768 / 390 px, 11 écrans) : minimum **5,24:1** (AA : 4,5:1).
+
+**Mouvement réduit.** Une image statique représentative par page (instant `staticTime`
+de chaque forme), changement de forme instantané, aucune boucle `requestAnimationFrame`
+(`data-motion="reduced"`).
+
+**Honnêteté.** Le fond est un décor. Il ne lit **aucun** état réel (agents, exécutions,
+chargements), ne porte aucun libellé, ne s'accélère ni ne change quand un agent
+travaille. L'état réel est dit par `ThreeDotLoader`, `PendingDots`, les badges et le texte.
+
+**Attributs de test** sur le canvas : `data-mode`, `data-preset`, `data-count`,
+`data-motion` (`running`, `transition`, `static`, `reduced`, `hidden`) et `data-frame-ms`
+(coût moyen d'une image sur la dernière fenêtre de 2 s). Parcours : `e2e/particules.spec.ts`.
+
 ### 2.6 Utilitaires maison
 
 - `.panel-blur` / `.panel-blur-inverse` : fond translucide + `backdrop-filter`, réservés
   aux barres fixes (navigation de l'espace connecté, en-tête du site public).
+- `.app-canvas` : fond blanc, dégradé perle, halo blanc (`components/ui/micro-interactions.css`),
+  posé sur l'enveloppe du layout connecté.
+- `.app-particles` / `.particle-veil` : voiles de lisibilité du fond de particules (§ 2.5.8).
 - `.brand-symbol` : peint le symbole de marque avec `currentColor` à travers l'alpha du
   fichier maître, utilisé comme masque CSS (voir § 2.7).
 
@@ -700,3 +787,10 @@ Chaque écran gère quatre états :
   entre-temps) s'affiche encore dans le style d'erreur (`AnimatedErrorState`, **sans**
   « Réessayer ») et non en `GuardRailNotice`. Le motif écrit est exact ; l'harmonisation
   avec les autres cartes reste à faire.
+- **Fond de particules** (§ 2.5.8) : sur mobile, la forme est volontairement discrète et
+  presque entièrement couverte par les cartes ; sur bureau, elle vit surtout dans la bande
+  d'en-tête et disparaît derrière les cartes au défilement. Le voile `.particle-veil` doit
+  être posé à la main sur tout nouveau bloc de texte hors carte (pas de détection
+  automatique). Les mesures de coût par image (`data-frame-ms`) sont celles de Chromium sans
+  interface sur la machine de développement : elles ne comptent que le travail JavaScript de
+  l'image, pas la composition du masque par le GPU.

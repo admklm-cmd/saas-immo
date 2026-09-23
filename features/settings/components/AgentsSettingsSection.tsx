@@ -20,7 +20,7 @@ export function AgentsSettingsSection({ agents }: { agents: SettingsAgents }) {
   return (
     <section aria-labelledby="settings-agents-title" data-testid="settings-agents">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-        <div className="min-w-0">
+        <div className="particle-veil min-w-0">
           <h2 id="settings-agents-title" className="text-heading font-semibold text-ink">
             {TEXTS.agentsTitle}
           </h2>
