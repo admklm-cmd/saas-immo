@@ -253,7 +253,12 @@ nul ou étranger, table `auth.users`, buckets de stockage.
   `approved` → `sent_simulated` est en trois étapes séparées, et valider n'envoie pas. Un brouillon
   non validé est refusé côté code (`outbound_message_not_approved`) puis côté base
   (`first_contact_requires_human_validation`). `validated_by` est estampillé avec l'appelant par la
-  base, jamais accepté depuis le client.
+  base, jamais accepté depuis le client. L'historique du contact affiche ces valeurs **brutes**
+  (`validated_by`, `validated_at`), jamais déduites d'un autre événement ; l'e-mail et le rôle du
+  validateur viennent d'une seule lecture de `list_agency_members` (qui revérifie l'appartenance) et
+  valent `null` si l'auteur n'est plus membre ou si la lecture échoue. Testé avec deux agences :
+  l'agence B ne voit ni la chronologie, ni les membres, ni l'e-mail des validateurs de A
+  (`emma.integration.test.ts`, « Historique du contact — validation humaine visible »).
 - **Refus tracé** : refuser un brouillon exige un **motif d'une liste fermée** (validé par zod côté
   serveur), plus un commentaire libre facultatif borné à 300 caractères et nettoyé de ses caractères
   de contrôle. Motif et commentaire sont écrits dans `activities` (en ajout seul) avec l'auteur humain
@@ -606,6 +611,40 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
   trace, et la clé étrangère `activities_contact_fkey` (`on delete no action`) bloque alors sa
   suppression ; seul un contact créé déjà « signé » par le chargeur de fixtures, sans aucune activité,
   peut être supprimé. Faible, à revoir avec la procédure d'effacement RGPD.
+- **Refus « bloqué » contre « échec » (option A appliquée, sans migration)** : le classement
+  « bloqué » (règle qui a fait son travail) contre « échec » (vraie erreur) est appliqué à tous les
+  garde-fous partagés et à **tous les refus de règle** d'Emma, de Louis (étape, rendez-vous déjà
+  actif, consentement, coordonnées, agenda plein) et de Sarah (compte-rendu manquant) : ils sont
+  décidés **avant l'ouverture du run** (`precheck`), journalisés `blocked` sans appel IA, sans
+  consommation de quota et sans aucune écriture attribuée à l'agent ; seule une tâche humaine est
+  ouverte quand un conseiller a quelque chose à faire (chaque cas testé en intégration, compteurs
+  « Erreurs » inchangés vérifiés). Conditions et messages inchangés. Conséquence assumée : ces refus
+  n'écrivent plus l'activité d'historique `ai_consent_missing` / `ai_contact_details_missing` /
+  `ai_no_available_slot` / `ai_information_missing` (`guard_activity_actor` l'interdit hors run
+  `running`) ; la fiche montre à la place le run bloqué, sa décision et la tâche. Si l'écriture de
+  cette tâche échoue, l'erreur est loguée côté serveur et le refus reste la réponse (rien n'est
+  écrit ni envoyé). **Restent `failed`**, faute de migration (un run `running` ne peut pas finir
+  `blocked`) : un refus **redécouvert après l'ouverture du run** (course : consentement retiré,
+  rendez-vous ou relance créés entre-temps, agenda rempli entre-temps), une double relance ou une
+  double réservation refusée par la base (23505, 23P01), et les vraies erreurs techniques. **Aucun
+  impact de sécurité** : rien n'est écrit ni envoyé dans ces cas. Détail : `docs/workflows.md`,
+  « Refus restant `failed` ».
+- **Refus « bloqués » sans plafond de volume (faible)** : un run `blocked` ne compte pas dans
+  `ai_daily_run_limit` (voulu : un refus ne doit pas consommer le quota). Depuis que les refus
+  d'éligibilité d'Emma, Louis et Sarah sont `blocked`, un membre connecté peut les répéter sans limite
+  (par exemple relancer Emma sur un contact « Mandat signé ») : chaque clic écrit 1 run et 2 étapes
+  dans le journal de SA propre agence, sans appel IA, sans envoi, sans coût IA. La tâche humaine
+  éventuelle (`afterBlock`) n'est pas dupliquée (index unique `tasks_open_contact_type_key`). Ce n'est
+  pas une fuite entre agences, mais cela peut gonfler le journal. À traiter avec la limitation de
+  débit des actions authentifiées (§3.1) avant la commercialisation.
+- **Tâche humaine d'un refus « bloqué » : provenance indirecte (faible)** : la tâche ouverte par
+  `afterBlock` (consentement ou coordonnées manquants, agenda plein, compte-rendu absent) porte
+  `created_by_agent` alors qu'aucun run n'est `running`, et ne référence pas l'identifiant du run
+  bloqué (il est pourtant transmis à `afterBlock`). La colonne `tasks.created_by_agent` n'a jamais été
+  gardée en base (un membre peut déjà créer une tâche attribuée à un agent) : il s'agit d'une tâche
+  interne, sans envoi ni action externe, et le run bloqué journalisé juste avant fait foi. À prévoir :
+  noter l'identifiant du run bloqué dans la tâche, et garder `created_by_agent` en base comme
+  `guard_activity_actor` (migration).
 - Aucun test de charge, aucune revue d'infrastructure : hors périmètre de ce skill et de ce prototype.
 
 ---
@@ -645,3 +684,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 | 2026-09-23 | Jalon **tableau de bord** (`feat/dashboard`, travail non commité) + passe légère sur `git diff main...HEAD` (334 fichiers) | Aucun problème critique ni élevé. Isolation (client de session, `agency_id` serveur, FK composites, RPC `security invoker`), absence de `service_role`, absence de fuite d'erreur, minimisation et badge Simulation vérifiés (§2.9). **1 durcissement faible** : identifiant encodé dans les liens de fiche + test XSS/lien. Branche : aucun `.env*` suivi hors `.env.example`, `fixtures/.generated-credentials.json` ignoré et absent de l'historique, 13/13 tables avec RLS, 17/17 fonctions `security definer` avec `search_path`, webhooks en 501, toutes les server actions passent par le client de session, `npm audit --omit=dev` : 0. 998 tests Vitest verts. Livraison autorisée. |
 | 2026-09-23 | Jalon **pipeline — changement d'étape humain et garde du mandat signé** (`feat/complete-demo`, travail non commité) : migration `20260923120000`, `features/pipeline/**`, `ContactTimeline`, `Dialog`/`Checkbox`, helper E2E `contact-stage`, couches données `features/tasks/**`, `features/appointments/**`, `lib/utils/pagination.ts`, `features/dashboard/data.ts`, garde-fous de fixtures | Aucun problème critique ni élevé. Garde du mandat éprouvée en base (contournements tentés et refusés, voir 2.6), isolation et réponse identique inconnu/autre agence, verrou `FOR UPDATE`, messages d'erreur sans détail technique, rôle utilisé côté client pour l'affichage seulement. `completeTask` : `UPDATE` conditionnel, filtre agence, horodatage par la base. `contact_stage_changed` validé comme activité réelle (décision interne, aucun envoi, réservée à la fonction). **1 test de non-régression ajouté** (UPSERT vers/depuis `mandat_signe`). **Non corrigé, documenté en 3.4** : changements d'étape hors mandat sans trace (moyen), caractères bidi dans le motif (faible), suppression d'un contact « signé » sans historique (faible). 1178 tests Vitest verts, `npm audit` : 0. Livraison autorisée. |
 | 2026-09-23 | Jalon 4 **Paramètres en lecture seule et inscription** (`feat/complete-demo`, travail non commité) : migration `20260923130000` (`list_agency_members`), `features/settings/**`, `app/(app)/parametres/**`, `app/(auth)/inscription/**`, `KillSwitchPanel` (niveau de titre), `actor_role` dans l'historique, `BIDI_CONTROL_PATTERN`, `follow-through-action`, suppression de `ComingSoon`, specs E2E `parametres`/`navigation`/`inscription` | Aucun problème critique ou élevé, aucun nouveau problème moyen. RPC éprouvée en base (voir 2.10) : pas d'énumération hors agence, réponse identique pour une agence inconnue ou étrangère et un appel sans session, 4 colonnes, `anon`/`service_role` sans droit. Écran strictement en lecture (seule mutation : `setAgencyAiPaused` existant), aucune clé ni configuration d'intégration, intégrations toutes « Simulation / Non connectée », conservation « Non définie », props client limitées à deux booléens. `actor_role` écrit par la base, jamais par le client. Specs E2E : identifiants lus dans le fichier de fixtures ignoré, aucun secret ni numéro réel. **1 correction faible** : U+061C (ALM) ajouté au refus bidi + test. E-mails de l'équipe visibles par tous les membres : jugé acceptable (voir 2.10). Restes 3.4 confirmés documentés (étape hors mandat sans trace : moyen ; bidi côté base : faible). 1275 tests Vitest verts (dont le nouveau cas ALM), `tsc` et lint propres, `npm audit --omit=dev` : 0. Livraison autorisée. |
+| 2026-09-23 | **Audit final `feat/complete-demo`** (commité `main...HEAD` + travail non commité : refus « bloqué » avant run — `lib/agents/runner.ts` `precheck`/`ELIGIBILITY_BLOCKING_CODES`/`runStatusForRefusal`, `lib/agents/messages.ts`, Emma `emma.ts`/`decision.ts`, Louis `checkLouisPrecheck`, Sarah `checkSarahPrecheck` + `afterBlock` ; `features/contacts/data.ts` validateurs via `list_agency_members` ; `features/agents-ia/data.ts` `displayName`/`city`/`contactId`/`cleanLeadText` ; composants `outcome.ts`, `RunStatusBadge`, `GuardRailNotice`, `ContactTimeline`, `InboundLeadCard`, `AgentActionsPanel` ; specs E2E) | Aucun problème critique ni élevé. Précheck exécuté APRÈS coupe-circuit, volume et reprise humaine (qui priment toujours), sur le client de session (RLS) avec filtre `agency_id` ; un refus n'appelle pas l'IA, ne consomme pas de quota et n'écrit aucune activité au nom de l'agent ; consentement (Emma, Louis) et agenda (Louis) relus DANS le run (course → `failed`, rien écrit ni envoyé) ; une lecture impossible au précheck reste une erreur `failed`. Validateurs : valeurs brutes `validated_by`/`validated_at`, jamais déduites, RPC revérifiant l'appartenance, charge utile validée strictement (zod), `null` si non résolu ; isolation A/B testée. Interface : texte brut uniquement, aucun `dangerouslySetInnerHTML`, liens construits sur des UUID de la base, messages d'erreur sans détail technique. Aucun secret suivi par git (`.env*` et `fixtures/.generated-credentials.json` ignorés, absents de l'historique), RLS sur les 12 tables, vue `current_consents` en `security_invoker`, 20 fonctions `SECURITY DEFINER` toutes en `search_path = ''`, chaque server action revérifie la session. **2 corrections faibles** : (1) la classification des refus est extraite dans le module pur `lib/agents/run-status.ts` (seule dépendance : `./messages`) : `outcome.ts`, importé par des composants client, n'embarque plus le runner serveur dans le bundle navigateur (aucun secret n'y était exposé ; prévention) — test `lib/agents/run-status.test.ts` qui verrouille le graphe d'import ; (2) `cleanLeadText` retire aussi U+061C (ALM), U+00AD, U+180E, U+2028/2029, et la classe est écrite en échappements (plus aucun caractère invisible littéral dans `data.ts` ni `data.test.ts`) — test ajouté dans `features/agents-ia/data.test.ts`. **Nouveaux restes faibles, documentés en 3.4** : refus « bloqués » sans plafond de volume ; provenance indirecte de la tâche d'un refus bloqué. Restes connus confirmés documentés : étape hors mandat par `UPDATE` direct sans trace (moyen, 3.4) ; bidi refusé par zod seulement (faible, 3.4) ; courses encore classées `failed` (3.4) ; e-mails de l'équipe visibles par tous les membres (2.10, validation juriste). `tsc` et lint propres, 1384 tests Vitest verts (118 fichiers dont 20 d'intégration sur la base locale), `npm audit --omit=dev` : 0. Playwright non lancé (réservé à l'orchestrateur). Livraison autorisée. |

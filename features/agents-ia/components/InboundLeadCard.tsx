@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
@@ -17,6 +16,8 @@ import { LEAD_FIELD_LABELS } from "@/lib/agents/messages";
 
 import type { InboundLeadView } from "../types";
 import { AgentRunReplay } from "./AgentRunReplay";
+import { GuardRailNotice } from "./GuardRailNotice";
+import { refusalState } from "./outcome";
 import { replayStepsFromRecorded } from "./replay";
 
 const TEXTS = APP_TEXTS.leadsInbox;
@@ -27,7 +28,8 @@ type CardState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: LeaResult }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "blocked"; message: string };
 
 function matchedLabels(matchedOn: readonly string[]): string {
   return matchedOn
@@ -54,8 +56,9 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
     try {
       const { data, error } = await processInboundLead(lead.id);
       if (error) {
-        // The server message is already French and already precise.
-        setState({ kind: "error", message: error.message });
+        // The server message is already French and already precise; a guard
+        // rail (kill switch, daily limit) is told apart from an error.
+        setState(refusalState(error));
         return;
       }
       setState({ kind: "done", result: data });
@@ -78,10 +81,29 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 id={titleId} className="text-heading font-semibold text-ink">
-            {CONTACT_SOURCE_LABELS[lead.source]}
+          {/* « Inès C. »: first name + initial, plain text computed server-side.
+              Absent: said as such, never guessed from the free text. */}
+          <h3
+            id={titleId}
+            data-testid="lead-name"
+            className={
+              lead.displayName
+                ? "text-heading font-semibold break-words text-ink"
+                : "text-heading font-semibold text-ink-subtle"
+            }
+          >
+            {lead.displayName ?? TEXTS.nameMissing}
           </h3>
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-1 text-sm break-words text-ink-muted">
+            {CONTACT_SOURCE_LABELS[lead.source]}
+            {lead.city ? (
+              <>
+                <span aria-hidden="true"> · </span>
+                <span data-testid="lead-city">{lead.city}</span>
+              </>
+            ) : null}
+          </p>
+          <p className="mt-0.5 text-sm text-ink-muted">
             {TEXTS.receivedAt} <time dateTime={lead.createdAt}>{formatDateTime(lead.createdAt)}</time>
           </p>
         </div>
@@ -123,12 +145,16 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
           <p className="text-sm text-ink-muted">{TEXTS.alreadyProcessed}</p>
         )}
         {contactId ? (
-          <Link
+          // Leads to the very record this lead produced (or was attached to):
+          // two homonyms are told apart by where they lead, not by their name.
+          <ButtonLink
             href={`/contacts/${contactId}`}
-            className="rounded-xs text-sm underline underline-offset-2 hover:text-ink-muted"
+            variant="secondary"
+            size="sm"
+            data-testid="lead-contact-link"
           >
             {TEXTS.contactLink}
-          </Link>
+          </ButtonLink>
         ) : null}
         {replayRunId && state.kind !== "done" ? (
           <ButtonLink href={`/agents-ia/executions/${replayRunId}`} variant="ghost" size="sm">
@@ -143,6 +169,10 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
           <Alert tone="error" title={TEXTS.errorActionTitle} className="mt-4" testId="lead-error">
             {state.message}
           </Alert>
+        ) : null}
+
+        {state.kind === "blocked" ? (
+          <GuardRailNotice reason={state.message} className="mt-4" testId="lead-blocked" />
         ) : null}
 
         {result ? (

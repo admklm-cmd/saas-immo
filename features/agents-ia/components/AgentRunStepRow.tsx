@@ -10,8 +10,13 @@ const TEXTS = APP_TEXTS.replay;
 /** Visual state of a row during the replay. */
 export type StepPlayState = "active" | "done";
 
+/**
+ * A technical failure is inverted; a guard-rail stop is outlined — it is the
+ * product doing its job, never shown as an error.
+ */
 function statusTone(step: ReplayStep) {
-  if (step.status === "blocked" || step.status === "failed") return "solid" as const;
+  if (step.status === "failed") return "solid" as const;
+  if (step.status === "blocked") return "outline" as const;
   if (step.status === "skipped") return "dashed" as const;
   return "outline" as const;
 }
@@ -83,9 +88,11 @@ export function AgentRunStepRow({ step, position, total, state, withRail }: Agen
         aria-hidden="true"
         className={cn(
           "relative mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border text-[0.5625rem] font-semibold",
-          stopped
+          step.status === "failed"
             ? "border-inverse bg-inverse text-ink-inverse"
-            : state === "active"
+            : step.status === "blocked"
+              ? "border-ink bg-surface-sunken text-ink"
+              : state === "active"
               ? "animate-pulse border-ink bg-surface text-ink"
               : "border-line-strong bg-surface text-ink-subtle",
         )}
@@ -114,7 +121,9 @@ export function AgentRunStepRow({ step, position, total, state, withRail }: Agen
 
         {isDecision ? <p className="mt-1 text-xs text-ink-muted">{TEXTS.decisionMarker}</p> : null}
         {stopped && position === total ? (
-          <p className="mt-1 text-xs font-medium text-ink">{TEXTS.stopped}</p>
+          <p className="mt-1 text-xs font-medium text-ink">
+            {step.status === "blocked" ? APP_TEXTS.guardRail.stopped : TEXTS.stopped}
+          </p>
         ) : null}
 
         <StepDetail detail={step.detail} />

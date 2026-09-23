@@ -3,7 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { AGENT_ORDER } from "@/lib/agents/messages";
 import type { TypedClient } from "@/lib/agents/types";
 
-import { findAiPausedState, getAgentsDashboard, listAgentRuns } from "./data";
+import {
+  cleanLeadText,
+  findAiPausedState,
+  getAgentsDashboard,
+  inboundLeadContactId,
+  LEAD_CITY_MAX,
+  LEAD_FIRST_NAME_MAX,
+  leadCity,
+  leadDisplayName,
+  listAgentRuns,
+} from "./data";
 
 /**
  * Tests of the "all-or-nothing" contract of the Agents IA reads, with a stub
@@ -386,5 +396,80 @@ describe("contactName d'une exécution", () => {
     // Cas théorique (la clé étrangère composite rattache le contact à la même
     // agence) : si la jointure ne ramène rien, on ne nomme personne.
     expect((await firstRun(runRow({ contacts: null }))).contactName).toBeNull();
+  });
+});
+
+describe("leadDisplayName / leadCity — identifier un lead sans surexposer", () => {
+  it("prénom + initiale du nom", () => {
+    expect(leadDisplayName({ first_name: "Claire", last_name: "Martin", email: "c@example.test" })).toBe("Claire M.");
+    expect(leadDisplayName({ first_name: "  Jean-Luc ", last_name: "  d'Arcy" })).toBe("Jean-Luc D.");
+    expect(leadDisplayName({ first_name: "Élodie", last_name: "écuyer" })).toBe("Élodie É.");
+  });
+
+  it("jamais l'email ni le téléphone, même s'ils sont présents", () => {
+    const name = leadDisplayName({
+      first_name: "Claire",
+      last_name: "Martin",
+      email: "claire@example.test",
+      phone: "0600000000",
+    });
+    expect(name).not.toContain("@");
+    expect(name).not.toContain("06");
+    expect(name).not.toContain("Martin");
+  });
+
+  it("absent → null, jamais inventé", () => {
+    expect(leadDisplayName({})).toBeNull();
+    expect(leadDisplayName({ last_name: "Martin" })).toBeNull();
+    expect(leadDisplayName({ first_name: "   " })).toBeNull();
+    expect(leadDisplayName({ first_name: 42 })).toBeNull();
+    expect(leadDisplayName(null)).toBeNull();
+    expect(leadDisplayName(["Claire"])).toBeNull();
+    expect(leadDisplayName({ first_name: "Claire" })).toBe("Claire");
+    expect(leadDisplayName({ first_name: "Claire", last_name: "123" })).toBe("Claire");
+  });
+
+  it("retire les caractères de contrôle, invisibles et de direction", () => {
+    expect(leadDisplayName({ first_name: "Cla\u0007ire\r\nBcc: x", last_name: "\u202eMartin" })).toBe(
+      "Cla ire Bcc: x M.",
+    );
+    expect(leadDisplayName({ first_name: "\u200b\u2066\ufeff" })).toBeNull();
+    expect(cleanLeadText("a\u0000b\u007fc\u0085d", 20)).toBe("a b c d");
+  });
+
+  it("retire aussi ALM (U+061C), trait d'union conditionnel et séparateurs de ligne", () => {
+    // Same bidi set as BIDI_CONTROL_PATTERN (pipeline motive): U+061C included.
+    expect(cleanLeadText("Claire\u061c", 40)).toBe("Claire");
+    expect(leadDisplayName({ first_name: "\u061cClaire", last_name: "\u061cMartin" })).toBe("Claire M.");
+    expect(cleanLeadText("Cla\u00adire\u2028Bcc\u2029x\u180e", 40)).toBe("Cla ire Bcc x");
+    expect(leadCity({ city: "\u202eCassis\u061c" })).toBe("Cassis");
+  });
+
+  it("borne un prénom très long", () => {
+    const name = leadDisplayName({ first_name: "A".repeat(5000), last_name: "Martin" })!;
+    expect(Array.from(name.replace(/ M\.$/, "")).length).toBeLessThanOrEqual(LEAD_FIRST_NAME_MAX);
+    expect(name.endsWith("… M.")).toBe(true);
+  });
+
+  it("la commune du bien si présente, sinon null", () => {
+    expect(leadCity({ city: "La Ciotat" })).toBe("La Ciotat");
+    expect(leadCity({ city: "  Cassis\t" })).toBe("Cassis");
+    expect(leadCity({ city: "" })).toBeNull();
+    expect(leadCity({})).toBeNull();
+    expect(leadCity({ city: "X".repeat(500) })!.length).toBeLessThanOrEqual(LEAD_CITY_MAX);
+  });
+});
+
+describe("inboundLeadContactId — lien vers la fiche uniquement pour un lead traité", () => {
+  const CONTACT = "c0000000-0000-4000-8000-000000000001";
+  it("fiche créée (processed) ou rattachée (duplicate) : l'identifiant de la fiche", () => {
+    expect(inboundLeadContactId("processed", CONTACT)).toBe(CONTACT);
+    expect(inboundLeadContactId("duplicate", CONTACT)).toBe(CONTACT);
+  });
+  it("lead en attente ou rejeté : null, quoi que contienne la colonne", () => {
+    expect(inboundLeadContactId("pending", null)).toBeNull();
+    expect(inboundLeadContactId("pending", CONTACT)).toBeNull();
+    expect(inboundLeadContactId("rejected", CONTACT)).toBeNull();
+    expect(inboundLeadContactId("processed", null)).toBeNull();
   });
 });

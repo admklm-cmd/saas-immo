@@ -336,7 +336,9 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `AgentRunProcessTrack` | `AgentRunProcessTrack.tsx` | Vue compacte du journal : icônes Radix, nano-sphères en attente, signal et progression pilotés par les mêmes durées mesurées que le rejeu |
 | `AgentRunStepRow` | `AgentRunStepRow.tsx` | Une étape : phase, auteur (`Code` / `Fournisseur IA`), statut, durée mesurée, détail technique replié |
 | `AgentRunHead` | `AgentRunHead.tsx` | Carte d'identité d'une exécution (dates, contact ou « Lead entrant », fournisseur, jetons, décision) |
-| `AgentOverviewCard` | `AgentOverviewCard.tsx` | Un agent : prénom, mission, statut, compteurs par fenêtre, dernière exécution, dernières erreurs |
+| `AgentOverviewCard` | `AgentOverviewCard.tsx` | Un agent : prénom, mission, statut, compteurs par fenêtre (« Erreur technique : n » inversé, « Bloquée par un garde-fou : n » contour), dernière exécution, « Erreurs et blocages récents » distingués ligne par ligne (`RunStatusBadge` + « Motif : » pour un blocage) |
+| `RunStatusBadge` | `RunStatusBadge.tsx` | Résultat d'une exécution, nommé sans ambiguïté : `Erreur technique` (`solid` + croix), `Bloquée par un garde-fou` (`outline` + cadenas), `En cours` (`dashed`), `Réussie` (`neutral`). Utilisé par le journal, la page d'exécution, la carte agent et l'historique de la fiche |
+| `GuardRailNotice` | `GuardRailNotice.tsx` | Action refusée par un garde-fou : `Alert info` (`role="status"`, jamais `alert`), titre « Bloquée par un garde-fou », « Motif : » + message du serveur tel quel, « Ce n'est pas une erreur… » |
 | `ActivityFigure` | `ActivityFigure.tsx` | Un compteur **toujours accompagné de sa fenêtre**, « Indisponible » si la lecture a échoué |
 | `AgencyActivityCard` | `AgencyActivityCard.tsx` | Chiffres de l'agence : exécutions décomptées, limite, tentatives, brouillons à valider |
 | `KillSwitchPanel` | `KillSwitchPanel.tsx` (client) | Coupe-circuit : état, confirmation en deux temps, refus expliqué ; `headingLevel` 2 (défaut, `/agents-ia`) ou 3 (sous la section « Agents IA » de `/parametres`) — un seul composant, deux écrans, mêmes règles |
@@ -345,7 +347,7 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |
 | `MessageRejectionForm` | `MessageRejectionForm.tsx` (client) | Motif obligatoire (liste fermée, `fieldset`/`legend`) + note facultative bornée |
 | `DraftEditForm` | `DraftEditForm.tsx` (client) | Correction en place de l'objet et du corps ; le canal et le destinataire restent hors du formulaire, puis le brouillon repasse « à valider » |
-| `InboundLeadCard` | `InboundLeadCard.tsx` (client) | Un lead entrant : source, date, éléments transmis, message du prospect en **texte brut**, « Lancer Léa », résultat et rejeu de l'exécution |
+| `InboundLeadCard` | `InboundLeadCard.tsx` (client) | Un lead entrant : titre = prénom + initiale (`displayName`, texte brut ; « Nom non transmis » atténué sinon), puis source · commune · date ; éléments transmis, message du prospect en **texte brut**, « Lancer Léa », résultat et rejeu. Lead traité : bouton secondaire « Ouvrir la fiche » vers la fiche produite (distingue deux homonymes) |
 
 #### Règles de ce module (non négociables)
 
@@ -373,6 +375,21 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
    action possible : Léa crée la fiche, elle ne recueille aucun consentement.
 9. **Corriger n'est pas valider.** Seuls l'objet et le corps sont proposés à
    l'édition. Toute correction laisse ou remet le brouillon « à valider ».
+10. **Un garde-fou n'est pas une erreur.** Une action refusée par une règle
+    (coupe-circuit, limite quotidienne, reprise par un conseiller, consentement,
+    mandat signé, dossier perdu, relance déjà préparée…) s'affiche avec
+    `GuardRailNotice` (information) et `RunStatusBadge status="blocked"` ; une
+    défaillance technique garde `Alert error` et « Erreur technique ». La
+    classification n'est jamais décidée par l'interface : elle lit
+    `runStatusForRefusal` (`lib/agents/runner.ts`) via
+    `features/agents-ia/components/outcome.ts` ; un code inconnu reste une erreur.
+11. **Validation humaine d'un message** (historique de la fiche) : « Validé par
+    {email} ({rôle}) le {date à heure} » ou « Refusé par … », heure de Paris,
+    uniquement à partir de `meta.review_outcome` / `validated_by_email` /
+    `validated_by_role_label` / `validated_at`. Auteur absent : « Auteur non
+    disponible » ; date absente : aucune date — jamais celle de l'envoi ni de
+    l'entrée. En attente : « En attente de validation humaine ». Petite pastille
+    pleine (décidé) ou creuse (en attente), texte brut.
 
 ### 3.2 Composants du module « Pipeline » (`features/pipeline/components/`)
 
@@ -475,7 +492,7 @@ réduit ni à une couleur ni à une icône.
 | `MessageItem` / `InboundLeadItem` / `AppointmentItem` / `TaskItem` / `ContactLink` | — | Un élément d'échantillon : contact lié à sa fiche, statut en badge, `SimulationBadge` si simulé. Un lead n'a pas de fiche : il mène à « Leads entrants ». Aucun texte libre du prospect |
 | `TodoSection` | `TodoSection.tsx` | Bloc « À faire maintenant », premier de l'écran : cinq `ActionListCard` |
 | `PipelineSummary` / `PipelineStageTile` | — | Un compte par étape avec `PipelineStageBadge` dans une grille de six tuiles ; `perdu` **intégré sous un filet léger**, sur une rangée pleine largeur et lue sur une ligne (badge, chiffre + périmètre, note « Étape qui n'est plus travaillée activement » à droite dès `sm`) — pointillés, fond atténué, chiffre en `text-ink-subtle` : en retrait, jamais une tuile orpheline |
-| `AgentsSummary` / `RunCountsList` | — | Badge « Simulation » sur la ligne du titre (actions de `Card`, comme la fiche contact). État du coupe-circuit (lu à part, visible même si les exécutions sont indisponibles) ; exécutions aujourd'hui et sur 7 jours : total, erreurs, **bloquées par un garde-fou** (dit explicitement « pas une erreur »). Lien vers `/agents-ia`, jamais de bouton dupliqué |
+| `AgentsSummary` / `RunCountsList` | — | Badge « Simulation » sur la ligne du titre (actions de `Card`, comme la fiche contact). État du coupe-circuit (lu à part, visible même si les exécutions sont indisponibles) ; exécutions aujourd'hui et sur 7 jours : total, **erreurs techniques**, **bloquées par un garde-fou** (dit explicitement « pas une erreur »). Lien vers `/agents-ia`, jamais de bouton dupliqué |
 | `UpcomingAppointments` | `UpcomingAppointments.tsx` | `ActionListCard` de premier niveau : total à venir + 5 prochains créneaux (heure de Paris) |
 
 **Motif « chiffre + périmètre ».** Chiffre en `text-title` (`text-heading` en tuile),
@@ -527,6 +544,7 @@ Chaque écran gère quatre états :
 | Vide | `EmptyState` avec une action suggérée |
 | Erreur | `Alert tone="error"` avec le message français renvoyé par le serveur **et** une action (réessayer / revenir) ; `app/(app)/error.tsx` en dernier recours |
 | Succès | `Alert tone="success"` dans une zone `aria-live="polite"` |
+| Bloqué par un garde-fou | `GuardRailNotice` (`Alert tone="info"`, `role="status"`) avec le motif du serveur ; jamais le style d'erreur |
 
 ## 5. Accessibilité
 

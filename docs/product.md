@@ -214,18 +214,25 @@ email `@example.test`, numéro dans la tranche de fiction `06 39 98`).
    (appartement à La Ciotat, mutation, vente sous deux mois) et coche **elle-même** les canaux
    qu'elle autorise : aucune des quatre cases n'est précochée. Dans la démonstration : email
    et SMS cochés, WhatsApp et téléphone laissés vides.
-2. **Léa crée la fiche** — `/agents-ia/leads-entrants` → « Lancer Léa ». Source vérifiée,
-   aucun doublon, fiche créée ; lien « Voir la fiche contact ». Les consentements cochés sur le
-   formulaire sont rattachés à la fiche (email et SMS « accordé », WhatsApp et téléphone
-   « Non renseigné ») ; Léa n'en enregistre aucun elle-même.
+2. **Léa crée la fiche** — `/agents-ia/leads-entrants`. La carte du lead nomme Sylvie juste
+   assez pour distinguer deux homonymes : prénom + initiale du nom (« Sylvie M. », ou « Nom non
+   transmis » sans prénom) et la commune du bien. « Lancer Léa » : source vérifiée, aucun
+   doublon, fiche créée. **Léa ne rédige aucun message** (un lead n'est pas un consentement).
+   Une fois le lead traité, la carte porte « Ouvrir la fiche », qui mène à la fiche créée (ou
+   à la fiche existante en cas de doublon). Les consentements cochés sur le formulaire sont
+   rattachés à la fiche (email et SMS « accordé », WhatsApp et téléphone « Non renseigné ») ;
+   Léa n'en enregistre aucun elle-même.
 3. **Hugo qualifie** — fiche contact → « Lancer Hugo » : dossier complet, délai court, étape
-   « Chaud ».
-4. **Louis propose un créneau, un humain valide le premier contact** — fiche → « Lancer Louis » :
-   créneau calculé par le code, message « à valider ». Puis `/agents-ia/a-valider` : Marc
-   **valide** (« Rien n'a été envoyé »), puis déclenche l'**envoi simulé** — la confirmation
-   porte le badge « Simulation ».
-5. **Emma prépare une relance** — fiche → « Lancer Emma » : brouillon « à valider », puis même
-   geste humain en deux temps dans `/agents-ia/a-valider` (valider, puis envoi simulé).
+   « Chaud ». Hugo ne rédige aucun message.
+4. **Louis propose un créneau : c'est le premier message du parcours, validé par un humain** —
+   fiche → « Lancer Louis » : créneau calculé par le code, message « à valider ». Puis
+   `/agents-ia/a-valider` : Marc **valide** (« Rien n'a été envoyé »), puis déclenche
+   l'**envoi simulé** — la confirmation porte le badge « Simulation ».
+5. **Emma prépare une relance simulée, validée par un humain** — fiche → « Lancer Emma » :
+   brouillon « à valider » (canal choisi par le code, consentement vérifié côté serveur), puis
+   même geste humain en deux temps dans `/agents-ia/a-valider` (valider, puis envoi simulé).
+   Une seule relance par contact et par jour (heure de Paris) : une seconde tentative le même
+   jour est bloquée par un garde-fou (« …déjà été préparée aujourd'hui »).
 6. **Rendez-vous puis Sarah** — `/agents-ia/suivi-rendez-vous` : Marc **confirme** le créneau
    (étape « RDV planifié »), puis le **clôture** avec son compte-rendu obligatoire ; « Lancer
    Sarah » exploite ce compte-rendu et s'arrête à « Estimation faite ». Sarah ne déclare jamais
@@ -235,14 +242,25 @@ email `@example.test`, numéro dans la tranche de fiction `06 39 98`).
    cochée.
 8. **Résultat** — `/dashboard` : le compte « Mandat signé » augmente de un, plus rien de ce
    dossier n'attend de décision. Fiche contact : l'historique montre Léa, Hugo, Louis, Emma
-   et Sarah, les deux messages « Envoyé (simulation) », le rendez-vous « Réalisé » et
-   « Étape : Estimation faite → Mandat signé » par un **Conseiller**, sans badge « Simulation »
-   (décision humaine réelle du CRM). Relancer Emma ensuite est refusé : « …son mandat est déjà
-   signé ».
+   et Sarah, les deux messages « Envoyé (simulation) » avec, sous chacun, **qui l'a validé et
+   quand**, tels qu'enregistrés par le serveur : « Validé par marc@… (Conseiller) le 23 sept.
+   2026 à 10:12 » (heure de Paris ; « Auteur non disponible » si le membre n'est plus lisible,
+   aucune date si elle n'a pas été enregistrée — jamais déduite de l'envoi). Puis le
+   rendez-vous « Réalisé » et « Étape : Estimation faite → Mandat signé » par un
+   **Conseiller**, sans badge « Simulation » (décision humaine réelle du CRM).
+9. **Garde-fou, pas erreur** — relancer Emma sur ce dossier est refusé avant tout travail :
+   l'écran affiche « Bloquée par un garde-fou » avec le motif du serveur (« Le mandat de ce
+   contact est signé : aucune relance n'est préparée. »), en information, jamais en erreur.
+   L'historique montre l'exécution « Bloquée par un garde-fou » ; au tableau de bord, le compte
+   « Bloquées par un garde-fou » augmente de un et celui des « Erreurs techniques » ne bouge pas.
 
-**Pourquoi cet ordre.** Léa ne rédige aucun message (un lead n'est pas un consentement) : le
-premier message soumis à validation est donc celui de Louis. Emma n'intervient qu'une fois
-par jour et par contact (clé d'idempotence) : une seconde relance le même jour serait refusée.
+**Pourquoi cet ordre.** Léa et Hugo ne rédigent aucun message (un lead n'est pas un
+consentement) : le premier message soumis à validation humaine est donc celui de Louis. Emma
+vient ensuite, une seule fois : sa clé d'idempotence autorise une relance par contact et par
+jour. Un refus décidé par une règle (coupe-circuit, limite quotidienne, reprise par un
+conseiller, consentement absent, mandat signé, dossier perdu, relance déjà préparée) est
+journalisé « bloqué » et présenté comme tel partout — fiche, relances, suivi, leads entrants,
+`/agents-ia` et tableau de bord ; seule une vraie défaillance technique est une erreur.
 
 ## 7. Règles produit visibles dans l'interface
 

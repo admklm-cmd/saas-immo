@@ -23,6 +23,8 @@ import { AGENT_LABELS } from "@/lib/agents/messages";
 
 import type { ReportedAppointmentView } from "../types";
 import { AgentRunReplay } from "./AgentRunReplay";
+import { GuardRailNotice } from "./GuardRailNotice";
+import { refusalState } from "./outcome";
 import { replayStepsFromRecorded } from "./replay";
 
 const TEXTS = APP_TEXTS.followThrough;
@@ -33,7 +35,8 @@ type CardState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: SarahResult }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "blocked"; message: string };
 
 type AppointmentState = Pick<
   ReportedAppointmentView,
@@ -155,7 +158,8 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
     try {
       const { data, error } = await followThroughAppointment(appointment.id);
       if (error) {
-        setState({ kind: "error", message: error.message });
+        // A guard rail (kill switch, takeover…) is told apart from an error.
+        setState(refusalState(error));
         return;
       }
       setState({ kind: "done", result: data });
@@ -320,6 +324,10 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
           <Alert tone="error" title={TEXTS.errorActionTitle} className="mt-4" testId="sarah-error">
             {state.message}
           </Alert>
+        ) : null}
+
+        {state.kind === "blocked" ? (
+          <GuardRailNotice reason={state.message} className="mt-4" testId="sarah-blocked" />
         ) : null}
 
         {result ? (

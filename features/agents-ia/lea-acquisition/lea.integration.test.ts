@@ -502,4 +502,93 @@ describe("Léa — lecture de la boîte de réception", () => {
     expect(pending.canBeProcessed).toBe(true);
     expect(pending.createdAt).toMatch(/Z$/);
   });
+
+  it("identifie le prospect par « Prénom I. » et la commune, sans email ni téléphone", async () => {
+    const email = `claire.${env.runId}@example.test`;
+    const named = await createLead("nom-affiche", {
+      payload: { first_name: "Claire", last_name: "Martin", email, phone: "06 39 98 11 02", city: "La Ciotat" },
+    });
+    const anonymous = await createLead("sans-nom", { payload: { form_id: "test-sans-nom" } });
+    const leadB = await createLead("nom-affiche-b", {
+      agency: "b",
+      payload: { first_name: "Bernard", last_name: "Bastide", city: "Cassis" },
+    });
+
+    const list = await listInboundLeads(agentA);
+    expect(list.error).toBeNull();
+    const leads = list.data ?? [];
+
+    const withName = leads.find((lead) => lead.id === named)!;
+    expect(withName.displayName).toBe("Claire M.");
+    expect(withName.city).toBe("La Ciotat");
+    const serialized = JSON.stringify(withName);
+    expect(serialized).not.toContain(email);
+    expect(serialized).not.toContain("06 39 98 11 02");
+    expect(serialized).not.toContain("Martin");
+
+    // Absent → null, never invented (not even from the free text).
+    const withoutName = leads.find((lead) => lead.id === anonymous)!;
+    expect(withoutName.displayName).toBeNull();
+    expect(withoutName.city).toBeNull();
+
+    // Agency B's lead is not listed, and nothing of it leaks.
+    expect(leads.some((lead) => lead.id === leadB)).toBe(false);
+    expect(JSON.stringify(leads)).not.toContain("Bernard");
+
+    // And B sees its own lead named the same way, without A's.
+    const listB = await listInboundLeads(userB);
+    const ownB = (listB.data ?? []).find((lead) => lead.id === leadB)!;
+    expect(ownB.displayName).toBe("Bernard B.");
+    expect(JSON.stringify(listB.data)).not.toContain(named);
+    expect((listB.data ?? []).some((lead) => lead.displayName === "Claire M.")).toBe(false);
+  });
+
+  it("expose la fiche créée d'un lead traité (lien vers la fiche), null tant qu'il est en attente", async () => {
+    // Own identity: LEAD_COMPLETE was already turned into a contact by an
+    // earlier test, so reusing it would (rightly) be a duplicate here.
+    const processedLead = await createLead("lien-fiche", {
+      rawText: "Bonjour, je m'appelle Odile Varenne, je vends une maison à Cassis.",
+      payload: { email: `odile.varenne.${env.runId}@example.test`, phone: "06 39 98 12 41" },
+    });
+    const waitingLead = await createLead("lien-fiche-attente");
+
+    const result = await runLeaAcquisition(agentA, processedLead);
+    expect(result.error).toBeNull();
+    expect(result.data!.outcome).toBe("contact_created");
+    expect(result.data!.contactId).not.toBeNull();
+
+    // A duplicate lead points to the EXISTING record it was attached to.
+    const existing = await createContact("lien-fiche-doublon", {
+      email: `lien-doublon.${env.runId}@example.test`,
+      phone: "06 39 98 12 42",
+    });
+    const duplicateLead = await createLead("lien-fiche-doublon", {
+      rawText: "Bonjour, je vous ai déjà écrit, pouvez-vous me rappeler ?",
+      payload: { email: `lien-doublon.${env.runId}@example.test`, phone: "06 39 98 12 42" },
+    });
+    const duplicate = await runLeaAcquisition(agentA, duplicateLead);
+    expect(duplicate.error).toBeNull();
+    expect(duplicate.data!.outcome).toBe("duplicate_found");
+    expect(duplicate.data!.duplicateContactId).toBe(existing);
+
+    const list = await listInboundLeads(agentA);
+    expect(list.error).toBeNull();
+    const processed = (list.data ?? []).find((lead) => lead.id === processedLead)!;
+    expect(processed.status).toBe("processed");
+    expect(processed.contactId).toBe(result.data!.contactId);
+    const attached = (list.data ?? []).find((lead) => lead.id === duplicateLead)!;
+    expect(attached.status).toBe("duplicate");
+    expect(attached.contactId).toBe(existing);
+    const waiting = (list.data ?? []).find((lead) => lead.id === waitingLead)!;
+    expect(waiting.status).toBe("pending");
+    expect(waiting.contactId).toBeNull();
+
+    // Agency B never sees A's leads nor the records they point to.
+    const listB = await listInboundLeads(userB);
+    expect(listB.error).toBeNull();
+    const serializedB = JSON.stringify(listB.data);
+    expect(serializedB).not.toContain(result.data!.contactId!);
+    expect(serializedB).not.toContain(existing);
+    expect(serializedB).not.toContain(processedLead);
+  });
 });

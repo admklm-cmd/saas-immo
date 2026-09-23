@@ -9,9 +9,13 @@
  * the CODE, before or after the AI call, never by the AI:
  *
  *   session + agency (server-side)  →  guard rails (kill switch, daily volume,
- *   human takeover, contact ownership)  →  run opened in `ai_agent_runs`  →
- *   eligibility (stage, no appointment already active)  →  channel + CONSENT
- *   checked server-side  →  FREE SLOTS COMPUTED BY THE CODE  →  AI call, given
+ *   human takeover, contact ownership)  →  precheck: eligibility (stage, no
+ *   appointment already active), channel + CONSENT, free slots on the diary —
+ *   a refusal is journaled as a `blocked` run (a rule doing its job, not an
+ *   error), with a human task when a conseiller has something to do  →  run
+ *   opened in `ai_agent_runs`  →  eligibility, channel + CONSENT re-checked on
+ *   data re-read inside the run (a change in between is a race: `failed`)  →
+ *   FREE SLOTS COMPUTED BY THE CODE  →  AI call, given
  *   only that closed list  →  zod validation, slot must be in the list  →
  *   appointment `proposed` (double booking refused by the database) →  message
  *   `pending_validation`, flagged simulation  →  CRM history  →  run closed.
@@ -29,9 +33,9 @@ import { resolveAgentContext } from "@/lib/agents/context";
 import { databaseErrorCode, failFromDatabase, failFromUnexpected, failWith } from "@/lib/agents/errors";
 import { logAgentActivity, openHumanTask } from "@/lib/agents/journal";
 import { AGENT_STEP_LABELS, AGENT_TASK_TEXTS, type AgentErrorCode } from "@/lib/agents/messages";
-import { finishRun, startGuardedRun } from "@/lib/agents/runner";
+import { finishRun, startGuardedRun, type RunRefusal } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
-import type { AgentContext, Tables, TypedClient } from "@/lib/agents/types";
+import type { AgentContact, AgentContext, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
 import type { AiChoice, AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result } from "@/lib/utils/result";
@@ -121,6 +125,130 @@ type PropertyRow = Pick<
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
+ * Louis's refusals, ALL decided before the run is opened (see runner.ts), in
+ * the same order as inside the run: eligibility (stage, no appointment already
+ * active), then channel and CURRENT consent, then free slots computed by the
+ * code on the agency's diary. A refusal is journaled as a `blocked` run — a
+ * rule doing its job, never an error — with no AI call, no quota consumed and
+ * no write by the agent; when a conseiller has something to do, a human task is
+ * opened (`afterBlock`). The run re-reads the diary and the consents once it is
+ * opened: a condition that changed in between (race) still ends `failed`.
+ */
+async function checkLouisPrecheck(
+  client: TypedClient,
+  context: AgentContext,
+  contact: AgentContact,
+  now: Date,
+): Promise<Result<RunRefusal | null>> {
+  // Same window and filters as the diary read inside the run.
+  const horizonEnd = new Date(now.getTime() + (SLOT_HORIZON_DAYS + 1) * 86_400_000);
+  const diaryQuery = await client
+    .from("appointments")
+    .select("contact_id, starts_at, ends_at")
+    .eq("agency_id", context.agencyId)
+    .in("status", ACTIVE_APPOINTMENT_STATUSES)
+    .gte("ends_at", now.toISOString())
+    .lte("starts_at", horizonEnd.toISOString());
+  if (diaryQuery.error) {
+    return failFromDatabase<RunRefusal | null>("runLouisAppointment.precheck", diaryQuery.error);
+  }
+  const diary = diaryQuery.data ?? [];
+
+  // --- A. eligibility ---------------------------------------------------------
+  const hasActiveAppointment = diary.some((row) => row.contact_id === contact.id);
+  const eligibility = checkEligibility({ stage: contact.stage, hasActiveAppointment });
+  if (!eligibility.eligible) {
+    return ok({
+      code: eligibility.code,
+      decision: LOUIS_DECISION_TEXTS.not_eligible,
+      detail: {
+        decision: "not_eligible",
+        contact_stage: contact.stage,
+        active_appointment: hasActiveAppointment,
+        appointment_created: false,
+        message_created: false,
+      },
+    });
+  }
+
+  /** Opens the conseiller's task once the blocked run is journaled. */
+  const taskAfterBlock = (taskType: "appointment_consent_missing" | "appointment_channel_missing" | "appointment_no_slot") =>
+    async (): Promise<void> => {
+      const task = await openHumanTask(client, context, {
+        contactId: contact.id,
+        type: taskType,
+        title: AGENT_TASK_TEXTS[taskType].title,
+        details: AGENT_TASK_TEXTS[taskType].details,
+        agent: LOUIS_AGENT,
+        assignedUserId: contact.assigned_user_id,
+      });
+      if (task.error) console.error(`[agents] Louis afterBlock task failed (${task.error.code})`);
+    };
+
+  // --- B. channel and CURRENT consent, checked server-side --------------------
+  const consentsQuery = await client
+    .from("current_consents")
+    .select("channel, status")
+    .eq("agency_id", context.agencyId)
+    .eq("contact_id", contact.id);
+  if (consentsQuery.error) {
+    return failFromDatabase<RunRefusal | null>("runLouisAppointment.precheck.consents", consentsQuery.error);
+  }
+  const consents: Partial<Record<ConsentChannel, ConsentStatus>> = {};
+  for (const row of consentsQuery.data ?? []) {
+    if (row.channel && row.status) consents[row.channel] = row.status;
+  }
+  const channelChoice = chooseChannel({
+    hasEmail: Boolean(contact.email),
+    hasPhone: Boolean(contact.phone),
+    consents,
+  });
+  if (channelChoice.channel === null) {
+    const consentMissing = channelChoice.code === "consent_not_granted";
+    const decision: LouisDecisionReason = consentMissing ? "consent_missing" : "channel_missing";
+    const taskType = consentMissing ? "appointment_consent_missing" : "appointment_channel_missing";
+    return ok({
+      code: consentMissing ? "consent_not_granted" : "appointment_no_reachable_channel",
+      decision: LOUIS_DECISION_TEXTS[decision],
+      detail: {
+        decision,
+        contact_stage: contact.stage,
+        consent_checked: true,
+        task_type: taskType,
+        appointment_created: false,
+        message_created: false,
+      },
+      afterBlock: taskAfterBlock(taskType),
+    });
+  }
+
+  // --- C. free slots, computed by the code on the diary just read -------------
+  const slots = computeFreeSlots({
+    now,
+    busy: diary.map((row) => ({ startsAt: row.starts_at, endsAt: row.ends_at })),
+  });
+  if (slots.length === 0) {
+    return ok({
+      code: "appointment_no_available_slot",
+      decision: LOUIS_DECISION_TEXTS.no_slot,
+      detail: {
+        decision: "no_slot",
+        contact_stage: contact.stage,
+        consent_checked: true,
+        free_slots: 0,
+        horizon_days: SLOT_HORIZON_DAYS,
+        task_type: "appointment_no_slot",
+        appointment_created: false,
+        message_created: false,
+      },
+      afterBlock: taskAfterBlock("appointment_no_slot"),
+    });
+  }
+
+  return ok(null);
+}
+
+/**
  * Why the appointment could not be written. These codes all mean the same thing
  * for the agency: nothing was booked, nothing was written, the attempt lost a
  * race against another booking. Measured on the local stack, two concurrent
@@ -169,17 +297,20 @@ export async function runLouisAppointment(
       contact_id: contactId,
     };
 
+    const now = options.now ?? new Date();
+
     const started = await startGuardedRun(client, context, {
       agent: LOUIS_AGENT,
       contactId,
       input: runInput,
       provider,
       now: options.now,
+      // Eligibility is decided BEFORE the run opens, so a refusal is journaled
+      // as `blocked` (a rule doing its job), never as an error.
+      precheck: (subject) => checkLouisPrecheck(client, context, subject, now),
     });
     if (started.error) return { data: null, error: started.error };
     const { runId, contact, agency, steps } = started.data;
-
-    const now = options.now ?? new Date();
 
     /** Closes the run without any business write, optionally opening a task. */
     const abort = async (input: {
@@ -291,7 +422,9 @@ export async function runLouisAppointment(
       },
     });
 
-    // --- eligibility ----------------------------------------------------------
+    // --- eligibility, re-checked on the diary read inside the run -------------
+    // The precheck already refused (as `blocked`) everything it could see; what
+    // is refused from here on changed in between: a race, journaled `failed`.
     const eligibility = checkEligibility({
       stage: contact.stage,
       hasActiveAppointment: activeAppointments.some((row) => row.contact_id === contact.id),

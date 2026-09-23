@@ -156,3 +156,232 @@ describe("ContactTimeline — author of a human stage change", () => {
     expect(screen.queryByText("Directeur")).toBeNull();
   });
 });
+
+describe("ContactTimeline — human review of a message", () => {
+  const review = {
+    channel: "email",
+    agent: "Louis",
+    validated_by_user_id: "u1",
+    validated_by_label: "marc.conseiller@example.test",
+  };
+
+  function message(id: string, meta: TimelineEntry["meta"], overrides: Partial<TimelineEntry> = {}): TimelineEntry {
+    return entry({
+      id,
+      kind: "message",
+      title: "Email — Envoyé (simulation)",
+      isSimulation: true,
+      actor: { type: "ai_agent", agent: "louis", userId: null },
+      status: "sent_simulated",
+      // The entry date is the SEND date: it must never be used as the review date.
+      occurredAt: "2026-09-20T16:45:00.000Z",
+      meta,
+      ...overrides,
+    });
+  }
+
+  function reviewLine(): HTMLElement {
+    return screen.getByTestId("timeline-review");
+  }
+
+  it("reads « Validé par <email> (<rôle>) le <date Paris> » from the stored values", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message("1", {
+            ...review,
+            review_outcome: "approved",
+            validated_by_email: "marc.conseiller@example.test",
+            validated_by_role: "agent",
+            validated_by_role_label: "Conseiller",
+            validated_at: "2026-09-20T08:05:00.000Z",
+          }),
+        ]}
+      />,
+    );
+
+    const line = reviewLine();
+    expect(line.getAttribute("data-outcome")).toBe("approved");
+    // 08:05 UTC is 10:05 in Paris (summer time).
+    expect(line.textContent).toBe("Validé par marc.conseiller@example.test (Conseiller) le 20 sept. 2026 à 10:05");
+    expect(line.querySelector("time")?.getAttribute("dateTime")).toBe("2026-09-20T08:05:00.000Z");
+  });
+
+  it("reads « Refusé par … le … » for a refused message", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message(
+            "1",
+            {
+              ...review,
+              review_outcome: "rejected",
+              validated_by_email: "direction@example.test",
+              validated_by_role: "director",
+              validated_by_role_label: "Directeur",
+              validated_at: "2026-01-15T09:00:00.000Z",
+            },
+            { status: "rejected", title: "Email — Refusé" },
+          ),
+        ]}
+      />,
+    );
+
+    const line = reviewLine();
+    expect(line.getAttribute("data-outcome")).toBe("rejected");
+    // Winter time: UTC+1.
+    expect(line.textContent).toBe("Refusé par direction@example.test (Directeur) le 15 janv. 2026 à 10:00");
+  });
+
+  it("says « En attente de validation humaine » while nobody has decided", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message(
+            "1",
+            {
+              ...review,
+              review_outcome: null,
+              validated_by_user_id: null,
+              validated_by_label: null,
+              validated_by_email: null,
+              validated_by_role: null,
+              validated_by_role_label: null,
+              validated_at: null,
+            },
+            { status: "pending_validation", title: "Email — À valider" },
+          ),
+        ]}
+      />,
+    );
+
+    expect(reviewLine().textContent).toBe(APP_TEXTS.contact.reviewPending);
+    expect(reviewLine().getAttribute("data-outcome")).toBe("pending");
+    expect(reviewLine().querySelector("time")).toBeNull();
+  });
+
+  it("says « Auteur non disponible » without inventing one, and keeps the stored date", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message("1", {
+            ...review,
+            review_outcome: "approved",
+            validated_by_user_id: null,
+            validated_by_label: null,
+            validated_by_email: null,
+            validated_by_role: null,
+            validated_by_role_label: null,
+            validated_at: "2026-09-20T08:05:00.000Z",
+          }),
+        ]}
+      />,
+    );
+
+    expect(reviewLine().textContent).toBe(
+      `Validé le 20 sept. 2026 à 10:05 — ${APP_TEXTS.contact.reviewAuthorUnknown}`,
+    );
+    expect(reviewLine().textContent).not.toContain("Conseiller");
+  });
+
+  it("writes no date at all when none was stored — never the send date nor the entry date", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message("1", {
+            ...review,
+            review_outcome: "approved",
+            validated_by_email: "marc.conseiller@example.test",
+            validated_by_role: "agent",
+            validated_by_role_label: "Conseiller",
+            validated_at: null,
+          }),
+        ]}
+      />,
+    );
+
+    const line = reviewLine();
+    expect(line.textContent).toBe("Validé par marc.conseiller@example.test (Conseiller)");
+    expect(line.querySelector("time")).toBeNull();
+    // The entry date (the send) is shown in the header only, never in the review line.
+    expect(line.textContent).not.toMatch(/20 sept/);
+  });
+
+  it("with neither author nor date, only states the outcome and the missing author", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message("1", {
+            review_outcome: "rejected",
+            validated_by_email: null,
+            validated_by_role_label: null,
+            validated_at: null,
+          }),
+        ]}
+      />,
+    );
+    expect(reviewLine().textContent).toBe(`Refusé — ${APP_TEXTS.contact.reviewAuthorUnknown}`);
+  });
+
+  it("renders the stored author as text, never as markup", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          message("1", {
+            review_outcome: "approved",
+            validated_by_email: "<b>x</b>@example.test",
+            validated_by_role_label: "Conseiller",
+            validated_at: "2026-09-20T08:05:00.000Z",
+          }),
+        ]}
+      />,
+    );
+    expect(reviewLine().textContent).toContain("<b>x</b>@example.test");
+    expect(document.querySelector("b")).toBeNull();
+  });
+
+  it("shows no review line on entries that are not messages, nor on messages without review data", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          entry({ id: "1", kind: "task", meta: { review_outcome: "approved" } }),
+          message("2", { channel: "email" }),
+        ]}
+      />,
+    );
+    expect(screen.queryByTestId("timeline-review")).toBeNull();
+  });
+});
+
+describe("ContactTimeline — AI runs refused or failed", () => {
+  it("badges a guard-rail block and a technical error differently", () => {
+    render(
+      <ContactTimeline
+        entries={[
+          entry({
+            id: "1",
+            kind: "ai_run",
+            title: "Emma — Mandat signé : aucune relance n'est préparée.",
+            status: "blocked",
+            isSimulation: true,
+            actor: { type: "ai_agent", agent: "emma", userId: null },
+          }),
+          entry({
+            id: "2",
+            kind: "ai_run",
+            title: "Hugo — Sortie refusée par le schéma.",
+            status: "failed",
+            isSimulation: true,
+            actor: { type: "ai_agent", agent: "hugo", userId: null },
+          }),
+          entry({ id: "3", kind: "ai_run", status: "succeeded", title: "Louis — Créneau proposé." }),
+        ]}
+      />,
+    );
+
+    const statuses = screen.getAllByTestId("run-status").map((node) => node.getAttribute("data-status"));
+    expect(statuses).toEqual(["blocked", "failed"]);
+    expect(screen.getByText("Bloquée par un garde-fou")).toBeDefined();
+    expect(screen.getByText("Erreur technique")).toBeDefined();
+  });
+});

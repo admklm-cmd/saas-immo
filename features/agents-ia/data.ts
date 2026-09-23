@@ -254,6 +254,70 @@ function payloadFieldLabels(payload: Json): string[] {
   );
 }
 
+/** Longest first name kept in a display name (the rest is cut with « … »). */
+export const LEAD_FIRST_NAME_MAX = 40;
+/** Longest commune kept for display. */
+export const LEAD_CITY_MAX = 60;
+
+// C0/C1 controls, DEL, soft hyphen, zero-width, line/paragraph separators and
+// every bidirectional control (U+061C ALM, U+200E/F, U+202A-E, U+2066-9: the
+// set of BIDI_CONTROL_PATTERN): none of them is ever meaningful in a name, and
+// some can disguise text on screen. Written as escapes on purpose: invisible
+// characters must never appear literally in the source.
+const INVISIBLE_OR_CONTROL = /[\u0000-\u001f\u007f-\u009f\u00ad\u061c\u180e\u200b-\u200f\u2028\u2029\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/g;
+
+/**
+ * Plain-text, single-line, bounded version of an untrusted payload value, or
+ * `null` when nothing displayable is left. Never throws, never invents.
+ */
+export function cleanLeadText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const cleaned = value.replace(INVISIBLE_OR_CONTROL, " ").replace(/\s+/g, " ").trim();
+  if (cleaned.length === 0) return null;
+  const chars = Array.from(cleaned);
+  return chars.length <= max ? cleaned : `${chars.slice(0, max - 1).join("").trimEnd()}…`;
+}
+
+function payloadRecord(payload: Json): Record<string, Json> | null {
+  return payload !== null && typeof payload === "object" && !Array.isArray(payload)
+    ? (payload as Record<string, Json>)
+    : null;
+}
+
+/**
+ * « Claire M. »: first name + initial of the last name, from the structured
+ * payload only (minimisation — never the full last name, the e-mail nor the
+ * phone). « Claire » when the last name is absent; `null` when the first name
+ * is absent, never a guess from the free text.
+ */
+export function leadDisplayName(payload: Json): string | null {
+  const record = payloadRecord(payload);
+  if (!record) return null;
+  const firstName = cleanLeadText(record.first_name, LEAD_FIRST_NAME_MAX);
+  if (!firstName) return null;
+  const lastName = cleanLeadText(record.last_name, LEAD_FIRST_NAME_MAX);
+  const initial = lastName ? Array.from(lastName).find((char) => /\p{L}/u.test(char)) : undefined;
+  return initial ? `${firstName} ${initial.toLocaleUpperCase("fr-FR")}.` : firstName;
+}
+
+/**
+ * Record a lead leads to: the contact Léa created (`processed`) or the
+ * existing one she attached it to (`duplicate`). `null` for any other status —
+ * a pending or rejected lead has no record, whatever the column holds.
+ */
+export function inboundLeadContactId(
+  status: Database["public"]["Enums"]["inbound_lead_status"],
+  contactId: string | null,
+): string | null {
+  return status === "processed" || status === "duplicate" ? contactId : null;
+}
+
+/** Commune of the property when the payload carries one, else `null`. */
+export function leadCity(payload: Json): string | null {
+  const record = payloadRecord(payload);
+  return record ? cleanLeadText(record.city, LEAD_CITY_MAX) : null;
+}
+
 /**
  * Léa's inbox: the agency's inbound leads, most recent first.
  *
@@ -283,7 +347,11 @@ export async function listInboundLeads(client: TypedClient): Promise<Result<Inbo
         statusLabel: INBOUND_LEAD_STATUS_LABELS[row.status],
         rawText: row.raw_text,
         payloadFields: payloadFieldLabels(row.payload),
-        contactId: row.contact_id,
+        displayName: leadDisplayName(row.payload),
+        city: leadCity(row.payload),
+        // Only a processed lead points to a record (created, or the duplicate
+        // it was attached to): the UI links to it to tell homonyms apart.
+        contactId: inboundLeadContactId(row.status, row.contact_id),
         processedRunId: row.processed_run_id,
         canBeProcessed: row.status === "pending",
         createdAt: isoUtc(row.created_at),
@@ -673,13 +741,22 @@ async function findLastErrors(
   if (error) return failFromDatabase<AgentRunError[]>("findLastErrors", error);
 
   return ok(
-    (data ?? []).map((row) => ({
-      runId: row.id,
-      code: row.error,
-      decision: row.decision,
-      statusLabel: AGENT_RUN_STATUS_LABELS[row.status],
-      at: isoUtc(row.started_at),
-    })),
+    (data ?? []).flatMap((row) =>
+      // The query only asks for these two; anything else is dropped rather
+      // than mislabelled.
+      row.status === "failed" || row.status === "blocked"
+        ? [
+            {
+              runId: row.id,
+              code: row.error,
+              decision: row.decision,
+              status: row.status,
+              statusLabel: AGENT_RUN_STATUS_LABELS[row.status],
+              at: isoUtc(row.started_at),
+            },
+          ]
+        : [],
+    ),
   );
 }
 

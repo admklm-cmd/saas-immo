@@ -240,6 +240,39 @@ rejoue des durées réelles et n'a **jamais** le droit de fabriquer une barre de
 (statut `blocked` + motif), pour que l'utilisateur voie *pourquoi* ça s'est arrêté. Une panne
 d'enregistrement d'étape n'échoue jamais l'exécution métier (même règle que `finishRun`).
 
+**Refus d'éligibilité = `blocked`, pas `failed`.** La base n'accepte `blocked` qu'à l'insertion
+(un run `running` ne peut finir que `succeeded` ou `failed`). Un agent peut donc passer à
+`startGuardedRun` un `precheck` d'éligibilité, exécuté **après** les garde-fous partagés et **avant**
+l'ouverture du run : un refus est journalisé en `blocked` (étapes `guardrails` `ok` puis `decision`
+`blocked`), sans appel IA ni consommation du quota quotidien. Utilisé par Emma (mandat signé,
+dossier perdu, brouillon en attente, relance déjà préparée aujourd'hui, consentement absent, aucun
+canal joignable — ces deux derniers ouvrent une tâche humaine via `afterBlock`, sans activité
+attribuée à Emma), Louis (étape non prête, rendez-vous déjà actif, consentement absent, aucun canal
+joignable, agenda plein — lu dans le `precheck` avec la même fenêtre et le même calcul de créneaux ;
+les trois derniers ouvrent une tâche humaine via `afterBlock`) et Sarah (compte-rendu manquant,
+tâche de saisie via `afterBlock`) ; liste unique `ELIGIBILITY_BLOCKING_CODES`. Aucun de ces refus
+n'écrit d'activité attribuée à l'agent (`guard_activity_actor` l'interdit hors run `running`) : la
+trace est le run bloqué, sa décision et la tâche. Seuls les refus redécouverts après l'ouverture du
+run (courses) restent `failed`, un run `running` ne pouvant pas finir `blocked` sans migration.
+Liste exacte dans `docs/workflows.md` (« Refus restant `failed` »).
+Côté lecture, le statut brut est exposé partout : `AgentRunSummary.status`,
+`AgentRunError.status` (`failed` | `blocked`), `TimelineEntry.status` des runs, compteurs
+`failed`/`blocked` distincts (`agent_activity_summary`, tableau de bord).
+
+**Validation humaine : auteur et heure réellement enregistrés.** La chronologie d'un contact
+expose, pour chaque message sortant, `meta.validated_at` et `meta.validated_by_user_id` **tels
+qu'estampillés par la base** (`outbound_messages.validated_at` / `validated_by`, posés à partir de
+la session par `validated_by_must_be_caller`), jamais déduits de `sent_at` ou d'un autre événement.
+L'e-mail et le rôle (`validated_by_email`, `validated_by_role`) sont résolus par **une seule**
+lecture de `list_agency_members` par chronologie (seulement si un message a un validateur) ; un
+identifiant absent des membres actuels ou une lecture en échec donne `null`, jamais un auteur
+supposé.
+
+**Leads entrants : lien vers la fiche.** `InboundLeadView.contactId` vaut la fiche créée
+(`processed`) ou rattachée (`duplicate`), `null` sinon. L'appartenance à l'agence est garantie par
+la clé étrangère composite `inbound_leads_contact_fkey (agency_id, contact_id)`, la requête filtrée
+par `agency_id` et la RLS.
+
 **Ce que l'écran affiche est ce qui a été mesuré.** Les chiffres de l'écran « Agents IA »
 (`features/agents-ia/data.ts`, exposés par `queries.ts`) sont des **comptages exacts en base**, jamais
 un échantillon : l'agrégation se fait en SQL (`public.agent_activity_summary`, migration

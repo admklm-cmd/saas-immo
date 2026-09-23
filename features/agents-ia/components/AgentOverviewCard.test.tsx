@@ -131,6 +131,7 @@ describe("AgentOverviewCard", () => {
               runId: "run-blocked",
               code: "ai_paused",
               decision: "Les agents IA sont suspendus par le coupe-circuit de l'agence.",
+              status: "blocked",
               statusLabel: "Bloquée",
               at: "2026-09-16T10:00:00.000Z",
             },
@@ -143,7 +144,8 @@ describe("AgentOverviewCard", () => {
 
     expect(screen.getByText("3 exécutions aujourd'hui")).toBeDefined();
     expect(screen.getByText("9 exécutions sur 7 jours")).toBeDefined();
-    expect(screen.getByText("Bloquée : 1")).toBeDefined();
+    expect(screen.getByText(TEXTS.outcomeBlocked(1))).toBeDefined();
+    expect(screen.getByText(TEXTS.lastErrors)).toBeDefined();
     expect(screen.getByText(/coupe-circuit de l'agence/)).toBeDefined();
     // The contact is named, not hidden behind a generic "Voir la fiche".
     expect(screen.getByRole("link", { name: "Sophie Marchand" }).getAttribute("href")).toBe(
@@ -184,5 +186,47 @@ describe("AgentOverviewCard", () => {
   it("says when an agent is suspended by the kill switch", () => {
     render(<AgentOverviewCard agent={agent({ isActive: false })} todayLabel={TODAY} last7DaysLabel={LAST_7} />);
     expect(screen.getByText(TEXTS.statusPaused)).toBeDefined();
+  });
+});
+
+describe("AgentOverviewCard — errors and guard-rail blocks", () => {
+  it("tells a guard-rail block from a technical error, line by line", () => {
+    render(
+      <AgentOverviewCard
+        agent={agent({
+          lastErrors: [
+            {
+              runId: "run-blocked",
+              code: "follow_up_mandate_signed",
+              decision: "Mandat signé : aucune relance n'est préparée pour ce contact, aucun brouillon n'a été créé.",
+              status: "blocked",
+              statusLabel: "Bloquée",
+              at: "2026-09-16T10:00:00.000Z",
+            },
+            {
+              runId: "run-failed",
+              code: "ai_response_invalid",
+              decision: "Sortie refusée par le schéma.",
+              status: "failed",
+              statusLabel: "Échec",
+              at: "2026-09-15T10:00:00.000Z",
+            },
+          ],
+        })}
+        todayLabel={TODAY}
+        last7DaysLabel={LAST_7}
+      />,
+    );
+
+    const lines = screen.getAllByTestId("agent-last-issue");
+    expect(lines.map((line) => line.getAttribute("data-status"))).toEqual(["blocked", "failed"]);
+    expect(lines[0]!.textContent).toContain("Bloquée par un garde-fou");
+    expect(lines[0]!.textContent).toContain(APP_TEXTS.guardRail.reason);
+    expect(lines[0]!.textContent).toContain("Mandat signé");
+    expect(lines[0]!.textContent).not.toContain("Erreur technique");
+    expect(lines[1]!.textContent).toContain("Erreur technique");
+    expect(lines[1]!.textContent).not.toContain("garde-fou");
+    // Neither line interrupts the user: this is a history, not an alert.
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

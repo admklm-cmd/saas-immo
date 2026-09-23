@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { APP_TEXTS } from "@/components/texts";
+import { AGENT_ERROR_MESSAGES } from "@/lib/agents/messages";
 
 import type { EmmaFollowUpCandidateView } from "../types";
 import { EmmaFollowUpCard } from "./EmmaFollowUpCard";
@@ -101,19 +102,40 @@ describe("EmmaFollowUpCard", () => {
     );
   });
 
-  it("shows the server refusal without claiming a draft exists", async () => {
+  it("shows a guard-rail refusal as information, never as an error, without claiming a draft exists", async () => {
     prepareFollowUp.mockResolvedValue({
       data: null,
-      error: { code: "consent_not_granted", message: "Aucun consentement valide." },
+      error: { code: "consent_not_granted", message: AGENT_ERROR_MESSAGES.consent_not_granted },
     });
     render(<EmmaFollowUpCard candidate={candidateOf()} />);
 
     await act(async () => fireEvent.click(screen.getByTestId("run-emma")));
 
     expect(prepareFollowUp).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
-    expect(screen.getByTestId("emma-error").textContent).toContain("Aucun consentement valide.");
+    const notice = screen.getByTestId("emma-blocked");
+    expect(notice.textContent).toContain(APP_TEXTS.guardRail.title);
+    expect(notice.textContent).toContain(AGENT_ERROR_MESSAGES.consent_not_granted);
+    expect(notice.getAttribute("role")).toBe("status");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByTestId("emma-error")).toBeNull();
     expect(screen.queryByTestId("emma-draft")).toBeNull();
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("shows a technical failure as an error", async () => {
+    prepareFollowUp.mockResolvedValue({
+      data: null,
+      error: { code: "ai_response_invalid", message: AGENT_ERROR_MESSAGES.ai_response_invalid },
+    });
+    render(<EmmaFollowUpCard candidate={candidateOf()} />);
+
+    await act(async () => fireEvent.click(screen.getByTestId("run-emma")));
+
+    const error = screen.getByTestId("emma-error");
+    expect(error.getAttribute("role")).toBe("alert");
+    expect(error.textContent).toContain(APP_TEXTS.emmaFollowUps.errorActionTitle);
+    expect(error.textContent).toContain(AGENT_ERROR_MESSAGES.ai_response_invalid);
+    expect(screen.queryByTestId("emma-blocked")).toBeNull();
   });
 
   it("shows the validated draft, validation link and measured replay", async () => {

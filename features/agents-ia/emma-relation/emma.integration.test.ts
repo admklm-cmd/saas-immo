@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { buildContactTimeline } from "@/features/contacts/data";
+import { buildDashboardSummary } from "@/features/dashboard/data";
+import { getAgentsDashboard } from "@/features/agents-ia/data";
 import { UNSUBSCRIBE_NOTICE } from "@/lib/agents/consent";
+import { parisDayStart } from "@/lib/agents/time";
 import { setupTestEnv, type TestEnv, type TypedClient } from "@/lib/supabase/testing/local-test-env";
+
+import { approveOutboundMessage, rejectOutboundMessage, sendApprovedMessage } from "../validation";
 
 import { runEmmaFollowUp } from "./emma";
 
@@ -232,6 +238,167 @@ describe("Emma — consentement valide", () => {
   });
 });
 
+/** Exact texts the agency reads: a change here must be deliberate. */
+const REFUSAL_MESSAGES = {
+  follow_up_mandate_signed: "Le mandat de ce contact est signé : aucune relance n'est préparée.",
+  follow_up_contact_lost: "Ce dossier est classé « Perdu » : aucune relance n'est préparée.",
+  human_takeover:
+    "Ce dossier est repris en main par un conseiller : aucune action automatique n'est possible.",
+  consent_not_granted: "Aucun consentement valide pour ce canal : l'envoi est refusé.",
+  follow_up_no_reachable_channel:
+    "Aucune coordonnée exploitable pour ce contact (adresse email ou numéro manquant) : aucun brouillon préparé, une tâche a été créée pour un conseiller.",
+  follow_up_already_drafted:
+    "Une relance est déjà en attente de validation pour ce contact : aucun second brouillon n'a été créé.",
+  follow_up_already_prepared_today: "Une relance a déjà été préparée aujourd'hui pour ce contact.",
+  ai_paused:
+    "Les agents IA sont suspendus par le coupe-circuit de l'agence. Réactivez-les dans « Agents IA » pour relancer une action.",
+  ai_daily_run_limit_reached:
+    "La limite quotidienne d'exécutions des agents IA est atteinte pour votre agence. Réessayez demain ou augmentez la limite dans les réglages.",
+} as const;
+
+/** Decision journaled on the run (what the replay shows). */
+const REFUSAL_DECISIONS: Record<keyof typeof REFUSAL_MESSAGES, string> = {
+  follow_up_mandate_signed:
+    "Mandat signé : aucune relance n'est préparée pour ce contact, aucun brouillon n'a été créé.",
+  follow_up_contact_lost:
+    "Dossier classé « Perdu » : aucune relance n'est préparée pour ce contact, aucun brouillon n'a été créé.",
+  human_takeover: REFUSAL_MESSAGES.human_takeover,
+  consent_not_granted:
+    "Aucun consentement valide pour joindre ce contact : aucun brouillon préparé, une tâche a été créée pour un conseiller.",
+  follow_up_no_reachable_channel:
+    "Aucune coordonnée exploitable pour ce contact : aucun brouillon préparé, une tâche a été créée pour un conseiller.",
+  follow_up_already_drafted:
+    "Une relance est déjà en attente de validation pour ce contact : aucun second brouillon n'a été créé.",
+  follow_up_already_prepared_today:
+    "Une relance a déjà été préparée aujourd'hui pour ce contact : aucun second brouillon n'a été créé.",
+  ai_paused: REFUSAL_MESSAGES.ai_paused,
+  ai_daily_run_limit_reached: REFUSAL_MESSAGES.ai_daily_run_limit_reached,
+};
+
+type RefusalCode = keyof typeof REFUSAL_MESSAGES;
+
+/**
+ * One refusal, checked end to end: exact code and message returned to the UI,
+ * the LAST run of the contact journaled `blocked` (a rule doing its job, never
+ * an error) with the same code, its decision, no token consumed, and no draft
+ * beyond `messagesBefore`.
+ */
+async function expectBlockedRefusal(
+  contactId: string,
+  result: Awaited<ReturnType<typeof runEmmaFollowUp>>,
+  code: RefusalCode,
+  messagesBefore = 0,
+): Promise<void> {
+  expect(result.data).toBeNull();
+  expect(result.error?.code).toBe(code);
+  expect(result.error?.message).toBe(REFUSAL_MESSAGES[code]);
+  const run = (await readRuns(contactId)).at(-1)!;
+  expect(run).toMatchObject({
+    status: "blocked",
+    error: code,
+    decision: REFUSAL_DECISIONS[code],
+    input_tokens: 0,
+  });
+  expect(await readMessages(contactId)).toHaveLength(messagesBefore);
+}
+
+describe("Emma — un test par motif de refus (code, message exact, statut du run)", () => {
+  it("mandat signé : follow_up_mandate_signed, bloqué", async () => {
+    const contactId = await createContact("motif-mandat", { stage: "mandat_signe" });
+    await expectBlockedRefusal(contactId, await runEmmaFollowUp(agentA, contactId), "follow_up_mandate_signed");
+    expect(await readTasks(contactId)).toEqual([]);
+  });
+
+  it("dossier perdu : follow_up_contact_lost, bloqué", async () => {
+    const contactId = await createContact("motif-perdu", { stage: "perdu" });
+    await expectBlockedRefusal(contactId, await runEmmaFollowUp(agentA, contactId), "follow_up_contact_lost");
+    expect(await readTasks(contactId)).toEqual([]);
+  });
+
+  it("reprise en main humaine : human_takeover, bloqué", async () => {
+    const contactId = await createContact("motif-reprise", { humanTakeover: true });
+    await expectBlockedRefusal(contactId, await runEmmaFollowUp(agentA, contactId), "human_takeover");
+  });
+
+  it("consentement absent : consent_not_granted, bloqué, tâche pour un conseiller", async () => {
+    const contactId = await createContact("motif-consentement", { consents: [] });
+    await expectBlockedRefusal(contactId, await runEmmaFollowUp(agentA, contactId), "consent_not_granted");
+    const tasks = await readTasks(contactId);
+    expect(tasks).toContainEqual(
+      expect.objectContaining({ type: "follow_up_consent_missing", status: "open", created_by_agent: "emma" }),
+    );
+  });
+
+  it("aucun canal joignable : follow_up_no_reachable_channel, bloqué, tâche pour un conseiller", async () => {
+    const contactId = await createContact("motif-canal", { email: null, phone: null });
+    await expectBlockedRefusal(
+      contactId,
+      await runEmmaFollowUp(agentA, contactId),
+      "follow_up_no_reachable_channel",
+    );
+    const tasks = await readTasks(contactId);
+    expect(tasks).toContainEqual(
+      expect.objectContaining({ type: "follow_up_channel_missing", status: "open", created_by_agent: "emma" }),
+    );
+  });
+
+  it("brouillon déjà en attente : follow_up_already_drafted, bloqué", async () => {
+    const contactId = await createContact("motif-attente");
+    expect((await runEmmaFollowUp(agentA, contactId)).error).toBeNull();
+    await expectBlockedRefusal(
+      contactId,
+      await runEmmaFollowUp(agentA, contactId),
+      "follow_up_already_drafted",
+      1,
+    );
+  });
+
+  it("relance déjà préparée aujourd'hui : follow_up_already_prepared_today, bloqué", async () => {
+    const contactId = await createContact("motif-aujourdhui");
+    const first = await runEmmaFollowUp(agentA, contactId);
+    expect(first.error).toBeNull();
+    expect((await approveOutboundMessage(agentA, first.data!.messageId)).error).toBeNull();
+    await expectBlockedRefusal(
+      contactId,
+      await runEmmaFollowUp(agentA, contactId),
+      "follow_up_already_prepared_today",
+      1,
+    );
+  });
+
+  it("coupe-circuit : ai_paused, bloqué", async () => {
+    const contactId = await createContact("motif-coupe-circuit");
+    await setAgencyAiSettings({ ai_paused: true });
+    try {
+      await expectBlockedRefusal(contactId, await runEmmaFollowUp(agentA, contactId), "ai_paused");
+    } finally {
+      await setAgencyAiSettings({ ai_paused: false });
+    }
+  });
+
+  it("limite quotidienne atteinte : ai_daily_run_limit_reached, bloqué", async () => {
+    const contactId = await createContact("motif-limite");
+    await setAgencyAiSettings({ ai_daily_run_limit: 0 });
+    try {
+      await expectBlockedRefusal(
+        contactId,
+        await runEmmaFollowUp(agentA, contactId),
+        "ai_daily_run_limit_reached",
+      );
+    } finally {
+      await setAgencyAiSettings({ ai_daily_run_limit: 100 });
+    }
+  });
+
+  it("une vraie erreur technique reste « failed » : sortie IA invalide", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const contactId = await createContact("motif-erreur");
+    const result = await runEmmaFollowUp(agentA, contactId, { scenario: "invalid_output" });
+    expect(result.error?.code).toBe("ai_response_invalid");
+    expect((await readRuns(contactId)).at(-1)).toMatchObject({ status: "failed", error: "ai_response_invalid" });
+  });
+});
+
 describe("Emma — aucun consentement valide : aucun brouillon", () => {
   it("refuse quand aucun consentement n'a jamais été enregistré", async () => {
     const contactId = await createContact("sans-consentement", { consents: [] });
@@ -247,9 +414,10 @@ describe("Emma — aucun consentement valide : aucun brouillon", () => {
     const tasks = await readTasks(contactId);
     expect(tasks.some((task) => task.type === "follow_up_consent_missing")).toBe(true);
 
+    // The rule did its job: journaled `blocked`, never counted as an error.
     const runs = await readRuns(contactId);
     expect(runs).toHaveLength(1);
-    expect(runs[0]).toMatchObject({ status: "failed", error: "consent_not_granted" });
+    expect(runs[0]).toMatchObject({ status: "blocked", error: "consent_not_granted" });
   });
 
   it("refuse quand tous les consentements ont été retirés", async () => {
@@ -272,8 +440,17 @@ describe("Emma — aucun consentement valide : aucun brouillon", () => {
     const runs = await readRuns(contactId);
     const steps = await readSteps(runs[0]!.id);
     const last = steps.at(-1)!;
-    expect(last.status).toBe("failed");
-    expect(last.detail).toMatchObject({ error_code: "consent_not_granted", message_created: false });
+    expect(last.status).toBe("blocked");
+    expect(last.detail).toMatchObject({
+      error_code: "consent_not_granted",
+      run_status: "blocked",
+      consent_checked: true,
+      message_created: false,
+    });
+    expect(steps.map((step) => [step.phase, step.status])).toEqual([
+      ["guardrails", "ok"],
+      ["decision", "blocked"],
+    ]);
   });
 
   it("refuse quand un consentement existe mais qu'aucune coordonnée n'est exploitable", async () => {
@@ -282,7 +459,8 @@ describe("Emma — aucun consentement valide : aucun brouillon", () => {
     const result = await runEmmaFollowUp(agentA, contactId);
 
     expect(result.data).toBeNull();
-    expect(result.error?.code).toBe("appointment_no_reachable_channel");
+    // Emma's own code — never Louis's `appointment_no_reachable_channel`.
+    expect(result.error?.code).toBe("follow_up_no_reachable_channel");
     expect(await readMessages(contactId)).toEqual([]);
     expect((await readTasks(contactId)).some((task) => task.type === "follow_up_channel_missing")).toBe(
       true,
@@ -317,7 +495,7 @@ describe("Emma — idempotence : jamais deux brouillons", () => {
     expect(messages[0]!.id).toBe(first.data!.messageId);
   });
 
-  it("la base refuse elle aussi un second brouillon du même jour", async () => {
+  it("relance du jour refusée : code dédié, exécution « bloquée » et non en erreur", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const contactId = await createContact("idempotence-base");
 
@@ -334,20 +512,37 @@ describe("Emma — idempotence : jamais deux brouillons", () => {
 
     const second = await runEmmaFollowUp(agentA, contactId);
     expect(second.data).toBeNull();
-    expect(second.error?.code).toBe("follow_up_already_drafted");
+    // Nothing is waiting any more: the message must not claim otherwise.
+    expect(second.error?.code).toBe("follow_up_already_prepared_today");
+    expect(second.error?.message).toBe("Une relance a déjà été préparée aujourd'hui pour ce contact.");
     expect(await readMessages(contactId)).toHaveLength(1);
+    const runs = await readRuns(contactId);
+    expect(runs).toHaveLength(2);
+    // Refused before the AI call: blocked, no token consumed.
+    expect(runs[1]).toMatchObject({ status: "blocked", error: "follow_up_already_prepared_today", input_tokens: 0 });
   });
 });
 
 describe("Emma — éligibilité", () => {
   it("ne relance jamais un dossier perdu ni un mandat signé", async () => {
+    const expectedCode = { perdu: "follow_up_contact_lost", mandat_signe: "follow_up_mandate_signed" } as const;
     for (const stage of ["perdu", "mandat_signe"] as const) {
       const contactId = await createContact(`etape-${stage}`, { stage });
       const result = await runEmmaFollowUp(agentA, contactId);
 
       expect(result.data, stage).toBeNull();
-      expect(result.error?.code).toBe("follow_up_stage_not_eligible");
+      // One code per real motive, never a vague « non éligible ».
+      expect(result.error?.code).toBe(expectedCode[stage]);
       expect(await readMessages(contactId)).toEqual([]);
+      // A rule doing its job: journaled as blocked, never counted as an error.
+      const runs = await readRuns(contactId);
+      expect(runs).toHaveLength(1);
+      expect(runs[0]).toMatchObject({ status: "blocked", error: expectedCode[stage], input_tokens: 0 });
+      const steps = await readSteps(runs[0]!.id);
+      expect(steps.map((step) => [step.phase, step.status])).toEqual([
+        ["guardrails", "ok"],
+        ["decision", "blocked"],
+      ]);
     }
   });
 });
@@ -474,5 +669,181 @@ describe("Emma — isolation entre agences", () => {
 
     expect(await readMessages(contactId)).toEqual([]);
     expect(await readRuns(contactId)).toEqual([]);
+  });
+});
+
+describe("Emma — relance déjà validée et envoyée le même jour", () => {
+  it("second passage : code « déjà préparée aujourd'hui », pas « en attente »", async () => {
+    const contactId = await createContact("deja-envoyee");
+    const first = await runEmmaFollowUp(agentA, contactId);
+    expect(first.error).toBeNull();
+
+    expect((await approveOutboundMessage(agentA, first.data!.messageId)).error).toBeNull();
+    expect((await sendApprovedMessage(agentA, first.data!.messageId)).error).toBeNull();
+    expect((await readMessages(contactId))[0]!.status).toBe("sent_simulated");
+
+    const second = await runEmmaFollowUp(agentA, contactId);
+    expect(second.error?.code).toBe("follow_up_already_prepared_today");
+    expect(second.error?.message).not.toContain("en attente");
+    expect(await readMessages(contactId)).toHaveLength(1);
+    expect((await readRuns(contactId))[1]).toMatchObject({ status: "blocked" });
+  });
+});
+
+describe("Emma — refus d'éligibilité compté « bloqué » dans les indicateurs", () => {
+  it("agent_activity_summary et le tableau de bord : +1 bloqué, 0 erreur de plus", async () => {
+    const dayStart = parisDayStart(new Date()).toISOString();
+    const readEmma = async () => {
+      const { data, error } = await agentA.rpc("agent_activity_summary", {
+        target_agency: env.agencyA.agencyId,
+        day_start: dayStart,
+        window_start: dayStart,
+      });
+      if (error) throw new Error(`agent_activity_summary: ${error.message}`);
+      const row = (data ?? []).find((entry) => entry.agent_name === "emma");
+      return { failed: Number(row?.today_failed ?? 0), blocked: Number(row?.today_blocked ?? 0) };
+    };
+    const readDashboard = async () => {
+      const summary = await buildDashboardSummary(agentA);
+      if (summary.error || summary.data.agents.runsToday.status !== "ok") throw new Error("dashboard unavailable");
+      return summary.data.agents.runsToday.value;
+    };
+
+    const beforeSummary = await readEmma();
+    const beforeDashboard = await readDashboard();
+
+    const contactId = await createContact("indicateurs-mandat", { stage: "mandat_signe" });
+    const result = await runEmmaFollowUp(agentA, contactId);
+    expect(result.error?.code).toBe("follow_up_mandate_signed");
+
+    const afterSummary = await readEmma();
+    expect(afterSummary.failed).toBe(beforeSummary.failed);
+    expect(afterSummary.blocked).toBe(beforeSummary.blocked + 1);
+
+    const afterDashboard = await readDashboard();
+    expect(afterDashboard.failed).toBe(beforeDashboard.failed);
+    expect(afterDashboard.blocked).toBe(beforeDashboard.blocked + 1);
+
+    // The « Agents IA » screen exposes the raw status: a refusal is `blocked`,
+    // never an error.
+    const agents = await getAgentsDashboard(agentA);
+    expect(agents.error).toBeNull();
+    const emma = agents.data!.agents.find((agent) => agent.agent === "emma")!;
+    expect(emma.lastErrors[0]).toMatchObject({
+      code: "follow_up_mandate_signed",
+      status: "blocked",
+      statusLabel: "Bloquée",
+    });
+
+    // Agency B sees none of it.
+    const { data: bRows, error: bError } = await userB.rpc("agent_activity_summary", {
+      target_agency: env.agencyA.agencyId,
+      day_start: dayStart,
+      window_start: dayStart,
+    });
+    expect(bError).toBeNull();
+    expect(bRows ?? []).toEqual([]);
+  });
+});
+
+describe("Historique du contact — validation humaine visible", () => {
+  it("expose l'auteur et l'horodatage réellement enregistrés (agence A), rien pour l'agence B", async () => {
+    const contactId = await createContact("historique-validation");
+    const drafted = await runEmmaFollowUp(agentA, contactId);
+    expect(drafted.error).toBeNull();
+    const messageId = drafted.data!.messageId;
+
+    // Before validation: nothing is claimed.
+    const pending = await buildContactTimeline(agentA, contactId);
+    const pendingEntry = pending.data!.find((entry) => entry.id === messageId)!;
+    expect(pendingEntry.meta).toMatchObject({
+      review_outcome: null,
+      validated_at: null,
+      validated_by_user_id: null,
+      validated_by_email: null,
+      validated_by_label: null,
+      validated_by_role: null,
+    });
+
+    expect((await approveOutboundMessage(agentA, messageId)).error).toBeNull();
+    expect((await sendApprovedMessage(agentA, messageId)).error).toBeNull();
+
+    // Source of truth: the columns stamped by the database.
+    const { data: stored, error: storedError } = await env.admin
+      .from("outbound_messages")
+      .select("validated_by, validated_at, sent_at, created_at")
+      .eq("id", messageId)
+      .single();
+    expect(storedError).toBeNull();
+    expect(stored!.validated_by).toBe(env.users.agentA.id);
+    expect(stored!.validated_at).not.toBeNull();
+
+    // A second follow-up (next Paris day), REJECTED by the director: each
+    // message carries its own reviewer, never the one of a neighbour.
+    const tomorrow = new Date(Date.now() + 86_400_000);
+    const second = await runEmmaFollowUp(agentA, contactId, { now: tomorrow });
+    expect(second.error).toBeNull();
+    const secondId = second.data!.messageId;
+    const directorClient = env.users.directorA.client;
+    expect(
+      (await rejectOutboundMessage(directorClient, secondId, { reason: "bad_timing", note: null })).error,
+    ).toBeNull();
+    const { data: storedSecond } = await env.admin
+      .from("outbound_messages")
+      .select("validated_by, validated_at")
+      .eq("id", secondId)
+      .single();
+    expect(storedSecond!.validated_by).toBe(env.users.directorA.id);
+
+    // Validators are resolved with ONE read of the members per timeline.
+    const rpcSpy = vi.spyOn(agentA, "rpc");
+    const timeline = await buildContactTimeline(agentA, contactId);
+    const memberReads = rpcSpy.mock.calls.filter(([name]) => name === "list_agency_members");
+    rpcSpy.mockRestore();
+    expect(memberReads).toHaveLength(1);
+
+    expect(timeline.error).toBeNull();
+    const entry = timeline.data!.find((item) => item.id === messageId)!;
+    expect(entry.status).toBe("sent_simulated");
+    expect(entry.isSimulation).toBe(true);
+    expect(entry.meta).toMatchObject({
+      review_outcome: "approved",
+      // Raw column values — never sent_at, never created_at.
+      validated_at: stored!.validated_at,
+      validated_by_user_id: env.users.agentA.id,
+      validated_by_email: env.users.agentA.email,
+      validated_by_label: env.users.agentA.email,
+      validated_by_role: "agent",
+      validated_by_role_label: "Conseiller",
+    });
+    const rejectedEntry = timeline.data!.find((item) => item.id === secondId)!;
+    expect(rejectedEntry.meta).toMatchObject({
+      review_outcome: "rejected",
+      validated_at: storedSecond!.validated_at,
+      validated_by_user_id: env.users.directorA.id,
+      validated_by_email: env.users.directorA.email,
+      validated_by_role: "director",
+      validated_by_role_label: "Directeur",
+    });
+
+    // Agency B: same generic answer as an unknown contact, nothing leaks.
+    const fromB = await buildContactTimeline(userB, contactId);
+    expect(fromB.data).toBeNull();
+    expect(fromB.error?.code).toBe("contact_not_found");
+    // And B cannot list A's members (the source of the author label).
+    const { data: members, error: membersError } = await userB.rpc("list_agency_members", {
+      target_agency: env.agencyA.agencyId,
+    });
+    expect(members ?? null).toBeNull();
+    expect(membersError).not.toBeNull();
+
+    // B's own history shows none of A's review data.
+    const timelineB = await buildContactTimeline(userB, env.agencyB.contactId);
+    expect(timelineB.error).toBeNull();
+    expect(JSON.stringify(timelineB.data)).not.toContain(messageId);
+    expect(JSON.stringify(timelineB.data)).not.toContain(env.users.agentA.id);
+    expect(JSON.stringify(timelineB.data)).not.toContain(env.users.agentA.email);
+    expect(JSON.stringify(timelineB.data)).not.toContain(env.users.directorA.email);
+    expect(JSON.stringify(timelineB.data)).not.toContain(secondId);
   });
 });

@@ -224,7 +224,7 @@ describe("Louis — journal des étapes", () => {
     });
   });
 
-  it("un arrêt métier (aucun consentement) laisse une étape qui dit pourquoi", async () => {
+  it("un arrêt métier (aucun consentement) laisse une étape « bloquée » qui dit pourquoi", async () => {
     const contactId = await createContact("louis-sans-consentement", {
       notes: NOTES_LOUIS,
       stage: "qualifie",
@@ -236,10 +236,16 @@ describe("Louis — journal des étapes", () => {
 
     const steps = await readSteps(await readRunId(contactId));
     const last = steps.at(-1)!;
+    // Decided before the run opens: a rule doing its job, not an error.
+    expect(steps.map((step) => [step.phase, step.status])).toEqual([
+      ["guardrails", "ok"],
+      ["decision", "blocked"],
+    ]);
     expect(last.phase).toBe("decision");
-    expect(last.status).toBe("failed");
+    expect(last.status).toBe("blocked");
     expect(last.detail).toMatchObject({
       error_code: "consent_not_granted",
+      run_status: "blocked",
       appointment_created: false,
       message_created: false,
     });

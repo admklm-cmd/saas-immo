@@ -1,11 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { listAppointmentsToFollowThrough } from "@/features/agents-ia/data";
+import { getAgentsDashboard, listAppointmentsToFollowThrough } from "@/features/agents-ia/data";
+import { buildContactTimeline } from "@/features/contacts/data";
+import { buildDashboardSummary } from "@/features/dashboard/data";
 import { changeStage } from "@/features/pipeline/stage-change";
+import { AGENT_ERROR_MESSAGES } from "@/lib/agents/messages";
+import { parisDayStart } from "@/lib/agents/time";
 import type { AiProvider } from "@/lib/claude/provider";
 import { createSimulatorProvider } from "@/lib/claude/simulator";
 import { setupTestEnv, type TestEnv, type TypedClient } from "@/lib/supabase/testing/local-test-env";
 
+import { SARAH_DECISION_TEXTS } from "./decision";
 import { runSarahFollowThrough } from "./sarah";
 
 /**
@@ -137,6 +142,71 @@ async function readSteps(runId: string) {
 async function setAgencyAiSettings(patch: { ai_paused?: boolean; ai_daily_run_limit?: number }): Promise<void> {
   const { error } = await env.admin.from("agencies").update(patch).eq("id", env.agencyA.agencyId);
   if (error) throw new Error(`setAgencyAiSettings: ${error.message}`);
+}
+
+async function readAgentActivities(contactId: string) {
+  const { data, error } = await env.admin
+    .from("activities")
+    .select("id, type, actor_type, actor_agent")
+    .eq("contact_id", contactId)
+    .eq("actor_type", "ai_agent");
+  if (error) throw new Error(`readAgentActivities: ${error.message}`);
+  return data ?? [];
+}
+
+/** Simulator that counts its calls: a refusal must never reach the AI. */
+function countingProvider(): { provider: AiProvider; calls: () => number } {
+  const simulator = createSimulatorProvider();
+  let count = 0;
+  const provider: AiProvider = {
+    name: simulator.name,
+    model: simulator.model,
+    isSimulation: simulator.isSimulation,
+    async generate(request) {
+      count += 1;
+      return simulator.generate(request);
+    },
+  };
+  return { provider, calls: () => count };
+}
+
+/**
+ * No report written by a human: exact code and message, ONE run `blocked` with
+ * 0 token, replayed as `guardrails ok → decision blocked`, and no write in
+ * Sarah's name (AI activity, stage).
+ */
+async function expectReportMissingBlocked(
+  contactId: string,
+  result: { data: unknown; error: { code: string; message: string } | null },
+): Promise<void> {
+  expect(result.data).toBeNull();
+  expect(result.error?.code).toBe("appointment_report_missing");
+  expect(result.error?.message).toBe(AGENT_ERROR_MESSAGES.appointment_report_missing);
+
+  const runs = await readRuns(contactId);
+  expect(runs).toHaveLength(1);
+  expect(runs[0]).toMatchObject({
+    agent: "sarah",
+    status: "blocked",
+    error: "appointment_report_missing",
+    decision: SARAH_DECISION_TEXTS.report_missing,
+    input_tokens: 0,
+    is_simulation: true,
+  });
+
+  const steps = await readSteps(runs[0]!.id);
+  expect(steps.map((step) => [step.phase, step.status])).toEqual([
+    ["guardrails", "ok"],
+    ["decision", "blocked"],
+  ]);
+  expect(steps[1]!.label).toBe(SARAH_DECISION_TEXTS.report_missing);
+  expect(steps[1]!.detail).toMatchObject({
+    error_code: "appointment_report_missing",
+    run_status: "blocked",
+    stage_changed: false,
+  });
+
+  expect(await readAgentActivities(contactId)).toHaveLength(0);
 }
 
 beforeAll(async () => {
@@ -390,35 +460,109 @@ describe("Sarah — « mandat_signé » est inatteignable", () => {
 });
 
 describe("Sarah — compte-rendu manquant", () => {
-  it("ne déduit rien et ouvre une tâche de saisie pour le conseiller", async () => {
+  it("run « bloqué », 0 token, aucun appel IA, aucune écriture de Sarah, une tâche de saisie pour le conseiller", async () => {
     const contactId = await createContact("sans-compte-rendu");
     const appointmentId = await createAppointment(contactId, { report: null });
     const before = await readContact(contactId);
+    const { provider, calls } = countingProvider();
 
-    const result = await runSarahFollowThrough(agentA, appointmentId);
+    const result = await runSarahFollowThrough(agentA, appointmentId, { provider });
 
-    expect(result.data).toBeNull();
-    expect(result.error?.code).toBe("appointment_report_missing");
-    expect(result.error?.message).toContain("compte-rendu");
+    await expectReportMissingBlocked(contactId, result);
+    expect(calls()).toBe(0);
 
     const after = await readContact(contactId);
     expect(after.stage).toBe(before.stage);
     expect(after.updated_at).toBe(before.updated_at);
 
     const tasks = await readTasks(contactId);
-    expect(tasks.some((task) => task.type === "appointment_report_missing")).toBe(true);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({
+      type: "appointment_report_missing",
+      status: "open",
+      created_by_agent: "sarah",
+    });
 
-    const runs = await readRuns(contactId);
-    expect(runs[0]).toMatchObject({ status: "failed", error: "appointment_report_missing" });
+    // The report and its evidence are untouched.
+    const appointment = await env.admin
+      .from("appointments")
+      .select("report_notes, report_recorded_by, status")
+      .eq("id", appointmentId)
+      .single();
+    expect(appointment.data).toMatchObject({ report_notes: null, report_recorded_by: null, status: "done" });
   });
 
-  it("refuse un rendez-vous qui n'a pas encore eu lieu", async () => {
+  it("refuse un rendez-vous qui n'a pas encore eu lieu (run « bloqué »)", async () => {
     const contactId = await createContact("non-realise");
     const appointmentId = await createAppointment(contactId, { report: null, status: "confirmed" });
 
     const result = await runSarahFollowThrough(agentA, appointmentId);
-    expect(result.error?.code).toBe("appointment_report_missing");
+
+    await expectReportMissingBlocked(contactId, result);
     expect((await readContact(contactId)).stage).toBe("rdv_planifie");
+  });
+
+  it("un refus répété n'empile pas les tâches : la tâche ouverte est réutilisée", async () => {
+    const contactId = await createContact("sans-compte-rendu-bis");
+    const appointmentId = await createAppointment(contactId, { report: null });
+    await runSarahFollowThrough(agentA, appointmentId);
+    await runSarahFollowThrough(agentA, appointmentId);
+
+    expect(await readTasks(contactId)).toHaveLength(1);
+    expect((await readRuns(contactId)).map((run) => run.status)).toEqual(["blocked", "blocked"]);
+  });
+
+  it("agent_activity_summary et le tableau de bord : +1 bloqué, 0 erreur de plus", async () => {
+    const dayStart = parisDayStart(new Date()).toISOString();
+    const readSarah = async () => {
+      const { data, error } = await agentA.rpc("agent_activity_summary", {
+        target_agency: env.agencyA.agencyId,
+        day_start: dayStart,
+        window_start: dayStart,
+      });
+      if (error) throw new Error(`agent_activity_summary: ${error.message}`);
+      const row = (data ?? []).find((entry) => entry.agent_name === "sarah");
+      return { failed: Number(row?.today_failed ?? 0), blocked: Number(row?.today_blocked ?? 0) };
+    };
+    const readDashboard = async () => {
+      const summary = await buildDashboardSummary(agentA);
+      if (summary.error || summary.data.agents.runsToday.status !== "ok") throw new Error("dashboard unavailable");
+      return summary.data.agents.runsToday.value;
+    };
+
+    const beforeSummary = await readSarah();
+    const beforeDashboard = await readDashboard();
+
+    const contactId = await createContact("indicateurs-compte-rendu");
+    const appointmentId = await createAppointment(contactId, { report: null });
+    expect((await runSarahFollowThrough(agentA, appointmentId)).error?.code).toBe("appointment_report_missing");
+
+    const afterSummary = await readSarah();
+    expect(afterSummary.failed).toBe(beforeSummary.failed);
+    expect(afterSummary.blocked).toBe(beforeSummary.blocked + 1);
+
+    const afterDashboard = await readDashboard();
+    expect(afterDashboard.failed).toBe(beforeDashboard.failed);
+    expect(afterDashboard.blocked).toBe(beforeDashboard.blocked + 1);
+
+    const agents = await getAgentsDashboard(agentA);
+    expect(agents.error).toBeNull();
+    const sarah = agents.data!.agents.find((agent) => agent.agent === "sarah")!;
+    expect(sarah.lastErrors[0]).toMatchObject({
+      code: "appointment_report_missing",
+      status: "blocked",
+      statusLabel: "Bloquée",
+    });
+
+    // The contact's history shows the blocked run with its decision, and the task.
+    const timeline = await buildContactTimeline(agentA, contactId);
+    expect(timeline.error).toBeNull();
+    const entries = timeline.data ?? [];
+    const run = entries.find((entry) => entry.kind === "ai_run");
+    expect(run).toMatchObject({ status: "blocked" });
+    expect(run!.title).toContain(SARAH_DECISION_TEXTS.report_missing);
+    expect(entries.some((entry) => entry.kind === "task")).toBe(true);
+    expect(entries.some((entry) => entry.kind === "activity" && entry.actor.agent === "sarah")).toBe(false);
   });
 
   it("un compte-rendu vide de sens n'invente aucune action", async () => {

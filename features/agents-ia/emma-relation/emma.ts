@@ -9,8 +9,11 @@
  * the CODE, before or after the AI call, never by the AI:
  *
  *   session + agency (server-side)  →  guard rails (kill switch, daily volume,
- *   HUMAN TAKEOVER, contact ownership)  →  run opened in `ai_agent_runs`  →
- *   eligibility (stage, no draft already waiting)  →  channel + CURRENT CONSENT
+ *   HUMAN TAKEOVER, contact ownership)  →  eligibility (stage — signed mandate
+ *   or lost file —, no draft already waiting, no follow-up already prepared
+ *   today, a VALID CONSENT and usable contact details — a refusal is journaled
+ *   as a `blocked` run, not an error)  →  run opened in `ai_agent_runs`  →
+ *   eligibility re-checked (race)  →  channel + CURRENT CONSENT
  *   checked server-side  →  idempotency key computed  →  AI call (prospect text
  *   isolated as untrusted data)  →  zod validation (limited retry)  →  draft
  *   written in `pending_validation`, flagged simulation  →  CRM history  →  run
@@ -33,9 +36,9 @@ import { resolveAgentContext } from "@/lib/agents/context";
 import { databaseErrorCode, failFromDatabase, failFromUnexpected, failWith } from "@/lib/agents/errors";
 import { logAgentActivity, openHumanTask } from "@/lib/agents/journal";
 import { AGENT_STEP_LABELS, AGENT_TASK_TEXTS, type AgentErrorCode } from "@/lib/agents/messages";
-import { finishRun, startGuardedRun } from "@/lib/agents/runner";
+import { finishRun, startGuardedRun, type RunRefusal } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
-import type { AgentContext, Tables, TypedClient } from "@/lib/agents/types";
+import type { AgentContact, AgentContext, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
 import type { AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result } from "@/lib/utils/result";
@@ -48,8 +51,10 @@ import {
   checkFollowUpEligibility,
   chooseChannel,
   composeMessageBody,
+  duplicateFollowUpCode,
   EMMA_DECISION_TEXTS,
   EMMA_STEP_LABELS,
+  emmaRefusalDecision,
   followUpIdempotencyKey,
   type EmmaDecisionReason,
   type MessageChannel,
@@ -107,6 +112,133 @@ export type RunEmmaOptions = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+type OutboundStatus = Database["public"]["Enums"]["outbound_message_status"];
+
+/** Status of today's follow-up (by idempotency key), or `null` if none / unreadable. */
+async function readFollowUpStatusByKey(
+  client: TypedClient,
+  context: AgentContext,
+  idempotencyKey: string,
+): Promise<OutboundStatus | null> {
+  const { data, error } = await client
+    .from("outbound_messages")
+    .select("status")
+    .eq("agency_id", context.agencyId)
+    .eq("idempotency_key", idempotencyKey)
+    .maybeSingle();
+  if (error) {
+    console.error(`[agents] readFollowUpStatusByKey failed (${error.code ?? "?"}): ${error.message}`);
+    return null;
+  }
+  return data?.status ?? null;
+}
+
+/**
+ * Emma's eligibility, decided before the run is opened (see runner.ts): stage,
+ * a draft already waiting, a follow-up already prepared today. A refusal is
+ * journaled as a `blocked` run.
+ */
+async function checkEmmaPrecheck(
+  client: TypedClient,
+  context: AgentContext,
+  contact: AgentContact,
+  now: Date,
+): Promise<Result<RunRefusal | null>> {
+  const pendingQuery = await client
+    .from("outbound_messages")
+    .select("id")
+    .eq("agency_id", context.agencyId)
+    .eq("contact_id", contact.id)
+    .eq("created_by_agent", EMMA_AGENT)
+    .eq("status", "pending_validation")
+    .limit(1);
+  if (pendingQuery.error) {
+    return failFromDatabase<RunRefusal | null>("runEmmaFollowUp.precheck.pending", pendingQuery.error);
+  }
+
+  const todayQuery = await client
+    .from("outbound_messages")
+    .select("status")
+    .eq("agency_id", context.agencyId)
+    .eq("idempotency_key", followUpIdempotencyKey(contact.id, now))
+    .maybeSingle();
+  if (todayQuery.error) {
+    return failFromDatabase<RunRefusal | null>("runEmmaFollowUp.precheck.today", todayQuery.error);
+  }
+
+  const hasPendingFollowUp = (pendingQuery.data ?? []).length > 0;
+  const hasFollowUpPreparedToday =
+    todayQuery.data !== null && todayQuery.data.status !== "pending_validation";
+
+  const eligibility = checkFollowUpEligibility({
+    stage: contact.stage,
+    hasPendingFollowUp,
+    hasFollowUpPreparedToday,
+  });
+  if (!eligibility.eligible) {
+    const decision = emmaRefusalDecision(eligibility.code);
+    return ok({
+      code: eligibility.code,
+      decision: EMMA_DECISION_TEXTS[decision],
+      detail: {
+        decision,
+        contact_stage: contact.stage,
+        pending_follow_up: hasPendingFollowUp,
+        prepared_today: hasFollowUpPreparedToday,
+        message_created: false,
+      },
+    });
+  }
+
+  // CURRENT consent of the channel, checked server-side before anything else
+  // happens. No valid consent (or no usable contact details) is the rule doing
+  // its job: journaled `blocked`, and a task is opened for a conseiller.
+  const consentsQuery = await client
+    .from("current_consents")
+    .select("channel, status")
+    .eq("agency_id", context.agencyId)
+    .eq("contact_id", contact.id);
+  if (consentsQuery.error) {
+    return failFromDatabase<RunRefusal | null>("runEmmaFollowUp.precheck.consents", consentsQuery.error);
+  }
+  const consents: Partial<Record<ConsentChannel, ConsentStatus>> = {};
+  for (const row of consentsQuery.data ?? []) {
+    if (row.channel && row.status) consents[row.channel] = row.status;
+  }
+  const channelChoice = chooseChannel({
+    hasEmail: Boolean(contact.email),
+    hasPhone: Boolean(contact.phone),
+    consents,
+  });
+  if (channelChoice.channel !== null) return ok(null);
+
+  const consentMissing = channelChoice.code === "consent_not_granted";
+  const decision: EmmaDecisionReason = consentMissing ? "consent_missing" : "channel_missing";
+  const taskType = consentMissing ? "follow_up_consent_missing" : "follow_up_channel_missing";
+  return ok({
+    code: consentMissing ? "consent_not_granted" : "follow_up_no_reachable_channel",
+    decision: EMMA_DECISION_TEXTS[decision],
+    detail: {
+      decision,
+      contact_stage: contact.stage,
+      consent_checked: true,
+      task_type: taskType,
+      message_created: false,
+    },
+    afterBlock: async () => {
+      const task = await openHumanTask(client, context, {
+        contactId: contact.id,
+        type: taskType,
+        title: AGENT_TASK_TEXTS[taskType].title,
+        details: AGENT_TASK_TEXTS[taskType].details,
+        agent: EMMA_AGENT,
+        assignedUserId: contact.assigned_user_id,
+      });
+      if (task.error) console.error(`[agents] Emma afterBlock task failed (${task.error.code})`);
+    },
+  });
+}
+
 export async function runEmmaFollowUp(
   client: TypedClient,
   contactId: string,
@@ -136,17 +268,20 @@ export async function runEmmaFollowUp(
       contact_id: contactId,
     };
 
+    const now = options.now ?? new Date();
+
     const started = await startGuardedRun(client, context, {
       agent: EMMA_AGENT,
       contactId,
       input: runInput,
       provider,
       now: options.now,
+      // Eligibility is decided BEFORE the run opens, so a refusal is journaled
+      // as `blocked` (a rule doing its job), never as an error.
+      precheck: (subject) => checkEmmaPrecheck(client, context, subject, now),
     });
     if (started.error) return { data: null, error: started.error };
     const { runId, contact, agency, steps } = started.data;
-
-    const now = options.now ?? new Date();
 
     /** Closes the run without any business write, optionally opening a task. */
     const abort = async (input: {
@@ -284,14 +419,15 @@ export async function runEmmaFollowUp(
       hasPendingFollowUp,
     });
     if (!eligibility.eligible) {
-      return abort({
-        code: eligibility.code,
-        decision:
-          eligibility.code === "follow_up_already_drafted" ? "already_drafted" : "not_eligible",
-      });
+      // Only reachable if the state changed since the precheck (concurrent
+      // run or edit): the run is already open, so it can only end `failed`.
+      return abort({ code: eligibility.code, decision: emmaRefusalDecision(eligibility.code) });
     }
 
     // --- channel and CURRENT consent, checked server-side ---------------------
+    // Already checked by the precheck (refusal journaled `blocked`). Re-read
+    // here because the channel used for the draft must come from THIS read:
+    // a consent withdrawn in between ends the run (`failed`, race only).
     const consentsQuery = await client
       .from("current_consents")
       .select("channel, status")
@@ -331,7 +467,7 @@ export async function runEmmaFollowUp(
             task: { type: "follow_up_consent_missing", activityType: "ai_consent_missing" },
           })
         : abort({
-            code: "appointment_no_reachable_channel",
+            code: "follow_up_no_reachable_channel",
             decision: "channel_missing",
             task: { type: "follow_up_channel_missing", activityType: "ai_contact_details_missing" },
           });
@@ -484,27 +620,30 @@ export async function runEmmaFollowUp(
 
     if (messageInsert.error) {
       // 23505 = the same follow-up already exists for this contact today: the
-      // database refused the double draft. Nothing was written twice.
-      const code: AgentErrorCode =
-        databaseErrorCode(messageInsert.error) === "duplicate"
-          ? "follow_up_already_drafted"
-          : databaseErrorCode(messageInsert.error);
+      // database refused the double draft. Nothing was written twice. Which
+      // message applies depends on what became of the existing one.
+      const isDuplicate = databaseErrorCode(messageInsert.error) === "duplicate";
+      const code: AgentErrorCode = isDuplicate
+        ? duplicateFollowUpCode(await readFollowUpStatusByKey(client, context, idempotencyKey))
+        : databaseErrorCode(messageInsert.error);
+      const duplicateDecision =
+        code === "follow_up_already_drafted"
+          ? EMMA_DECISION_TEXTS.already_drafted
+          : EMMA_DECISION_TEXTS.already_prepared_today;
       await steps.step({
         phase: "persisted",
-        label:
-          code === "follow_up_already_drafted"
-            ? "Double relance refusée par la base : aucun second brouillon."
-            : "Écriture du brouillon refusée par la base : aucune action.",
+        label: isDuplicate
+          ? "Double relance refusée par la base : aucun second brouillon."
+          : "Écriture du brouillon refusée par la base : aucune action.",
         status: "failed",
         detail: { error_code: code, message_created: false },
       });
       await finishRun(client, runId, {
         status: "failed",
         error: code,
-        decision:
-          code === "follow_up_already_drafted"
-            ? EMMA_DECISION_TEXTS.already_drafted
-            : "Écriture du brouillon refusée par la base : aucune action.",
+        decision: isDuplicate
+          ? duplicateDecision
+          : "Écriture du brouillon refusée par la base : aucune action.",
         usage: generation.usage,
       });
       console.error(

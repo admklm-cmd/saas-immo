@@ -32,7 +32,11 @@ export const AGENT_ERROR_CODES = [
   "lead_incomplete",
   // --- follow-up rules (Emma) ---
   "follow_up_stage_not_eligible",
+  "follow_up_mandate_signed",
+  "follow_up_contact_lost",
   "follow_up_already_drafted",
+  "follow_up_already_prepared_today",
+  "follow_up_no_reachable_channel",
   // --- appointment rules (Louis) ---
   "appointment_stage_not_ready",
   "appointment_already_scheduled",
@@ -99,8 +103,17 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
     "Informations insuffisantes pour créer une fiche contact : rien n'a été inventé, une tâche a été créée pour un conseiller.",
   follow_up_stage_not_eligible:
     "Ce contact n'est pas éligible à une relance automatique : son dossier est clos ou son mandat est déjà signé.",
+  follow_up_mandate_signed:
+    "Le mandat de ce contact est signé : aucune relance n'est préparée.",
+  follow_up_contact_lost:
+    "Ce dossier est classé « Perdu » : aucune relance n'est préparée.",
+  follow_up_no_reachable_channel:
+    "Aucune coordonnée exploitable pour ce contact (adresse email ou numéro manquant) : aucun brouillon préparé, une tâche a été créée pour un conseiller.",
   follow_up_already_drafted:
     "Une relance est déjà en attente de validation pour ce contact : aucun second brouillon n'a été créé.",
+  // The follow-up of this Paris day was already prepared and then validated,
+  // sent (simulation) or refused: nothing is waiting, but one per day is the rule.
+  follow_up_already_prepared_today: "Une relance a déjà été préparée aujourd'hui pour ce contact.",
   appointment_stage_not_ready:
     "Ce contact n'est pas encore prêt pour un rendez-vous d'estimation : il doit d'abord être qualifié par un conseiller ou par Hugo.",
   appointment_already_scheduled:
@@ -225,6 +238,7 @@ export const AGENT_STEP_LABELS = {
   guardrails_ok:
     "Garde-fous vérifiés : appartenance du contact, coupe-circuit, volume quotidien, reprise humaine.",
   context_loaded: "Dossier CRM chargé.",
+  precheck_failed: "Lecture du dossier impossible avant vérification des règles : aucune action.",
   prompt_built:
     "Prompt construit : faits CRM d'un côté, texte du prospect isolé comme donnée non fiable.",
   ai_call_ok: "Réponse reçue du fournisseur IA.",

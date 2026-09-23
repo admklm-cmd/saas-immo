@@ -110,7 +110,7 @@ test("coupe-circuit activé : message clair et aucune action", async ({ page }) 
 
   await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
 
-  const error = page.getByTestId("agent-error");
+  const error = page.getByTestId("agent-blocked");
   await expect(error).toBeVisible({ timeout: COLD_START });
   await expect(error).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
   await expect(page.getByTestId("agent-result")).toHaveCount(0);

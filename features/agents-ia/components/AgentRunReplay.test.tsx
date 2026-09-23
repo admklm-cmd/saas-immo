@@ -176,7 +176,9 @@ describe("AgentRunReplay", () => {
     expect(rows[0]?.getAttribute("data-status")).toBe("blocked");
     expect(screen.getByText("Arrêt : le coupe-circuit de l'agence est actif.")).toBeDefined();
     expect(screen.getByText("Bloqué")).toBeDefined();
-    expect(screen.getByText(TEXTS.stopped)).toBeDefined();
+    // A guard rail is not an error, and the replay says so.
+    expect(screen.getByText(APP_TEXTS.guardRail.stopped)).toBeDefined();
+    expect(screen.queryByText(TEXTS.stopped)).toBeNull();
     // Total and step duration are the same here: both show the measured value.
     expect(screen.getAllByText("12 ms")).toHaveLength(2);
   });

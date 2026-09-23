@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { APP_TEXTS, MEMBERSHIP_ROLE_LABELS } from "@/components/texts";
+import { APP_TEXTS, MEMBERSHIP_ROLE_LABELS, RUN_OUTCOME_LABELS } from "@/components/texts";
 import {
   APPOINTMENT_STATUS_LABELS,
   CONSENT_CHANNEL_LABELS,
@@ -19,7 +19,7 @@ import { signIn } from "./helpers/sign-in";
  * The DEMONSTRATION JOURNEY, end to end, through the interface only:
  *
  *   public estimation form (prospect, ticks 2 of 4 consents)
- *     → Léa creates the contact file              (/agents-ia/leads-entrants)
+ *     → Léa creates the contact file — she drafts NO message (/agents-ia/leads-entrants)
  *     → Hugo qualifies it                          (contact file)
  *     → Louis proposes a slot + drafts the FIRST message (contact file)
  *     → a human validates it, then a SIMULATED send (/agents-ia/a-valider)
@@ -28,14 +28,17 @@ import { signIn } from "./helpers/sign-in";
  *     → a human confirms the slot, then closes it with a report
  *     → Sarah follows it up — she never declares a mandate (/agents-ia/suivi-rendez-vous)
  *     → a HUMAN moves the file to « Mandat signé », explicit confirmation (/pipeline)
- *     → the dashboard counts it, the contact history tells the whole story.
+ *     → the dashboard counts it, the contact history tells the whole story,
+ *       including WHO validated each message and WHEN (as stored server-side)
+ *     → Emma is then refused by a guard rail (signed mandate): shown as a block,
+ *       not as an error, and the dashboard error count does not move.
  *
  * Why Louis's message is the first one validated (and not a message right after
  * Léa): Léa drafts nothing — a lead is not a consent and she never writes to a
  * prospect. The first outbound draft of the journey is therefore Louis's slot
  * proposal. Emma comes after it, once: her idempotency key is one draft per
  * contact and per Paris day, so a second Emma run the same day would be (rightly)
- * refused by the database.
+ * refused (« déjà préparée aujourd'hui »).
  *
  * Replayable: every run creates its OWN prospect (unique name, unique
  * `@example.test` email, unique number in the Arcep fiction block), so nothing
@@ -56,6 +59,7 @@ const QUEUE = APP_TEXTS.validationQueue;
 const FOLLOW = APP_TEXTS.followThrough;
 const STAGE_CHANGE = APP_TEXTS.pipeline.stageChange;
 const DASHBOARD = APP_TEXTS.dashboard;
+const LEADS = APP_TEXTS.leadsInbox;
 
 /** Letters only (the name is displayed and matched), unique per run. */
 const RUN_TAG = Date.now()
@@ -65,6 +69,8 @@ const RUN_TAG = Date.now()
 const FIRST_NAME = "Inès";
 const LAST_NAME = `Castellan-${RUN_TAG[0]!.toUpperCase()}${RUN_TAG.slice(1)}`;
 const FULL_NAME = `${FIRST_NAME} ${LAST_NAME}`;
+/** What the lead card may show: first name + initial of the last name, nothing more. */
+const LEAD_DISPLAY_NAME = `${FIRST_NAME} ${LAST_NAME[0]!.toUpperCase()}.`;
 const EMAIL = `demo.parcours.${Date.now()}@example.test`;
 // Arcep fiction block only (fixtures/test-phone-numbers.test.ts scans e2e/).
 const PHONE = fictionMobile(`7${String(Date.now() % 1000).padStart(3, "0")}`);
@@ -120,6 +126,21 @@ async function readSignedCount(page: Page): Promise<number> {
   const value = Number.parseInt(text, 10);
   expect(Number.isNaN(value), `figure « ${text} »`).toBe(false);
   return value;
+}
+
+/** Today's execution counts on the dashboard: technical errors and guard-rail blocks. */
+async function readTodayRunCounts(page: Page): Promise<{ failed: number; blocked: number }> {
+  await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { level: 1, name: DASHBOARD.title })).toBeVisible({ timeout: COLD_START });
+  const today = page.getByTestId("dashboard-runs-today");
+  await expect(today).toHaveAttribute("data-status", "ok");
+  const read = async (key: "failed" | "blocked") => {
+    const text = (await today.getByTestId(`dashboard-runs-today-${key}`).locator("dd").innerText()).trim();
+    const value = Number.parseInt(text, 10);
+    expect(Number.isNaN(value), `${key} « ${text} »`).toBe(false);
+    return value;
+  };
+  return { failed: await read("failed"), blocked: await read("blocked") };
 }
 
 /** Validates the draft of the journey's contact, then triggers the simulated send. */
@@ -203,6 +224,12 @@ test("2. leads entrants : Léa traite la demande et crée la fiche", async ({ pa
   const lead = page.getByTestId("inbound-lead").filter({ hasText: `Dossier de démonstration ${RUN_TAG}.` });
   await expect(lead).toHaveCount(1, { timeout: COLD_START });
   await expect(lead).toHaveAttribute("data-status", "pending");
+  // Named just enough to tell homonyms apart: first name + initial, and the commune.
+  await expect(lead.getByTestId("lead-name")).toHaveText(LEAD_DISPLAY_NAME);
+  await expect(lead.getByTestId("lead-name")).not.toContainText(LAST_NAME);
+  await expect(lead.getByTestId("lead-city")).toHaveText("La Ciotat");
+  // Not processed yet: no record to open.
+  await expect(lead.getByTestId("lead-contact-link")).toHaveCount(0);
 
   await lead.getByTestId("run-lea").click();
   await expect(lead.getByTestId("lead-result")).toContainText(APP_TEXTS.leadsInbox.successTitle, {
@@ -210,14 +237,22 @@ test("2. leads entrants : Léa traite la demande et crée la fiche", async ({ pa
   });
   await expect(lead.getByTestId("lead-replay")).toBeVisible();
 
-  const link = lead.getByRole("link", { name: APP_TEXTS.leadsInbox.contactLink });
+  const link = lead.getByRole("link", { name: LEADS.contactLink });
   await expect(link).toBeVisible({ timeout: COLD_START });
   const href = await link.getAttribute("href");
   const match = href?.match(/^\/contacts\/([0-9a-f-]{36})$/);
   expect(match, `lien de fiche : ${href}`).not.toBeNull();
   journey.contactId = match![1]!;
 
-  await link.click();
+  // Once processed, the card itself (re-read from the server) leads to that very record.
+  await page.reload();
+  const processed = page.getByTestId("inbound-lead").filter({ hasText: `Dossier de démonstration ${RUN_TAG}.` });
+  await expect(processed).not.toHaveAttribute("data-status", "pending", { timeout: COLD_START });
+  await expect(processed.getByTestId("lead-name")).toHaveText(LEAD_DISPLAY_NAME);
+  const processedLink = processed.getByRole("link", { name: LEADS.contactLink });
+  await expect(processedLink).toHaveAttribute("href", `/contacts/${journey.contactId}`);
+
+  await processedLink.click();
   await expect(page.getByRole("heading", { level: 1, name: FULL_NAME })).toBeVisible({ timeout: COLD_START });
   // The consents ticked on the form are on the file — and only those.
   const consents = page.getByTestId("contact-consents");
@@ -331,7 +366,7 @@ test("7. pipeline : un humain passe le dossier en « Mandat signé », case de c
 });
 
 test("8. tableau de bord et historique : le mandat est compté, chaque étape est tracée", async ({ page }) => {
-  await signIn(page, "agentA");
+  const advisor = await signIn(page, "agentA");
 
   const signedAfter = await readSignedCount(page);
   expect(journey.signedBefore).not.toBeNull();
@@ -364,6 +399,16 @@ test("8. tableau de bord et historique : le mandat est compté, chaque étape es
       .first();
     await expect(message, `message de ${agent}`).toBeVisible();
     await expect(message.getByText(APP_TEXTS.states.simulation, { exact: true })).toBeVisible();
+    // Who validated it and when: the signed-in conseiller, as stamped by the server.
+    const review = message.getByTestId("timeline-review");
+    await expect(review).toHaveAttribute("data-outcome", "approved");
+    await expect(review).toHaveText(
+      new RegExp(
+        `^Validé par ${escapeForRegExp(advisor.email)} \\(${MEMBERSHIP_ROLE_LABELS.agent}\\) le \\d{1,2} \\S+ \\d{4} à \\d{2}:\\d{2}$`,
+      ),
+    );
+    await expect(review.locator("time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
+    await expect(review).not.toContainText(APP_TEXTS.contact.reviewAuthorUnknown);
   }
   // The appointment, held and closed by a human.
   await expect(
@@ -384,14 +429,39 @@ test("8. tableau de bord et historique : le mandat est compté, chaque étape es
   await expect(mandate.getByText(APP_TEXTS.states.simulation, { exact: true })).toHaveCount(0);
 });
 
-test("cas d'erreur : une fois le mandat signé, Emma refuse toute relance et le dit", async ({ page }) => {
+test("garde-fou : une fois le mandat signé, Emma est bloquée — un blocage, pas une erreur", async ({ page }) => {
   await signIn(page, "agentA");
+  const before = await readTodayRunCounts(page);
   const panel = await openContactFile(page);
 
   await panel.getByRole("button", { name: AGENTS.runEmma }).click();
-  const error = panel.getByTestId("agent-error");
-  await expect(error).toContainText(AGENT_ERROR_MESSAGES.follow_up_stage_not_eligible, { timeout: COLD_START });
+  const notice = panel.getByTestId("agent-blocked");
+  await expect(notice).toBeVisible({ timeout: COLD_START });
+  await expect(notice).toContainText(APP_TEXTS.guardRail.title);
+  // The RIGHT reason: the mandate is signed — not a vague « non éligible ».
+  await expect(notice).toContainText(AGENT_ERROR_MESSAGES.follow_up_mandate_signed);
+  await expect(notice).not.toContainText(AGENT_ERROR_MESSAGES.follow_up_stage_not_eligible);
+  // Informative, never an error.
+  await expect(notice).toHaveAttribute("role", "status");
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+  await expect(panel.getByTestId("agent-error")).toHaveCount(0);
   await expect(panel.getByTestId("agent-result")).toHaveCount(0);
+
+  // The history names it as a guard-rail block.
+  await page.reload();
+  const emmaRun = page
+    .getByTestId("contact-timeline")
+    .getByRole("listitem")
+    .filter({ has: page.getByText(AGENT_LABELS.emma, { exact: true }) })
+    .filter({ hasText: RUN_OUTCOME_LABELS.blocked })
+    .first();
+  await expect(emmaRun).toBeVisible({ timeout: COLD_START });
+  await expect(emmaRun).not.toContainText(RUN_OUTCOME_LABELS.failed);
+
+  // Counted as a block, never as an error.
+  const after = await readTodayRunCounts(page);
+  expect(after.failed).toBe(before.failed);
+  expect(after.blocked).toBe(before.blocked + 1);
 
   // No draft reaches the validation queue.
   await page.goto("/agents-ia/a-valider");

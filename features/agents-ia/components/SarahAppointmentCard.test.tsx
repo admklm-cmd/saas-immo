@@ -200,7 +200,7 @@ describe("SarahAppointmentCard", () => {
     expect(screen.getByText(TEXTS.reportMissing)).toBeDefined();
   });
 
-  it("shows the server refusal and keeps the action available", async () => {
+  it("shows a kill-switch refusal as a guard-rail block and keeps the action available", async () => {
     followThroughAppointment.mockResolvedValue({
       data: null,
       error: { code: "ai_paused", message: AGENT_ERROR_MESSAGES.ai_paused },
@@ -210,7 +210,11 @@ describe("SarahAppointmentCard", () => {
     await act(async () => fireEvent.click(screen.getByTestId("run-sarah")));
 
     expect(followThroughAppointment).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
-    expect(screen.getByTestId("sarah-error").textContent).toContain(AGENT_ERROR_MESSAGES.ai_paused);
+    const notice = screen.getByTestId("sarah-blocked");
+    expect(notice.textContent).toContain(APP_TEXTS.guardRail.title);
+    expect(notice.textContent).toContain(AGENT_ERROR_MESSAGES.ai_paused);
+    expect(screen.queryByTestId("sarah-error")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByTestId("run-sarah")).toBeDefined();
     expect(refresh).not.toHaveBeenCalled();
   });

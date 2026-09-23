@@ -10,9 +10,10 @@
  *
  *   session + agency (server-side)  →  the appointment must belong to the
  *   agency  →  guard rails on ITS contact (kill switch, daily volume, human
- *   takeover)  →  run opened  →  eligibility (the appointment is done AND a
- *   human wrote its report)  →  AI call, report isolated as untrusted data  →
- *   zod validation (limited retry)  →  STAGE CHOSEN BY THE CODE from a
+ *   takeover)  →  eligibility (the appointment is done AND a human wrote its
+ *   report — otherwise a `blocked` run and a task for the conseiller, decided
+ *   before the run opens)  →  run opened  →  AI call, report isolated as
+ *   untrusted data  →  zod validation (limited retry)  →  STAGE CHOSEN BY THE CODE from a
  *   whitelist  →  follow-up tasks  →  CRM history  →  run closed.
  *
  * What Sarah deliberately does NOT do:
@@ -33,9 +34,9 @@ import { resolveAgentContext } from "@/lib/agents/context";
 import { failFromDatabase, failFromUnexpected, failWith } from "@/lib/agents/errors";
 import { logAgentActivity, openHumanTask, type HumanTaskResult } from "@/lib/agents/journal";
 import { AGENT_STEP_LABELS, AGENT_TASK_TEXTS, listOrNone, type AgentErrorCode } from "@/lib/agents/messages";
-import { finishRun, startGuardedRun } from "@/lib/agents/runner";
+import { finishRun, startGuardedRun, type RunRefusal } from "@/lib/agents/runner";
 import type { RecordedRunStep } from "@/lib/agents/steps";
-import type { AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
+import type { AgentContact, AgentContext, PipelineStage, Tables, TypedClient } from "@/lib/agents/types";
 import { getAiProvider } from "@/lib/claude/client";
 import type { AiProvider, AiScenario, AiUsage } from "@/lib/claude/provider";
 import { ok, type Result, type ResultError } from "@/lib/utils/result";
@@ -104,6 +105,47 @@ export type RunSarahOptions = {
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Sarah's eligibility, decided before the run is opened (see runner.ts): the
+ * appointment must be done AND carry a report written by a human. Otherwise the
+ * attempt is journaled `blocked` — no AI call, no quota consumed, no write by
+ * the agent — and a task asks the conseiller who held the appointment to write
+ * the report.
+ */
+function checkSarahPrecheck(
+  client: TypedClient,
+  context: AgentContext,
+  appointment: AppointmentRow,
+  contact: AgentContact,
+): RunRefusal | null {
+  if (appointment.status === "done" && appointment.report_notes !== null) return null;
+
+  const taskType = "appointment_report_missing" as const;
+  return {
+    code: "appointment_report_missing",
+    decision: SARAH_DECISION_TEXTS.report_missing,
+    detail: {
+      decision: "report_missing",
+      appointment_status: appointment.status,
+      // A flag only: the report itself is personal data.
+      has_report: appointment.report_notes !== null,
+      task_type: taskType,
+      stage_changed: false,
+    },
+    afterBlock: async () => {
+      const task = await openHumanTask(client, context, {
+        contactId: contact.id,
+        type: taskType,
+        title: AGENT_TASK_TEXTS[taskType].title,
+        details: AGENT_TASK_TEXTS[taskType].details,
+        agent: SARAH_AGENT,
+        assignedUserId: appointment.assigned_user_id,
+      });
+      if (task.error) console.error(`[agents] Sarah afterBlock task failed (${task.error.code})`);
+    },
+  };
+}
+
 export async function runSarahFollowThrough(
   client: TypedClient,
   appointmentId: string,
@@ -154,6 +196,10 @@ export async function runSarahFollowThrough(
       input: runInput,
       provider,
       now: options.now,
+      // Eligibility is decided BEFORE the run opens, on the appointment just
+      // read: no report written by a human is a rule doing its job, journaled
+      // `blocked` (never an error), with a task for the conseiller.
+      precheck: async (subject) => ok(checkSarahPrecheck(client, context, appointment, subject)),
     });
     if (started.error) return { data: null, error: started.error };
     const { runId, contact, steps } = started.data;
@@ -181,55 +227,25 @@ export async function runSarahFollowThrough(
       return { data: null, error };
     };
 
-    /** Closes the run without any business write, optionally opening a task. */
+    /**
+     * Closes the run without any business write. Only reachable if the report
+     * check below fails although the precheck passed on the same row: a
+     * defence-in-depth path, journaled `failed` (no task, no activity).
+     */
     const abort = async (input: {
       code: AgentErrorCode;
       decision: SarahDecisionReason;
-      task?: { type: keyof typeof AGENT_TASK_TEXTS; activityType: string; details?: string };
-      usage?: AiUsage;
     }): Promise<Result<SarahRunResult>> => {
       await steps.step({
         phase: "decision",
         label: SARAH_DECISION_TEXTS[input.decision],
         status: "failed",
-        detail: {
-          decision: input.decision,
-          error_code: input.code,
-          task_type: input.task?.type ?? null,
-          stage_changed: false,
-        },
+        detail: { decision: input.decision, error_code: input.code, stage_changed: false },
       });
-      if (input.task) {
-        const task = await openHumanTask(client, context, {
-          contactId: contact.id,
-          type: input.task.type,
-          title: AGENT_TASK_TEXTS[input.task.type].title,
-          details: input.task.details ?? AGENT_TASK_TEXTS[input.task.type].details,
-          agent: SARAH_AGENT,
-          assignedUserId: appointment.assigned_user_id,
-        });
-        if (task.error) return stopAfterPersistenceFailure(task.error, input.usage);
-
-        const activity = await logAgentActivity(client, context, {
-          contactId: contact.id,
-          type: input.task.activityType,
-          summary: `Sarah — suivi : ${SARAH_DECISION_TEXTS[input.decision]}`,
-          payload: {
-            agent: SARAH_AGENT,
-            run_id: runId,
-            appointment_id: appointment.id,
-            error_code: input.code,
-          },
-          agent: SARAH_AGENT,
-          isSimulation: provider.isSimulation,
-        });
-        if (activity.error) return stopAfterPersistenceFailure(activity.error, input.usage);
-      }
       await finishRun(client, runId, {
         status: "failed",
         error: input.code,
         decision: SARAH_DECISION_TEXTS[input.decision],
-        usage: input.usage,
       });
       return failWith<SarahRunResult>(input.code);
     };
@@ -276,12 +292,10 @@ export async function runSarahFollowThrough(
     });
 
     // --- eligibility: a report written by a HUMAN is mandatory ---------------
+    // Already refused as `blocked` by the precheck, on this very row; kept as
+    // defence in depth (and to narrow the report type).
     if (appointment.status !== "done" || appointment.report_notes === null) {
-      return abort({
-        code: "appointment_report_missing",
-        decision: "report_missing",
-        task: { type: "appointment_report_missing", activityType: "ai_information_missing" },
-      });
+      return abort({ code: "appointment_report_missing", decision: "report_missing" });
     }
 
     // --- AI call: the report is isolated as untrusted DATA --------------------

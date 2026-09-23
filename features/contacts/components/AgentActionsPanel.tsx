@@ -12,6 +12,8 @@ import { Card } from "@/components/ui/Card";
 import { PipelineStageBadge } from "@/components/ui/PipelineStageBadge";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { AgentRunReplay } from "@/features/agents-ia/components/AgentRunReplay";
+import { GuardRailNotice } from "@/features/agents-ia/components/GuardRailNotice";
+import { refusalState } from "@/features/agents-ia/components/outcome";
 import { replayStepsFromRecorded } from "@/features/agents-ia/components/replay";
 import { prepareFollowUp } from "@/features/agents-ia/emma-relation/actions";
 import { qualifyContact } from "@/features/agents-ia/hugo-qualification/actions";
@@ -32,6 +34,7 @@ type AgentKey = "hugo" | "louis" | "emma";
 type PanelState =
   | { kind: "idle" }
   | { kind: "error"; message: string }
+  | { kind: "blocked"; message: string }
   | { kind: "hugo"; result: HugoResult }
   | { kind: "louis"; result: LouisResult }
   | { kind: "emma"; result: EmmaResult };
@@ -61,18 +64,18 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
     try {
       if (agent === "hugo") {
         const { data, error } = await qualifyContact(contactId);
-        setState(error ? { kind: "error", message: error.message } : { kind: "hugo", result: data });
+        setState(error ? refusalState(error) : { kind: "hugo", result: data });
       } else if (agent === "louis") {
         const { data, error } = await proposeAppointment(contactId);
-        setState(error ? { kind: "error", message: error.message } : { kind: "louis", result: data });
+        setState(error ? refusalState(error) : { kind: "louis", result: data });
       } else {
         const { data, error } = await prepareFollowUp(contactId);
-        setState(error ? { kind: "error", message: error.message } : { kind: "emma", result: data });
+        setState(error ? refusalState(error) : { kind: "emma", result: data });
       }
       // Re-renders the server components: header, consents and timeline.
       router.refresh();
     } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.errorTitle });
+      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
     } finally {
       setRunning(null);
     }
@@ -139,6 +142,10 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
           </Alert>
         ) : null}
 
+        {state.kind === "blocked" ? (
+          <GuardRailNotice reason={state.message} className="mt-5" testId="agent-blocked" />
+        ) : null}
+
         {state.kind === "hugo" ? (
           <Alert tone="success" title={TEXTS.hugoSuccessTitle} className="mt-5" testId="agent-result">
             <p>{state.result.decisionText}</p>
@@ -159,9 +166,7 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
         ) : null}
 
         {state.kind === "louis" && blocked ? (
-          <Alert tone="error" title={TEXTS.blockedTitle} className="mt-5" testId="agent-error">
-            {blocked.reason}
-          </Alert>
+          <GuardRailNotice reason={blocked.reason} className="mt-5" testId="agent-blocked" />
         ) : null}
 
         {state.kind === "louis" && !blocked ? (

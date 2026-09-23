@@ -64,6 +64,16 @@ export function formatDateTime(iso: string): string {
   return date ? DATE_TIME.format(date) : "—";
 }
 
+/**
+ * "23 sept. 2026 à 10:12" (Paris time), or `null` for an unreadable value, so
+ * that a sentence built around it ("Validé … le …") can drop the date instead
+ * of printing a dash or a guessed one.
+ */
+export function formatDateAtTime(iso: string): string | null {
+  const date = parse(iso);
+  return date ? `${DATE.format(date)} à ${TIME.format(date)}` : null;
+}
+
 /** "lundi 6 octobre, 14:00 – 15:00" for a proposed appointment slot. */
 export function formatSlot(startIso: string, endIso: string): string {
   const start = parse(startIso);

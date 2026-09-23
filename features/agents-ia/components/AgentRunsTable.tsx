@@ -2,21 +2,15 @@ import Link from "next/link";
 
 import { formatDateTime } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
-import { Badge } from "@/components/ui/Badge";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 
 import type { AgentRunSummary } from "../types";
+import { RunStatusBadge } from "./RunStatusBadge";
 
 const TEXTS = APP_TEXTS.runHistory;
 const AGENT_TEXTS = APP_TEXTS.agentsIa;
 
 const HEAD = "px-5 py-3 text-overline font-semibold text-ink-subtle uppercase";
-
-function outcomeTone(run: AgentRunSummary) {
-  if (run.status === "failed" || run.status === "blocked") return "solid" as const;
-  if (run.status === "running") return "dashed" as const;
-  return "outline" as const;
-}
 
 /** The agency's execution journal, newest first. One row = one attempt. */
 export function AgentRunsTable({ runs }: { runs: readonly AgentRunSummary[] }) {
@@ -51,6 +45,7 @@ export function AgentRunsTable({ runs }: { runs: readonly AgentRunSummary[] }) {
             {runs.map((run) => (
               <tr
                 key={run.id}
+                data-status={run.status}
                 className="border-b border-line transition-colors duration-150 ease-standard last:border-b-0 hover:bg-surface-muted"
               >
                 <th scope="row" className="px-5 py-4 align-top font-medium text-ink">
@@ -58,7 +53,7 @@ export function AgentRunsTable({ runs }: { runs: readonly AgentRunSummary[] }) {
                 </th>
                 <td className="px-5 py-4 align-top">
                   <span className="flex flex-wrap items-center gap-1.5">
-                    <Badge tone={outcomeTone(run)}>{run.statusLabel}</Badge>
+                    <RunStatusBadge status={run.status} />
                     {run.isSimulation ? <SimulationBadge /> : null}
                   </span>
                 </td>

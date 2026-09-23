@@ -16,9 +16,9 @@ export function RunCountsList({ id, runs }: { id: string; runs: DashboardIndicat
   const scope = TEXTS.scopes[runs.scope.key];
   const counts = runs.status === "ok" ? runs.value : null;
   const rows = [
-    { label: TEXTS.runsTotal, value: counts?.total },
-    { label: TEXTS.runsFailed, value: counts?.failed },
-    { label: TEXTS.runsBlocked, value: counts?.blocked },
+    { key: "total", label: TEXTS.runsTotal, value: counts?.total },
+    { key: "failed", label: TEXTS.runsFailed, value: counts?.failed },
+    { key: "blocked", label: TEXTS.runsBlocked, value: counts?.blocked },
   ];
 
   return (
@@ -28,7 +28,11 @@ export function RunCountsList({ id, runs }: { id: string; runs: DashboardIndicat
       </h3>
       <dl className="mt-3 flex flex-col gap-2">
         {rows.map((row) => (
-          <div key={row.label} className="flex items-baseline justify-between gap-3 text-sm">
+          <div
+            key={row.key}
+            data-testid={`dashboard-runs-${id}-${row.key}`}
+            className="flex items-baseline justify-between gap-3 text-sm"
+          >
             <dt className="text-ink-muted">{row.label}</dt>
             <dd className="font-semibold text-ink tabular-nums">
               {row.value === undefined ? TEXTS.unavailable : row.value}

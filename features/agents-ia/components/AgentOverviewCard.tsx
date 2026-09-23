@@ -8,11 +8,27 @@ import { AGENT_RUN_STATUS_LABELS } from "@/lib/agents/messages";
 
 import type { AgentActivity, AgentOverview } from "../types";
 import { ActivityFigure } from "./ActivityFigure";
+import { RunStatusBadge } from "./RunStatusBadge";
 
 const TEXTS = APP_TEXTS.agentsIa;
 
 /** Outcomes worth naming under a total; a zero outcome stays silent. */
 const OUTCOMES = ["succeeded", "failed", "blocked", "running"] as const;
+
+/**
+ * Named outcomes: a technical error is inverted (strongest emphasis), a guard
+ * rail is outlined and says « Bloquée par un garde-fou » — never an error.
+ */
+function outcomeBadge(outcome: (typeof OUTCOMES)[number], count: number) {
+  switch (outcome) {
+    case "failed":
+      return { tone: "solid" as const, text: TEXTS.outcomeFailed(count) };
+    case "blocked":
+      return { tone: "outline" as const, text: TEXTS.outcomeBlocked(count) };
+    default:
+      return { tone: "neutral" as const, text: TEXTS.outcome(AGENT_RUN_STATUS_LABELS[outcome], count) };
+  }
+}
 
 function Outcomes({ activity }: { activity: AgentActivity }) {
   const shown = OUTCOMES.filter((outcome) => activity.runs[outcome] > 0);
@@ -20,11 +36,14 @@ function Outcomes({ activity }: { activity: AgentActivity }) {
 
   return (
     <span className="flex flex-wrap gap-1.5">
-      {shown.map((outcome) => (
-        <Badge key={outcome} tone={outcome === "failed" || outcome === "blocked" ? "solid" : "neutral"}>
-          {TEXTS.outcome(AGENT_RUN_STATUS_LABELS[outcome], activity.runs[outcome])}
-        </Badge>
-      ))}
+      {shown.map((outcome) => {
+        const badge = outcomeBadge(outcome, activity.runs[outcome]);
+        return (
+          <Badge key={outcome} tone={badge.tone}>
+            {badge.text}
+          </Badge>
+        );
+      })}
     </span>
   );
 }
@@ -81,7 +100,13 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel }: AgentOv
       <div className="mt-4 border-t border-line pt-4">
         <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.lastRun}</p>
         <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink">
-          <span className="font-medium">{agent.lastRunLabel}</span>
+          {/* The outcome, named like everywhere else (a block is not an error);
+              « Jamais exécuté » stays the server's statement. */}
+          {agent.lastRun ? (
+            <RunStatusBadge status={agent.lastRun.status} />
+          ) : (
+            <span className="font-medium">{agent.lastRunLabel}</span>
+          )}
           {agent.lastRun ? (
             <>
               <time dateTime={agent.lastRun.startedAt} className="text-xs text-ink-muted">
@@ -119,9 +144,9 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel }: AgentOv
         ) : (
           <ul className="mt-1.5 flex flex-col gap-2">
             {agent.lastErrors.map((error) => (
-              <li key={error.runId} className="text-sm">
+              <li key={error.runId} className="text-sm" data-testid="agent-last-issue" data-status={error.status}>
                 <span className="flex flex-wrap items-center gap-2">
-                  <Badge tone="solid">{error.statusLabel}</Badge>
+                  <RunStatusBadge status={error.status} />
                   <time dateTime={error.at} className="text-xs text-ink-subtle">
                     {formatDateTime(error.at)}
                   </time>
@@ -132,7 +157,14 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel }: AgentOv
                     {TEXTS.viewReplay}
                   </Link>
                 </span>
-                {error.decision ? <p className="mt-1 text-ink-muted">{error.decision}</p> : null}
+                {error.decision ? (
+                  <p className="mt-1 text-ink-muted">
+                    {error.status === "blocked" ? (
+                      <span className="font-medium text-ink">{APP_TEXTS.guardRail.reason} : </span>
+                    ) : null}
+                    {error.decision}
+                  </p>
+                ) : null}
               </li>
             ))}
           </ul>

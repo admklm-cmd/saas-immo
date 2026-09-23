@@ -15,6 +15,8 @@ import { CONSENT_CHANNEL_LABELS, PIPELINE_STAGE_LABELS } from "@/features/contac
 
 import type { EmmaFollowUpCandidateView } from "../types";
 import { AgentRunReplay } from "./AgentRunReplay";
+import { GuardRailNotice } from "./GuardRailNotice";
+import { refusalState } from "./outcome";
 import { replayStepsFromRecorded } from "./replay";
 
 const TEXTS = APP_TEXTS.emmaFollowUps;
@@ -25,7 +27,8 @@ type CardState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: EmmaResult }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "blocked"; message: string };
 
 /**
  * French reason shown next to a disabled action. Display convenience only: the
@@ -56,7 +59,8 @@ export function EmmaFollowUpCard({ candidate }: { candidate: EmmaFollowUpCandida
     try {
       const { data, error } = await prepareFollowUp(candidate.id);
       if (error) {
-        setState({ kind: "error", message: error.message });
+        // A guard rail (signed mandate, consent, one per day…) is not an error.
+        setState(refusalState(error));
         return;
       }
       setState({ kind: "done", result: data });
@@ -146,6 +150,10 @@ export function EmmaFollowUpCard({ candidate }: { candidate: EmmaFollowUpCandida
           <Alert tone="error" title={TEXTS.errorActionTitle} className="mt-4" testId="emma-error">
             {state.message}
           </Alert>
+        ) : null}
+
+        {state.kind === "blocked" ? (
+          <GuardRailNotice reason={state.message} className="mt-4" testId="emma-blocked" />
         ) : null}
 
         {result ? (

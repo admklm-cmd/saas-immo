@@ -17,6 +17,7 @@ import type { EstimationConsentChannel } from "@/features/estimation/consent-tex
 import type { PropertyTypeChoice } from "@/features/estimation/types";
 import type { SettingsIntegrationCategory } from "@/features/settings/types";
 import type { TaskScope } from "@/features/tasks/types";
+import type { AgentRunStatus } from "@/lib/agents/messages";
 import type { MembershipRole } from "@/lib/agents/types";
 
 /**
@@ -60,6 +61,18 @@ export const ESTIMATION_CONSENT_CHANNEL_LABELS: Readonly<Record<EstimationConsen
 export const MEMBERSHIP_ROLE_LABELS: Readonly<Record<MembershipRole, string>> = {
   agent: "Conseiller",
   director: "Directeur",
+};
+
+/**
+ * Outcome of an AI run, as the interface names it. Deliberately more explicit
+ * than the short journal labels: a run refused by a guard rail is the product
+ * doing its job, never an error, and must never read like one.
+ */
+export const RUN_OUTCOME_LABELS: Readonly<Record<AgentRunStatus, string>> = {
+  running: "En cours",
+  succeeded: "Réussie",
+  failed: "Erreur technique",
+  blocked: "Bloquée par un garde-fou",
 };
 
 export const APP_TEXTS = {
@@ -115,6 +128,18 @@ export const APP_TEXTS = {
     notFoundTitle: "Page introuvable",
     notFoundBody: "Le lien est peut-être obsolète, ou la page n'existe pas.",
     unexpected: "Une erreur technique est survenue. Aucune action n'a été effectuée.",
+  },
+
+  /**
+   * An action refused by a guard rail (kill switch, daily limit, human takeover,
+   * consent, signed mandate…). Informative, never alarming: nothing broke, a
+   * rule of the agency applied. Technical errors keep their own wording.
+   */
+  guardRail: {
+    title: "Bloquée par un garde-fou",
+    reason: "Motif",
+    notAnError: "Ce n'est pas une erreur : une règle de l'agence a refusé l'action, rien n'a été fait.",
+    stopped: "Arrêt décidé par un garde-fou : ce n'est pas une erreur.",
   },
 
   contacts: {
@@ -178,6 +203,14 @@ export const APP_TEXTS = {
     timelineError: "Impossible d'afficher l'historique.",
     timelineStageChange: (from: string, to: string) => `Étape : ${from} → ${to}`,
     timelineStageReason: "Motif",
+    // Human review of a message: author and time exactly as stored server-side.
+    reviewApproved: "Validé",
+    reviewRejected: "Refusé",
+    reviewBy: (author: string) => `par ${author}`,
+    reviewAuthorWithRole: (email: string, role: string) => `${email} (${role})`,
+    reviewAtPrefix: "le",
+    reviewAuthorUnknown: "Auteur non disponible",
+    reviewPending: "En attente de validation humaine",
 
     notFoundTitle: "Contact introuvable.",
     notFoundBody: "Ce contact n'existe pas ou n'appartient pas à votre agence.",
@@ -354,8 +387,7 @@ export const APP_TEXTS = {
     runEmma: "Lancer Emma",
     runEmmaHint: "Relance : prépare un message adapté au dossier, envoyé vers la validation humaine.",
     running: "Exécution en cours…",
-    blockedTitle: "Action bloquée par un garde-fou",
-    errorTitle: "L'agent n'a pas pu s'exécuter",
+    errorTitle: "Erreur technique : l'agent n'a pas pu s'exécuter",
     hugoSuccessTitle: "Hugo a terminé la qualification",
     louisSuccessTitle: "Louis a préparé une proposition de rendez-vous",
     emmaSuccessTitle: "Emma a préparé une relance",
@@ -430,10 +462,14 @@ export const APP_TEXTS = {
     runsLabel: (count: number, window: string) =>
       count > 1 ? `${count} exécutions ${window}` : `${count} exécution ${window}`,
     outcome: (label: string, count: number) => `${label} : ${count}`,
+    outcomeBlocked: (count: number) =>
+      count > 1 ? `Bloquées par un garde-fou : ${count}` : `Bloquée par un garde-fou : ${count}`,
+    outcomeFailed: (count: number) =>
+      count > 1 ? `Erreurs techniques : ${count}` : `Erreur technique : ${count}`,
     tokens: "Jetons",
     tokensValue: (input: number, output: number) => `${input} en entrée / ${output} en sortie`,
     lastRun: "Dernière exécution",
-    lastErrors: "Dernières erreurs",
+    lastErrors: "Erreurs et blocages récents",
     noError: "Aucune erreur ni blocage enregistré pour cet agent.",
     viewReplay: "Voir le rejeu",
     inboundLead: "Lead entrant",
@@ -589,13 +625,15 @@ export const APP_TEXTS = {
     untrusted: "Texte du prospect : traité comme donnée, jamais comme instruction.",
     // Neutral on purpose: after a duplicate, the record already existed —
     // saying « créée » would claim a second record that was never created.
-    contactLink: "Voir la fiche contact",
+    contactLink: "Ouvrir la fiche",
+    // The payload carried no first name: said, never guessed from the free text.
+    nameMissing: "Nom non transmis",
     run: "Lancer Léa",
     runHint: "Vérifie la source, dédoublonne, crée la fiche. Ne recueille aucun consentement.",
     running: "Léa travaille…",
     alreadyProcessed: "Ce lead a déjà été traité : aucune seconde fiche ne sera créée.",
     successTitle: "Léa a terminé",
-    errorActionTitle: "Léa n'a pas pu traiter ce lead",
+    errorActionTitle: "Erreur technique : Léa n'a pas pu traiter ce lead",
     viewReplay: "Voir le rejeu",
     duplicateMatched: (fields: string) => `Doublon détecté sur : ${fields}`,
     missingFields: "Éléments manquants signalés",
@@ -642,7 +680,7 @@ export const APP_TEXTS = {
     runHint: "Exploite le compte-rendu et ouvre les actions de suivi. Ne déclare jamais un mandat signé.",
     running: "Sarah travaille…",
     successTitle: "Sarah a terminé le suivi",
-    errorActionTitle: "Sarah n'a pas pu suivre ce rendez-vous",
+    errorActionTitle: "Erreur technique : Sarah n'a pas pu suivre ce rendez-vous",
     blockedNoReport: "Compte-rendu manquant : le suivi ne peut pas être lancé.",
     reportUntrusted:
       "Texte du conseiller affiché tel quel : Sarah le traite comme une donnée, jamais comme une instruction.",
@@ -680,7 +718,9 @@ export const APP_TEXTS = {
     model: "Modèle",
     tokens: "Jetons (entrée / sortie)",
     decision: "Décision journalisée",
-    errorCode: "Motif d'arrêt journalisé",
+    errorCode: "Code d'erreur technique",
+    blockedCode: "Garde-fou appliqué",
+    outcome: "Résultat",
     contact: "Contact",
     unknown: "Non renseigné",
   },
@@ -769,10 +809,10 @@ export const APP_TEXTS = {
     killSwitchOn: "Actif : tous les agents IA sont suspendus",
     killSwitchOff: "Inactif : les agents IA peuvent s'exécuter",
     runsTotal: "Exécutions",
-    runsFailed: "Erreurs",
+    runsFailed: "Erreurs techniques",
     runsBlocked: "Bloquées par un garde-fou",
     runsBlockedHint:
-      "Un blocage n'est pas une erreur : un garde-fou (coupe-circuit, limite quotidienne, reprise par un conseiller) a refusé l'exécution.",
+      "Un blocage n'est pas une erreur : un garde-fou (coupe-circuit, limite quotidienne, reprise par un conseiller, consentement absent, mandat déjà signé…) a refusé l'exécution.",
     runsWindowTitle: (scope: string) => `Exécutions ${scope}`,
 
     upcomingTitle: "Prochains rendez-vous",
@@ -949,7 +989,7 @@ export const APP_TEXTS = {
     runHint:
       "Le serveur revérifie le consentement, les doublons et le coupe-circuit avant de lancer Emma.",
     successTitle: "Emma a préparé une relance",
-    errorActionTitle: "Emma n'a préparé aucun brouillon",
+    errorActionTitle: "Erreur technique : Emma n'a préparé aucun brouillon",
     draftSubject: "Objet",
     draftBody: "Message proposé",
     channel: "Canal vérifié",

@@ -7,10 +7,12 @@
  * `{ data: null, error }` with a French message.
  */
 
+import { z } from "zod";
+
 import { resolveAgentContext } from "@/lib/agents/context";
 import { failFromDatabase, failFromUnexpected } from "@/lib/agents/errors";
 import { AGENT_LABELS } from "@/lib/agents/messages";
-import type { AgentContext, TypedClient } from "@/lib/agents/types";
+import type { AgentContext, Enums, TypedClient } from "@/lib/agents/types";
 import { ok, type Result } from "@/lib/utils/result";
 
 import {
@@ -18,10 +20,14 @@ import {
   CONSENT_CHANNEL_LABELS,
   MESSAGE_STATUS_LABELS,
   TASK_STATUS_LABELS,
+  VALIDATOR_ROLE_LABELS,
   type ContactDetail,
   type ContactListItem,
   type ContactProperty,
+  type MessageReviewMeta,
+  type MessageReviewOutcome,
   type TimelineEntry,
+  type ValidatorIdentity,
 } from "./types";
 
 const CONTACT_COLUMNS =
@@ -274,6 +280,84 @@ export function activityMeta(type: string, payload: unknown): TimelineEntry["met
   };
 }
 
+type MessageReviewInput = {
+  status: Enums["outbound_message_status"];
+  validated_by: string | null;
+  validated_at: string | null;
+};
+
+/**
+ * Human review of an outbound message, for the timeline `meta`.
+ *
+ * `validated_at` and `validated_by_user_id` are the RAW columns stamped by the
+ * database — nothing is deduced from `sent_at`, `created_at` or any other
+ * event, and a null stays null (even on a sent message). The author label is
+ * resolved only from `members` (current members of the caller's agency, from
+ * `list_agency_members`); an id missing from it (member removed, read failed)
+ * gives `null`, never a supposed author. The review outcome comes from the
+ * status alone.
+ */
+export function messageReviewMeta(
+  row: MessageReviewInput,
+  members: ReadonlyMap<string, ValidatorIdentity>,
+): MessageReviewMeta {
+  const outcome: MessageReviewOutcome | null =
+    row.status === "pending_validation" ? null : row.status === "rejected" ? "rejected" : "approved";
+  const member = row.validated_by ? (members.get(row.validated_by) ?? null) : null;
+  return {
+    review_outcome: outcome,
+    validated_at: row.validated_at,
+    validated_by_user_id: row.validated_by,
+    validated_by_email: member?.email ?? null,
+    validated_by_label: member?.email ?? null,
+    validated_by_role: member?.role ?? null,
+    validated_by_role_label: member ? VALIDATOR_ROLE_LABELS[member.role] : null,
+  };
+}
+
+/**
+ * Exactly the four columns `public.list_agency_members` may return (same
+ * contract as the settings screen). An unexpected shape resolves nobody.
+ */
+const validatorRowsSchema = z.array(
+  z
+    .object({
+      user_id: z.uuid(),
+      email: z.string().nullable(),
+      role: z.enum(["agent", "director"]),
+      created_at: z.string(),
+    })
+    .strict(),
+);
+
+/**
+ * Current members of the caller's agency, by user id, to name the validators
+ * of messages. Never fails the caller: a read error or an unexpected payload
+ * is logged server-side and resolves nobody (every label then stays `null`).
+ */
+export async function readValidatorIdentities(
+  client: TypedClient,
+  agencyId: string,
+): Promise<ReadonlyMap<string, ValidatorIdentity>> {
+  const members = new Map<string, ValidatorIdentity>();
+  try {
+    const { data, error } = await client.rpc("list_agency_members", { target_agency: agencyId });
+    if (error) {
+      console.error(`[contacts] readValidatorIdentities failed (${error.code ?? "?"}): ${error.message}`);
+      return members;
+    }
+    const parsed = validatorRowsSchema.safeParse(data);
+    if (!parsed.success) {
+      console.error("[contacts] readValidatorIdentities: unexpected RPC payload shape");
+      return members;
+    }
+    for (const row of parsed.data) members.set(row.user_id, { email: row.email, role: row.role });
+  } catch (cause) {
+    console.error("[contacts] readValidatorIdentities threw:", cause);
+  }
+  return members;
+}
+
 /**
  * Merged history of a contact: CRM activities, appointments, outbound messages,
  * tasks and AI runs, most recent first. Simulated items keep their
@@ -322,7 +406,9 @@ export async function buildContactTimeline(
         .limit(TIMELINE_LIMIT),
       client
           .from("outbound_messages")
-          .select("id, channel, subject, body, status, is_simulation, created_by_agent, created_at, sent_at")
+          .select(
+            "id, channel, subject, body, status, is_simulation, created_by_agent, created_at, sent_at, validated_by, validated_at",
+          )
           .eq("agency_id", context.agencyId)
           .eq("contact_id", contactId)
           .order("created_at", { ascending: false })
@@ -354,6 +440,15 @@ export async function buildContactTimeline(
     ] as const) {
       if (query.error) return failFromDatabase<TimelineEntry[]>(`buildContactTimeline.${label}`, query.error);
     }
+
+    // Validators are named from the CURRENT members of the caller's agency
+    // (`list_agency_members`, which re-checks membership). Read only when a
+    // message has a validator; a failed read names nobody and never fails the
+    // timeline — the history stays readable, the author is « non disponible ».
+    const hasValidator = (messages.data ?? []).some((row) => row.validated_by !== null);
+    const validators: ReadonlyMap<string, ValidatorIdentity> = hasValidator
+      ? await readValidatorIdentities(client, context.agencyId)
+      : new Map();
 
     const entries: TimelineEntry[] = [];
 
@@ -399,7 +494,11 @@ export async function buildContactTimeline(
           ? { type: "ai_agent", agent: row.created_by_agent, userId: null }
           : { type: "system", agent: null, userId: null },
         status: row.status,
-        meta: { channel: row.channel, agent: row.created_by_agent ? AGENT_LABELS[row.created_by_agent] : null },
+        meta: {
+          channel: row.channel,
+          agent: row.created_by_agent ? AGENT_LABELS[row.created_by_agent] : null,
+          ...messageReviewMeta(row, validators),
+        },
       });
     }
 

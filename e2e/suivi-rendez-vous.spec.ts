@@ -88,7 +88,7 @@ test("cas d'erreur : le coupe-circuit refuse Sarah et explique le blocage", asyn
   await setAiPaused(user.agencyId, true);
   await target.getByTestId("run-sarah").click();
 
-  await expect(target.getByTestId("sarah-error")).toContainText(AGENT_ERROR_MESSAGES.ai_paused, {
+  await expect(target.getByTestId("sarah-blocked")).toContainText(AGENT_ERROR_MESSAGES.ai_paused, {
     timeout: COLD_START,
   });
   await expect(target.getByTestId("sarah-result")).toHaveCount(0);

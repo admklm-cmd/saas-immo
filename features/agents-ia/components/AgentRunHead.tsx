@@ -5,6 +5,7 @@ import { APP_TEXTS } from "@/components/texts";
 import { DataList } from "@/components/ui/DataList";
 
 import type { AgentRunSummary } from "../types";
+import { RunStatusBadge } from "./RunStatusBadge";
 
 const TEXTS = APP_TEXTS.runDetail;
 const AGENT_TEXTS = APP_TEXTS.agentsIa;
@@ -47,7 +48,11 @@ export function AgentRunHead({ run }: { run: AgentRunSummary }) {
           label: TEXTS.decision,
           value: <span className="whitespace-pre-line">{run.decision ?? TEXTS.unknown}</span>,
         },
-        ...(run.error ? [{ label: TEXTS.errorCode, value: run.error }] : []),
+        { label: TEXTS.outcome, value: <RunStatusBadge status={run.status} /> },
+        // A guard rail and a technical error are named differently, never mixed.
+        ...(run.error
+          ? [{ label: run.status === "blocked" ? TEXTS.blockedCode : TEXTS.errorCode, value: run.error }]
+          : []),
       ]}
     />
   );

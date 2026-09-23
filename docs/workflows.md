@@ -141,11 +141,17 @@ Action humaine depuis la fiche contact (bouton « Lancer Louis »), via la serve
 1. Vérifier le format de l'identifiant ; sinon « Contact introuvable. ».
 2. Résoudre la session et l'agence côté serveur.
 3. Garde-fous (`startGuardedRun`) : appartenance, coupe-circuit, limite quotidienne, reprise
-   humaine. Ouvrir le run.
-4. Lire le bien et l'agenda de l'agence.
-5. **Éligibilité (code)** : étape `qualifie` ou `chaud`, et aucun rendez-vous actif pour ce contact.
-6. **Canal et consentement (code)** : email > SMS > WhatsApp ; un canal n'est retenu que si le
-   contact y est joignable **et** que le consentement courant est `granted`.
+   humaine.
+4. **Règles (code), AVANT l'ouverture du run** (`precheck`), dans cet ordre, sur l'agenda de
+   l'agence et les consentements courants lus à ce moment : a) éligibilité — étape `qualifie` ou
+   `chaud`, aucun rendez-vous actif pour ce contact sur l'horizon ; b) canal et consentement ;
+   c) au moins un créneau libre (même calcul qu'en 7). Un refus est journalisé en run
+   **`blocked`** (jamais compté en erreur), sans appel IA, sans consommation de quota, sans aucune
+   écriture de Louis ; une tâche humaine est ouverte pour b) et c). Sinon, ouvrir le run.
+5. Lire le bien et l'agenda de l'agence ; revérifier l'éligibilité (course : reste `failed`).
+6. **Canal et consentement (code)**, relus : email > SMS > WhatsApp ; un canal n'est retenu que si
+   le contact y est joignable **et** que le consentement courant est `granted` (un changement depuis
+   l'étape 4 est une course : reste `failed`).
 7. **Calcul des créneaux (code)** : Europe/Paris, lundi–vendredi, hors jours fériés français,
    10h–13h et 14h–18h, durée 60 min, au moins 24 h à l'avance, horizon 14 jours, aucun chevauchement
    avec un rendez-vous existant de l'agence. 5 créneaux au maximum.
@@ -196,9 +202,14 @@ alors progresser atomiquement `appointments.status` de `proposed` à `confirmed`
 
 ### Gestion des erreurs
 - Garde-fou → run `blocked`, aucune écriture, message français clair.
-- Consentement manquant, coordonnées manquantes, agenda plein → **aucune écriture métier**, tâche
-  dédiée pour un conseiller (`appointment_consent_missing`, `appointment_channel_missing`,
-  `appointment_no_slot`), run `failed`.
+- Refus d'éligibilité (`appointment_stage_not_ready`, `appointment_already_scheduled`) → run
+  **`blocked`**, aucune écriture, aucun appel IA.
+- Consentement manquant, coordonnées manquantes, agenda plein → décidés avant l'ouverture du run :
+  run **`blocked`**, **aucune écriture de Louis** (ni rendez-vous, ni message, ni activité), aucun
+  appel IA, tâche dédiée pour un conseiller (`appointment_consent_missing`,
+  `appointment_channel_missing`, `appointment_no_slot`, réutilisée si elle est déjà ouverte). La
+  fiche du contact montre le run bloqué avec sa décision, et la tâche. Le même refus découvert
+  seulement après l'ouverture du run (course) reste `failed` — voir « Refus restant `failed` ».
 - Sortie invalide ou créneau hors liste → aucune écriture, tâche `ai_response_invalid`, run `failed`.
 - Conflit de réservation : la base tranche (contrainte d'exclusion `appointments_no_overlap`, et le
   cas échéant un interblocage) — aucune écriture n'est conservée, l'utilisateur est invité à
@@ -364,14 +375,22 @@ que l'écran ne connaît pas (coupe-circuit, limite quotidienne).
 1. Vérifier le format de l'identifiant ; sinon « Contact introuvable. ».
 2. Résoudre la session et l'agence côté serveur.
 3. Garde-fous (`startGuardedRun`) : appartenance, coupe-circuit, limite quotidienne, **reprise
-   humaine**. Ouvrir le run.
-4. Lire le bien, les messages, les rendez-vous.
-5. **Éligibilité (code)** : étape dans `EMMA_ELIGIBLE_STAGES` (`nouveau`, `qualifie`, `chaud`,
-   `rdv_planifie`, `estimation_faite`) — jamais `mandat_signe`, jamais `perdu` — **et** aucun
-   brouillon d'Emma déjà en attente de validation.
-6. **Canal et consentement (code)** : email > SMS > WhatsApp ; un canal n'est retenu que si le
+   humaine**.
+4. **Éligibilité (code), AVANT l'ouverture du run** (`precheck`) : aucun brouillon d'Emma déjà en
+   attente de validation ; étape dans `EMMA_ELIGIBLE_STAGES` (`nouveau`, `qualifie`, `chaud`,
+   `rdv_planifie`, `estimation_faite`) — jamais `mandat_signe`, jamais `perdu` ; aucune relance
+   déjà préparée aujourd'hui (même clé d'idempotence, message validé, envoyé ou refusé) ; **un
+   canal joignable avec un consentement courant `granted`** (même règle qu'à l'étape 6). Un refus
+   est journalisé en run **`blocked`** (étapes : garde-fous `ok`, décision `blocked`), sans appel IA
+   ni token ; pour un consentement ou des coordonnées manquants, une tâche est ouverte pour un
+   conseiller après la journalisation. Sinon, ouvrir le run.
+5. Lire le bien, les messages, les rendez-vous ; revérifier l'éligibilité (course entre deux
+   exécutions : ce cas rare, découvert après l'ouverture du run, reste `failed`).
+6. **Canal et consentement (code)**, relus dans le run (le canal du brouillon vient de CETTE
+   lecture) : email > SMS > WhatsApp ; un canal n'est retenu que si le
    contact y est joignable **et** que le consentement courant est `granted`. Un consentement retiré
-   n'est pas un consentement ; un consentement `phone` n'autorise jamais un message.
+   n'est pas un consentement ; un consentement `phone` n'autorise jamais un message. Un retrait
+   survenu entre l'étape 4 et cette relecture termine le run en `failed` (course, rare).
 7. **Clé d'idempotence (code)** : `emma-<contact>-<jour parisien>`.
 8. Appeler le fournisseur IA ; valider la sortie (schéma strict : aucun lien, aucun montant en
    euros, aucun champ de canal, de destinataire, de date ou d'envoi).
@@ -406,20 +425,45 @@ vers **Hugo** (qualification) ou **Louis** (rendez-vous).
 ### Conditions d'arrêt
 - Coupe-circuit actif, limite quotidienne atteinte, **reprise humaine** (`human_takeover`).
 - Contact inexistant ou appartenant à une autre agence.
-- Dossier clos ou mandat signé (`follow_up_stage_not_eligible`).
-- Brouillon déjà en attente de validation (`follow_up_already_drafted`), y compris quand c'est la
-  **base** qui refuse la clé d'idempotence.
-- Aucun consentement valide (`consent_not_granted`) ou aucune coordonnée exploitable
-  (`appointment_no_reachable_channel`).
+- Mandat signé (`follow_up_mandate_signed` — « Le mandat de ce contact est signé : aucune relance
+  n'est préparée. »).
+- Dossier perdu (`follow_up_contact_lost` — « Ce dossier est classé « Perdu » : aucune relance
+  n'est préparée. »). `follow_up_stage_not_eligible` ne reste qu'en repli défensif pour une étape
+  future non classée.
+- Brouillon **réellement** en attente de validation (`follow_up_already_drafted` — « Une relance
+  est déjà en attente de validation pour ce contact : aucun second brouillon n'a été créé. »).
+- Relance du jour déjà préparée puis validée, envoyée (simulation) ou refusée
+  (`follow_up_already_prepared_today` — « Une relance a déjà été préparée aujourd'hui pour ce
+  contact. »). Ordre de priorité : brouillon en attente > étape non éligible > relance du jour.
+- Aucun consentement valide (`consent_not_granted` — « Aucun consentement valide pour ce canal :
+  l'envoi est refusé. ») ou aucune coordonnée exploitable (`follow_up_no_reachable_channel` —
+  « Aucune coordonnée exploitable pour ce contact (adresse email ou numéro manquant) : aucun
+  brouillon préparé, une tâche a été créée pour un conseiller. »).
 - Sortie IA invalide (lien, montant en euros, clé en trop, angle hors vocabulaire…).
 
 ### Gestion des erreurs
-- Garde-fou → run `blocked`, aucune écriture, message français clair.
-- Consentement manquant ou coordonnées manquantes → **aucun brouillon**, tâche dédiée
-  (`follow_up_consent_missing`, `follow_up_channel_missing`), entrée d'historique, run `failed`.
+Classement des runs (source unique : `ELIGIBILITY_BLOCKING_CODES` dans `lib/agents/runner.ts`) :
+`blocked` = une règle a fait son travail (compté « bloqué », **jamais** dans « Erreurs » du tableau
+de bord ni de `/agents-ia`) ; `failed` = vraie erreur.
+- Garde-fou (coupe-circuit, limite, reprise humaine) → run `blocked`, aucune écriture.
+- Refus d'éligibilité (`follow_up_mandate_signed`, `follow_up_contact_lost`,
+  `follow_up_already_drafted`, `follow_up_already_prepared_today`) → run **`blocked`**, aucune
+  écriture, aucun appel IA.
+- Consentement manquant ou coordonnées manquantes (`consent_not_granted`,
+  `follow_up_no_reachable_channel`) → **aucun brouillon**, run **`blocked`**, tâche dédiée
+  (`follow_up_consent_missing`, `follow_up_channel_missing`) ouverte après la journalisation.
+  L'historique du contact montre le run bloqué et sa décision ; **aucune activité attribuée à Emma
+  n'est écrite** (la base n'accepte une telle activité que pendant un run `running` :
+  `guard_activity_actor`).
+- Chaque motif est couvert par un test d'intégration (code, message exact, décision, statut
+  `blocked`, zéro token) : `emma.integration.test.ts`, bloc « un test par motif de refus ».
+- Restent `failed` (course uniquement, découverte après l'ouverture du run) : éligibilité ou
+  consentement devenus faux entre la vérification préalable et la relecture, double brouillon
+  refusé par la base. Voir « Refus restant `failed` » en fin de document.
 - Sortie invalide → aucun brouillon, tâche `ai_response_invalid`, run `failed`.
-- Double brouillon refusé par la base (clé d'idempotence) → run `failed` avec
-  `follow_up_already_drafted` ; **aucun second message n'existe**.
+- Double brouillon refusé par la base (clé d'idempotence, course entre deux exécutions) → run
+  `failed` ; le code relit le message existant : `follow_up_already_drafted` s'il est encore en
+  attente, sinon `follow_up_already_prepared_today`. **Aucun second message n'existe**.
 - Erreur de base → message générique en français, détail technique logué côté serveur uniquement.
 
 ### Critères de réussite
@@ -461,10 +505,11 @@ Aucun déclenchement automatique à ce stade.
 2. Résoudre la session et l'agence côté serveur.
 3. Lire le rendez-vous ; inexistant ou d'une autre agence → « Rendez-vous introuvable. ».
 4. Garde-fous (`startGuardedRun`) sur **son contact** : appartenance, coupe-circuit, limite
-   quotidienne, reprise humaine. Ouvrir le run.
-5. Lire le bien et l'historique récent.
-6. **Éligibilité (code)** : le rendez-vous doit être `done` **et** avoir un compte-rendu. Sinon :
-   arrêt, tâche de saisie, rien n'est déduit.
+   quotidienne, reprise humaine.
+5. **Éligibilité (code), AVANT l'ouverture du run** (`precheck`, sur le rendez-vous lu en 3) : il
+   doit être `done` **et** avoir un compte-rendu. Sinon : run **`blocked`**, aucun appel IA, aucune
+   écriture de Sarah, tâche de saisie pour le conseiller, rien n'est déduit. Sinon, ouvrir le run.
+6. Lire le bien et l'historique récent.
 7. Construire le prompt : faits CRM d'un côté, compte-rendu isolé de l'autre.
 8. Appeler le fournisseur IA ; valider la sortie (schéma strict : **aucun champ d'étape**, aucun
    montant en euros, aucun lien, vocabulaire fermé pour la position du vendeur).
@@ -515,7 +560,9 @@ La signature du mandat est **toujours** confirmée par un humain de l'agence.
 ### Gestion des erreurs
 - Garde-fou → run `blocked`, aucune écriture, message français clair.
 - Compte-rendu manquant → **aucune déduction**, tâche `appointment_report_missing` pour le
-  conseiller qui a réalisé le rendez-vous, run `failed`.
+  conseiller qui a réalisé le rendez-vous (réutilisée si elle est déjà ouverte), run **`blocked`**
+  décidé avant l'ouverture du run : aucun appel IA, aucune écriture de Sarah (plus d'activité
+  `ai_information_missing` ; la fiche montre le run bloqué, sa décision et la tâche).
 - Sortie invalide → aucune écriture métier, tâche `ai_response_invalid`, run `failed`.
 - Erreur de base → message générique en français, détail technique logué côté serveur uniquement.
 - Une deuxième exécution ne duplique pas les tâches : l'index d'unicité des tâches ouvertes
@@ -533,3 +580,47 @@ La signature du mandat est **toujours** confirmée par un humain de l'agence.
   manquant, étape inchangée.
 - Rien n'est envoyé, aucun message n'est même préparé.
 - Chaque exécution est journalisée, avec son fournisseur, son modèle et ses tokens.
+
+---
+
+## Refus restant `failed` — reste connu (option A appliquée)
+
+Règle : un refus décidé par une règle **avant tout travail** est `blocked` (compté « bloqué »,
+jamais dans « Erreurs ») ; `failed` est réservé aux vraies erreurs. L'**option A (sans migration)**
+est appliquée : tous les refus de règle d'Emma, de Louis et de Sarah sont décidés **avant
+l'ouverture du run** (`precheck` de `startGuardedRun`), journalisés `blocked` sans appel IA, sans
+consommation de quota et sans aucune écriture attribuée à l'agent ; seule une tâche humaine est
+ouverte quand un conseiller a quelque chose à faire. La fiche du contact montre le run bloqué (sa
+décision en titre, statut « bloqué ») et la tâche ; l'écran d'exécution rejoue `garde-fous ok →
+décision bloquée`. Conditions et messages (`AGENT_ERROR_MESSAGES`) inchangés.
+
+| Agent | Code | Décidé | Trace pour l'humain |
+|---|---|---|---|
+| Louis | `consent_not_granted` | avant le run → `blocked` | tâche `appointment_consent_missing` |
+| Louis | `appointment_no_reachable_channel` | avant le run → `blocked` | tâche `appointment_channel_missing` |
+| Louis | `appointment_no_available_slot` | avant le run (agenda lu proprement dans le `precheck`, même fenêtre et même calcul) → `blocked` | tâche `appointment_no_slot` |
+| Sarah | `appointment_report_missing` | avant le run (sur le rendez-vous déjà lu) → `blocked` | tâche `appointment_report_missing` |
+
+Conséquence assumée : ces refus n'écrivent plus d'activité d'historique attribuée à l'agent
+(`ai_consent_missing`, `ai_contact_details_missing`, `ai_no_available_slot`,
+`ai_information_missing`), que `guard_activity_actor` n'accepte que pendant un run `running`.
+
+Deux contraintes de la base, **inchangées faute de migration autorisée**, laissent en `failed` ce
+qui n'est connu qu'**après** l'ouverture du run :
+1. `ai_agent_runs` n'accepte `blocked` qu'à l'insertion (un run `running` ne finit que `succeeded`
+   ou `failed`) ;
+2. `guard_activity_actor` n'accepte une activité attribuée à un agent que pendant un run `running`.
+
+| Agent | Cas restant `failed` | Pourquoi |
+|---|---|---|
+| Emma, Louis | code d'éligibilité, de consentement, de coordonnées ou (Louis) d'agenda plein **redécouvert après l'ouverture du run** | Course : la donnée a changé entre le `precheck` et la relecture dans le run (contrainte 1). Rare, jamais une perte silencieuse. |
+| Emma | `follow_up_already_drafted` / `follow_up_already_prepared_today` sur violation d'unicité (23505) | Course, run déjà `running` (contrainte 1). |
+| Louis | `appointment_slot_taken` (23P01, interblocage) | Créneau pris pendant l'appel IA : la base refuse la double réservation, run déjà `running`. |
+| Tous | lecture impossible, sortie IA invalide, écriture refusée par la base, exception | Vraies erreurs techniques. |
+
+Hugo et Léa n'ont pas de refus de règle hors garde-fous partagés (déjà `blocked`) ; le lead
+incomplet de Léa est un résultat (`succeeded`), pas un refus.
+
+Reste une option B (migration : autoriser `running → blocked`) pour les courses : décision
+structurante (schéma, sécurité), validation préalable de l'utilisateur et revue `cybersecurite`
+requises. Non appliquée.

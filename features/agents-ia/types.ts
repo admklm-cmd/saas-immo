@@ -109,7 +109,20 @@ export type InboundLeadView = {
   rawText: string | null;
   /** Identity fields present in the structured payload, already French-labelled. */
   payloadFields: string[];
-  /** Contact created from this lead, or the duplicate that was found. */
+  /**
+   * « Claire M. » (first name + initial of the last name), « Claire » without a
+   * last name, `null` without a first name — never invented. Plain text from
+   * the payload (controls and invisible characters removed, bounded length):
+   * display it as text, never as markup.
+   */
+  displayName: string | null;
+  /** Commune of the property when the payload has one, else `null`. Plain text. */
+  city: string | null;
+  /**
+   * Record of the processed lead — the contact Léa created (`processed`) or the
+   * existing one it was attached to (`duplicate`) — so the UI can link to it and
+   * tell homonyms apart. `null` for a pending or rejected lead.
+   */
   contactId: string | null;
   /** Run of Léa that processed it, for the "agent au travail" replay. */
   processedRunId: string | null;
@@ -220,6 +233,14 @@ export type AgentRunError = {
   code: string | null;
   /** French sentence journaled with the outcome, displayable as-is. */
   decision: string | null;
+  /**
+   * `failed` = a real technical error (unreadable data, invalid AI output,
+   * database refusal, or a rule only discovered after the run opened — see
+   * docs/workflows.md). `blocked` = a guard rail or an eligibility rule refused
+   * the attempt before any work: the product did its job, not an error. The UI
+   * must never present a `blocked` entry as an error.
+   */
+  status: "failed" | "blocked";
   /** French label of the outcome: "Échec" or "Bloquée". */
   statusLabel: string;
   /** Canonical ISO-8601 UTC. */

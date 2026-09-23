@@ -391,6 +391,7 @@ describe("buildAgentOverviews", () => {
       runId: `run-${index}`,
       code: "ai_response_invalid",
       decision: `Tentative ${index}`,
+      status: "failed" as const,
       statusLabel: "Échec",
       at: `2026-09-1${index}T08:00:00.000Z`,
     }));

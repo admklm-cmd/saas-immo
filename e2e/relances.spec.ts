@@ -123,7 +123,7 @@ test("cas d'erreur : le coupe-circuit refuse Emma malgré un dossier affiché co
   await setAiPaused(user.agencyId, true);
   await ready.getByTestId("run-emma").click();
 
-  await expect(ready.getByTestId("emma-error")).toContainText(AGENT_ERROR_MESSAGES.ai_paused, {
+  await expect(ready.getByTestId("emma-blocked")).toContainText(AGENT_ERROR_MESSAGES.ai_paused, {
     timeout: COLD_START,
   });
   await expect(ready.getByTestId("emma-result")).toHaveCount(0);

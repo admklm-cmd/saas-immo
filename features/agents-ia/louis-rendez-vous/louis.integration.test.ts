@@ -1,11 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
+import { getAgentsDashboard } from "@/features/agents-ia/data";
 import { buildContactTimeline } from "@/features/contacts/data";
-import { AGENCY_TIME_ZONE } from "@/lib/agents/time";
+import { buildDashboardSummary } from "@/features/dashboard/data";
+import { AGENT_ERROR_MESSAGES, type AgentErrorCode } from "@/lib/agents/messages";
+import { AGENCY_TIME_ZONE, parisDayStart } from "@/lib/agents/time";
 import type { AiProvider } from "@/lib/claude/provider";
 import { createSimulatorProvider } from "@/lib/claude/simulator";
 import { setupTestEnv, type TestEnv, type TypedClient } from "@/lib/supabase/testing/local-test-env";
 
+import { LOUIS_DECISION_TEXTS } from "./decision";
 import { runLouisAppointment } from "./louis";
 import { computeFreeSlots, SLOT_HORIZON_DAYS } from "./slots";
 
@@ -154,6 +158,96 @@ async function readActivities(contactId: string) {
 async function setAgencyAiSettings(patch: { ai_paused?: boolean; ai_daily_run_limit?: number }): Promise<void> {
   const { error } = await env.admin.from("agencies").update(patch).eq("id", env.agencyA.agencyId);
   if (error) throw new Error(`setAgencyAiSettings: ${error.message}`);
+}
+
+async function readSteps(runId: string) {
+  const { data, error } = await env.admin
+    .from("ai_agent_run_steps")
+    .select("step_index, phase, label, status, detail")
+    .eq("run_id", runId)
+    .order("step_index", { ascending: true });
+  if (error) throw new Error(`readSteps: ${error.message}`);
+  return data ?? [];
+}
+
+/** Simulator that counts its calls: a refusal must never reach the AI. */
+function countingProvider(): { provider: AiProvider; calls: () => number } {
+  const simulator = createSimulatorProvider();
+  let count = 0;
+  const provider: AiProvider = {
+    name: simulator.name,
+    model: simulator.model,
+    isSimulation: simulator.isSimulation,
+    async generate(request) {
+      count += 1;
+      return simulator.generate(request);
+    },
+  };
+  return { provider, calls: () => count };
+}
+
+/** Fills the agency's whole diary with a confirmed appointment of ANOTHER contact. */
+async function fillAgencyDiary(label: string): Promise<string> {
+  const blockerContactId = await createContact(label);
+  const { data, error } = await env.admin
+    .from("appointments")
+    .insert({
+      agency_id: env.agencyA.agencyId,
+      contact_id: blockerContactId,
+      // Another member of the agency, so this blocker never collides with the
+      // director's appointments created by the other tests.
+      assigned_user_id: env.users.agentA.id,
+      starts_at: new Date(Date.now() - 3_600_000).toISOString(),
+      ends_at: new Date(Date.now() + (SLOT_HORIZON_DAYS + 2) * 86_400_000).toISOString(),
+      status: "confirmed",
+    })
+    .select("id")
+    .single();
+  if (error || !data) throw new Error(`fillAgencyDiary: ${error?.message ?? "no row"}`);
+  return data.id;
+}
+
+/**
+ * A rule refusal decided before the run opens: exact code and message, ONE run
+ * `blocked` with 0 token, its decision replayed as `guardrails ok → decision
+ * blocked`, and no write at all in Louis's name (appointment, message, AI
+ * activity, stage).
+ */
+async function expectBlockedRefusal(
+  contactId: string,
+  result: { data: unknown; error: { code: string; message: string } | null },
+  code: AgentErrorCode,
+  decision: string,
+): Promise<void> {
+  const stageBefore = "qualifie";
+  expect(result.data).toBeNull();
+  expect(result.error?.code).toBe(code);
+  expect(result.error?.message).toBe(AGENT_ERROR_MESSAGES[code]);
+
+  const runs = await readRuns(contactId);
+  expect(runs).toHaveLength(1);
+  expect(runs[0]).toMatchObject({
+    agent: "louis",
+    status: "blocked",
+    error: code,
+    decision,
+    input_tokens: 0,
+    output_tokens: 0,
+    is_simulation: true,
+  });
+
+  const steps = await readSteps(runs[0]!.id);
+  expect(steps.map((step) => [step.phase, step.status])).toEqual([
+    ["guardrails", "ok"],
+    ["decision", "blocked"],
+  ]);
+  expect(steps[1]!.label).toBe(decision);
+  expect(steps[1]!.detail).toMatchObject({ error_code: code, run_status: "blocked", appointment_created: false });
+
+  expect(await readAppointments(contactId)).toHaveLength(0);
+  expect(await readMessages(contactId)).toHaveLength(0);
+  expect((await readActivities(contactId)).filter((row) => row.actor_type === "ai_agent")).toHaveLength(0);
+  expect((await readContact(contactId)).stage).toBe(stageBefore);
 }
 
 beforeAll(async () => {
@@ -437,45 +531,58 @@ describe("Louis — aucune double réservation", () => {
     expect(await readMessages(contactId)).toHaveLength(1);
     const runs = await readRuns(contactId);
     expect(runs).toHaveLength(2);
-    expect(runs[1]).toMatchObject({ status: "failed", error: "appointment_already_scheduled" });
+    // An eligibility refusal is a rule doing its job, not an error.
+    expect(runs[1]).toMatchObject({ status: "blocked", error: "appointment_already_scheduled" });
   });
 });
 
 describe("Louis — consentement et éligibilité", () => {
-  it("refuse de préparer un message sans consentement valide", async () => {
+  it("sans consentement valide : run « bloqué », 0 token, aucune écriture de Louis, une tâche pour un conseiller", async () => {
     const contactId = await createContact("sans-consentement", { consent: "none" });
+    const { provider, calls } = countingProvider();
 
-    const result = await runLouisAppointment(agentA, contactId);
+    const result = await runLouisAppointment(agentA, contactId, { provider });
 
-    expect(result.data).toBeNull();
-    expect(result.error?.code).toBe("consent_not_granted");
-    expect(await readAppointments(contactId)).toHaveLength(0);
-    expect(await readMessages(contactId)).toHaveLength(0);
-
+    await expectBlockedRefusal(contactId, result, "consent_not_granted", LOUIS_DECISION_TEXTS.consent_missing);
+    expect(calls()).toBe(0);
     const tasks = await readTasks(contactId);
     expect(tasks).toHaveLength(1);
     expect(tasks[0]).toMatchObject({ type: "appointment_consent_missing", status: "open", created_by_agent: "louis" });
-    expect((await readRuns(contactId))[0]).toMatchObject({ status: "failed", error: "consent_not_granted" });
   });
 
-  it("refuse quand le consentement a été retiré", async () => {
+  it("refuse quand le consentement a été retiré (run « bloqué »)", async () => {
     const contactId = await createContact("consentement-retire", { consent: "withdrawn" });
     const result = await runLouisAppointment(agentA, contactId);
 
-    expect(result.error?.code).toBe("consent_not_granted");
-    expect(await readAppointments(contactId)).toHaveLength(0);
+    await expectBlockedRefusal(contactId, result, "consent_not_granted", LOUIS_DECISION_TEXTS.consent_missing);
   });
 
-  it("refuse un contact sans coordonnées exploitables", async () => {
+  it("sans coordonnées exploitables : run « bloqué », 0 token, aucune écriture de Louis, une tâche pour un conseiller", async () => {
     const contactId = await createContact("sans-coordonnees", { email: false, consent: "none" });
+    const { provider, calls } = countingProvider();
 
-    const result = await runLouisAppointment(agentA, contactId);
+    const result = await runLouisAppointment(agentA, contactId, { provider });
 
-    expect(result.data).toBeNull();
-    expect(result.error?.code).toBe("appointment_no_reachable_channel");
-    expect(await readAppointments(contactId)).toHaveLength(0);
+    await expectBlockedRefusal(
+      contactId,
+      result,
+      "appointment_no_reachable_channel",
+      LOUIS_DECISION_TEXTS.channel_missing,
+    );
+    expect(calls()).toBe(0);
     const tasks = await readTasks(contactId);
-    expect(tasks[0]).toMatchObject({ type: "appointment_channel_missing", created_by_agent: "louis" });
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0]).toMatchObject({ type: "appointment_channel_missing", status: "open", created_by_agent: "louis" });
+  });
+
+  it("un refus répété n'empile pas les tâches : la tâche ouverte est réutilisée", async () => {
+    const contactId = await createContact("sans-consentement-bis", { consent: "none" });
+    await runLouisAppointment(agentA, contactId);
+    await runLouisAppointment(agentA, contactId);
+
+    expect(await readTasks(contactId)).toHaveLength(1);
+    const runs = await readRuns(contactId);
+    expect(runs.map((run) => run.status)).toEqual(["blocked", "blocked"]);
   });
 
   it("refuse un contact qui n'est pas encore qualifié", async () => {
@@ -489,7 +596,7 @@ describe("Louis — consentement et éligibilité", () => {
     expect(await readAppointments(contactId)).toHaveLength(0);
     expect(await readMessages(contactId)).toHaveLength(0);
     expect(await readTasks(contactId)).toHaveLength(0);
-    expect((await readRuns(contactId))[0]).toMatchObject({ status: "failed", error: "appointment_stage_not_ready" });
+    expect((await readRuns(contactId))[0]).toMatchObject({ status: "blocked", error: "appointment_stage_not_ready" });
   });
 
   it("propose un SMS quand seul ce canal est consenti", async () => {
@@ -509,49 +616,94 @@ describe("Louis — consentement et éligibilité", () => {
 });
 
 describe("Louis — aucun créneau disponible", () => {
-  it("ne propose rien et crée une tâche quand l'agenda est plein", async () => {
+  it("agenda plein : run « bloqué », 0 token, aucune écriture de Louis, une tâche pour un conseiller", async () => {
     const contactId = await createContact("agenda-plein");
     // The blocker belongs to ANOTHER contact: the point is a full agency diary,
     // not "this contact already has an appointment" (tested separately).
-    const blockerContactId = await createContact("agenda-plein-bloqueur");
-    const blockerStart = new Date(Date.now() - 3_600_000);
-    const blockerEnd = new Date(Date.now() + (SLOT_HORIZON_DAYS + 2) * 86_400_000);
-
-    const blocker = await env.admin
-      .from("appointments")
-      .insert({
-        agency_id: env.agencyA.agencyId,
-        contact_id: blockerContactId,
-        // Another member of the agency, so this blocker never collides with the
-        // director's appointments created by the other tests.
-        assigned_user_id: env.users.agentA.id,
-        starts_at: blockerStart.toISOString(),
-        ends_at: blockerEnd.toISOString(),
-        status: "confirmed",
-      })
-      .select("id")
-      .single();
-    if (blocker.error) throw new Error(`blocker: ${blocker.error.message}`);
+    const blockerId = await fillAgencyDiary("agenda-plein-bloqueur");
 
     try {
-      const result = await runLouisAppointment(agentA, contactId);
+      const { provider, calls } = countingProvider();
+      const result = await runLouisAppointment(agentA, contactId, { provider });
 
-      expect(result.data).toBeNull();
-      expect(result.error?.code).toBe("appointment_no_available_slot");
-      // Louis created nothing at all for this contact.
-      expect(await readAppointments(contactId)).toHaveLength(0);
-      expect(await readMessages(contactId)).toHaveLength(0);
+      await expectBlockedRefusal(contactId, result, "appointment_no_available_slot", LOUIS_DECISION_TEXTS.no_slot);
+      expect(calls()).toBe(0);
 
       const tasks = await readTasks(contactId);
       expect(tasks).toHaveLength(1);
       expect(tasks[0]).toMatchObject({ type: "appointment_no_slot", status: "open", created_by_agent: "louis" });
-      expect((await readRuns(contactId))[0]).toMatchObject({
-        status: "failed",
-        error: "appointment_no_available_slot",
-      });
     } finally {
-      await env.admin.from("appointments").delete().eq("id", blocker.data.id);
+      await env.admin.from("appointments").delete().eq("id", blockerId);
     }
+  });
+});
+
+describe("Louis — refus comptés « bloqué » dans les indicateurs", () => {
+  it("agent_activity_summary et le tableau de bord : +3 bloqués, 0 erreur de plus", async () => {
+    const dayStart = parisDayStart(new Date()).toISOString();
+    const readLouis = async () => {
+      const { data, error } = await agentA.rpc("agent_activity_summary", {
+        target_agency: env.agencyA.agencyId,
+        day_start: dayStart,
+        window_start: dayStart,
+      });
+      if (error) throw new Error(`agent_activity_summary: ${error.message}`);
+      const row = (data ?? []).find((entry) => entry.agent_name === "louis");
+      return { failed: Number(row?.today_failed ?? 0), blocked: Number(row?.today_blocked ?? 0) };
+    };
+    const readDashboard = async () => {
+      const summary = await buildDashboardSummary(agentA);
+      if (summary.error || summary.data.agents.runsToday.status !== "ok") throw new Error("dashboard unavailable");
+      return summary.data.agents.runsToday.value;
+    };
+
+    const beforeSummary = await readLouis();
+    const beforeDashboard = await readDashboard();
+
+    const noConsent = await createContact("indicateurs-consentement", { consent: "none" });
+    const noChannel = await createContact("indicateurs-coordonnees", { email: false, consent: "none" });
+    const fullDiary = await createContact("indicateurs-agenda-plein");
+    expect((await runLouisAppointment(agentA, noConsent)).error?.code).toBe("consent_not_granted");
+    expect((await runLouisAppointment(agentA, noChannel)).error?.code).toBe("appointment_no_reachable_channel");
+    const blockerId = await fillAgencyDiary("indicateurs-bloqueur");
+    try {
+      expect((await runLouisAppointment(agentA, fullDiary)).error?.code).toBe("appointment_no_available_slot");
+    } finally {
+      await env.admin.from("appointments").delete().eq("id", blockerId);
+    }
+
+    const afterSummary = await readLouis();
+    expect(afterSummary.failed).toBe(beforeSummary.failed);
+    expect(afterSummary.blocked).toBe(beforeSummary.blocked + 3);
+
+    const afterDashboard = await readDashboard();
+    expect(afterDashboard.failed).toBe(beforeDashboard.failed);
+    expect(afterDashboard.blocked).toBe(beforeDashboard.blocked + 3);
+
+    // The « Agents IA » screen shows the refusal as blocked, never as an error.
+    const agents = await getAgentsDashboard(agentA);
+    expect(agents.error).toBeNull();
+    const louis = agents.data!.agents.find((agent) => agent.agent === "louis")!;
+    expect(louis.lastErrors[0]).toMatchObject({
+      code: "appointment_no_available_slot",
+      status: "blocked",
+      statusLabel: "Bloquée",
+    });
+  });
+
+  it("la fiche du contact montre le run bloqué, sa décision et la tâche ouverte", async () => {
+    const contactId = await createContact("chronologie-refus", { consent: "none" });
+    await runLouisAppointment(agentA, contactId);
+
+    const timeline = await buildContactTimeline(agentA, contactId);
+    expect(timeline.error).toBeNull();
+    const entries = timeline.data ?? [];
+    const run = entries.find((entry) => entry.kind === "ai_run");
+    expect(run).toMatchObject({ status: "blocked" });
+    expect(run!.title).toContain(LOUIS_DECISION_TEXTS.consent_missing);
+    expect(entries.some((entry) => entry.kind === "task")).toBe(true);
+    // No AI-authored history entry: the refusal wrote nothing in Louis's name.
+    expect(entries.some((entry) => entry.kind === "activity" && entry.actor.agent === "louis")).toBe(false);
   });
 });
 

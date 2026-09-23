@@ -174,7 +174,7 @@ test("coupe-circuit : suspendu depuis l'écran, un agent refuse de tourner et le
   // --- an agent now refuses to run, with a message that says why -----------
   await page.goto(`/contacts/${CONTACT_ID}`);
   await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
-  const error = page.getByTestId("agent-error");
+  const error = page.getByTestId("agent-blocked");
   await expect(error).toBeVisible({ timeout: COLD_START });
   await expect(error).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
   await expect(page.getByTestId("agent-replay")).toHaveCount(0);

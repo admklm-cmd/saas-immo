@@ -3,13 +3,13 @@ import Link from "next/link";
 
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
-import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { AgentRunHead } from "@/features/agents-ia/components/AgentRunHead";
 import { AgentRunReplay } from "@/features/agents-ia/components/AgentRunReplay";
+import { RunStatusBadge } from "@/features/agents-ia/components/RunStatusBadge";
 import { replayStepsFromView } from "@/features/agents-ia/components/replay";
 import { getRunSteps } from "@/features/agents-ia/queries";
 
@@ -62,7 +62,7 @@ export default async function AgentRunPage({ params }: { params: Promise<{ runId
         title={TEXTS.headTitle(run.agentLabel)}
         meta={
           <>
-            <Badge tone={run.status === "succeeded" ? "outline" : "solid"}>{run.statusLabel}</Badge>
+            <RunStatusBadge status={run.status} />
             {run.isSimulation ? <SimulationBadge /> : null}
           </>
         }

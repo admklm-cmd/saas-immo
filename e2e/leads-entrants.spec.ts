@@ -131,7 +131,7 @@ test("cas d'erreur : coupe-circuit actif, Léa refuse et l'écran affiche le mes
   await setAiPaused(user.agencyId, true);
   await target.getByTestId("run-lea").click();
 
-  const error = target.getByTestId("lead-error");
+  const error = target.getByTestId("lead-blocked");
   await expect(error).toBeVisible({ timeout: COLD_START });
   await expect(error).toContainText(AGENT_ERROR_MESSAGES.ai_paused);
   // Nothing was decided, and the action can be retried once the agents are back.

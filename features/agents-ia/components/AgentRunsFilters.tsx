@@ -2,6 +2,7 @@ import { APP_TEXTS } from "@/components/texts";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Select, type SelectOption } from "@/components/ui/Select";
+import { RUN_OUTCOME_LABELS } from "@/components/texts";
 import { AGENT_LABELS, AGENT_ORDER, AGENT_RUN_STATUS_LABELS } from "@/lib/agents/messages";
 
 const TEXTS = APP_TEXTS.runHistory;
@@ -17,7 +18,7 @@ const STATUS_OPTIONS: readonly SelectOption[] = [
   { value: ALL, label: TEXTS.filterAll },
   ...(Object.keys(AGENT_RUN_STATUS_LABELS) as (keyof typeof AGENT_RUN_STATUS_LABELS)[]).map((status) => ({
     value: status,
-    label: AGENT_RUN_STATUS_LABELS[status],
+    label: RUN_OUTCOME_LABELS[status],
   })),
 ];
 

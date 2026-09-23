@@ -11,9 +11,26 @@
  *   3. agency kill switch (`agencies.ai_paused`);
  *   4. daily volume limit (`agencies.ai_daily_run_limit`, Europe/Paris day);
  *   5. human takeover (`contacts.human_takeover`) — no automatic action.
+ *   6. business eligibility of the agent (optional `precheck`: Emma on a signed
+ *      mandate, a lost file, a draft already waiting, a follow-up already
+ *      prepared today, no valid consent or no usable contact details; Louis on
+ *      a contact not ready or already booked, no valid consent, no usable
+ *      contact details or no free slot in the diary; Sarah on an appointment
+ *      without a report written by a human).
  *
  * Every attempt is journaled in `ai_agent_runs`: refused attempts as `blocked`
  * with the reason, accepted ones as `running` then `succeeded` / `failed`.
+ * A `failed` run is a real error (unreadable data, invalid AI output, database
+ * refusal). A refusal decided by a guard rail or an eligibility rule BEFORE any
+ * work is `blocked`, so it never inflates the « Erreurs » figures. The database
+ * only accepts `blocked` at INSERT time (a `running` run may only end
+ * `succeeded` or `failed`), which is why eligibility is checked here, before
+ * the run is opened. A refusal only discovered AFTER the run is opened (e.g. a
+ * concurrent run won the race) stays `failed`: rare, and never a silent loss.
+ * A blocked refusal cannot write an AI-authored CRM activity
+ * (`guard_activity_actor` only accepts one while a run of that agent is
+ * `running`); it may still open a task for a human (`afterBlock`), and the
+ * blocked run itself appears in the contact's history with its decision.
  *
  * Two entry points, same guard rails:
  *   * `startGuardedRun` — the agent works on an existing contact (Hugo, Emma,
@@ -40,7 +57,14 @@ import {
   AGENT_STEP_LABELS,
   type AgentErrorCode,
 } from "./messages";
-import { createStepRecorder, type AgentStepRecorder } from "./steps";
+import { createStepRecorder, type AgentStepDetail, type AgentStepRecorder } from "./steps";
+import {
+  ELIGIBILITY_BLOCKING_CODES,
+  GUARD_BLOCKING_CODES,
+  runStatusForRefusal,
+  type EligibilityBlockingCode,
+  type GuardBlockingCode,
+} from "./run-status";
 import { parisDayStart } from "./time";
 import {
   AGENT_CONTACT_COLUMNS,
@@ -52,6 +76,34 @@ import {
   type TypedClient,
 } from "./types";
 
+/**
+ * A business refusal decided by the code before the run is opened. Journaled
+ * as a `blocked` run: it is a guard rail doing its job, not an error.
+ */
+export type RunRefusal = {
+  code: EligibilityBlockingCode;
+  /** French sentence journaled as the run decision and as the step label. */
+  decision: string;
+  /** Displayable flags and codes only — never the prospect's text. */
+  detail?: AgentStepDetail;
+  /**
+   * Optional follow-up once the blocked run is journaled (e.g. Emma opens a
+   * task for a conseiller when no consent is valid). Receives the blocked run
+   * id (`null` if the journal write failed). Must not throw; its own failure is
+   * logged and never replaces the refusal code: the refusal is the answer.
+   */
+  afterBlock?: (blockedRunId: string | null) => Promise<void>;
+};
+
+/**
+ * Eligibility check of an agent, run AFTER the shared guard rails (kill switch,
+ * volume and human takeover still win) and BEFORE the run is opened. Returns
+ * `ok(null)` when the agent may work, `ok(refusal)` otherwise, or an error when
+ * the data needed to decide could not be read — a technical error: the run is
+ * then opened and closed `failed` with that code, so it is counted as an error.
+ */
+export type RunPrecheck = (contact: AgentContact) => Promise<Result<RunRefusal | null>>;
+
 export type GuardedRunInput = {
   agent: AiAgentName;
   contactId: string;
@@ -59,10 +111,11 @@ export type GuardedRunInput = {
   input: Json;
   provider: AiProvider;
   now?: Date;
+  precheck?: RunPrecheck;
 };
 
 /** Same thing for an agent that runs BEFORE any contact exists (Léa). */
-export type GuardedContactlessRunInput = Omit<GuardedRunInput, "contactId">;
+export type GuardedContactlessRunInput = Omit<GuardedRunInput, "contactId" | "precheck">;
 
 type GuardedRunBase = {
   runId: string;
@@ -84,9 +137,16 @@ export type GuardedRun = GuardedRunBase & { contact: AgentContact };
  */
 export type GuardedContactlessRun = GuardedRunBase & { contact: null };
 
-/** Codes that are journaled as a `blocked` run rather than a plain failure. */
-const BLOCKING_CODES = ["ai_paused", "ai_daily_run_limit_reached", "human_takeover"] as const;
-type BlockingCode = (typeof BLOCKING_CODES)[number];
+/**
+ * Codes that are journaled as a `blocked` run rather than a plain failure. The
+ * classification lives in the pure module `./run-status` (also imported by
+ * client components, which must never bundle this server-side runner); it is
+ * re-exported here for server callers.
+ */
+const BLOCKING_CODES = GUARD_BLOCKING_CODES;
+type BlockingCode = GuardBlockingCode;
+
+export { ELIGIBILITY_BLOCKING_CODES, runStatusForRefusal, type EligibilityBlockingCode };
 
 /**
  * Journals a refused attempt. A `blocked` run is accepted by the database even
@@ -96,7 +156,15 @@ type BlockingCode = (typeof BLOCKING_CODES)[number];
 export async function journalBlockedRun(
   client: TypedClient,
   context: AgentContext,
-  input: { agent: AiAgentName; contactId: string | null; provider: AiProvider; reason: BlockingCode; details: Json },
+  input: {
+    agent: AiAgentName;
+    contactId: string | null;
+    provider: AiProvider;
+    reason: BlockingCode | EligibilityBlockingCode;
+    details: Json;
+    /** Journaled decision; defaults to the French message of `reason`. */
+    decision?: string;
+  },
 ): Promise<string | null> {
   const { data, error } = await client
     .from("ai_agent_runs")
@@ -107,7 +175,7 @@ export async function journalBlockedRun(
       triggered_by_user_id: context.userId,
       status: "blocked",
       input: input.details,
-      decision: AGENT_ERROR_MESSAGES[input.reason],
+      decision: (input.decision ?? AGENT_ERROR_MESSAGES[input.reason]).slice(0, 2000),
       error: input.reason,
       provider: input.provider.name,
       model: input.provider.model,
@@ -203,6 +271,52 @@ async function startRun(
     return failWith<AnyGuardedRun>(reason);
   };
 
+  /**
+   * Journals an eligibility refusal as a `blocked` run. The shared guard rails
+   * DID pass, so the replay shows them `ok`, then the blocking decision.
+   */
+  const refuse = async (subject: AgentContact, refusal: RunRefusal): Promise<Result<AnyGuardedRun>> => {
+    const blockedRunId = await journalBlockedRun(client, context, {
+      agent: input.agent,
+      contactId: subject.id,
+      provider: input.provider,
+      reason: refusal.code,
+      decision: refusal.decision,
+      details: input.input,
+    });
+    if (blockedRunId) {
+      const steps = createStepRecorder(client, {
+        agencyId: context.agencyId,
+        runId: blockedRunId,
+        startedAt: guardStartedAt,
+      });
+      await steps.step({
+        phase: "guardrails",
+        label: AGENT_STEP_LABELS.guardrails_ok,
+        detail: {
+          agent: input.agent,
+          contact_id: subject.id,
+          ai_paused: agency.ai_paused,
+          human_takeover: subject.human_takeover,
+        },
+      });
+      await steps.step({
+        phase: "decision",
+        label: refusal.decision,
+        status: "blocked",
+        detail: { ...(refusal.detail ?? {}), error_code: refusal.code, run_status: "blocked" },
+      });
+    }
+    if (refusal.afterBlock) {
+      try {
+        await refusal.afterBlock(blockedRunId);
+      } catch (cause) {
+        console.error("[agents] afterBlock threw:", cause);
+      }
+    }
+    return failWith<AnyGuardedRun>(refusal.code);
+  };
+
   // --- 3. kill switch --------------------------------------------------------
   if (agency.ai_paused) {
     return block("ai_paused");
@@ -227,6 +341,17 @@ async function startRun(
   // --- 5. human takeover -----------------------------------------------------
   if (contact?.human_takeover) {
     return block("human_takeover");
+  }
+
+  // --- 6. business eligibility of the agent (optional) -----------------------
+  // A refusal is `blocked`. A precheck that could not READ what it needs is a
+  // technical error: the run is still opened below and immediately closed
+  // `failed`, so the error is counted as one instead of vanishing.
+  let precheckError: Result<never>["error"] = null;
+  if (contact && "precheck" in input && input.precheck) {
+    const eligibility = await input.precheck(contact);
+    if (eligibility.error) precheckError = eligibility.error;
+    else if (eligibility.data) return refuse(contact, eligibility.data);
   }
 
   // --- open the run ----------------------------------------------------------
@@ -277,6 +402,21 @@ async function startRun(
       is_simulation: input.provider.isSimulation,
     },
   });
+
+  if (precheckError) {
+    await steps.step({
+      phase: "context_loaded",
+      label: AGENT_STEP_LABELS.precheck_failed,
+      status: "failed",
+      detail: { error_code: precheckError.code },
+    });
+    await finishRun(client, runId, {
+      status: "failed",
+      error: precheckError.code,
+      decision: AGENT_STEP_LABELS.precheck_failed,
+    });
+    return { data: null, error: precheckError };
+  }
 
   return ok({ runId, contact, agency, steps });
 }

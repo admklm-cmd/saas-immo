@@ -129,6 +129,53 @@ export const MESSAGE_STATUS_LABELS: Readonly<Record<Enums["outbound_message_stat
   sent_simulated: "Envoyé (simulation)",
 };
 
+/**
+ * Human review of an outbound message, as exposed in the timeline `meta`.
+ *
+ * Author and time are EXACTLY what the database stamped on the message
+ * (`outbound_messages.validated_by` / `validated_at`, set by the server from the
+ * caller's session). They are never deduced from another event (not `sent_at`,
+ * not `created_at`, not a neighbouring activity):
+ *   * `review_outcome`: "approved" (validated, possibly sent since) |
+ *     "rejected" | null (still waiting). Derived from the status only;
+ *   * `validated_at`: raw value of the column, or null — even for a sent
+ *     message, a null is exposed as null, never filled in;
+ *   * `validated_by_user_id`: raw value of the column, or null (the database
+ *     sets it to null when the member leaves the agency);
+ *   * `validated_by_email`: professional e-mail of that member, resolved from
+ *     the CURRENT members of the caller's agency (`list_agency_members`, read
+ *     once per timeline), or null when it cannot be resolved (member removed,
+ *     read failed, account without e-mail) — the UI then says « Auteur non
+ *     disponible ». Never a supposed author;
+ *   * `validated_by_label`: text to display for the author. Today exactly
+ *     `validated_by_email` (same null rule); kept separate so a display name
+ *     can replace it later without changing the e-mail field;
+ *   * `validated_by_role` / `validated_by_role_label`: current role of that
+ *     member, from the same read, or null under the same conditions.
+ */
+export type MessageReviewOutcome = "approved" | "rejected";
+
+export type MessageReviewMeta = {
+  review_outcome: MessageReviewOutcome | null;
+  validated_at: string | null;
+  validated_by_user_id: string | null;
+  validated_by_email: string | null;
+  validated_by_label: string | null;
+  validated_by_role: Enums["membership_role"] | null;
+  validated_by_role_label: string | null;
+};
+
+/** One member of the caller's agency, as needed to name a validator. */
+export type ValidatorIdentity = {
+  email: string | null;
+  role: Enums["membership_role"];
+};
+
+export const VALIDATOR_ROLE_LABELS: Readonly<Record<Enums["membership_role"], string>> = {
+  agent: "Conseiller",
+  director: "Directeur",
+};
+
 export const TASK_STATUS_LABELS: Readonly<Record<Enums["task_status"], string>> = {
   open: "À faire",
   done: "Terminée",
