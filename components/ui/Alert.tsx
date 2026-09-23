@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "./cn";
+import { MotionDots } from "./MotionDots";
 
 export type AlertTone = "error" | "success" | "info";
 
@@ -47,7 +48,7 @@ export function Alert({ tone = "info", title, children, action, className, testI
           tone === "error" ? "bg-white/15 text-ink-inverse" : "bg-inverse text-ink-inverse",
         )}
       >
-        {GLYPHS[tone]}
+        {tone === "error" ? <MotionDots kind="error" /> : GLYPHS[tone]}
       </span>
       <div className="min-w-0 flex-1">
         {title ? <p className="font-semibold">{title}</p> : null}

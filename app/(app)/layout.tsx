@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppNav } from "@/components/app/AppNav";
+import { RouteParticles } from "@/components/motion/RouteParticles";
 import { SignOutButton } from "@/components/app/SignOutButton";
 import { APP_TEXTS } from "@/components/texts";
 import { Logo } from "@/components/ui/Logo";
@@ -58,7 +59,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <main id="content" className="min-w-0 flex-1">
+      <main id="content" className="particle-shell relative min-w-0 flex-1">
+        <RouteParticles />
         {children}
         <div className="border-t border-line px-6 py-6 lg:hidden">
           <p className="text-xs text-ink-subtle">

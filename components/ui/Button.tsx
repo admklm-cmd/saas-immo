@@ -1,12 +1,13 @@
 import type { ComponentPropsWithRef } from "react";
 
 import { cn } from "./cn";
+import { MotionDots } from "./MotionDots";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const BASE =
-  "inline-flex items-center justify-center gap-2 rounded-full font-medium " +
+  "motion-button inline-flex items-center justify-center gap-2 rounded-full font-medium " +
   // duration-150 == --duration-fast (see docs/design-system.md: Tailwind v4 has
   // no `--duration-*` theme namespace, the numeric utility is the token value).
   "transition-[background-color,color,border-color,transform,box-shadow] duration-150 ease-standard " +
@@ -57,10 +58,7 @@ export function Button({
       {...props}
     >
       {isLoading ? (
-        <span
-          aria-hidden="true"
-          className="size-3.5 animate-spin-slow rounded-full border-2 border-current border-t-transparent"
-        />
+        <MotionDots />
       ) : null}
       <span>{children}</span>
     </button>

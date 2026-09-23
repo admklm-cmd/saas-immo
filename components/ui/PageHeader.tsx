@@ -15,7 +15,7 @@ export type PageHeaderProps = {
 
 export function PageHeader({ eyebrow, title, description, meta, actions, className }: PageHeaderProps) {
   return (
-    <header className={cn("animate-rise", className)}>
+    <header className={cn("page-header animate-rise", className)}>
       {eyebrow ? <div className="mb-3 text-sm text-ink-muted">{eyebrow}</div> : null}
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="min-w-0">

@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { MotionDots } from "@/components/ui/MotionDots";
 import {
   editDraft,
   refuseMessage,
@@ -94,7 +95,7 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Badge tone="outline">{message.channelLabel}</Badge>
-          <Badge tone={message.status === "approved" ? "solid" : "neutral"}>{message.statusLabel}</Badge>
+          <Badge tone={message.status === "approved" ? "solid" : "neutral"} icon={message.status === "pending_validation" && !busy ? <MotionDots kind="pending" /> : undefined}>{message.statusLabel}</Badge>
           {message.isFirstContact ? <Badge tone="dashed">{TEXTS.firstContact}</Badge> : null}
           {message.isSimulation ? <SimulationBadge /> : null}
         </div>

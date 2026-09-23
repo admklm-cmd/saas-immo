@@ -1,6 +1,7 @@
 import { APP_TEXTS } from "@/components/texts";
 
 import { Badge } from "./Badge";
+import { cn } from "./cn";
 
 /**
  * Marks an action that was simulated (prototype): nothing left the system.
@@ -13,13 +14,10 @@ export function SimulationBadge({ className }: { className?: string }) {
   return (
     <Badge
       tone="solid"
-      className={className}
+      className={cn("simulation-float", className)}
       title={APP_TEXTS.states.simulationHint}
       icon={
-        <svg viewBox="0 0 12 12" className="size-2.5 fill-current">
-          <circle cx="6" cy="6" r="5" fillOpacity="0.35" />
-          <circle cx="6" cy="6" r="2" />
-        </svg>
+        <span className="simulation-dot" />
       }
     >
       {APP_TEXTS.states.simulation}
