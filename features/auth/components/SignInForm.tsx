@@ -7,6 +7,7 @@ import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import { createClient } from "@/lib/supabase/client";
 
 const TEXTS = APP_TEXTS.auth;
@@ -25,9 +26,16 @@ export function SignInForm({ redirectTo }: { redirectTo: string }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const singleFlight = useSingleFlight();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // One sign-in request at a time, even on a double Enter.
+    await singleFlight(() => signIn());
+  }
+
+  async function signIn() {
+    if (isSubmitting) return;
     setError(null);
 
     if (email.trim().length === 0 || password.length === 0) {

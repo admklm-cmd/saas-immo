@@ -67,7 +67,7 @@ export default async function DashboardPage() {
             <Reveal>
               <AgentsSummary agents={summary.agents} />
             </Reveal>
-            <Reveal>
+            <Reveal index={1}>
               <UpcomingAppointments list={summary.upcomingAppointments} />
             </Reveal>
           </div>

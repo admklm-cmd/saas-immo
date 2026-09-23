@@ -62,9 +62,11 @@ export function PendingMessagesList({ messages }: { messages: readonly PendingMe
           }
         />
       ) : (
-        messages.map((message) => (
-          <PendingMessageCard key={message.id} message={message} onDecided={onDecided} />
-        ))
+        <div className="stagger flex flex-col gap-6">
+          {messages.map((message) => (
+            <PendingMessageCard key={message.id} message={message} onDecided={onDecided} />
+          ))}
+        </div>
       )}
     </div>
   );

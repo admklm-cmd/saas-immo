@@ -24,7 +24,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
       <p className="mt-1 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
 
       {/* Row gap carried by each card (mb-6) so the subgrid tracks stay tight. */}
-      <div className="mt-5 -mb-6 grid gap-x-6 gap-y-0 md:grid-cols-2 xl:grid-cols-3">
+      <div className="stagger mt-5 -mb-6 grid gap-x-6 gap-y-0 md:grid-cols-2 xl:grid-cols-3">
         <ActionListCard
           layout="subgrid"
           id="messages"

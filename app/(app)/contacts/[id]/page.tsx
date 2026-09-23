@@ -79,7 +79,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
       />
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="flex min-w-0 flex-col gap-6">
+        <div className="stagger flex min-w-0 flex-col gap-6">
           <ContactIdentityCard contact={contact} />
           <ContactPropertyCard property={contact.property} />
 
@@ -94,7 +94,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           </Card>
         </div>
 
-        <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+        <div className="stagger flex flex-col gap-6 lg:sticky lg:top-24">
           <AgentActionsPanel contactId={contact.id} />
           <ContactConsentsCard consents={contact.consents} />
         </div>

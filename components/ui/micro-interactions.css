@@ -1,0 +1,248 @@
+/*
+ * Micro-interactions of the interface — see docs/design-system.md §2.5.
+ *
+ * Plain CSS on purpose: no JavaScript timer, no React state per frame. Every
+ * animation here is tied to a real state rendered by a component (a request in
+ * flight, a draft waiting for a human, an error that just happened, content
+ * that just arrived). None of them is played to suggest activity that does not
+ * exist.
+ *
+ * Imported once by app/globals.css. Values come from the tokens declared in
+ * `@theme` (colours, easings, stagger step); the few literal numbers are the
+ * geometry of the spec (docs/plans/2026-09-23-particles-spec.md §2).
+ */
+
+/* --- App canvas: white, pearl-grey gradient, diffuse white halo ----------- */
+/* `fixed`: the gradient is anchored to the viewport, so a long page never
+   drags its darkest point below the fold. Cards stay opaque white on top. */
+.app-canvas {
+  background-color: var(--color-canvas);
+  background-image: radial-gradient(
+    ellipse at 80% 75%,
+    var(--color-pearl) 0%,
+    var(--color-pearl-soft) 34%,
+    var(--color-canvas) 72%
+  );
+  background-attachment: fixed;
+}
+
+/* --- A. Simulation badge ------------------------------------------------- */
+/* A 3 px vertical drift (1 px → -2 px): it stays a badge, never grows. */
+.simulation-badge {
+  animation: simulation-float 3s ease-in-out infinite;
+}
+
+.simulation-dot {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  animation: simulation-pulse 2s ease-in-out infinite;
+}
+
+@keyframes simulation-float {
+  0%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes simulation-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 rgb(255 255 255 / 0.07);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 4px rgb(255 255 255 / 0.07);
+  }
+}
+
+/* --- B. ThreeDotLoader: a real request is in flight ------------------------ */
+/* Three balls 120° apart around a centre, opacities 1 / .6 / .3, one turn in
+   1.7 s. `sm` fits a button, `md` a busy area. */
+.dot-loader {
+  --dot-size: 3px;
+  --dot-orbit: 4.5px;
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: calc(var(--dot-orbit) * 2 + var(--dot-size));
+  height: calc(var(--dot-orbit) * 2 + var(--dot-size));
+  animation: dot-loader-turn 1.7s linear infinite;
+}
+
+.dot-loader[data-size="md"] {
+  --dot-size: 5px;
+  --dot-orbit: 8px;
+}
+
+.dot-loader > i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  margin: calc(var(--dot-size) / -2) 0 0 calc(var(--dot-size) / -2);
+  border-radius: 9999px;
+  background-color: currentColor;
+  transform: rotate(var(--dot-angle, 0deg)) translateY(calc(var(--dot-orbit) * -1));
+}
+
+.dot-loader > i:nth-child(2) {
+  --dot-angle: 120deg;
+  opacity: 0.6;
+}
+
+.dot-loader > i:nth-child(3) {
+  --dot-angle: 240deg;
+  opacity: 0.3;
+}
+
+@keyframes dot-loader-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* --- C. PendingDots: waiting for a HUMAN, nothing is being processed -------- */
+/* One after the other, 1.5 s loop, .16 s apart, 5 px amplitude (max 7 px). */
+.pending-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.pending-dots > i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  animation: pending-dot-bounce 1.5s var(--ease-standard) infinite;
+}
+
+.pending-dots > i:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.pending-dots > i:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes pending-dot-bounce {
+  0%,
+  44%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  22% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
+}
+
+/* --- D. Error: red dots, ONE horizontal shake (≤ 5 px), then still ---------- */
+.error-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  color: var(--color-danger);
+  animation: error-shake 0.45s var(--ease-standard) 1 both;
+}
+
+.error-dots > i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background-color: currentColor;
+}
+
+@keyframes error-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  18% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  62% {
+    transform: translateX(-3px);
+  }
+  82% {
+    transform: translateX(2px);
+  }
+}
+
+/* --- F. Arrival of cards ------------------------------------------------- */
+/* Played once, when an element is mounted — i.e. when the content arrives. A
+   React re-render or a keystroke does not remount it, so nothing replays. */
+.stagger > * {
+  animation: card-arrive 550ms var(--ease-standard) backwards;
+}
+
+.stagger > :nth-child(2) { animation-delay: calc(var(--stagger-step) * 1); }
+.stagger > :nth-child(3) { animation-delay: calc(var(--stagger-step) * 2); }
+.stagger > :nth-child(4) { animation-delay: calc(var(--stagger-step) * 3); }
+.stagger > :nth-child(5) { animation-delay: calc(var(--stagger-step) * 4); }
+/* Capped: from the sixth card on, everything arrives together. */
+.stagger > :nth-child(n + 6) { animation-delay: calc(var(--stagger-step) * 5); }
+
+/* Visible by default: without JavaScript, Reveal never hides its content. */
+.reveal[data-reveal="hidden"] {
+  opacity: 0;
+  transform: translate3d(0, 12px, 0);
+}
+
+.reveal[data-reveal="entering"] {
+  animation: card-arrive 550ms var(--ease-standard) backwards;
+  animation-delay: calc(var(--reveal-index, 0) * var(--stagger-step));
+}
+
+@keyframes card-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Reduced motion: every decorative movement stops, labels stay --------- */
+/* The global rule of globals.css already shortens every animation; these
+   explicit `none` make the contract readable and testable. */
+@media (prefers-reduced-motion: reduce) {
+  .simulation-badge,
+  .simulation-dot,
+  .dot-loader,
+  .pending-dots > i,
+  .error-dots,
+  .stagger > *,
+  .reveal[data-reveal="entering"] {
+    animation: none;
+  }
+
+  .simulation-dot {
+    opacity: 1;
+  }
+
+  /* A still indicator: the three dots stay in their triangle, and the busy
+     label next to them says what is happening. */
+  .pending-dots > i {
+    opacity: 0.7;
+  }
+}

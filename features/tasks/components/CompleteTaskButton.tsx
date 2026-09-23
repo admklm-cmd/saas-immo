@@ -3,8 +3,9 @@
 import { useRef, useState, useTransition } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
-import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Button } from "@/components/ui/Button";
+import { isRetryableErrorCode } from "@/components/ui/retryable";
 import { completeTask } from "@/features/tasks/actions";
 
 import { useTaskCompletion } from "./TaskCompletionProvider";
@@ -29,7 +30,7 @@ export function CompleteTaskButton({ taskId, taskTitle }: CompleteTaskButtonProp
   const { announce } = useTaskCompletion();
   const [isPending, startTransition] = useTransition();
   const [isClosed, setIsClosed] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const inFlight = useRef(false);
 
   function onClick() {
@@ -51,9 +52,9 @@ export function CompleteTaskButton({ taskId, taskTitle }: CompleteTaskButtonProp
           announce({ tone: "info", message: result.error.message });
           return;
         }
-        setError(result.error.message);
+        setError({ message: result.error.message, retryable: isRetryableErrorCode(result.error.code) });
       } catch {
-        setError(APP_TEXTS.states.unexpected);
+        setError({ message: APP_TEXTS.states.unexpected, retryable: true });
       } finally {
         inFlight.current = false;
       }
@@ -74,9 +75,14 @@ export function CompleteTaskButton({ taskId, taskTitle }: CompleteTaskButtonProp
         <span className="sr-only"> {TEXTS.completeFor(taskTitle)}</span>
       </Button>
       {error ? (
-        <Alert tone="error" title={TEXTS.completeErrorTitle} className="w-full sm:max-w-xs">
-          {error}
-        </Alert>
+        <AnimatedErrorState
+          title={TEXTS.completeErrorTitle}
+          className="w-full sm:max-w-xs"
+          testId="complete-task-error"
+          onRetry={error.retryable ? onClick : undefined}
+        >
+          {error.message}
+        </AnimatedErrorState>
       ) : null}
     </div>
   );

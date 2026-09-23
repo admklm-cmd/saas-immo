@@ -52,16 +52,28 @@ utilitaires correspondants.
 | `--color-surface-sunken` | `#f4f4f5` | `bg-surface-sunken` | Survol, puces neutres |
 | `--color-inverse` | `#0a0a0b` | `bg-inverse` | Bouton principal, badge fort, alerte d'erreur |
 | `--color-inverse-soft` | `#1c1c1f` | `bg-inverse-soft` | Survol du bouton principal |
-| `--color-ink` | `#0a0a0b` | `text-ink` | Texte principal — **19,6:1** sur blanc |
-| `--color-ink-muted` | `#5a5a60` | `text-ink-muted` | Texte secondaire — **6,9:1** |
-| `--color-ink-subtle` | `#6f6f77` | `text-ink-subtle` | Légendes, sur-titres — **4,8:1** |
+| `--color-pearl` | `#e9e9ee` | — | Point le plus sombre du fond gris perle (`.app-canvas`) |
+| `--color-pearl-soft` | `#f7f7f9` | — | Palier intermédiaire du fond gris perle |
+| `--color-ink` | `#18181b` | `text-ink` | Texte principal — **17,7:1** sur blanc, **14,6:1** sur `pearl` |
+| `--color-ink-muted` | `#5a5a60` | `text-ink-muted` | Texte secondaire — **6,9:1** (5,7:1 sur `pearl`) |
+| `--color-ink-subtle` | `#66666e` | `text-ink-subtle` | Légendes, sur-titres — **5,7:1** (4,7:1 sur `pearl`) |
 | `--color-ink-inverse` | `#fafafa` | `text-ink-inverse` | Texte sur fond noir |
 | `--color-ink-inverse-muted` | `#a8a8b0` | `text-ink-inverse-muted` | Texte secondaire sur noir — **7,4:1** |
-| `--color-line` | `#e7e7ea` | `border-line` | Séparateurs |
+| `--color-line` | `#e4e4e9` | `border-line` | Séparateurs, bordure des cartes |
 | `--color-line-strong` | `#d2d2d8` | `border-line-strong` | Bordures de champs et de puces |
 | `--color-focus` | `#0a0a0b` | — | Anneau de focus |
+| `--color-danger` | `#c63838` | — | **Seule teinte de l'interface** : points d'erreur (`ErrorDots`) uniquement, jamais du texte, toujours à côté d'un message écrit |
 
-Toutes les paires texte/fond utilisées dépassent 4,5:1 (WCAG AA texte normal).
+Toutes les paires texte/fond utilisées dépassent 4,5:1 (WCAG AA texte normal), y
+compris sur le point le plus sombre du fond gris perle.
+
+**Fond de l'espace connecté** (`.app-canvas`, posé sur `<main>` du layout `(app)`) :
+blanc, dégradé gris perle très doux, halo blanc diffus —
+`radial-gradient(ellipse at 80% 75%, pearl 0%, pearl-soft 34%, canvas 72%)`, fixé à la
+fenêtre (`background-attachment: fixed`) pour qu'une longue page n'entraîne pas sa
+zone sombre sous la ligne de flottaison. Les cartes restent **blanches et opaques**
+(`bg-surface`, `border-line`, `shadow-subtle`) : aucun texte n'est posé sur une
+transparence.
 
 ### 2.2 Typographie
 
@@ -126,14 +138,15 @@ utilisée toute la journée doit paraître instantanée, pas cinématographique.
 | `animate-rise` | Opacité 0 → 1 et translation de 8 px vers le haut | `--duration-slow` | `PageHeader`, `EmptyState`, `ContactsTable`, écran de connexion, accueil public |
 | `animate-fade` | Opacité 0 → 1, sans déplacement | `--duration-base` | `Alert`, étape de rejeu, formulaire de refus |
 | `animate-shimmer` | Position d'un dégradé de fond | 1,4 s, en boucle | `Skeleton` uniquement |
-| `animate-spin-slow` | Rotation | 700 ms, en boucle | Spinner du `Button` en cours de chargement |
+| `animate-spin-slow` | Rotation | 700 ms, en boucle | Token conservé, **plus utilisé** : le chargement est désormais `ThreeDotLoader` (§ 2.5.7) |
 | `animate-pulse` (Tailwind) | Opacité, en boucle | Tailwind | Étape de rejeu **en cours** : indicateur d'activité, jamais une mesure d'avancement |
 
-La phase 1 ajoute `animate-rise-soft` (4 px, 220 ms), `animate-settle`
-(`scale(.98)` vers l'état final, 220 ms) et `.stagger` (pas de 40 ms, plafonné à
-200 ms). `Reveal` utilise `IntersectionObserver` pour appliquer `rise-soft` sans
-jamais retirer les enfants du HTML ; sans JavaScript, sans API disponible ou avec
-un mouvement réduit, le contenu reste immédiatement visible.
+Également disponibles : `animate-rise-soft` (4 px, 220 ms), `animate-settle`
+(`scale(.98)` vers l'état final, 220 ms), `.stagger` et `Reveal` — ces deux derniers
+suivent désormais la règle « arrivée des cartes » du § 2.5.7 (12 px, 550 ms, pas de
+110 ms plafonné). `Reveal` utilise `IntersectionObserver` sans jamais retirer les
+enfants du HTML ; sans JavaScript, sans API disponible ou avec un mouvement réduit,
+le contenu reste immédiatement visible.
 
 #### 2.5.3 Inventaire des mouvements autorisés
 
@@ -144,8 +157,10 @@ maximale, la durée, un écran concerné.
 |---|---|---|---|---|
 | Entrée de page ou de section | Opacité + translation verticale | 8 px | `--duration-slow` | En-tête de la liste des contacts (`PageHeader`) |
 | Apparition d'une alerte ou d'une confirmation | Opacité seule | aucune translation | `--duration-base` | `Alert` d'erreur après une action ; panneau de confirmation du coupe-circuit |
-| Échelonnement d'une liste | Décalage du départ de l'entrée de chaque élément | pas de 40 ms, plafonné | `--duration-base` par élément | Lignes de la liste des contacts *(nécessite l'ajout de phase 1)* |
-| Survol ou pression d'un élément interactif | Fond, texte, bordure, ombre, `transform: scale` | `scale(0.98)` à la pression | `--duration-fast` | `Button` (`active:scale-[0.98]`), lignes de `ContactsTable` et `AgentRunsTable`, liens de `AppNav` |
+| Arrivée des cartes (`.stagger`, `Reveal`) | Opacité + translation verticale | 12 px ; pas de 110 ms, plafonné à 5 pas | 550 ms par carte | File « à valider », leads entrants, relances, suivi des rendez-vous, fiche contact, « À faire maintenant » |
+| Survol ou pression d'un bouton | Fond, bordure, ombre, `translate`, `scale` | élévation 2 px ; pression `translateY(1px) scale(.97)` | `--duration-fast` | `Button`, `ButtonLink` (§ 2.5.7) |
+| Survol d'une ligne ou d'un lien | Fond, texte, bordure | aucune | `--duration-fast` | Lignes de `ContactsTable` et `AgentRunsTable`, liens de `AppNav` |
+| Micro-interactions d'état réel | Voir § 2.5.7 | — | — | Badge « Simulation », chargement, attente de validation, erreur |
 | Champ de formulaire | Couleur de bordure (et ombre pour `Field`) | aucune | `--duration-fast` | `Field`, `Select`, `Textarea`. **L'anneau de focus global (`:focus-visible`), lui, n'est jamais animé** : il apparaît instantanément |
 | Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
 | Ouverture d'une fenêtre de confirmation (`Dialog`) | Opacité + `scale(.98)` → `scale(1)` (`animate-settle`), fond flouté fixe | `scale(0.98)` | `--duration-base` | Confirmation du mandat signé (pipeline) |
@@ -166,9 +181,12 @@ maximale, la durée, un écran concerné.
    de durée arrondie, pas de pause décorative. » Elle vaut pour toute l'interface :
    pas de compteur qui défile jusqu'à sa valeur, pas de barre qui se remplit sans
    mesure réelle derrière.
-4. **Jamais d'animation infinie hors indicateur de chargement.** Seuls
-   `animate-shimmer` (squelette), `animate-spin-slow` (bouton en cours) et
-   `animate-pulse` (étape en cours) tournent en boucle. Rien d'autre.
+4. **Jamais d'animation infinie hors indicateur d'état réel.** Seuls tournent en
+   boucle : `animate-shimmer` (squelette), `animate-pulse` (étape de rejeu en cours),
+   `ThreeDotLoader` (requête en vol), `PendingDots` (attente d'une décision humaine)
+   et `SimulationBadge` (rappel permanent qu'une action est simulée). Les particules
+   décoratives (`components/motion/`) suivent leurs propres règles
+   (`docs/plans/2026-09-23-particles-spec.md`). Rien d'autre.
 5. **Jamais le mouvement comme seul porteur d'information.** C'est le corollaire de
    la règle noir et blanc (§ 1) : ce qu'une animation raconte doit aussi être écrit
    en toutes lettres, ou annoncé dans une zone `aria-live`.
@@ -206,6 +224,47 @@ token. Ses délais sont les durées réellement mesurées par le serveur (voir �
 5. Aucun contenu n'est rendu conditionnellement à la fin d'une animation.
 6. L'anneau de focus reste visible et instantané ; l'ordre de tabulation est inchangé.
 7. Les tests Playwright du parcours passent sans attente liée à une animation.
+
+#### 2.5.7 Micro-interactions d'état réel
+
+Source : `docs/plans/2026-09-23-particles-spec.md` § 2 (fait foi). Styles partagés dans
+`components/ui/micro-interactions.css` (importé une fois par `app/globals.css`) : CSS
+pur, aucun minuteur JavaScript, aucune mise à jour React par image. **Chaque
+animation correspond à un état réellement rendu** ; aucune n'est jouée pour suggérer
+une activité qui n'existe pas.
+
+| Composant | Quand | Mouvement | Accessibilité |
+|---|---|---|---|
+| `SimulationBadge` | Toute action, tout message, toute exécution simulée | Pilule noire, texte blanc. Oscillation verticale 1 px → -2 px, 3 s, `ease-in-out`, infinie ; point blanc pulsant 2 s (opacité .55 → 1, halo 0 → 4 px à 7 %). Ne grossit jamais | Reste un badge : ni focusable, ni cliquable ; texte « Simulation » toujours écrit |
+| `ThreeDotLoader` | **Uniquement** pendant une vraie opération asynchrone (server action en vol) | Trois boules à 120°, opacités 1 / .6 / .3, un tour en 1,7 s. `size="sm"` dans un bouton (via `Button isLoading`), `md` pour une zone | Sans `label` : décoratif (`aria-hidden`), le `Button` porte `aria-busy` et son texte (« Simulation en cours… », « Action en cours… »). Avec `label` : `role="status"`, annoncé une fois |
+| `PendingDots` | **Uniquement** l'attente passive d'une décision humaine (brouillon « À valider », revue en attente dans l'historique) | Trois points qui rebondissent l'un après l'autre, boucle 1,5 s, décalage .16 s, amplitude 5 px | Libellé « En attente de validation » par défaut ; `label={null}` quand le texte voisin (badge, ligne d'historique) le dit déjà. Masqué dès qu'une décision est réellement en cours d'enregistrement |
+| `AnimatedErrorState` (+ `ErrorDots`) | Échec d'une action | Le chargement s'arrête ; trois points `--color-danger` sur pastille blanche, **une seule** secousse horizontale de .45 s (5 px max), puis immobiles | `Alert tone="error"` (`role="alert"`), titre et message écrits : jamais la couleur seule. « Réessayer » seulement si `onRetry` est fourni |
+| `Button` | Toujours | Transition 150 ms. Survol (pointeur capable) : élévation 2 px + `shadow-raised` ; pression : `translateY(1px) scale(.97)`. Propriétés individuelles `translate`/`scale` : les voisins ne bougent jamais | Désactivé : ni survol, ni pression, ni mouvement (`pointer-events: none`). En chargement : désactivé mais **pas estompé** (le libellé reste lisible). Focus visible inchangé |
+| `.stagger` / `Reveal` | Arrivée du contenu (montage de l'élément) | Fondu + 12 px vers le haut, 550 ms, pas de 110 ms (`--stagger-step`) entre les premières cartes, plafonné à 5 pas | `animation-fill-mode: backwards` : une fois arrivée, la carte ne garde **aucun** `transform` ni contexte d'empilement (les menus ancrés ne sont jamais recouverts par la carte suivante). Un re-rendu React ou une saisie ne rejoue rien |
+
+**Règles d'usage (non négociables)**
+
+1. **Aucun délai artificiel.** Le loader apparaît au lancement de la requête et
+   disparaît à sa réponse (succès ou erreur), jamais plus tard.
+2. **Pas de double soumission.** Toute action déclenchée par un clic passe par
+   `useSingleFlight()` (`components/ui/use-single-flight.ts`) : un second clic arrivé
+   avant le re-rendu est ignoré. Le bouton est en plus désactivé par `isLoading`.
+3. **« Réessayer » uniquement pour une erreur technique relançable** :
+   `isRetryableErrorCode(code)` (`components/ui/retryable.ts`) — `unexpected_error`,
+   `ai_provider_unavailable`, `ai_response_invalid`, échecs de lecture/écriture
+   (`*_read_failed`, `*_write_failed`, `*_insert_failed`, `*_update_failed`) ou
+   exception réseau. **Jamais** pour un garde-fou (coupe-circuit, consentement,
+   reprise en main, mandat signé…), une règle métier (déjà fait, introuvable,
+   `validation_failed`) : ces refus échoueraient de nouveau. Les refus de garde-fou
+   restent affichés par `GuardRailNotice` (information neutre, § 3.1). Le retry relance
+   **exactement la même opération** ; le serveur revérifie tout.
+4. **`aria-busy`** sur la zone réellement occupée (carte, panneau, formulaire) pendant
+   la requête, retiré à la réponse.
+5. **Points d'attente ≠ chargement.** `PendingDots` ne s'emploie jamais pour un
+   traitement ; `ThreeDotLoader` jamais pour une attente humaine.
+6. **`prefers-reduced-motion`** : badge, point, loader, points d'attente, secousse et
+   arrivée des cartes sont coupés (`animation: none`) ; les libellés restent. Le
+   bouton ne bouge plus au survol ni à la pression.
 
 ### 2.6 Utilitaires maison
 
@@ -637,3 +696,7 @@ Chaque écran gère quatre états :
   immédiatement disponible avec mouvement réduit.
 - `--ease-exit` est défini mais n'est utilisé par aucun composant : aucune sortie
   n'est animée pour l'instant.
+- Dans `PendingMessageCard`, un refus serveur au moment de l'envoi (consentement retiré
+  entre-temps) s'affiche encore dans le style d'erreur (`AnimatedErrorState`, **sans**
+  « Réessayer ») et non en `GuardRailNotice`. Le motif écrit est exact ; l'harmonisation
+  avec les autres cartes reste à faire.

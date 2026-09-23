@@ -2,6 +2,7 @@ import { formatDateAtTime, formatDateTime } from "@/components/format";
 import { APP_TEXTS, MEMBERSHIP_ROLE_LABELS } from "@/components/texts";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PendingDots } from "@/components/ui/PendingDots";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { RunStatusBadge } from "@/features/agents-ia/components/RunStatusBadge";
 import {
@@ -103,14 +104,14 @@ function ReviewLine({ review }: { review: Review }) {
       data-testid="timeline-review"
       data-outcome={review.outcome}
     >
-      <span
-        aria-hidden="true"
-        className={
-          review.outcome === "pending"
-            ? "mt-1 size-1.5 shrink-0 rounded-full border border-ink-subtle"
-            : "mt-1 size-1.5 shrink-0 rounded-full bg-ink"
-        }
-      />
+      {review.outcome === "pending" ? (
+        // Waiting for a human decision: passive dots, the text says it.
+        <span className="mt-1.5 flex shrink-0 text-ink-subtle">
+          <PendingDots label={null} />
+        </span>
+      ) : (
+        <span aria-hidden="true" className="mt-1 size-1.5 shrink-0 rounded-full bg-ink" />
+      )}
       <span className="min-w-0 break-words">
         <span className={review.outcome === "pending" ? undefined : "font-medium text-ink"}>{review.lead}</span>
         {review.when && review.at ? (

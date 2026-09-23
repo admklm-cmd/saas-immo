@@ -5,9 +5,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { isRetryableErrorCode } from "@/components/ui/retryable";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import { setAgencyAiPaused } from "@/features/agents-ia/actions";
 import { AGENT_ERROR_MESSAGES } from "@/lib/agents/messages";
 
@@ -18,7 +21,7 @@ type PanelState =
   | { kind: "confirming" }
   | { kind: "pending" }
   | { kind: "done"; message: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; retryable: boolean };
 
 export type KillSwitchPanelProps = {
   /** Current state of the agency kill switch, read server-side. */
@@ -43,6 +46,7 @@ export function KillSwitchPanel({ paused, canResume, headingLevel = 2 }: KillSwi
   const router = useRouter();
   const [state, setState] = useState<PanelState>({ kind: "idle" });
   const confirmRef = useRef<HTMLButtonElement>(null);
+  const singleFlight = useSingleFlight();
 
   useEffect(() => {
     if (state.kind === "confirming") confirmRef.current?.focus();
@@ -51,20 +55,26 @@ export function KillSwitchPanel({ paused, canResume, headingLevel = 2 }: KillSwi
   const next = !paused;
   const resumeBlocked = paused && !canResume;
 
-  async function apply() {
+  // « Réessayer » re-applies the SAME confirmed intent: `next` only changes
+  // once the server has actually switched.
+  function apply() {
+    return singleFlight(execute);
+  }
+
+  async function execute() {
     setState({ kind: "pending" });
     try {
       const { data, error } = await setAgencyAiPaused(next);
       if (error) {
         // The server message is already in French and already precise.
-        setState({ kind: "error", message: error.message });
+        setState({ kind: "error", message: error.message, retryable: isRetryableErrorCode(error.code) });
         return;
       }
       setState({ kind: "done", message: data.aiPaused ? TEXTS.pausedSuccess : TEXTS.resumedSuccess });
       // Re-renders the server components: badges, figures and history.
       router.refresh();
     } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setState({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true });
     }
   }
 
@@ -114,9 +124,14 @@ export function KillSwitchPanel({ paused, canResume, headingLevel = 2 }: KillSwi
 
       <div aria-live="polite">
         {state.kind === "error" ? (
-          <Alert tone="error" title={TEXTS.errorTitle} className="mt-4" testId="kill-switch-error">
+          <AnimatedErrorState
+            title={TEXTS.errorTitle}
+            className="mt-4"
+            testId="kill-switch-error"
+            onRetry={state.retryable ? () => void apply() : undefined}
+          >
             {state.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : null}
         {state.kind === "done" ? (
           <Alert tone="success" className="mt-4" testId="kill-switch-success">

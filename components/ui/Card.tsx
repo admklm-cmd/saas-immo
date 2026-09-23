@@ -34,7 +34,7 @@ export function Card({
     <section
       data-testid={testId}
       className={cn(
-        "motion-card rounded-xl border shadow-subtle",
+        "rounded-xl border shadow-subtle",
         inverse ? "border-inverse bg-inverse text-ink-inverse" : "border-line bg-surface text-ink",
         className,
       )}

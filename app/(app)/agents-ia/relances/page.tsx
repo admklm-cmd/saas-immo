@@ -60,7 +60,11 @@ export default async function EmmaFollowUpsPage() {
             }
           />
         ) : (
-          candidates?.map((candidate) => <EmmaFollowUpCard key={candidate.id} candidate={candidate} />)
+          <div className="stagger flex flex-col gap-6">
+            {candidates?.map((candidate) => (
+              <EmmaFollowUpCard key={candidate.id} candidate={candidate} />
+            ))}
+          </div>
         )}
       </div>
     </div>

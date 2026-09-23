@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { formatDateTime } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { PipelineStageBadge } from "@/components/ui/PipelineStageBadge";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { isRetryableErrorCode } from "@/components/ui/retryable";
 import { Textarea } from "@/components/ui/Textarea";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import { confirmAppointment } from "@/features/agents-ia/louis-rendez-vous/actions";
 import {
   completeAppointment,
@@ -24,7 +27,7 @@ import { AGENT_LABELS } from "@/lib/agents/messages";
 import type { ReportedAppointmentView } from "../types";
 import { AgentRunReplay } from "./AgentRunReplay";
 import { GuardRailNotice } from "./GuardRailNotice";
-import { refusalState } from "./outcome";
+import { refusalUiState } from "./refusal-ui-state";
 import { replayStepsFromRecorded } from "./replay";
 
 const TEXTS = APP_TEXTS.followThrough;
@@ -35,7 +38,7 @@ type CardState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: SarahResult }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; retryable: boolean }
   | { kind: "blocked"; message: string };
 
 type AppointmentState = Pick<
@@ -54,7 +57,7 @@ type WorkflowState =
   | { kind: "idle" }
   | { kind: "working"; action: "confirm" | "complete" }
   | { kind: "success"; message: string }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string; retryable: boolean; action: "confirm" | "complete" };
 
 function EstimationPresented({ value }: { value: boolean | null }) {
   const label = value === null ? TEXTS.unknown : value ? TEXTS.yes : TEXTS.no;
@@ -102,13 +105,41 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
     canBeFollowedThrough: appointment.canBeFollowedThrough,
   });
   const [reportNotes, setReportNotes] = useState("");
+  // One lock for the human workflow (confirm / complete), one for Sarah: a
+  // double click never sends the same request twice.
+  const workflowFlight = useSingleFlight();
+  const runFlight = useSingleFlight();
+  const lastNotes = useRef("");
 
-  async function confirm() {
+  function confirm() {
+    return workflowFlight(executeConfirm);
+  }
+
+  function complete(notes: string) {
+    return workflowFlight(() => executeComplete(notes));
+  }
+
+  function run() {
+    return runFlight(execute);
+  }
+
+  function retryWorkflow() {
+    if (workflow.kind !== "error") return;
+    if (workflow.action === "confirm") void confirm();
+    else void complete(lastNotes.current);
+  }
+
+  async function executeConfirm() {
     setWorkflow({ kind: "working", action: "confirm" });
     try {
       const { data, error } = await confirmAppointment(appointment.id);
       if (error) {
-        setWorkflow({ kind: "error", message: error.message });
+        setWorkflow({
+          kind: "error",
+          message: error.message,
+          retryable: isRetryableErrorCode(error.code),
+          action: "confirm",
+        });
         return;
       }
       setAppointmentState((current) => ({
@@ -122,18 +153,24 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
       setWorkflow({ kind: "success", message: TEXTS.confirmSuccess });
       router.refresh();
     } catch {
-      setWorkflow({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setWorkflow({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true, action: "confirm" });
     }
   }
 
-  async function complete() {
-    const notes = reportNotes.trim();
+  async function executeComplete(rawNotes: string) {
+    const notes = rawNotes.trim();
     if (notes.length === 0) return;
+    lastNotes.current = notes;
     setWorkflow({ kind: "working", action: "complete" });
     try {
       const { data, error } = await completeAppointment(appointment.id, { reportNotes: notes });
       if (error) {
-        setWorkflow({ kind: "error", message: error.message });
+        setWorkflow({
+          kind: "error",
+          message: error.message,
+          retryable: isRetryableErrorCode(error.code),
+          action: "complete",
+        });
         return;
       }
       setAppointmentState((current) => ({
@@ -149,23 +186,23 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
       setWorkflow({ kind: "success", message: TEXTS.completeSuccess });
       router.refresh();
     } catch {
-      setWorkflow({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setWorkflow({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true, action: "complete" });
     }
   }
 
-  async function run() {
+  async function execute() {
     setState({ kind: "running" });
     try {
       const { data, error } = await followThroughAppointment(appointment.id);
       if (error) {
         // A guard rail (kill switch, takeover…) is told apart from an error.
-        setState(refusalState(error));
+        setState(refusalUiState(error));
         return;
       }
       setState({ kind: "done", result: data });
       router.refresh();
     } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setState({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true });
     }
   }
 
@@ -176,7 +213,8 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
       aria-labelledby={titleId}
       data-testid="sarah-appointment"
       data-can-follow-through={appointmentState.canBeFollowedThrough}
-      className="animate-rise rounded-xl border border-line bg-surface p-6 shadow-subtle"
+      aria-busy={workflow.kind === "working" || state.kind === "running" || undefined}
+      className="rounded-xl border border-line bg-surface p-6 shadow-subtle"
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -227,7 +265,7 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
           data-testid="appointment-completion-form"
           onSubmit={(event) => {
             event.preventDefault();
-            void complete();
+            void complete(reportNotes);
           }}
         >
           <h3 className="text-sm font-semibold text-ink">{TEXTS.completeTitle}</h3>
@@ -304,14 +342,14 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
 
       <div aria-live="polite">
         {workflow.kind === "error" ? (
-          <Alert
-            tone="error"
+          <AnimatedErrorState
             title={TEXTS.workflowErrorTitle}
             className="mt-4"
             testId="appointment-workflow-error"
+            onRetry={workflow.retryable ? retryWorkflow : undefined}
           >
             {workflow.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : workflow.kind === "success" ? (
           <Alert tone="success" className="mt-4" testId="appointment-workflow-success">
             {workflow.message}
@@ -321,9 +359,14 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
 
       <div aria-live="polite">
         {state.kind === "error" ? (
-          <Alert tone="error" title={TEXTS.errorActionTitle} className="mt-4" testId="sarah-error">
+          <AnimatedErrorState
+            title={TEXTS.errorActionTitle}
+            className="mt-4"
+            testId="sarah-error"
+            onRetry={state.retryable ? () => void run() : undefined}
+          >
             {state.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : null}
 
         {state.kind === "blocked" ? (

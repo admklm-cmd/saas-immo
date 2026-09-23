@@ -6,10 +6,12 @@ import { useId, useState } from "react";
 import { formatDateTime } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import { processInboundLead } from "@/features/agents-ia/lea-acquisition/actions";
 import { CONTACT_SOURCE_LABELS } from "@/features/contacts/types";
 import { LEAD_FIELD_LABELS } from "@/lib/agents/messages";
@@ -17,7 +19,7 @@ import { LEAD_FIELD_LABELS } from "@/lib/agents/messages";
 import type { InboundLeadView } from "../types";
 import { AgentRunReplay } from "./AgentRunReplay";
 import { GuardRailNotice } from "./GuardRailNotice";
-import { refusalState } from "./outcome";
+import { refusalUiState } from "./refusal-ui-state";
 import { replayStepsFromRecorded } from "./replay";
 
 const TEXTS = APP_TEXTS.leadsInbox;
@@ -28,7 +30,7 @@ type CardState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: LeaResult }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; retryable: boolean }
   | { kind: "blocked"; message: string };
 
 function matchedLabels(matchedOn: readonly string[]): string {
@@ -50,21 +52,26 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
   const router = useRouter();
   const [state, setState] = useState<CardState>({ kind: "idle" });
   const titleId = useId();
+  const singleFlight = useSingleFlight();
 
-  async function run() {
+  function run() {
+    return singleFlight(execute);
+  }
+
+  async function execute() {
     setState({ kind: "running" });
     try {
       const { data, error } = await processInboundLead(lead.id);
       if (error) {
         // The server message is already French and already precise; a guard
         // rail (kill switch, daily limit) is told apart from an error.
-        setState(refusalState(error));
+        setState(refusalUiState(error));
         return;
       }
       setState({ kind: "done", result: data });
       router.refresh();
     } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setState({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true });
     }
   }
 
@@ -77,7 +84,8 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
       aria-labelledby={titleId}
       data-testid="inbound-lead"
       data-status={lead.status}
-      className="animate-rise rounded-xl border border-line bg-surface p-6 shadow-subtle"
+      aria-busy={state.kind === "running" || undefined}
+      className="rounded-xl border border-line bg-surface p-6 shadow-subtle"
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -166,9 +174,14 @@ export function InboundLeadCard({ lead }: { lead: InboundLeadView }) {
 
       <div aria-live="polite">
         {state.kind === "error" ? (
-          <Alert tone="error" title={TEXTS.errorActionTitle} className="mt-4" testId="lead-error">
+          <AnimatedErrorState
+            title={TEXTS.errorActionTitle}
+            className="mt-4"
+            testId="lead-error"
+            onRetry={state.retryable ? () => void run() : undefined}
+          >
             {state.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : null}
 
         {state.kind === "blocked" ? (

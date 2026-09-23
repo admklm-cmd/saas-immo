@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { cn } from "./cn";
-import { MotionDots } from "./MotionDots";
+import { ErrorDots } from "./ErrorDots";
 
 export type AlertTone = "error" | "success" | "info";
 
@@ -12,8 +12,7 @@ const TONES: Record<AlertTone, string> = {
   info: "border-line bg-surface-muted text-ink",
 };
 
-const GLYPHS: Record<AlertTone, string> = {
-  error: "!",
+const GLYPHS: Record<Exclude<AlertTone, "error">, string> = {
   success: "✓",
   info: "i",
 };
@@ -41,15 +40,23 @@ export function Alert({ tone = "info", title, children, action, className, testI
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className={cn(
-          "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-          tone === "error" ? "bg-white/15 text-ink-inverse" : "bg-inverse text-ink-inverse",
-        )}
-      >
-        {tone === "error" ? <MotionDots kind="error" /> : GLYPHS[tone]}
-      </span>
+      {tone === "error" ? (
+        // Red dots on a white pill: the one hue of the interface, next to a
+        // written title — never the only signal. They shake once, then rest.
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex h-5 w-8 shrink-0 items-center justify-center rounded-full bg-surface"
+        >
+          <ErrorDots />
+        </span>
+      ) : (
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-inverse text-xs font-semibold text-ink-inverse"
+        >
+          {GLYPHS[tone]}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         {title ? <p className="font-semibold">{title}</p> : null}
         {children ? (

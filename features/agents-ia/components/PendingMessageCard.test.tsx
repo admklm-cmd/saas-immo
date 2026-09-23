@@ -249,3 +249,71 @@ describe("PendingMessageCard", () => {
     expect(onDecided).not.toHaveBeenCalled();
   });
 });
+
+describe("PendingMessageCard — motion states tied to real states", () => {
+  it("shows passive pending dots while the draft waits for a human, not while a decision is recorded", async () => {
+    let resolve!: (value: unknown) => void;
+    validateMessage.mockReturnValueOnce(new Promise((next) => (resolve = next)));
+    render(<PendingMessageCard message={message()} onDecided={() => {}} />);
+    expect(screen.getByTestId("pending-dots")).toBeDefined();
+
+    fireEvent.click(screen.getByTestId("validate-message"));
+    // A decision is really being recorded: loader, busy card, no passive wait.
+    expect(screen.queryByTestId("pending-dots")).toBeNull();
+    expect(screen.getByTestId("three-dot-loader")).toBeDefined();
+    expect(screen.getByTestId("pending-message").getAttribute("aria-busy")).toBe("true");
+
+    await act(async () => resolve({ data: {}, error: null }));
+    expect(screen.queryByTestId("three-dot-loader")).toBeNull();
+  });
+
+  it("says « Simulation en cours… » while a (simulated) send is in flight", async () => {
+    let resolve!: (value: unknown) => void;
+    sendValidatedMessage.mockReturnValueOnce(new Promise((next) => (resolve = next)));
+    render(
+      <PendingMessageCard message={message({ status: "approved", statusLabel: "Validé", canBeSent: true })} onDecided={() => {}} />,
+    );
+
+    fireEvent.click(screen.getByTestId("send-message"));
+    expect(screen.getByTestId("send-message").textContent).toContain(TEXTS.sending);
+    expect(TEXTS.sending).toBe("Simulation en cours…");
+    await act(async () => resolve({ data: {}, error: null }));
+  });
+
+  it("retries the same decision after a technical failure, with a single request per click", async () => {
+    validateMessage
+      .mockReset()
+      .mockResolvedValueOnce({ data: null, error: { code: "unexpected_error", message: "Erreur technique." } })
+      .mockResolvedValueOnce({ data: {}, error: null });
+    const onDecided = vi.fn();
+    render(<PendingMessageCard message={message()} onDecided={onDecided} />);
+
+    const validate = screen.getByTestId("validate-message");
+    await act(async () => {
+      fireEvent.click(validate);
+      fireEvent.click(validate);
+    });
+    expect(validateMessage).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("message-action-error").textContent).toContain("Erreur technique.");
+
+    await act(async () => fireEvent.click(screen.getByTestId("message-action-error-retry")));
+    expect(validateMessage).toHaveBeenCalledTimes(2);
+    expect(onDecided).toHaveBeenCalledWith(TEXTS.successValidated);
+  });
+
+  it("offers no retry when the server refused for a rule", async () => {
+    sendValidatedMessage.mockResolvedValueOnce({
+      data: null,
+      error: { code: "consent_not_granted", message: AGENT_ERROR_MESSAGES.consent_not_granted },
+    });
+    render(
+      <PendingMessageCard message={message({ status: "approved", statusLabel: "Validé", canBeSent: true })} onDecided={() => {}} />,
+    );
+
+    await act(async () => fireEvent.click(screen.getByTestId("send-message")));
+    expect(screen.getByTestId("message-action-error").textContent).toContain(
+      AGENT_ERROR_MESSAGES.consent_not_granted,
+    );
+    expect(screen.queryByTestId("message-action-error-retry")).toBeNull();
+  });
+});

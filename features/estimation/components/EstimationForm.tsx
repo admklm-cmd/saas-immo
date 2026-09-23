@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 
 import { submitEstimationRequest } from "../actions";
 import type { EstimationConsentChannel } from "../consent-texts";
@@ -60,6 +61,7 @@ export function EstimationForm() {
   const [errors, setErrors] = useState<MappedEstimationErrors>(EMPTY_ERRORS);
   const [status, setStatus] = useState<FormStatus>({ kind: "idle" });
   const feedbackRef = useRef<HTMLDivElement>(null);
+  const singleFlight = useSingleFlight();
 
   // Focus goes to the message on every outcome that needs the visitor's
   // attention: a client-side validation failure, a server refusal, or the
@@ -93,19 +95,22 @@ export function EstimationForm() {
     }
 
     setErrors(EMPTY_ERRORS);
-    setStatus({ kind: "submitting" });
-    try {
-      const { error } = await submitEstimationRequest(parsed.data);
-      if (error) {
-        // The server message is already French, already precise, and never a
-        // technical detail — shown exactly as returned.
-        setStatus({ kind: "error", message: error.message });
-        return;
+    // A second submit landing before the re-render is ignored: one request only.
+    await singleFlight(async () => {
+      setStatus({ kind: "submitting" });
+      try {
+        const { error } = await submitEstimationRequest(parsed.data);
+        if (error) {
+          // The server message is already French, already precise, and never a
+          // technical detail — shown exactly as returned.
+          setStatus({ kind: "error", message: error.message });
+          return;
+        }
+        setStatus({ kind: "success" });
+      } catch {
+        setStatus({ kind: "error", message: APP_TEXTS.states.unexpected });
       }
-      setStatus({ kind: "success" });
-    } catch {
-      setStatus({ kind: "error", message: APP_TEXTS.states.unexpected });
-    }
+    });
   }
 
   if (status.kind === "success") {
@@ -122,7 +127,12 @@ export function EstimationForm() {
   const busy = status.kind === "submitting";
 
   return (
-    <form noValidate onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-10">
+    <form
+      noValidate
+      onSubmit={(event) => void handleSubmit(event)}
+      aria-busy={busy || undefined}
+      className="flex flex-col gap-10"
+    >
       <div aria-live="polite">
         {status.kind === "invalid" ? (
           <div ref={feedbackRef} tabIndex={-1}>

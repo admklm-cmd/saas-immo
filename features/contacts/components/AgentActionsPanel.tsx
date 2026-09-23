@@ -1,19 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { formatSlot } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Card } from "@/components/ui/Card";
 import { PipelineStageBadge } from "@/components/ui/PipelineStageBadge";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import { AgentRunReplay } from "@/features/agents-ia/components/AgentRunReplay";
 import { GuardRailNotice } from "@/features/agents-ia/components/GuardRailNotice";
-import { refusalState } from "@/features/agents-ia/components/outcome";
+import { refusalUiState } from "@/features/agents-ia/components/refusal-ui-state";
 import { replayStepsFromRecorded } from "@/features/agents-ia/components/replay";
 import { prepareFollowUp } from "@/features/agents-ia/emma-relation/actions";
 import { qualifyContact } from "@/features/agents-ia/hugo-qualification/actions";
@@ -33,7 +35,7 @@ type EmmaResult = NonNullable<Awaited<ReturnType<typeof prepareFollowUp>>["data"
 type AgentKey = "hugo" | "louis" | "emma";
 type PanelState =
   | { kind: "idle" }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; retryable: boolean }
   | { kind: "blocked"; message: string }
   | { kind: "hugo"; result: HugoResult }
   | { kind: "louis"; result: LouisResult }
@@ -57,28 +59,39 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
   const router = useRouter();
   const [running, setRunning] = useState<AgentKey | null>(null);
   const [state, setState] = useState<PanelState>({ kind: "idle" });
+  const singleFlight = useSingleFlight();
+  const lastAgent = useRef<AgentKey | null>(null);
 
-  async function run(agent: AgentKey) {
+  function run(agent: AgentKey) {
+    return singleFlight(() => execute(agent));
+  }
+
+  async function execute(agent: AgentKey) {
+    lastAgent.current = agent;
     setRunning(agent);
     setState({ kind: "idle" });
     try {
       if (agent === "hugo") {
         const { data, error } = await qualifyContact(contactId);
-        setState(error ? refusalState(error) : { kind: "hugo", result: data });
+        setState(error ? refusalUiState(error) : { kind: "hugo", result: data });
       } else if (agent === "louis") {
         const { data, error } = await proposeAppointment(contactId);
-        setState(error ? refusalState(error) : { kind: "louis", result: data });
+        setState(error ? refusalUiState(error) : { kind: "louis", result: data });
       } else {
         const { data, error } = await prepareFollowUp(contactId);
-        setState(error ? refusalState(error) : { kind: "emma", result: data });
+        setState(error ? refusalUiState(error) : { kind: "emma", result: data });
       }
       // Re-renders the server components: header, consents and timeline.
       router.refresh();
     } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setState({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true });
     } finally {
       setRunning(null);
     }
+  }
+
+  function retry() {
+    if (lastAgent.current) void run(lastAgent.current);
   }
 
   const blocked = state.kind === "louis" && "blocked" in state.result ? state.result.blocked : null;
@@ -97,7 +110,7 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
       actions={<SimulationBadge />}
       testId="agent-actions"
     >
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-4 sm:flex-row lg:flex-col" aria-busy={running !== null || undefined}>
         <div className="flex-1">
           <Button
             onClick={() => void run("hugo")}
@@ -137,9 +150,14 @@ export function AgentActionsPanel({ contactId }: { contactId: string }) {
 
       <div aria-live="polite">
         {state.kind === "error" ? (
-          <Alert tone="error" title={TEXTS.errorTitle} className="mt-5" testId="agent-error">
+          <AnimatedErrorState
+            title={TEXTS.errorTitle}
+            className="mt-5"
+            testId="agent-error"
+            onRetry={state.retryable ? retry : undefined}
+          >
             {state.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : null}
 
         {state.kind === "blocked" ? (

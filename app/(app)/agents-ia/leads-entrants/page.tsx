@@ -66,7 +66,11 @@ export default async function InboundLeadsPage() {
             }
           />
         ) : (
-          leads.map((lead) => <InboundLeadCard key={lead.id} lead={lead} />)
+          <div className="stagger flex flex-col gap-6">
+            {leads.map((lead) => (
+              <InboundLeadCard key={lead.id} lead={lead} />
+            ))}
+          </div>
         )}
       </div>
     </div>

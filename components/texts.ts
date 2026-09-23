@@ -125,6 +125,10 @@ export const APP_TEXTS = {
     back: "Retour",
     simulation: "Simulation",
     simulationHint: "Action simulée : rien n'a été envoyé à l'extérieur.",
+    // Label of a request that runs on the simulator (ThreeDotLoader in a button).
+    simulationRunning: "Simulation en cours…",
+    // Passive wait for a human decision (PendingDots) — never a processing state.
+    pendingValidation: "En attente de validation",
     notFoundTitle: "Page introuvable",
     notFoundBody: "Le lien est peut-être obsolète, ou la page n'existe pas.",
     unexpected: "Une erreur technique est survenue. Aucune action n'a été effectuée.",
@@ -386,7 +390,7 @@ export const APP_TEXTS = {
     runLouisHint: "Rendez-vous : propose un créneau d'estimation et rédige le message.",
     runEmma: "Lancer Emma",
     runEmmaHint: "Relance : prépare un message adapté au dossier, envoyé vers la validation humaine.",
-    running: "Exécution en cours…",
+    running: "Simulation en cours…",
     errorTitle: "Erreur technique : l'agent n'a pas pu s'exécuter",
     hugoSuccessTitle: "Hugo a terminé la qualification",
     louisSuccessTitle: "Louis a préparé une proposition de rendez-vous",
@@ -569,6 +573,8 @@ export const APP_TEXTS = {
     edit: "Modifier",
     send: "Envoyer (simulation)",
     working: "Action en cours…",
+    // The send is always simulated in this prototype: the busy label says so.
+    sending: "Simulation en cours…",
     sendBlocked: "Envoi impossible : consentement du canal manquant ou retiré.",
 
     successValidated: "Message validé. Rien n'a été envoyé.",
@@ -630,7 +636,7 @@ export const APP_TEXTS = {
     nameMissing: "Nom non transmis",
     run: "Lancer Léa",
     runHint: "Vérifie la source, dédoublonne, crée la fiche. Ne recueille aucun consentement.",
-    running: "Léa travaille…",
+    running: "Simulation en cours…",
     alreadyProcessed: "Ce lead a déjà été traité : aucune seconde fiche ne sera créée.",
     successTitle: "Léa a terminé",
     errorActionTitle: "Erreur technique : Léa n'a pas pu traiter ce lead",
@@ -678,7 +684,7 @@ export const APP_TEXTS = {
     workflowErrorTitle: "Le rendez-vous n'a pas pu être mis à jour",
     run: "Lancer Sarah",
     runHint: "Exploite le compte-rendu et ouvre les actions de suivi. Ne déclare jamais un mandat signé.",
-    running: "Sarah travaille…",
+    running: "Simulation en cours…",
     successTitle: "Sarah a terminé le suivi",
     errorActionTitle: "Erreur technique : Sarah n'a pas pu suivre ce rendez-vous",
     blockedNoReport: "Compte-rendu manquant : le suivi ne peut pas être lancé.",
@@ -985,7 +991,7 @@ export const APP_TEXTS = {
     consentOrChannelMissing: "Consentement ou coordonnée exploitable manquant",
     ready: "Prêt pour vérification serveur",
     run: "Préparer la relance",
-    running: "Emma prépare le brouillon…",
+    running: "Simulation en cours…",
     runHint:
       "Le serveur revérifie le consentement, les doublons et le coupe-circuit avant de lancer Emma.",
     successTitle: "Emma a préparé une relance",

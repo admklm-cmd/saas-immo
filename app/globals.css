@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "../components/ui/micro-interactions.css";
 
 /*
  * Ascend Strategy design tokens — see docs/design-system.md (frontend-ux agent).
@@ -38,22 +39,31 @@
   --color-surface: #ffffff;
   --color-surface-muted: #fafafa;
   --color-surface-sunken: #f4f4f5;
+  /* Pearl greys of the app canvas gradient (docs/design-system.md §2.1). */
+  --color-pearl: #e9e9ee;
+  --color-pearl-soft: #f7f7f9;
   --color-inverse: #0a0a0b;
   --color-inverse-soft: #1c1c1f;
 
   /* --- Text ------------------------------------------------------------- */
-  /* Contrast on white: ink 19.6:1, ink-muted 6.9:1, ink-subtle 4.8:1 (WCAG AA). */
-  --color-ink: #0a0a0b;
+  /* Contrast on white: ink 17.7:1, ink-muted 6.9:1, ink-subtle 5.7:1.
+     On the darkest pearl of the canvas (#e9e9ee): 14.6:1, 5.7:1, 4.7:1 (WCAG AA). */
+  --color-ink: #18181b;
   --color-ink-muted: #5a5a60;
-  --color-ink-subtle: #6f6f77;
+  --color-ink-subtle: #66666e;
   --color-ink-inverse: #fafafa;
   /* Contrast on inverse: 7.4:1. */
   --color-ink-inverse-muted: #a8a8b0;
 
   /* --- Lines and focus --------------------------------------------------- */
-  --color-line: #e7e7ea;
+  --color-line: #e4e4e9;
   --color-line-strong: #d2d2d8;
   --color-focus: #0a0a0b;
+
+  /* --- Error accent ------------------------------------------------------- */
+  /* The only hue of the interface: error dots, never text, never alone
+     (always next to a written message). 5.2:1 on white. */
+  --color-danger: #c63838;
 
   /* --- Radii -------------------------------------------------------------- */
   --radius-xs: 0.375rem;
@@ -74,7 +84,8 @@
   --duration-fast: 150ms;
   --duration-base: 220ms;
   --duration-slow: 300ms;
-  --stagger-step: 40ms;
+  /* Delay between the first cards of a list (spec: 100-120 ms), capped at 5 steps. */
+  --stagger-step: 110ms;
 
   --animate-rise: rise var(--duration-slow) var(--ease-standard) both;
   --animate-rise-soft: rise-soft var(--duration-base) var(--ease-standard) both;
@@ -203,30 +214,13 @@
     }
   }
 
-  /* Visible by default: without JavaScript, Reveal never hides its content. */
-  .reveal[data-reveal="hidden"] {
-    opacity: 0;
-    transform: translate3d(0, 4px, 0);
-  }
-
-  .reveal[data-reveal="entering"] {
-    animation: var(--animate-rise-soft);
-  }
-
-  .stagger > * {
-    animation: var(--animate-rise-soft);
-  }
-
-  .stagger > :nth-child(2) { animation-delay: calc(var(--stagger-step) * 1); }
-  .stagger > :nth-child(3) { animation-delay: calc(var(--stagger-step) * 2); }
-  .stagger > :nth-child(4) { animation-delay: calc(var(--stagger-step) * 3); }
-  .stagger > :nth-child(5) { animation-delay: calc(var(--stagger-step) * 4); }
-  .stagger > :nth-child(n + 6) { animation-delay: calc(var(--stagger-step) * 5); }
+  /* Reveal and .stagger live in components/ui/micro-interactions.css. */
 }
 
 /* Decorative material is independent from all real agent activity. */
-.particle-shell, .particle-preview {
-  background: radial-gradient(ellipse at 80% 12%, #e9e9ee 0%, #f7f7f9 24%, #fff 60%);
+/* The app canvas gradient itself is `.app-canvas` (components/ui/micro-interactions.css). */
+.particle-preview {
+  background: radial-gradient(ellipse at 80% 75%, var(--color-pearl) 0%, var(--color-pearl-soft) 34%, var(--color-canvas) 72%);
 }
 .particle-scene { display: block; pointer-events: none; }
 .route-particles {
@@ -236,37 +230,11 @@
 }
 .route-particles canvas { width: 100%; height: 100%; }
 .particle-shell .page-header { min-height: 185px; padding-right: 43%; }
-.simulation-float { animation: simulation-float 3s ease-in-out infinite; }
-.simulation-dot { display: block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: simulation-pulse 2s ease-in-out infinite; }
-.motion-dots { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 3px; width: 20px; height: 20px; flex-shrink: 0; }
-.motion-dots i { display: block; width: 3px; height: 3px; border-radius: 50%; background: currentColor; }
-.motion-dots-loading { animation: dots-orbit 1.7s linear infinite; }
-.motion-dots-loading i { position: absolute; top: 8px; left: 8px; transform: translateY(-6px); }
-.motion-dots-loading i:nth-child(2) { transform: rotate(120deg) translateY(-6px); opacity: .6; }
-.motion-dots-loading i:nth-child(3) { transform: rotate(240deg) translateY(-6px); opacity: .3; }
-.motion-dots-pending i { animation: dots-wait 1.5s ease-in-out infinite; }
-.motion-dots-pending i:nth-child(2) { animation-delay: .16s; }
-.motion-dots-pending i:nth-child(3) { animation-delay: .32s; }
-.motion-dots-error { color: #c63838; animation: dots-error .45s ease-in-out 1; }
-.motion-card { animation: card-arrive .55s var(--ease-standard) both; }
-.motion-card:nth-child(2) { animation-delay: .1s; }
-.motion-card:nth-child(3) { animation-delay: .2s; }
-.motion-card:nth-child(n+4) { animation-delay: .3s; }
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .motion-button:not(:disabled):not([aria-disabled="true"]):hover { transform: translateY(-2px); box-shadow: 0 5px 14px #18181b0d; }
-  .motion-button:not(:disabled):not([aria-disabled="true"]):active { transform: translateY(1px) scale(.97); }
-}
 @media (max-width: 767px) {
   .particle-shell { padding-top: 132px; }
   .route-particles { top: 0; right: 0; width: 100%; height: 155px; }
   .particle-shell .page-header { min-height: 0; padding-right: 0; }
 }
-@keyframes simulation-float { 0%,100% { transform: translateY(1px); } 50% { transform: translateY(-2px); } }
-@keyframes simulation-pulse { 0%,100% { opacity: .55; box-shadow: 0 0 0 0 #ffffff2e; } 50% { opacity: 1; box-shadow: 0 0 0 4px #ffffff12; } }
-@keyframes dots-orbit { to { transform: rotate(360deg); } }
-@keyframes dots-wait { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
-@keyframes dots-error { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-4px); } 40%,80% { transform: translateX(4px); } }
-@keyframes card-arrive { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 /* Motion is decoration: honour the OS setting (WCAG 2.3.3). */
 @media (prefers-reduced-motion: reduce) {

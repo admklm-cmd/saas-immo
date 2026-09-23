@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { formatDateTime } from "@/components/format";
 import { APP_TEXTS, CONSENT_STATUS_LABELS } from "@/components/texts";
-import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { PendingDots } from "@/components/ui/PendingDots";
+import { isRetryableErrorCode } from "@/components/ui/retryable";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
-import { MotionDots } from "@/components/ui/MotionDots";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import {
   editDraft,
   refuseMessage,
@@ -27,8 +29,14 @@ type CardState =
   | { kind: "idle" }
   | { kind: "rejecting" }
   | { kind: "editing" }
-  | { kind: "pending" }
-  | { kind: "error"; message: string };
+  | { kind: "pending"; action: "send" | "other" }
+  | { kind: "error"; message: string; retryable: boolean };
+
+type Attempt = {
+  action: () => Promise<{ error: { code: string; message: string } | null }>;
+  summary: string;
+  kind: "send" | "other";
+};
 
 export type PendingMessageCardProps = {
   message: PendingMessageView;
@@ -49,35 +57,52 @@ export type PendingMessageCardProps = {
 export function PendingMessageCard({ message, onDecided }: PendingMessageCardProps) {
   const [state, setState] = useState<CardState>({ kind: "idle" });
   const titleId = useId();
+  const singleFlight = useSingleFlight();
+  // The last attempt, so « Réessayer » relaunches exactly the same decision.
+  const lastAttempt = useRef<Attempt | null>(null);
 
   const consentLabel = message.consentStatus
     ? CONSENT_STATUS_LABELS[message.consentStatus]
     : TEXTS.consentNone;
 
-  async function run(action: () => Promise<{ error: { message: string } | null }>, summary: string) {
-    setState({ kind: "pending" });
-    try {
-      const { error } = await action();
-      if (error) {
-        // The server message is already French and already precise.
-        setState({ kind: "error", message: error.message });
-        return;
+  async function run(
+    action: Attempt["action"],
+    summary: string,
+    kind: Attempt["kind"] = "other",
+  ) {
+    await singleFlight(async () => {
+      lastAttempt.current = { action, summary, kind };
+      setState({ kind: "pending", action: kind });
+      try {
+        const { error } = await action();
+        if (error) {
+          // The server message is already French and already precise.
+          setState({ kind: "error", message: error.message, retryable: isRetryableErrorCode(error.code) });
+          return;
+        }
+        setState({ kind: "idle" });
+        onDecided(summary);
+      } catch {
+        setState({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true });
       }
-      setState({ kind: "idle" });
-      onDecided(summary);
-    } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
-    }
+    });
+  }
+
+  function retry() {
+    const attempt = lastAttempt.current;
+    if (attempt) void run(attempt.action, attempt.summary, attempt.kind);
   }
 
   const busy = state.kind === "pending";
+  const busyLabel = state.kind === "pending" && state.action === "send" ? TEXTS.sending : TEXTS.working;
 
   return (
     <article
       aria-labelledby={titleId}
       data-testid="pending-message"
       data-status={message.status}
-      className="animate-rise rounded-xl border border-line bg-surface p-6 shadow-subtle"
+      aria-busy={busy || undefined}
+      className="rounded-xl border border-line bg-surface p-6 shadow-subtle"
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -95,7 +120,15 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Badge tone="outline">{message.channelLabel}</Badge>
-          <Badge tone={message.status === "approved" ? "solid" : "neutral"} icon={message.status === "pending_validation" && !busy ? <MotionDots kind="pending" /> : undefined}>{message.statusLabel}</Badge>
+          {/* Passive wait for a human: the badge text says it, the dots only
+              show that nothing moves until someone decides. Hidden while a
+              decision is really being recorded. */}
+          <Badge
+            tone={message.status === "approved" ? "solid" : "neutral"}
+            icon={message.status === "pending_validation" && !busy ? <PendingDots label={null} /> : undefined}
+          >
+            {message.statusLabel}
+          </Badge>
           {message.isFirstContact ? <Badge tone="dashed">{TEXTS.firstContact}</Badge> : null}
           {message.isSimulation ? <SimulationBadge /> : null}
         </div>
@@ -164,7 +197,7 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
                 onClick={() => void run(() => validateMessage(message.id), TEXTS.successValidated)}
                 data-testid="validate-message"
               >
-                {busy ? TEXTS.working : TEXTS.validate}
+                {busy ? busyLabel : TEXTS.validate}
               </Button>
               <Button
                 variant="secondary"
@@ -179,10 +212,10 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
             <Button
               isLoading={busy}
               disabled={!message.canBeSent}
-              onClick={() => void run(() => sendValidatedMessage(message.id), TEXTS.successSent)}
+              onClick={() => void run(() => sendValidatedMessage(message.id), TEXTS.successSent, "send")}
               data-testid="send-message"
             >
-              {busy ? TEXTS.working : TEXTS.send}
+              {busy ? busyLabel : TEXTS.send}
             </Button>
           )}
           <Button
@@ -201,9 +234,14 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
 
       <div aria-live="polite">
         {state.kind === "error" ? (
-          <Alert tone="error" title={TEXTS.actionErrorTitle} className="mt-4" testId="message-action-error">
+          <AnimatedErrorState
+            title={TEXTS.actionErrorTitle}
+            className="mt-4"
+            testId="message-action-error"
+            onRetry={state.retryable ? retry : undefined}
+          >
             {state.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : null}
       </div>
     </article>

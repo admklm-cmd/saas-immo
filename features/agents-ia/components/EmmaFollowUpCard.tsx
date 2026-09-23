@@ -6,17 +6,19 @@ import { useId, useState } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { useSingleFlight } from "@/components/ui/use-single-flight";
 import { prepareFollowUp } from "@/features/agents-ia/emma-relation/actions";
 import { CONSENT_CHANNEL_LABELS, PIPELINE_STAGE_LABELS } from "@/features/contacts/types";
 
 import type { EmmaFollowUpCandidateView } from "../types";
 import { AgentRunReplay } from "./AgentRunReplay";
 import { GuardRailNotice } from "./GuardRailNotice";
-import { refusalState } from "./outcome";
+import { refusalUiState } from "./refusal-ui-state";
 import { replayStepsFromRecorded } from "./replay";
 
 const TEXTS = APP_TEXTS.emmaFollowUps;
@@ -27,7 +29,7 @@ type CardState =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; result: EmmaResult }
-  | { kind: "error"; message: string }
+  | { kind: "error"; message: string; retryable: boolean }
   | { kind: "blocked"; message: string };
 
 /**
@@ -53,20 +55,25 @@ export function EmmaFollowUpCard({ candidate }: { candidate: EmmaFollowUpCandida
   const titleId = useId();
   const reasonId = useId();
   const [state, setState] = useState<CardState>({ kind: "idle" });
+  const singleFlight = useSingleFlight();
 
-  async function run() {
+  function run() {
+    return singleFlight(execute);
+  }
+
+  async function execute() {
     setState({ kind: "running" });
     try {
       const { data, error } = await prepareFollowUp(candidate.id);
       if (error) {
         // A guard rail (signed mandate, consent, one per day…) is not an error.
-        setState(refusalState(error));
+        setState(refusalUiState(error));
         return;
       }
       setState({ kind: "done", result: data });
       router.refresh();
     } catch {
-      setState({ kind: "error", message: APP_TEXTS.states.unexpected });
+      setState({ kind: "error", message: APP_TEXTS.states.unexpected, retryable: true });
     }
   }
 
@@ -77,7 +84,8 @@ export function EmmaFollowUpCard({ candidate }: { candidate: EmmaFollowUpCandida
     <article
       aria-labelledby={titleId}
       data-testid="emma-follow-up"
-      className="animate-rise rounded-xl border border-line bg-surface p-6 shadow-subtle"
+      aria-busy={state.kind === "running" || undefined}
+      className="rounded-xl border border-line bg-surface p-6 shadow-subtle"
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -147,9 +155,14 @@ export function EmmaFollowUpCard({ candidate }: { candidate: EmmaFollowUpCandida
 
       <div aria-live="polite">
         {state.kind === "error" ? (
-          <Alert tone="error" title={TEXTS.errorActionTitle} className="mt-4" testId="emma-error">
+          <AnimatedErrorState
+            title={TEXTS.errorActionTitle}
+            className="mt-4"
+            testId="emma-error"
+            onRetry={state.retryable ? () => void run() : undefined}
+          >
             {state.message}
-          </Alert>
+          </AnimatedErrorState>
         ) : null}
 
         {state.kind === "blocked" ? (

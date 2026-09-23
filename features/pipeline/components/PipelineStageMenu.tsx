@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
-import { Alert } from "@/components/ui/Alert";
+import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
+import { isRetryableErrorCode } from "@/components/ui/retryable";
+import { ThreeDotLoader } from "@/components/ui/ThreeDotLoader";
 import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/features/contacts/types";
 import { changeContactStage } from "@/features/pipeline/actions";
 import { PIPELINE_STAGES } from "@/features/pipeline/types";
@@ -45,6 +47,8 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
   const [selected, setSelected] = useState<PipelineStage | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // « Réessayer » only after a technical failure, never after a rule refusal.
+  const [errorRetryable, setErrorRetryable] = useState(false);
   const [dialog, setDialog] = useState<DialogState>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -109,6 +113,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
       if (actionError) {
         // Already a precise French message (STAGE_CHANGE_ERROR_MESSAGES).
         setError(actionError.message);
+        setErrorRetryable(isRetryableErrorCode(actionError.code));
         return;
       }
       announce(TEXTS.success(contactName, PIPELINE_STAGE_LABELS[data.stage]), contactId);
@@ -118,6 +123,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
       router.refresh();
     } catch {
       setError(APP_TEXTS.states.unexpected);
+      setErrorRetryable(true);
     } finally {
       inFlight.current = false;
       setPending(false);
@@ -241,7 +247,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
                   >
                     <span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center">
                       {pending && isSelected ? (
-                        <span className="size-3 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
+                        <ThreeDotLoader size="sm" />
                       ) : isCurrent ? (
                         <CheckIcon className="size-4" />
                       ) : null}
@@ -264,9 +270,14 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
           ) : null}
 
           {error ? (
-            <Alert tone="error" title={TEXTS.errorTitle} className="mt-1.5" testId="stage-change-error">
+            <AnimatedErrorState
+              title={TEXTS.errorTitle}
+              className="mt-1.5"
+              testId="stage-change-error"
+              onRetry={errorRetryable && selected ? () => choose(selected) : undefined}
+            >
               {error}
-            </Alert>
+            </AnimatedErrorState>
           ) : null}
         </div>
       ) : null}

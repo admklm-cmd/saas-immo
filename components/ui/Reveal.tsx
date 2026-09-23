@@ -1,14 +1,19 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 type RevealState = "visible" | "hidden" | "entering";
 
+/** Beyond this position, blocks arrive together: the total delay stays short. */
+const MAX_INDEX = 5;
+
 /**
- * Reveals static server-rendered content once it enters the viewport.
+ * Reveals static server-rendered content once it enters the viewport: fade and
+ * 12 px rise over 550 ms, once. `index` staggers neighbouring blocks by
+ * `--stagger-step` (110 ms), capped.
  * The default is deliberately visible so missing JavaScript never hides content.
  */
-export function Reveal({ children }: { children: ReactNode }) {
+export function Reveal({ children, index = 0 }: { children: ReactNode; index?: number }) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<RevealState>("visible");
 
@@ -34,7 +39,12 @@ export function Reveal({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div ref={elementRef} className="reveal" data-reveal={state}>
+    <div
+      ref={elementRef}
+      className="reveal"
+      data-reveal={state}
+      style={{ "--reveal-index": Math.min(Math.max(index, 0), MAX_INDEX) } as CSSProperties}
+    >
       {children}
     </div>
   );
