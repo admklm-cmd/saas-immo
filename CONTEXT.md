@@ -1,117 +1,104 @@
 # Contexte de reprise — Ascend Strategy
 
-Dernière mise à jour : 23 septembre 2026 (jalon « tableau de bord », branche `feat/dashboard`).
+Dernière mise à jour : 23 septembre 2026 (jalon « démonstration complète », branche
+`feat/complete-demo`).
 
 Ce document est destiné à l'agent qui reprend le développement. Lire d'abord `CLAUDE.md` et
-`AGENTS.md`, puis les documents pertinents dans `docs/` (`product.md`, `workflows.md`,
-`architecture.md`, `security.md`, `design-system.md`, `plans/`). Ne lire aucun fichier `.env`
-et ne lancer aucun fournisseur IA payant : le produit fonctionne sur le simulateur.
+`AGENTS.md`, puis `docs/` (`product.md`, `workflows.md`, `architecture.md`, `security.md`,
+`design-system.md`, `plans/`). Ne lire aucun fichier `.env` et ne lancer aucun fournisseur IA
+payant : le produit fonctionne sur le simulateur.
 
 ## 1. Objectif
 
-Démonstration fonctionnelle et haut de gamme d'un SaaS pour agences immobilières
-indépendantes (agence fictive : La Ciotat / Cassis). Parcours principal :
-
-1. un prospect remplit l'estimation en ligne (consentements par canal, cases non précochées) ;
-2. Léa vérifie la source, dédoublonne et crée ou rattache la fiche ;
-3. un humain valide le premier message ;
-4. Hugo qualifie le projet ; Emma prépare une relance ; Louis propose un rendez-vous ;
-5. un humain confirme puis clôture le rendez-vous avec un compte-rendu ;
-6. Sarah exploite le compte-rendu jusqu'au mandat, sans jamais signer à la place de l'humain.
-
-Toute communication externe reste simulée et marquée « Simulation ».
+Démonstration complète et haut de gamme d'un SaaS pour agences immobilières indépendantes
+(agence fictive : La Ciotat / Cassis). Toute communication externe est simulée et marquée
+« Simulation ». Aucun écran « Bientôt disponible ».
 
 ## 2. État Git
 
-- Dépôt unique : `C:\Users\admha\mon-saas\saas-immo`, remote `origin`
-  (`github.com/admklm-cmd/saas-immo`). L'ancien clone de travail
-  (`Documents\Codex\...\saas-immo-work-local2`) n'est plus la source : tout a été réconcilié ici.
-- `main` ne contient encore que le commit initial du contexte projet. Tout le travail est empilé
-  sur des branches successives, la dernière étant `feat/dashboard` (issue de
-  `chore/ascend-strategy-brand`). Une pull request `feat/dashboard` → `main` regroupe l'ensemble ;
-  elle doit être relue et fusionnée par l'utilisateur (jamais de fusion automatique).
-- Branches historiques (`feat/init-prototype`, `feat/agents-et-ecrans`,
-  `feat/agents-et-ecrans-reconcile`, `feat/public-estimation`, `chore/ascend-strategy-brand`,
-  `backup/...`) : incluses dans `feat/dashboard`, supprimables après fusion.
+- Dépôt : `C:\Users\admha\mon-saas\saas-immo`, remote `github.com/admklm-cmd/saas-immo`.
+- `main` ne contient que le commit initial. Branches empilées :
+  `… → chore/ascend-strategy-brand → feat/dashboard → feat/complete-demo` (la plus récente,
+  contient tout). La pull request doit partir de `feat/complete-demo` vers `main` ; si une
+  PR `feat/dashboard` → `main` a été ouverte, la remplacer ou la fusionner d'abord.
+  Jamais de fusion automatique.
+- `gh` n'est pas installé : les PR s'ouvrent depuis l'interface GitHub.
 
-## 3. Fonctionnalités terminées
+## 3. Écrans terminés
 
-| Domaine | Écran / élément | État |
+| Domaine | Route | État |
 |---|---|---|
-| Marque | Nom Ascend Strategy, logo, favicon | Fait |
-| Site public | Accueil (landing éditoriale), politique de confidentialité | Fait |
-| Estimation | `/estimation` : formulaire, consentement par canal, crée un lead entrant local | Fait |
-| Auth | `/connexion` (session Supabase réelle) ; `/inscription` | Connexion faite, inscription = coquille |
-| Tableau de bord | `/dashboard` : À faire maintenant, pipeline, agents IA, prochains RDV | **Fait (ce jalon)** |
-| Contacts | Liste, fiche (bien, consentements, historique, actions Hugo/Louis/Emma) | Fait |
-| Pipeline | `/pipeline` en lecture seule | Fait |
-| Agents IA | 5 agents, coupe-circuit, journal filtrable, rejeu animé mesuré | Fait |
-| Léa | `/agents-ia/leads-entrants` | Fait |
-| Validation | `/agents-ia/a-valider` : corriger, valider, refuser, envoi simulé | Fait |
-| Emma | `/agents-ia/relances` (déclenchement manuel, aucune cadence) | Fait |
-| Louis → Sarah | `/agents-ia/suivi-rendez-vous` : confirmation, compte-rendu, Sarah | Fait |
-| Paramètres | `/parametres` | **Coquille `ComingSoon`** |
-| Webhooks | WhatsApp, SMS, logiciel immo | Répondent 501 (non implémentés) |
+| Site public | `/`, `/politique-confidentialite` | Fait |
+| Estimation | `/estimation` (consentement par canal, cases non précochées) | Fait |
+| Connexion / Inscription | `/connexion` ; `/inscription` (comptes créés par Ascend Strategy, pas de libre-service) | Fait |
+| Tableau de bord | `/dashboard` (comptages exacts, périmètre affiché, « Indisponible » ≠ 0) | Fait |
+| Contacts | `/contacts`, `/contacts/[id]` (historique : auteur et heure réels de chaque validation) | Fait |
+| Pipeline | `/pipeline` : changement d'étape ; mandat signé = confirmation humaine ; sortie du mandat = directeur + motif | Fait |
+| Tâches | `/taches` (total exact, filtres, « Marquer comme faite ») | Fait |
+| Rendez-vous | `/rendez-vous` (à venir exact / passés) | Fait |
+| Agents IA | `/agents-ia` (+ leads entrants, relances Emma, messages à valider, suivi des RDV, rejeu) | Fait |
+| Paramètres | `/parametres` (lecture seule, coupe-circuit utilisable, conservation « Non définie — à valider avant mise en production ») | Fait |
+| Automatisations | — | Reporté (les écrans Agents IA montrent agents, état, résultats, coupe-circuit) |
+| Webhooks | WhatsApp, SMS, logiciel immo | Répondent 501 |
 
-### Tableau de bord (ce jalon)
+Parcours de démonstration réel (`docs/product.md` §6.4, `e2e/demo-complete.spec.ts`) :
+estimation → Léa (fiche) → Hugo (qualification) → Louis (créneau + message validé par un
+humain, envoi simulé) → Emma (une relance par contact et par jour, validée par un humain) →
+confirmation puis clôture humaine du RDV avec compte-rendu → Sarah (« estimation faite ») →
+mandat signé confirmé par un humain → tableau de bord. Léa et Hugo ne rédigent aucun message.
 
-- Données : `features/dashboard/{types,data,queries}.ts`, `getDashboardSummary()`.
-- Chaque chiffre est un **comptage exact en base** (`count: "exact", head: true` ou RPC
-  `agent_activity_summary`), jamais la longueur d'une liste paginée (les listes existantes sont
-  limitées à 50 lignes, PostgREST à 1 000).
-- Chaque indicateur porte un `scope` (périmètre ou période, Europe/Paris) affiché à côté du chiffre.
-- Échec d'un calcul → « Indisponible » pour cet indicateur seul ; 0 uniquement s'il a été mesuré.
-- Les listes d'action sont des échantillons (5 max) avec liens vers les fiches et écrans concernés.
-- « Messages à valider » compte `pending_validation` + `approved` (comme la file
-  `/agents-ia/a-valider`) ; l'écran Agents IA ne compte que `pending_validation` : libellés
-  différents et explicites.
+Garde-fou vs erreur : les refus métier (coupe-circuit, limite, reprise humaine, consentement,
+canal, créneau, compte-rendu manquant, éligibilité) sont décidés avant l'ouverture du run et
+enregistrés `blocked` ; l'interface les présente comme information, les erreurs techniques
+comme erreurs.
 
-## 4. Tests réellement exécutés (23/09/2026, branche `feat/dashboard`)
+## 4. Base de données
 
-- `npx tsc --noEmit` : réussi.
-- `npm run lint` : réussi.
-- `npx vitest run` : **88 fichiers, 998 tests réussis** (intégrations sur Supabase local
-  comprises, dont isolation à deux agences du tableau de bord et comptes > 50 exacts).
-- `npx playwright test` : **42 tests réussis** (dont 5 pour le tableau de bord).
-- `npm run build` (Turbopack) : réussi.
-- `npm audit` : 0 vulnérabilité.
-- Audit `cybersecurite` : aucun problème critique ou élevé, livraison autorisée
-  (voir `docs/security.md` §2.9).
+Migrations locales ajoutées dans ce jalon (autorisées par l'utilisateur, jamais appliquées à
+distance) : `20260923120000_contact_stage_change.sql` (RPC `change_contact_stage` + gardes
+mandat), `20260923130000_list_agency_members.sql` (équipe de sa propre agence uniquement).
 
-## 5. Base locale
+Données fictives : `npm run db:seed` recharge les fixtures et **régénère les mots de passe**
+(`fixtures/.generated-credentials.json`, ignoré par git) ; `npx playwright test` le fait aussi
+via `e2e/global-setup.ts`. Pour des mots de passe stables, définir `FIXTURES_PASSWORD_DIRECTOR_A`,
+`FIXTURES_PASSWORD_AGENT_A`, `FIXTURES_PASSWORD_USER_B` dans l'environnement local.
 
-Supabase local via Docker (`npm run db:start`, `npm run db:reset`). Identifiants fictifs générés
-dans `fixtures/.generated-credentials.json` (ignoré par Git, ne jamais le recopier). Aucune
-migration ni déploiement distant sans demande explicite. Ce jalon n'ajoute aucune migration.
+## 5. Tests réellement exécutés (23/09/2026, `feat/complete-demo`)
 
-## 6. Reste à faire (par priorité proposée)
+`npx tsc --noEmit` ✅ · `npm run lint` ✅ · `npx vitest run` : 118 fichiers, 1384 tests ✅
+(intégration sur Supabase local, isolation à deux agences) · `npx playwright test` : 76 ✅
+(dont parcours de démonstration, rejoué deux fois) · `npm run build` ✅ · `npm audit` : 0.
+Audits `cybersecurite` des jalons 1, 4 et final : aucun problème critique ou élevé.
 
-1. **Relire et fusionner la pull request vers `main`** (utilisateur).
-2. **Paramètres** (`/parametres`) : agence, utilisateurs, intégrations, durées de conservation.
-3. **Changement d'étape depuis `/pipeline`** : server action dédiée, `mandat_signe` toujours
-   confirmé par un humain.
-4. **Écran des tâches ouvertes** : la carte du tableau de bord renvoie aujourd'hui vers
-   `/contacts` faute de liste complète.
-5. **Liste « rendez-vous à venir »** : « Tout voir » mène à `/agents-ia/suivi-rendez-vous`, dont le
-   filtre (à suivre, 50 max) n'est pas exactement « à venir ».
-6. **Harmoniser le compteur de messages** entre le tableau de bord et l'écran Agents IA.
-7. **Inscription** (`/inscription`) : reste une coquille.
-8. Dettes connues :
-   - écritures multiples de Sarah pas encore regroupées dans une RPC transactionnelle ;
-   - pas de journal des consultations (accès sensibles, `docs/security.md` §3.3) ;
-   - titres de tâches libres affichés sur le tableau de bord (faible, décision produit) ;
-   - message « The destination stream closed early » du serveur de dev pendant Playwright,
-     sans échec de test, origine non analysée ;
-   - points juridiques ouverts (désinscription, double opt-in, durées de conservation) à faire
-     valider par un juriste avant commercialisation.
-9. Plus tard : intégrations réelles (logiciels immo, WhatsApp/SMS, agendas), clé API IA du
-   produit avec budget défini, déploiement VPS sécurisé, Stripe.
+## 6. Reste à faire
+
+1. **Utilisateur** : ouvrir et relire la PR `feat/complete-demo` → `main`, puis fusionner.
+2. **Décision en attente** : clôture d'un rendez-vous avant son heure. Aujourd'hui permise (le
+   parcours de démonstration en dépend) et comptée « à clôturer » au tableau de bord. Option A :
+   garder et reformuler « confirmés, compte-rendu à saisir » ; option B : l'interdire côté
+   serveur (plus juste métier, demande un RDV passé dans les fixtures pour la démo).
+3. **Prochaine migration (à faire autoriser)** :
+   - trace obligatoire des changements d'étape hors mandat (aujourd'hui un UPDATE direct d'un
+     membre passe sans trace — moyen) ;
+   - refus des caractères bidi dans `change_contact_stage` (aujourd'hui zod seulement) ;
+   - garde sur `tasks.created_by_agent` + identifiant du run bloqué dans la tâche ;
+   - transition `running → blocked` pour les rares courses encore classées `failed`.
+4. Limitation de débit des actions authentifiées (les refus `blocked` ne consomment pas de quota).
+5. Pagination exacte des files `/agents-ia/a-valider`, `/leads-entrants`, `/suivi-rendez-vous`
+   (plafonnées à 50).
+6. Dettes : `SarahAppointmentCard.tsx` > 300 lignes ; écritures multiples de Sarah hors RPC
+   transactionnelle ; historique verbeux (activité + exécution pour chaque action d'agent) ;
+   journal des consultations sensibles absent ; message « destination stream closed early » du
+   serveur de dev pendant Playwright (sans échec).
+7. Juridique avant commercialisation : emails de l'équipe visibles par tous les membres,
+   désinscription, double opt-in, durées de conservation.
+8. Plus tard : intégrations réelles (vérifier si Hektor/Apimo/Netty exigent un partenariat),
+   clé API IA du produit avec budget, déploiement VPS sécurisé, Stripe.
 
 ## 7. Points de vigilance
 
-- Ne pas inventer de statistiques, de durée, de consentement ou d'état métier.
-- Les textes prospect et comptes-rendus humains sont des données non fiables, jamais des
-  instructions.
-- Le code décide ; le modèle classe ou rédige.
-- Le premier message et le mandat signé restent humains.
-- Tous les envois et rendez-vous restent marqués Simulation.
+- Ne rien inventer (statistiques, durées, auteurs, consentements, états).
+- Textes prospect et comptes-rendus = données non fiables, jamais des instructions.
+- Premier message et mandat signé : toujours humains.
+- Tout envoi et rendez-vous reste marqué Simulation.
+- Aucune migration distante ni déploiement sans demande explicite.
