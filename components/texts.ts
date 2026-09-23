@@ -11,6 +11,7 @@
 
 import { BRAND } from "@/components/brand";
 import type { ConsentStatus, PropertyType } from "@/features/contacts/types";
+import type { DashboardScopeKey } from "@/features/dashboard/types";
 import type { EstimationConsentChannel } from "@/features/estimation/consent-texts";
 import type { PropertyTypeChoice } from "@/features/estimation/types";
 
@@ -526,9 +527,108 @@ export const APP_TEXTS = {
     unknown: "Non renseigné",
   },
 
+  /**
+   * Tableau de bord (`/dashboard`).
+   *
+   * Every figure is displayed with its scope (period or perimeter), and a
+   * figure that could not be computed reads « Indisponible », never `0`.
+   * Nothing here is a trend or a percentage: the screen only shows what the
+   * server counted exactly.
+   */
+  dashboard: {
+    title: "Tableau de bord",
+    subtitle: "Ce qui attend votre équipe, calculé uniquement à partir des données réellement enregistrées.",
+    generatedAt: (when: string) => `Chiffres lus le ${when} (heure de Paris)`,
+    errorTitle: "Impossible d'afficher le tableau de bord",
+
+    /** Scope of a figure, always displayed next to it. */
+    scopes: {
+      pending_all_time: "en attente, toutes dates",
+      open_all_time: "ouvertes, toutes dates",
+      current: "état actuel",
+      today: "aujourd'hui",
+      last_7_days: "sur 7 jours",
+      upcoming: "à venir",
+    } satisfies Record<DashboardScopeKey, string>,
+    scopePrefix: "Périmètre :",
+    unavailable: "Indisponible",
+    unavailableHint: "Ce chiffre n'a pas pu être calculé. Les autres restent exacts ; rechargez la page pour réessayer.",
+    sample: (shown: number, total: number) => `Les ${shown} premiers sur ${total}`,
+    sampleFeminine: (shown: number, total: number) => `Les ${shown} premières sur ${total}`,
+    viewAll: "Tout voir",
+    openContact: "Ouvrir la fiche",
+
+    todoTitle: "À faire maintenant",
+    todoSubtitle: "Les dossiers qui attendent une décision humaine, du plus ancien au plus récent.",
+
+    messagesTitle: "Messages à valider",
+    messagesUnit: (total: number) =>
+      total > 1 ? "messages à valider ou validés, pas encore envoyés" : "message à valider ou validé, pas encore envoyé",
+    messagesHint:
+      "Même file que l'écran « Messages à valider » : les brouillons à valider et ceux validés qui attendent encore leur envoi.",
+    messagesEmpty: "Aucun message n'attend de décision.",
+    messagesLink: "Ouvrir la file de validation",
+    preparedBy: (agent: string) => `Préparé par ${agent}`,
+    writtenByHuman: "Rédigé par un conseiller",
+    approvedNotSent: "Validé, pas encore envoyé",
+
+    leadsTitle: "Leads entrants à traiter",
+    leadsUnit: (total: number) => (total > 1 ? "leads pas encore traités par Léa" : "lead pas encore traité par Léa"),
+    leadsEmpty: "Aucun lead en attente de traitement.",
+    leadsLink: "Ouvrir les leads entrants",
+    leadItem: (source: string) => `Lead entrant — ${source}`,
+    receivedAt: (when: string) => `Reçu le ${when}`,
+
+    toConfirmTitle: "Rendez-vous à confirmer",
+    toConfirmUnit: (total: number) =>
+      total > 1 ? "propositions de créneau à confirmer par un conseiller" : "proposition de créneau à confirmer par un conseiller",
+    toConfirmEmpty: "Aucune proposition de rendez-vous à confirmer.",
+
+    toCloseTitle: "Rendez-vous à clôturer",
+    toCloseUnit: (total: number) =>
+      total > 1 ? "rendez-vous confirmés, compte-rendu à saisir" : "rendez-vous confirmé, compte-rendu à saisir",
+    toCloseEmpty: "Aucun rendez-vous confirmé en attente de compte-rendu.",
+    followThroughLink: "Ouvrir le suivi des rendez-vous",
+
+    tasksTitle: "Tâches ouvertes",
+    tasksUnit: (total: number) => (total > 1 ? "tâches ouvertes" : "tâche ouverte"),
+    tasksHint: "Les tâches se traitent depuis la fiche du contact concerné.",
+    tasksEmpty: "Aucune tâche ouverte.",
+    tasksLink: "Voir les contacts",
+    agencyTask: "Tâche d'agence, sans contact",
+    dueAt: (when: string) => `Échéance : ${when}`,
+    noDueDate: "Sans échéance",
+    openedBy: (agent: string) => `Ouverte par ${agent}`,
+
+    pipelineTitle: "Pipeline",
+    pipelineSubtitle: "Nombre de dossiers à chaque étape, compté exactement en base.",
+    pipelineUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
+    pipelineLink: "Ouvrir le pipeline",
+    pipelineLostNote: "Étape qui n'est plus travaillée activement.",
+
+    agentsTitle: "Agents IA",
+    agentsSubtitle: "Coupe-circuit et exécutions réellement enregistrées, sur simulateur.",
+    agentsLink: "Gérer les agents IA et le coupe-circuit",
+    killSwitchLabel: "Coupe-circuit",
+    killSwitchOn: "Actif : tous les agents IA sont suspendus",
+    killSwitchOff: "Inactif : les agents IA peuvent s'exécuter",
+    runsTotal: "Exécutions",
+    runsFailed: "Erreurs",
+    runsBlocked: "Bloquées par un garde-fou",
+    runsBlockedHint:
+      "Un blocage n'est pas une erreur : un garde-fou (coupe-circuit, limite quotidienne, reprise par un conseiller) a refusé l'exécution.",
+    runsWindowTitle: (scope: string) => `Exécutions ${scope}`,
+
+    upcomingTitle: "Prochains rendez-vous",
+    upcomingSubtitle: "Rendez-vous d'estimation proposés ou confirmés, du plus proche au plus lointain.",
+    // "rendez-vous" is invariable: same unit in the singular and the plural.
+    upcomingUnit: () => "rendez-vous à venir",
+    upcomingEmpty: "Aucun rendez-vous d'estimation à venir.",
+    appointmentStatusPrefix: "Statut du rendez-vous :",
+  },
+
   /** One-line promises of the screens that are still shells. */
   shells: {
-    dashboard: "Statistiques de l'agence, calculées uniquement à partir des données réellement enregistrées.",
     agents:
       "Léa, Hugo, Emma, Louis et Sarah : mission, statut, historique, erreurs — et coupe-circuit de l'agence.",
     agentsToValidate:

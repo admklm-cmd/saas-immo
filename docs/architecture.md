@@ -285,6 +285,28 @@ jusqu'à l'interface (`lib/utils/result.ts`).
 - « Introuvable » et « appartient à une autre agence » renvoient **exactement le même message**
   (« Contact introuvable. ») : un message d'erreur ne doit rien apprendre sur une autre agence.
 
+### 6.1 Tableau de bord : comptages exacts, « indisponible » plutôt que 0
+
+`features/dashboard/` (`getDashboardSummary()` → `buildDashboardSummary(client)`) calcule
+le tableau de bord uniquement à partir des données enregistrées, avec le client serveur de session
+(RLS active, jamais `admin.ts`) et l'agence résolue côté serveur (`resolveAgentContext`).
+
+- **Comptages exacts en base** : chaque chiffre est un `count: "exact", head: true` filtré par
+  `agency_id`, ou l'agrégat SQL `agent_activity_summary`. Aucun compteur ne repose sur la longueur
+  d'une liste paginée (les écrans liés sont limités à 50 lignes, PostgREST à 1 000).
+- **Mêmes définitions que les écrans liés** : file « à valider » (`pending_validation` +
+  `approved`), leads `pending`, rendez-vous « à confirmer » = `proposed` et contact en `qualifie` /
+  `chaud` / `rdv_planifie` (jointure `!inner`, même règle que la base), « à clôturer » = `confirmed`.
+  Les constantes sont partagées avec `features/agents-ia/data.ts`.
+- **Périmètre explicite** : chaque indicateur porte un `scope` typé (`pending_all_time`,
+  `open_all_time`, `current`, `today`, `last_7_days`, `upcoming`) avec ses bornes en Europe/Paris.
+- **Indisponible ≠ 0** : un calcul en échec donne `{ status: "unavailable" }` pour cet indicateur
+  seul (détail logué côté serveur) ; `0` n'est renvoyé que mesuré (`{ status: "ok", value: 0 }`).
+  Contrairement à l'écran Agents IA (tout ou rien), un indicateur en échec ne masque pas les autres.
+  Seule une session ou une agence invalide fait échouer tout l'appel.
+- **Échantillons** : les listes d'action renvoient le total exact et au plus 5 éléments avec les
+  identifiants nécessaires aux liens ; l'échantillon n'est jamais présenté comme la liste complète.
+
 ---
 
 ## 7. Validation avec zod, aux deux bouts

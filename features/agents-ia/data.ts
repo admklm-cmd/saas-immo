@@ -302,6 +302,13 @@ export async function listInboundLeads(client: TypedClient): Promise<Result<Inbo
 export const REPORTED_APPOINTMENTS_PAGE_SIZE = 50;
 
 /**
+ * Contact stages at which a `proposed` appointment may be confirmed by a human.
+ * Same set as the database guard of `appointments` (`proposed -> confirmed`);
+ * shared with the dashboard so its « à confirmer » count matches this screen.
+ */
+export const APPOINTMENT_CONFIRMABLE_STAGES = ["qualifie", "chaud", "rdv_planifie"] as const;
+
+/**
  * Active and completed estimation appointments of the agency, most recent
  * first. `proposed` and `confirmed` expose the human actions needed before a
  * `done` appointment becomes Sarah's input.
@@ -357,9 +364,9 @@ export async function listAppointmentsToFollowThrough(
           .join(" ");
         const canBeConfirmed =
           row.status === "proposed" &&
-          (contact?.stage === "qualifie" ||
-            contact?.stage === "chaud" ||
-            contact?.stage === "rdv_planifie");
+          contact !== null &&
+          contact !== undefined &&
+          (APPOINTMENT_CONFIRMABLE_STAGES as readonly string[]).includes(contact.stage);
         return {
           id: row.id,
           contactId: row.contact_id,
@@ -408,8 +415,11 @@ export const CONSENT_CHANNEL_LABELS: Readonly<
 /** How many drafts the validation queue shows at once. */
 export const PENDING_MESSAGES_PAGE_SIZE = 50;
 
-/** Statuses that still need a human decision. */
-const AWAITING_HUMAN = ["pending_validation", "approved"] as const;
+/**
+ * Statuses that still need a human decision. Exported so the dashboard counts
+ * exactly the rows this queue lists.
+ */
+export const AWAITING_HUMAN = ["pending_validation", "approved"] as const;
 
 function contactName(contact: { first_name: string | null; last_name: string | null } | null): string {
   return joinContactName(contact) ?? CONTACT_WITHOUT_NAME;

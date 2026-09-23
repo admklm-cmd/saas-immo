@@ -4,13 +4,14 @@
 > Propriétaire : agent `frontend-ux`. Les workflows détaillés des agents IA vivent dans
 > `docs/workflows.md`, les choix techniques dans `docs/architecture.md`.
 >
-> **État au 22/09/2026** : prototype. Sont réellement implémentés : le premier parcours
+> **État au 23/09/2026** : prototype. Sont réellement implémentés : le premier parcours
 > (connexion → contacts → fiche → Hugo → Louis → historique), la boîte « Leads entrants »
 > de Léa, la file « Messages à valider » avec correction humaine des brouillons, le
 > module « Agents IA » (les cinq agents, le coupe-circuit, le journal des exécutions et le
 > rejeu animé d'une exécution), les relances d'Emma, le suivi post-estimation de Sarah et
-> le pipeline en lecture seule. Estimation, tableau de bord et paramètres utilisent
-> explicitement `ComingSoon`.
+> le pipeline en lecture seule, le tableau de bord (comptages exacts avec périmètre
+> affiché, « Indisponible » en cas d'échec). Les paramètres utilisent explicitement
+> `ComingSoon`.
 
 ## 1. À qui on vend
 
@@ -82,7 +83,7 @@ Chaque trace produite porte un badge « simulation » dans l'interface.
 | Estimation | `/estimation` | `ComingSoon` | Formulaire progressif, consentement par canal, cases **non précochées** |
 | Connexion | `/connexion` | **Fait** | Email + mot de passe, session Supabase réelle |
 | Inscription | `/inscription` | Coquille | Création de compte accompagnée par Ascend Strategy |
-| Tableau de bord | `/dashboard` | `ComingSoon` | Statistiques calculées sur données réelles |
+| Tableau de bord | `/dashboard` | **Fait** (23/09) | `getDashboardSummary()` : **À faire maintenant** en premier (messages à valider ou validés non envoyés, leads à traiter, tâches ouvertes, rendez-vous à confirmer et à clôturer — total exact + 5 premiers éléments liés à leur fiche, « Tout voir » vers l'écran de travail), pipeline par étape (`perdu` en retrait), agents IA (état du coupe-circuit toujours affiché, exécutions aujourd'hui et sur 7 jours : total, erreurs, blocages par garde-fou), prochains rendez-vous. Chaque chiffre affiche son périmètre ; un calcul en échec affiche « Indisponible », jamais 0, sans masquer les autres. Aucune tendance ni pourcentage |
 | Contacts vendeurs | `/contacts` | **Fait** | Liste : nom, étape, coordonnées, bien, source, mise à jour |
 | Fiche contact | `/contacts/[id]` | **Fait** | Coordonnées, bien, consentements par canal, historique, actions Hugo, Louis et Emma |
 | Pipeline | `/pipeline` | **Fait (lecture seule)** | Contacts réels de `getContacts()` répartis par étape, `perdu` affiché à part avec moins de poids visuel, compteurs réels uniquement, une carte mène à la fiche contact — aucun changement d'étape depuis cet écran |
@@ -200,6 +201,6 @@ exploitable sans inventer de donnée ni confondre demande et consentement.
 ## 8. Prochaines itérations (proposition)
 
 1. Formulaire d'estimation public avec consentement par canal (cases non précochées).
-2. Remplacer les coquilles `ComingSoon` du tableau de bord et des paramètres.
+2. Remplacer la coquille `ComingSoon` des paramètres.
 3. Changement d'étape depuis `/pipeline` : server action dédiée, avec les garde-fous
    attendus sur `mandat_signe` (voir « À transmettre » du jalon pipeline).

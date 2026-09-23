@@ -382,9 +382,51 @@ vérifié :
 - **Un seul agent cible, en dur** (`private.estimation_target_agency()`) : adapté à ce prototype à une
   agence, pas à une publication multi-agences réelle — voir `docs/architecture.md`.
 
+### 2.9 Tableau de bord (`/dashboard`)
+
+Lecture seule : l'écran ne déclenche aucune action, n'envoie rien et ne modifie aucune ligne.
+
+**Couvert et testé :**
+
+- **Isolation entre agences** : `features/dashboard/data.ts` n'utilise que le client de session
+  (`lib/supabase/server.ts`, RLS appliquée) ; l'`agency_id` vient de `resolveAgentContext` (adhésion
+  de l'utilisateur authentifié), jamais du navigateur. Chaque requête filtre en plus par cet
+  `agency_id`. Les jointures vers `contacts` passent par les clés étrangères **composites**
+  `(agency_id, contact_id)` (`appointments_contact_fkey`, `outbound_messages_contact_fkey`,
+  `tasks_contact_fkey`) : une ligne ne peut pas pointer vers le contact d'une autre agence. Le RPC
+  `agent_activity_summary` est `security invoker` avec `search_path = ''` : la RLS de
+  `ai_agent_runs` s'applique à l'appelant, même si `target_agency` était falsifié. Prouvé par
+  `features/dashboard/dashboard.integration.test.ts` (deux agences fictives réelles sur Supabase
+  local : ni chiffre, ni identifiant, ni nom de l'autre agence ; rien sans session).
+- **Aucun usage de `service_role`** dans le chemin utilisateur (uniquement dans le test
+  d'intégration, pour les comptages de référence).
+- **Aucune fuite technique** : un calcul en échec devient « Indisponible » (jamais `0`), le détail est
+  logué côté serveur ; seule une session ou une agence invalide remplace l'écran, avec un message
+  français issu de `AGENT_ERROR_MESSAGES`.
+- **XSS** : titres de tâches et noms de contacts rendus uniquement comme texte React, aucun
+  `dangerouslySetInnerHTML`. Les liens de fiche encodent l'identifiant comme un seul segment
+  (`encodeURIComponent`, défense en profondeur ; les identifiants sont des `uuid`). Test :
+  `TodoSection.test.tsx` (« rend un titre de tâche et un nom de contact malveillants comme du
+  texte… »).
+- **Minimisation** : seuls prénom + nom du contact, statut, canal, dates et identifiants de lien.
+  Aucun email, téléphone, adresse, corps de message ni texte libre de prospect (les leads entrants
+  ne montrent que leur source et leur date). Les titres de tâches créées par les agents IA sont des
+  textes fixes (`AGENT_TASK_TEXTS`).
+- **Simulation** : badge « Simulation » sur les messages et rendez-vous simulés et sur le bloc
+  Agents IA.
+
+**Non couvert :**
+
+- Le titre d'une tâche saisie par un **membre** de l'agence est un texte libre (200 caractères max)
+  affiché sur le tableau de bord : il pourrait contenir une donnée personnelle superflue. Risque
+  interne à l'agence, rendu en texte ; pas de filtrage.
+- Aucune journalisation de la consultation du tableau de bord (voir « journal des accès sensibles »,
+  §3.3).
+
 ### 2.7 Dépendances
 
-`npm audit` : **0 vulnérabilité** (22/09/2026). Dépendances peu nombreuses, toutes largement utilisées
+`npm audit` et `npm audit --omit=dev` : **0 vulnérabilité** (23/09/2026, audit du tableau de bord ;
+précédemment 22/09/2026). Dépendances peu nombreuses, toutes largement utilisées
 et directement justifiées par la stack (`next`, `react`, `@supabase/*`, `zod`, `@date-fns/tz`,
 `server-only`). Aucun SDK de fournisseur d'IA payant n'est installé.
 **Toutes les dépendances sont épinglées à une version exacte** (`package.json` et `package-lock.json`) :
@@ -500,3 +542,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 | 2026-09-22 | Jalon « Relances Emma » : `/agents-ia/relances`, `listEmmaFollowUpCandidates`, `prepareFollowUp`, `AgentActionsPanel`, helper E2E `clearEmmaArtefacts` | Aucun problème critique. 1 problème élevé corrigé (mention de désinscription supprimable par une donnée contrôlée par le prospect, `lib/agents/consent.ts`). Isolation, coupe-circuit, consentement, premier contact humain et injection de prompt vérifiés. Restent 4 points faibles documentés en 3.4. Livraison autorisée. |
 | 2026-09-23 | Audit dédié du **formulaire public d'estimation** (`feat/public-estimation`) : `features/estimation/`, `app/(marketing)/estimation`, `politique-confidentialite`, migration `20260922120000`, privilèges réels de `anon` en base | Aucun problème critique. Isolation vérifiée **en base** : `anon` n'a aucun privilège de table dans `public`/`private`, aucun accès au schéma `private`, une seule fonction exécutable ; texte de consentement identique caractère par caractère entre SQL et TypeScript (196/154/150/231 caractères) ; `current_consents` exclut les consentements sans contact ; `guard_outbound_message` n'autorise aucun envoi depuis un consentement sans contact. **2 corrections** : entrée `x-forwarded-for` choisie (contournement du plafond par empreinte IP même derrière un proxy) et caractères de contrôle acceptés dans les noms (injection d'en-tête d'email en aval) — corrigée côté zod **et** côté base (migration `20260923090000`). **Non corrigé, assumé et documenté** : empreinte IP choisie librement par un appelant direct du RPC, plafond d'agence utilisable comme déni de service, absence de double opt-in, promesse de désinscription non implémentée. 927 → 939 tests verts. |
 | 2026-09-22 | Réconciliation `feat/agents-et-ecrans-reconcile` : rejeu chirurgical de 3 correctifs identifiés sur la branche de sauvegarde locale (sans écraser le travail distant, dont `hasOptOutInstruction`) | Octets de contrôle bruts remplacés par leurs échappements dans 3 fichiers dont 2 garde-fous (`features/agents-ia/types.ts`, `lib/utils/safe-redirect.ts`, leurs tests). `noMoney` ajouté au schéma de Louis (oublié jusqu'ici). Deux garde-fous partagés `noControlCharacters`/`singleLine` ajoutés contre l'injection d'en-tête d'email dans les objets d'Emma et de Louis. `@radix-ui/react-icons` épinglé en version exacte. 813 → 822 tests verts (`tsc`, lint et Vitest silencieux/verts), aucune régression. |
+| 2026-09-23 | Jalon **tableau de bord** (`feat/dashboard`, travail non commité) + passe légère sur `git diff main...HEAD` (334 fichiers) | Aucun problème critique ni élevé. Isolation (client de session, `agency_id` serveur, FK composites, RPC `security invoker`), absence de `service_role`, absence de fuite d'erreur, minimisation et badge Simulation vérifiés (§2.9). **1 durcissement faible** : identifiant encodé dans les liens de fiche + test XSS/lien. Branche : aucun `.env*` suivi hors `.env.example`, `fixtures/.generated-credentials.json` ignoré et absent de l'historique, 13/13 tables avec RLS, 17/17 fonctions `security definer` avec `search_path`, webhooks en 501, toutes les server actions passent par le client de session, `npm audit --omit=dev` : 0. 998 tests Vitest verts. Livraison autorisée. |

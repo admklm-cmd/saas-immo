@@ -446,6 +446,23 @@ Toute action simulée (message, rendez-vous, exécution d'agent IA) affiche
 une action simulée avec un envoi réel. Le badge porte son propre texte : il ne se
 réduit ni à une couleur ni à une icône.
 
+### 3.5 Composants du tableau de bord (`features/dashboard/components/`)
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `DashboardFigure` | `DashboardFigure.tsx` | Un chiffre **toujours suivi de son périmètre** (« en attente, toutes dates », « ouvertes, toutes dates », « état actuel », « aujourd'hui », « sur 7 jours », « à venir ») ; « Indisponible » si le calcul a échoué, jamais `0` |
+| `ActionListCard` | `ActionListCard.tsx` | Liste d'action générique : titre (`h3`, ou `h2` en bloc de premier niveau), total exact, échantillon (« Les 5 premiers sur 12 » si `hasMore`), état vide, lien vers l'écran de travail (« Tout voir » quand l'échantillon est partiel et que l'écran liste tout) |
+| `MessageItem` / `InboundLeadItem` / `AppointmentItem` / `TaskItem` / `ContactLink` | — | Un élément d'échantillon : contact lié à sa fiche, statut en badge, `SimulationBadge` si simulé. Un lead n'a pas de fiche : il mène à « Leads entrants ». Aucun texte libre du prospect |
+| `TodoSection` | `TodoSection.tsx` | Bloc « À faire maintenant », premier de l'écran : cinq `ActionListCard` |
+| `PipelineSummary` / `PipelineStageTile` | — | Un compte par étape avec `PipelineStageBadge` ; `perdu` sur une rangée à part, pointillés et texte atténué |
+| `AgentsSummary` / `RunCountsList` | — | État du coupe-circuit (lu à part, visible même si les exécutions sont indisponibles) ; exécutions aujourd'hui et sur 7 jours : total, erreurs, **bloquées par un garde-fou** (dit explicitement « pas une erreur »). Lien vers `/agents-ia`, jamais de bouton dupliqué |
+| `UpcomingAppointments` | `UpcomingAppointments.tsx` | `ActionListCard` de premier niveau : total à venir + 5 prochains créneaux (heure de Paris) |
+
+**Motif « chiffre + périmètre ».** Chiffre en `text-title` (`text-heading` en tuile),
+unité en `text-sm text-ink-muted` sur la même ligne de base, périmètre en dessous en
+`text-xs text-ink-subtle`, précédé d'un « Périmètre : » réservé aux lecteurs d'écran.
+Ni tendance, ni flèche, ni pourcentage : l'écran n'affiche que ce que le serveur a compté.
+
 ## 4. États d'écran obligatoires
 
 Chaque écran gère quatre états :
@@ -493,6 +510,11 @@ Chaque écran gère quatre états :
   `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3` (deux rangées de trois à partir de
   1280 px, jamais de défilement horizontal disgracieux), `perdu` en dessous sur
   une colonne unique `max-w-sm`.
+- Tableau de bord (`/dashboard`) : `max-w-7xl`. « À faire maintenant » en grille
+  `md:grid-cols-2 xl:grid-cols-3` (cartes de même hauteur, lien de pied collé en bas),
+  pipeline pleine largeur en `grid-cols-2 sm:grid-cols-3 xl:grid-cols-6` avec `perdu` sur
+  une rangée séparée par un filet, puis agents IA et prochains rendez-vous en
+  `lg:grid-cols-2`. Blocs espacés de `gap-12`, entrée des blocs suivants via `Reveal`.
 - Pages publiques de saisie (`/estimation`, `/politique-confidentialite`) : colonne
   unique `max-w-2xl`, gouttières `px-6`, respiration `py-16` (`sm:py-20`). Le
   formulaire vit dans une `Card` unique, ses sections espacées de `gap-10`, l'action
