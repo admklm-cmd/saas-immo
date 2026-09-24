@@ -59,26 +59,61 @@ export const LANDING_TEXTS = {
   problem: {
     kicker: "Le problème",
     title: "Ce n'est pas la prospection qui freine vos mandats. C'est l'administratif.",
+    /**
+     * The same title, as composed on screen: the observation, then the answer.
+     * Joined with a space they give `title` (tested).
+     */
+    titleLines: ["Ce n'est pas la prospection qui freine vos mandats.", "C'est l'administratif."],
+    /** Word of the answer set apart, soberly. */
+    titleEmphasis: "administratif",
     body: "Les demandes arrivent. Mais chaque dossier traîne des relances à faire à la main, des informations éparpillées et des fiches en double. Le suivi sature, et le dossier s'arrête avant le rendez-vous.",
-    /** The three causes of the administrative block, as named on the chart. */
+    /**
+     * The four causes of the administrative block. `key` links each one to the
+     * events it produces on the chart (components/landing/problem/problem-scene.ts).
+     */
     symptoms: [
-      { title: "Relances manuelles", body: "Notées de mémoire, oubliées, ou envoyées deux fois au même contact." },
       {
+        key: "relances",
+        title: "Relances manuelles",
+        body: "Notées de mémoire, oubliées, ou envoyées deux fois au même contact.",
+      },
+      {
+        key: "dossiers",
         title: "Dossiers dispersés",
         body: "Formulaire, appel, portail : les informations d'un même vendeur vivent à trois endroits.",
       },
-      { title: "Doublons entre conseillers", body: "Un même vendeur enregistré deux fois, suivi par deux personnes." },
+      {
+        key: "doublons",
+        title: "Doublons entre conseillers",
+        body: "Un même vendeur enregistré deux fois, suivi par deux personnes.",
+      },
+      {
+        key: "suivi",
+        title: "Suivi saturé",
+        body: "Chaque dossier ouvert attend un rappel, une réponse, une validation. Le temps part là, pas dans les rendez-vous.",
+      },
     ],
-    /** Illustrative chart: no figure on the axes, labelled as a fictitious example. */
+    /** Illustrative chart: no figure, no axis, labelled as a fictitious example. */
     chart: {
       label: "Illustration — exemple fictif",
       title: "La progression plafonne au niveau de l'administratif",
       axisX: "Temps",
       axisY: "Mandats",
-      zone: "Blocage administratif",
-      causesLabel: "Causes du blocage administratif",
+      capacity: "Capacité absorbée par l'administratif",
+      /** Words of the administrative events drawn on the chart. */
+      events: {
+        relance: "Relance",
+        dossier: "Dossier",
+        document: "Document",
+        doublon: "Doublon",
+        suivi: "Suivi",
+        validation: "Validation",
+      },
+      causesLabel: "Ce qui absorbe le temps",
+      causesHint: "Sélectionnez une cause pour la repérer dans l'illustration.",
+      eventsLabel: "Sur l'illustration",
       description:
-        "Illustration sans chiffres. Une courbe de mandats progresse avec le temps, puis plafonne. Au niveau du plafond, une zone en pointillés nommée « Blocage administratif » regroupe trois causes : relances manuelles, dossiers dispersés, doublons entre conseillers.",
+        "Illustration sans chiffres, exemple fictif. Une courbe de mandats progresse avec le temps. Puis de petits événements administratifs s'accumulent entre elle et la progression attendue, de plus en plus nombreux : relances, dossiers, documents, doublons, suivis, validations. La courbe ralentit et plafonne, loin de la progression attendue : l'écart est la capacité absorbée par l'administratif. Quatre causes : relances manuelles, qui produisent les relances ; dossiers dispersés, les dossiers et les documents ; doublons entre conseillers, les doublons ; suivi saturé, les suivis et les validations.",
     },
   },
 
@@ -108,7 +143,16 @@ export const LANDING_TEXTS = {
       hint: "Choisissez une étape pour voir ce qu'elle fait sur un dossier fictif.",
       previous: "Étape précédente",
       next: "Étape suivante",
-      kinds: { agent: "Agent IA", human: "Étape humaine" },
+      navLabel: "Parcourir les étapes",
+      /** Read « Étape 04 sur 07 » (written « 04 / 07 »). */
+      positionOf: "sur",
+      /** `kinds.agent` / `kinds.human` are read by assistive technology; the two others are written on the tile. */
+      kinds: {
+        agent: "Agent IA",
+        human: "Étape humaine",
+        checkpoint: "Contrôle humain",
+        outcome: "Aboutissement",
+      },
       stepPrefix: "Étape",
       missionLabel: "Sa mission",
       boundaryLabel: "Sa limite",

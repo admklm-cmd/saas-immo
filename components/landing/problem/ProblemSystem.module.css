@@ -1,0 +1,157 @@
+/*
+ * The chart and its causes on one quiet surface: no border, depth from a
+ * translucent paper over the living background and a light directional shadow.
+ * The causes read as events of the same system: a title, a short
+ * text, the words of the events they produce. Cobalt only on the active cause.
+ */
+
+.system {
+  display: grid;
+  gap: 3rem;
+  margin-top: 3rem;
+  padding: 1.5rem 1.25rem 1.75rem;
+  border-radius: var(--radius-2xl);
+  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  box-shadow: var(--shadow-raised);
+  backdrop-filter: saturate(160%) blur(18px);
+}
+
+@media (min-width: 640px) {
+  .system {
+    padding: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .system {
+    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr);
+    gap: 4.5rem;
+    margin-top: 4rem;
+    padding: 3rem 3.5rem 3rem 3rem;
+  }
+}
+
+.chart,
+.causes {
+  min-width: 0;
+}
+
+.list {
+  display: grid;
+  gap: 0.25rem;
+  margin: 1.75rem -1rem 0;
+}
+
+/* --- One cause: an event of the system ------------------------------------ */
+.cause {
+  position: relative;
+  display: grid;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  transition:
+    background-color var(--duration-interactive) var(--ease-standard),
+    opacity var(--duration-interactive) var(--ease-standard);
+}
+
+.cause[data-highlighted="true"] {
+  background-color: var(--color-pearl-soft);
+}
+
+:global([data-active-cause]) .cause:not([data-highlighted="true"]) {
+  opacity: 0.55;
+}
+
+.cause:has(.toggle:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* The title is the button; its hit area covers the whole cause. */
+.toggle {
+  display: block;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--color-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.5rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.toggle:focus-visible {
+  outline: none;
+}
+
+/* The words of the events, written: the same dot as on the chart, no pill. */
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-top: 0.625rem;
+}
+
+.kind {
+  display: inline-flex;
+  gap: 0.4375rem;
+  align-items: center;
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  transition: color var(--duration-interactive) var(--ease-standard);
+}
+
+/* The same dot as the events of the chart. */
+.kind::before {
+  content: "";
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background-color: var(--color-ink-subtle);
+  transition: background-color var(--duration-interactive) var(--ease-standard);
+}
+
+.cause[data-highlighted="true"] .kind::before {
+  background-color: var(--color-accent);
+}
+
+.cause[data-highlighted="true"] .kind {
+  color: var(--color-accent-strong);
+}
+
+/* --- Appearance: each cause arrives with the first event it produces ------- */
+:global(.reveal[data-reveal="hidden"]) .cause {
+  opacity: 0;
+}
+
+:global(.reveal[data-reveal="entering"]) .cause {
+  animation: cause-arrive 640ms var(--ease-standard) var(--cause-delay) both;
+}
+
+@keyframes cause-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0.75rem, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cause {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  :global([data-active-cause]) .cause:not([data-highlighted="true"]) {
+    opacity: 0.55 !important;
+  }
+}

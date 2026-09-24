@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 
 import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
@@ -18,7 +18,8 @@ it("presents the hero, the five agents and the human safeguards", () => {
   // The seven steps of the carousel are tabs; the first one is shown at once.
   const tabs = screen.getAllByRole("tab");
   expect(tabs).toHaveLength(LANDING_TEXTS.agents.steps.length);
-  expect(screen.getByText(LANDING_TEXTS.agents.steps[0].action)).toBeDefined();
+  // The open module previews its mission (aria-hidden); the panel states it in full.
+  expect(within(screen.getByRole("tabpanel")).getByText(LANDING_TEXTS.agents.steps[0].action)).toBeDefined();
   for (const fact of LANDING_TEXTS.control.facts) {
     expect(screen.getByText(fact.body)).toBeDefined();
   }

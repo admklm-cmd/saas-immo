@@ -1,39 +1,37 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { cn } from "@/components/ui/cn";
-
-type IconComponent = ComponentType<{ className?: string; width?: number | string; height?: number | string }>;
+import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
 
 /**
- * Tone of a row, always doubled by its words:
- *   * `done`   — done (black tile);
- *   * `flag`   — something is missing or held (dashed grey/black: not an error);
- *   * `active` — the current item of the step (cobalt contour, the only accent);
- *   * `muted`  — unavailable (struck through, subdued);
- *   * `plain`  — neutral information.
+ * Tone of a row, always doubled by its words — carried by the small mark only,
+ * the row itself has no border:
+ *   * `done`   — done (filled black mark);
+ *   * `flag`   — something is missing or held (dashed mark: not an error);
+ *   * `active` — the current item of the step (cobalt ring, the only accent);
+ *   * `muted`  — unavailable (sunken mark, struck-through label);
+ *   * `plain`  — neutral information (pearl mark).
  */
 export type SceneRowTone = "done" | "flag" | "active" | "muted" | "plain";
 
 export type SceneRowProps = {
-  icon: IconComponent;
+  glyph: GlyphName;
   label: ReactNode;
   detail?: ReactNode;
   tone?: SceneRowTone;
   testId?: string;
 };
 
-/** One line of a scene: a symbol, a label, an optional detail. */
-export function SceneRow({ icon: Icon, label, detail, tone = "plain", testId }: SceneRowProps) {
+/** One line of a scene: a mark, a label, an optional detail. */
+export function SceneRow({ glyph, label, detail, tone = "plain", testId }: SceneRowProps) {
   return (
     <div
       data-tone={tone}
       data-testid={testId}
       className={cn(
-        "grid grid-cols-[1.75rem_1fr] items-start gap-3 rounded-md border px-3 py-2.5",
-        tone === "flag" && "border-dashed border-ink-subtle bg-surface",
-        tone === "active" && "border-accent bg-surface",
-        tone === "muted" && "border-line bg-surface-sunken",
-        (tone === "done" || tone === "plain") && "border-line bg-surface",
+        "grid grid-cols-[1.75rem_1fr] items-start gap-3 rounded-lg px-2 py-2",
+        tone === "active" && "bg-accent-soft",
       )}
     >
       <span
@@ -42,14 +40,14 @@ export function SceneRow({ icon: Icon, label, detail, tone = "plain", testId }: 
           "grid size-7 place-items-center rounded-full",
           tone === "done" && "bg-inverse text-ink-inverse",
           tone === "flag" && "border border-dashed border-ink text-ink",
-          tone === "active" && "border-[1.5px] border-accent text-accent-strong",
-          tone === "muted" && "border border-line-strong text-ink-subtle",
-          tone === "plain" && "border border-line-strong text-ink",
+          tone === "active" && "bg-surface text-accent-strong ring-[1.5px] ring-accent",
+          tone === "muted" && "bg-surface-sunken text-ink-subtle",
+          tone === "plain" && "bg-surface-sunken text-ink",
         )}
       >
-        <Icon width={14} height={14} />
+        <Glyph name={glyph} width={14} />
       </span>
-      <span className="min-w-0 pt-0.5">
+      <span className="min-w-0 pt-1">
         <span
           className={cn(
             "block text-sm font-semibold",

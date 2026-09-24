@@ -344,6 +344,46 @@
   background: var(--color-ink);
 }
 
+/* --- App-icon family (docs/design-system.md §2.8) ----------------------------
+   Nodes of a dossier carry `data-tone`: the SHAPE says who acts. An agent is a
+   rounded square that becomes a dark app tile once it has recorded its work; a
+   person is a circle (the double contour above stays); the mandate is a circle
+   filled once a person has confirmed it; the prospect and the appointment are
+   neutral squares. The states above keep their meaning (dashed = not reached,
+   cobalt = in progress or awaited decision only). The phases of a run carry no
+   tone and keep the plain square. */
+.core[data-tone] {
+  border-radius: calc(var(--core) * 0.3);
+}
+
+.core:is([data-tone="human"], [data-tone="outcome"]) {
+  border-radius: 999px;
+}
+
+.core:is([data-tone="human"], [data-tone="outcome"]) .dot {
+  top: -2px;
+  right: -2px;
+}
+
+.node[data-state="done"] .core:is([data-tone="agent"], [data-tone="outcome"]) {
+  border-color: var(--color-inverse);
+  background: linear-gradient(180deg, var(--color-inverse-soft), var(--color-inverse));
+  color: var(--color-ink-inverse);
+}
+
+/* In progress: the lit tile, framed by the cobalt contour of the state rule. */
+.node[data-state="running"] .core[data-tone="agent"] {
+  background: linear-gradient(180deg, var(--color-inverse-soft), var(--color-inverse));
+  color: var(--color-ink-inverse);
+}
+
+/* A technical error is never drawn like a finished agent: sunken, black frame. */
+.node[data-state="failed"] .core[data-tone="agent"] {
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+}
+
 /* --- Playback: stagger (order) and measured (recorded durations) ---------- */
 .rail:is([data-playback="stagger"], [data-playback="measured"]) .node[data-reached] .core {
   animation: rail-light var(--duration-slow) var(--ease-standard) var(--at) both;

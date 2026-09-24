@@ -11,6 +11,8 @@ import { AGENT_RUN_STATUS_LABELS } from "@/lib/agents/messages";
 
 import type { AgentActivity, AgentOverview } from "../types";
 import { ActivityFigure } from "./ActivityFigure";
+import { AGENT_GLYPHS } from "./agent-icons";
+import { AgentAppIcon } from "./icons/AgentAppIcon";
 import { RunProcessDisclosure, type RenderRunProcess } from "./RunProcessDisclosure";
 import { RunStatusBadge } from "./RunStatusBadge";
 
@@ -74,7 +76,18 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel, renderPro
 
   return (
     <Card
-      title={agent.label}
+      title={
+        <span className="flex items-center gap-3">
+          {/* Same app tile as the rail and the public carousel; grey when the agent is paused. */}
+          <AgentAppIcon
+            glyph={AGENT_GLYPHS[agent.agent]}
+            size="md"
+            state={agent.isActive ? "idle" : "inactive"}
+            testId="agent-app-icon"
+          />
+          {agent.label}
+        </span>
+      }
       description={agent.mission}
       headingLevel={3}
       actions={

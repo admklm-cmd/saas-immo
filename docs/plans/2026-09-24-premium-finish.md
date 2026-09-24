@@ -93,3 +93,36 @@ d'interaction et de composition sont repris, recréés dans l'identité Ascend.
 - Aucun chiffre sur les axes (seulement « Temps » et « Mandats »), étiquette
   « Illustration — exemple fictif ». Tracé à l'apparition, statique en mouvement réduit,
   description textuelle pour les lecteurs d'écran. Esthétique Ascend.
+
+## Refonte B (24/09/2026, validée)
+Validée par l'utilisateur avant implémentation. Même branche (feat/ui-finish). Aucun changement
+de base de données, migration, RLS, server action, query, règle métier ni garde-fou. Aucune
+dépendance ajoutée. Aucun push avant validation visuelle.
+
+### B1. Section agents en interface d'OS (remplace le rendu de A2, même contenu)
+- Les 7 étapes, dans l'ordre (Léa → Hugo → Emma → Validation humaine → Louis → Sarah →
+  Mandat), deviennent des **modules** d'une surface noire ; sélectionner un module
+  « ouvre l'application » : la tuile grandit jusqu'à l'en-tête du panneau (FLIP fait main),
+  puis la scène s'enchaîne dans une fenêtre blanche, toujours étiquetée « Exemple fictif —
+  simulation ».
+- Traitements différenciés : agents IA = tuiles d'app ; validation humaine = point de
+  contrôle (cercle à double contour, le flux s'arrête devant) ; mandat = aboutissement,
+  confirmé par un humain (cercle plein, bloc de conclusion « confirmé par le conseiller »).
+- Presque plus de bordures ; état actif = plaque plus claire + tuile soulevée à fin anneau
+  cobalt + mouvement du symbole + mission qui apparaît + flux allumé jusqu'au module.
+- Navigation discrète « ← 04 / 07 → » ; défilement physique fait main (glisser à la souris
+  avec inertie et arrêt sur un module, balayage tactile natif avec scroll-snap, molette
+  horizontale native, clavier) ; un glissement ne sélectionne jamais. Mouvement réduit :
+  état final immédiat.
+
+### B2. Famille d'icônes sur mesure, alignée dans l'espace connecté
+- Glyphes SVG dessinés à la main (grille 24, trait unique 1,75, extrémités arrondies) pour
+  les agents et les étapes (prospect, validation humaine, rendez-vous, mandat), plus quelques
+  symboles utilitaires des scènes ; tuile commune `AgentAppIcon` (formes : agent, humain,
+  aboutissement, neutre ; états repos / actif / inactif).
+- Espace connecté : rail « réseau opérationnel » d'un dossier et cartes des agents de
+  /agents-ia utilisent la même famille ; icônes utilitaires Radix inchangées ailleurs.
+  Page de contrôle /dev/icons (404 en production).
+
+### B3. Graphique « blocage administratif » refait en scène de friction
+- Réalisé par un autre agent, en parallèle (section « problème »).

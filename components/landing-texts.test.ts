@@ -38,6 +38,20 @@ describe("landing copy", () => {
     expect(strings(LANDING_TEXTS.problem.chart).join(" ")).not.toMatch(/\d/);
   });
 
+  it("composes the problem title from its two lines, and names four causes and six events", () => {
+    const problem = LANDING_TEXTS.problem;
+    expect(problem.titleLines.join(" ")).toBe(problem.title);
+    expect(problem.titleLines[1]).toContain(problem.titleEmphasis);
+    expect(problem.symptoms.map((symptom) => symptom.title)).toEqual([
+      "Relances manuelles",
+      "Dossiers dispersés",
+      "Doublons entre conseillers",
+      "Suivi saturé",
+    ]);
+    expect(Object.values(problem.chart.events)).toEqual(["Relance", "Dossier", "Document", "Doublon", "Suivi", "Validation"]);
+    expect(problem.chart.capacity).toBe("Capacité absorbée par l'administratif");
+  });
+
   it("carries the tag of the hero and a title made of its lines", () => {
     expect(LANDING_TEXTS.hero.tag.toUpperCase()).toBe("5 AGENTS · CONTRÔLE HUMAIN");
     expect(HERO_TITLE).toBe(LANDING_TEXTS.hero.titleLines.join(" "));

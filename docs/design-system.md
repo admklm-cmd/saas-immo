@@ -42,25 +42,26 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   `stroke-dashoffset` (`pathLength=1`) déclenché par le `Reveal` englobant ; complet
   sans JavaScript et sous mouvement réduit. Les trois causes (relances manuelles,
   dossiers dispersés, doublons entre conseillers) sont écrites à côté, en HTML.
-- **Carrousel des agents** (`components/landing/agents/`, section `agents`) : version
-  détaillée du parcours du hero (mêmes noms, même ordre, testé contre
-  `journey.steps`) — Léa → Hugo → Emma → Validation humaine → Louis → Sarah → Mandat.
-  Cartes « app » (`AgentStepCard`) : tuile noire pleine pour un agent IA, **double
-  contour** (carte + tuile ronde) pour une étape humaine ; flèches pointillées
-  (`StepConnector`) entre les cartes. Motif WAI-ARIA **tabs** à activation automatique :
-  `tablist` défilable (`overflow-x-auto`, `snap-x snap-mandatory`, tactile natif),
-  tabindex itinérant, ← → Début Fin, Entrée/Espace (boutons natifs), focus cobalt ;
-  carte sélectionnée = bordure cobalt. Boutons précédent/suivant `Button secondary`
-  (`aria-disabled` aux extrémités, jamais `disabled` : le focus ne tombe pas).
-  Panneau `tabpanel` : `StepDetails` (mission, limite) + `StepScene` → une scène par
-  étape dans `SceneFrame`, qui porte **toujours** `SimulationBadge` + « Exemple fictif —
-  simulation ». Lignes de scène `SceneRow` : `done` (tuile noire), `flag` (pointillés :
-  manquant ou en attente, jamais rouge), `active` (seul cobalt), `muted` (barré),
-  `plain`. Entrée unique `stagger` au changement d'étape, rien sous mouvement réduit ;
-  défilement `smooth` sauf mouvement réduit. Sans JavaScript : Léa sélectionnée, sa
-  scène dans le HTML serveur. Cartes et panneau opaques (`bg-surface`) : le fond vivant
-  reste derrière, jamais sous le texte. Données fictives La Ciotat / Cassis, aucune
-  personne réelle, aucun chiffre présenté comme statistique.
+- **Section agents = interface d'OS** (`components/landing/agents/`, section `agents`,
+  refonte B du 24/09/2026) : version détaillée du parcours du hero (mêmes noms, même
+  ordre, testé contre `journey.steps`) — Léa → Hugo → Emma → Validation humaine → Louis →
+  Sarah → Mandat. Voir le motif « module OS » et la navigation physique en § 2.9.
+  Une surface noire (`--color-inverse`, `rounded-2xl`) porte une rangée de **modules**
+  (`AgentStepCard`, onglets) au-dessus de **l'application ouverte** (`tabpanel` :
+  `StepDetails` sur le noir + fenêtre blanche `SceneFrame`). Presque aucune bordure :
+  la hiérarchie vient des valeurs (noir → plaque plus claire du module ouvert → fenêtre
+  blanche), des espacements et de la typographie. Trois natures, trois traitements :
+  agent IA = tuile d'app sombre ; validation humaine = **point de contrôle** (cercle à
+  double contour, le trait du flux s'arrête sur une barre devant lui, « Contrôle
+  humain ») ; mandat = **aboutissement** (cercle plein blanc à double contour,
+  « Aboutissement », aucun flux après, scène conclue par un bloc noir « confirmé par le
+  conseiller »). Chaque scène porte **toujours** `SimulationBadge` + « Exemple fictif —
+  simulation ». Lignes `SceneRow` sans bordure : le ton est porté par la pastille
+  (`done` pleine, `flag` pointillée, `active` anneau cobalt, `muted` barrée,
+  `plain`) ; seule bordure conservée : le pointillé qui signifie « manquant / en
+  attente ». Sans JavaScript : Léa ouverte, sa scène dans le HTML serveur. Données
+  fictives La Ciotat / Cassis, aucune personne réelle, aucun chiffre présenté comme
+  statistique.
 - Le récit suit le travail réel de Léa, Hugo, Emma, Louis puis Sarah.
 - Les preuves restent vérifiables dans le prototype : cinq rôles bornés, validation
   humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
@@ -522,6 +523,71 @@ reconnaissable, mais c'est la limite basse assumée du dessin.
 
 Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAND.symbol`
 (`components/brand.ts`) et à l'URL de `.brand-symbol` (`app/globals.css`).
+
+### 2.8 Famille d'icônes et tuiles d'app (`features/agents-ia/components/icons/`)
+
+Famille dessinée à la main, sans dépendance, pour les **agents et les étapes d'un
+dossier** (et les symboles utilitaires des scènes de la landing). Les icônes Radix
+restent pour les icônes utilitaires de l'application (phases d'une exécution, actions).
+
+- **Grille** : `viewBox 0 0 24 24`, zone utile 3–21 ; **un seul trait** 1,75 (≈ 1 px à
+  14 px) ; extrémités et jonctions arrondies ; `fill="none"`, `stroke="currentColor"` ;
+  toujours `aria-hidden`. Lisible de 14 à 72 px. Données dans `glyphs.ts` (tracés
+  seuls), rendu par `Glyph` ; `glyphIcon(name)` en fait un composant d'icône.
+- **Symboles** : `lea` (un contact entre dans le bac), `hugo` (loupe + validation),
+  `emma` (bulle, lignes écrites), `louis` (page de calendrier, un créneau),
+  `sarah` (dossier qui avance), `human` (personne + décision), `mandate` (document +
+  signature), `prospect`, `appointment` (lieu de la visite) ; utilitaires `check`,
+  flèches, `lock`, `clock`, `document`, `merge`, `question`, `mail`.
+- **Deux calques** : le corps (immobile) et l'**accent** (la partie qui dit le métier, la
+  seule qui bouge). Mouvements nommés : `drop`, `nudge`, `pop`, `draw` (tracé). Ils
+  ne jouent qu'au survol d'un parent interactif ou à l'activation ; jamais sous mouvement
+  réduit.
+- **Tuile `AgentAppIcon`** — la **forme** dit qui agit, jamais la couleur :
+  `agent` carré arrondi (rayon 30 % du côté), tuile sombre, symbole clair ;
+  `human` cercle à double contour ; `outcome` cercle plein à double contour (le mandat,
+  scellé par une personne) ; `neutral` carré clair (prospect, rendez-vous).
+  Tailles `sm` 28 / `md` 40 / `lg` 56 / `xl` 72 px (symbole 14 / 18 / 24 / 30).
+  Surfaces `light` et `dark`. États `idle`, `active` (soulevée de 2 px, fin anneau
+  cobalt, le symbole joue son mouvement une fois), `inactive` (en creux, symbole gris,
+  contour pointillé pour les formes rondes). Survol du parent : soulevée de 1 px,
+  l'accent bouge.
+- **Espace connecté** : `AGENT_ICONS` / `JOURNEY_ICONS` (`agent-icons.ts`) pointent vers
+  la famille. Rail `OperationalRail` : `RailNode.tone` donne la forme (agent terminé =
+  tuile sombre, agent en échec = cadre noir en creux, validations en cercle, mandat
+  confirmé = cercle plein) ; les états et la règle cobalt du rail sont inchangés, les
+  phases d'une exécution n'ont pas de `tone`. `AgentOverviewCard` : tuile `md` devant le
+  prénom, `inactive` quand l'agent est en pause.
+- **Contrôle** : `/dev/icons` (404 en production) ; `glyphs.test.tsx` vérifie la grille,
+  le trait, les attributs et qu'aucune étape du carrousel ni du rail n'est sans symbole.
+
+### 2.9 Motif « module OS » et navigation physique
+
+- **Module** (onglet) : aucune bordure. Repos : tuile, prénom, rôle. Survol : plaque très
+  légère, tuile soulevée, l'accent du symbole bouge, la mission se précise (70 %).
+  Ouvert : plaque plus claire + reflet haut, tuile `active` (anneau cobalt fin), mission
+  visible, **flux** allumé jusqu'à lui (trait de 1,5 px, gris sombre → blanc à 72 %).
+  Signaux combinés, jamais une simple bordure cobalt.
+- **Ouvrir l'application** : la tuile du module grandit jusqu'à l'en-tête du panneau
+  (FLIP fait main, WAAPI, 460 ms, `cubic-bezier(0.2, 0.8, 0.2, 1)`), puis les mots
+  (110–170 ms), la fenêtre s'ouvre (échelle 0,985 → 1) et son contenu arrive ligne par
+  ligne (55 ms d'écart). Rien au premier rendu ; rien sous mouvement réduit.
+- **Navigation discrète** « ← 04 / 07 → » : boutons ronds sans bordure, flèches de la
+  famille, `aria-disabled` aux extrémités.
+- **Défilement physique** (`useTrackPhysics`, maths pures dans `track-physics.ts`) :
+  scroll natif + `scroll-snap` pour le tactile et le trackpad (molette horizontale
+  native) ; à la souris, glisser avec inertie : seuil de 6 px avant de devenir un
+  glissement (sinon c'est un clic), vitesse mesurée sur les 90 dernières ms, projection
+  `v × τ` (τ = 325 ms), arrêt sur le module le plus proche (un lancer avance d'au moins
+  un module), approche exponentielle indépendante de la cadence. Le clic qui suit un
+  glissement est avalé : **un glissement ne sélectionne jamais**. Navigation au clavier ou
+  aux flèches : glissement plus court (τ = 140 ms), module amené entièrement en vue. La
+  molette verticale n'est **pas** détournée (la page ne se bloque jamais). Bords en fondu
+  quand il reste du contenu. Mouvement réduit : la piste suit la main, puis se pose
+  immédiatement sur son arrêt.
+- **Clavier et accessibilité** : motif WAI-ARIA tabs (tabindex itinérant, ← → Début Fin,
+  Entrée/Espace natifs), panneau focusable et étiqueté par l'onglet, nature de l'étape lue
+  en premier, focus cobalt visible sur le noir (≥ 3:1).
 
 ## 3. Composants (`components/ui/`)
 

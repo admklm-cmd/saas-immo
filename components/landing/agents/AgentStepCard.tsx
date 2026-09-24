@@ -2,30 +2,50 @@ import type { KeyboardEvent, Ref } from "react";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { cn } from "@/components/ui/cn";
+import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
 
-import { STEP_ICONS, STEP_PANEL_ID, stepTabId, type AgentStep } from "./agent-steps";
+import { STEP_GLYPHS, STEP_PANEL_ID, stepTabId, stepVariant, VARIANT_ICON_KIND, type AgentStep } from "./agent-steps";
+import styles from "./agents.module.css";
 
 const TEXTS = LANDING_TEXTS.agents.carousel;
 
 export type AgentStepCardProps = {
   step: AgentStep;
   selected: boolean;
+  /** Part of the flow already travelled: the line into / out of this module is lit. */
+  flowInLit: boolean;
+  flowOutLit: boolean;
+  first: boolean;
+  last: boolean;
   onSelect: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
   ref?: Ref<HTMLButtonElement>;
 };
 
 /**
- * One step of the carousel, drawn like an app: a linear symbol on a tile, the
- * name, the short role. A tab of the WAI-ARIA tabs pattern (roving tabindex).
+ * One module of the OS row — a tab of the WAI-ARIA tabs pattern (roving
+ * tabindex). No border: a plate appears under the open module, its icon lifts
+ * with a thin cobalt ring and plays its motion, and its mission appears.
  *
- * An AI agent has a solid black tile; a human step (validation, mandate) has a
- * DOUBLE CONTOUR, on the card and on the tile, so it never reads as an agent.
- * The selected step is the active one: cobalt border; the words say the rest.
+ * The three natures are drawn differently (`stepVariant`): an AI agent is an
+ * app tile; the human validation is a checkpoint (circle with a double
+ * contour, the flow stops in front of it, « Contrôle humain »); the mandate is
+ * the outcome (filled circle, « Aboutissement », no flow after it).
  */
-export function AgentStepCard({ step, selected, onSelect, onKeyDown, ref }: AgentStepCardProps) {
-  const Icon = STEP_ICONS[step.key];
-  const human = step.kind === "human";
+export function AgentStepCard({
+  step,
+  selected,
+  flowInLit,
+  flowOutLit,
+  first,
+  last,
+  onSelect,
+  onKeyDown,
+  ref,
+}: AgentStepCardProps) {
+  const variant = stepVariant(step);
+  const kindLabel =
+    variant === "agent" ? null : variant === "checkpoint" ? TEXTS.kinds.checkpoint : TEXTS.kinds.outcome;
 
   return (
     <button
@@ -41,40 +61,36 @@ export function AgentStepCard({ step, selected, onSelect, onKeyDown, ref }: Agen
       data-testid="agent-step-card"
       data-step={step.key}
       data-kind={step.kind}
-      className={cn(
-        "ui-focus relative flex w-40 shrink-0 snap-start flex-col items-start gap-4 rounded-xl border bg-surface p-4 text-left sm:w-44",
-        "transition-[border-color,box-shadow,translate] duration-(--duration-base) ease-standard",
-        "hover:shadow-raised motion-safe:hover:-translate-y-0.5",
-        selected ? "border-accent shadow-raised" : "border-line-strong shadow-subtle hover:border-ink-subtle",
-      )}
+      data-variant={variant}
+      data-snap=""
+      className={styles.module}
     >
-      {human ? (
-        // Second contour of a human step: the shape, not the colour, says « a person decides ».
-        <span
-          aria-hidden="true"
-          data-testid="human-contour"
-          className="pointer-events-none absolute inset-1 rounded-lg border border-line-strong"
-        />
-      ) : null}
-
-      <span
-        aria-hidden="true"
-        className={cn(
-          "relative grid size-11 place-items-center",
-          human
-            ? "rounded-full border-[1.5px] border-ink text-ink ring-1 ring-ink-subtle ring-offset-2 ring-offset-surface"
-            : "rounded-lg bg-inverse text-ink-inverse shadow-subtle",
-        )}
-      >
-        <Icon width={18} height={18} />
+      <span className={styles.iconRow} aria-hidden="true">
+        {first ? null : <span className={styles.flowIn} data-lit={flowInLit || undefined} />}
+        <span data-step-icon="">
+          <AgentAppIcon
+            glyph={STEP_GLYPHS[step.key]}
+            kind={VARIANT_ICON_KIND[variant]}
+            size="lg"
+            surface="dark"
+            state={selected ? "active" : "idle"}
+            testId="step-app-icon"
+          />
+        </span>
+        {last ? null : <span className={styles.flowOut} data-lit={flowOutLit || undefined} />}
       </span>
 
-      <span className="relative min-w-0">
-        <span className="block text-overline font-semibold text-ink-subtle uppercase">
-          {human ? TEXTS.kinds.human : TEXTS.kinds.agent}
-        </span>
-        <span className="mt-1 block text-base leading-tight font-semibold text-ink">{step.name}</span>
-        <span className="mt-0.5 block text-sm text-ink-muted">{step.role}</span>
+      {/* Read first by assistive technology: what kind of step this is. */}
+      {variant === "agent" ? <span className="sr-only">{TEXTS.kinds.agent} </span> : null}
+      <span className={styles.name}>{step.name}</span>
+      {/* A human step says what it is (« Contrôle humain », « Aboutissement »);
+          the panel names who decides. */}
+      <span className={styles.role} data-emphasis={kindLabel ? "" : undefined}>
+        {kindLabel ?? step.role}
+      </span>
+      {/* The panel says it again in full: the preview is not read twice. */}
+      <span className={cn(styles.mission)} aria-hidden="true">
+        {step.action}
       </span>
     </button>
   );

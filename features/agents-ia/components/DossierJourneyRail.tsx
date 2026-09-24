@@ -4,6 +4,7 @@ import type { TimelineEntry } from "@/features/contacts/types";
 
 import { AGENT_ICONS, JOURNEY_ICONS } from "./agent-icons";
 import { buildDossierJourney, type JourneyStage, type JourneyStageKey } from "./dossier-journey";
+import type { AppIconKind } from "./icons/AgentAppIcon";
 import { OperationalRail, type RailNode } from "./OperationalRail";
 
 const TEXTS = APP_TEXTS.dossierJourney;
@@ -22,6 +23,20 @@ const STAGE_ICONS: Readonly<Record<JourneyStageKey, RailNode["icon"]>> = {
   appointment: JOURNEY_ICONS.appointment,
   sarah: AGENT_ICONS.sarah,
   mandate: JOURNEY_ICONS.mandate,
+};
+
+/** Who acts at each stage: the shape of its tile in the app-icon family. */
+const STAGE_TONES: Readonly<Record<JourneyStageKey, AppIconKind>> = {
+  prospect: "neutral",
+  lea: "agent",
+  first_review: "human",
+  hugo: "agent",
+  emma: "agent",
+  follow_up_review: "human",
+  louis: "agent",
+  appointment: "neutral",
+  sarah: "agent",
+  mandate: "outcome",
 };
 
 /** The run replayed on the current page, with its measured duration. */
@@ -50,6 +65,7 @@ export function journeyRailNodes(stages: readonly JourneyStage[], measured?: Mea
       action: TEXTS.stages[stage.key].action,
       state: stage.state,
       checkpoint: CHECKPOINTS.has(stage.key),
+      tone: STAGE_TONES[stage.key],
       statusLabel: stage.statusLabel,
       duration: isMeasured && measured ? formatDurationMs(measured.durationMs) : undefined,
       href,

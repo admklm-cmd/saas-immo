@@ -1,0 +1,82 @@
+/*
+ * Heading of the problem section. Editorial composition: a short measure, two
+ * tones (observation / answer), a lot of air. The emphasised word carries a
+ * fine rule drawn from left to right when the heading appears; it is a rule,
+ * not a highlight, and the word keeps the ink colour.
+ */
+
+/* One reading axis: kicker, title and paragraph share the left edge of the
+   chart below (same inner edge as the surface), with no empty quadrant. */
+.heading {
+  position: relative;
+  display: grid;
+  gap: 1.75rem;
+}
+
+@media (min-width: 1024px) {
+  .heading {
+    padding-left: 3rem;
+  }
+}
+
+.title {
+  max-width: 21ch;
+  color: var(--color-ink);
+  font-size: clamp(2.375rem, 5vw, 4.5rem);
+  font-weight: 600;
+  letter-spacing: -0.05em;
+  line-height: 1.02;
+}
+
+.lead {
+  display: block;
+  color: var(--color-ink-subtle);
+  text-wrap: balance;
+}
+
+.answer {
+  display: block;
+  margin-top: 0.12em;
+}
+
+/* Inline, no pseudo-element: an inline-block or an absolutely positioned
+   ::after adds spaces to the accessible name of the heading in Chromium
+   (« l' administratif . »). The rule is a background of the word itself. */
+.emphasis {
+  background-image: linear-gradient(var(--color-accent), var(--color-accent));
+  /* Just under the baseline, above the descenders. */
+  background-position: left 0 bottom 0.1em;
+  background-repeat: no-repeat;
+  background-size: 100% max(2px, 0.045em);
+  white-space: nowrap;
+}
+
+.body {
+  max-width: 60ch;
+  color: var(--color-ink-muted);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+/* The rule under « administratif » draws itself once the heading is revealed. */
+:global(.reveal[data-reveal="hidden"]) .emphasis {
+  background-size: 0% max(2px, 0.045em);
+}
+
+:global(.reveal[data-reveal="entering"]) .emphasis {
+  animation: emphasis-rule 900ms var(--ease-standard) 650ms both;
+}
+
+@keyframes emphasis-rule {
+  from {
+    background-size: 0% max(2px, 0.045em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .emphasis {
+    animation: none !important;
+    background-size: 100% max(2px, 0.045em) !important;
+  }
+}

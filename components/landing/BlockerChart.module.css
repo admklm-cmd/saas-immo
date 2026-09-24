@@ -1,116 +1,358 @@
 /*
- * Illustration « blocage administratif » — docs/design-system.md §1.1.
- * Black, warm white, pearl grey; cobalt only on the growing curve (discreet
- * accent). The alert zone is grey/black dashed: a block, not a technical error.
- * The literal numbers are the SVG geometry (strokes, dashes, font units).
+ * Illustration of the problem section — mandates progress, the administrative
+ * work absorbs the time, progression plateaus.
+ *
+ * Palette: ink, pearl, and cobalt only where there is momentum (start of the
+ * curve, expected progression) or a highlighted event. No border, no axis, no
+ * shadow on the words. Literal numbers are SVG geometry (strokes, dashes,
+ * radii) and the timings of the narrative sequence, which have no token (they
+ * come from problem/problem-scene.ts through CSS variables on the figure).
  */
 
-.chart {
+/* Right under the caption; the row above the plot carries « Mandats » and the
+   name of the absorbed capacity. */
+.scene {
+  position: relative;
+  margin-top: 1.5rem;
+  padding-top: 1.75rem;
+}
+
+.plot {
+  position: relative;
+}
+
+.svg {
   display: block;
   width: 100%;
   height: auto;
-  margin-top: 1.25rem;
   overflow: visible;
 }
 
-.axis {
-  fill: none;
-  stroke: var(--color-ink-subtle);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.5;
+/* --- Gradients -------------------------------------------------------------- */
+.stopAccent {
+  stop-color: var(--color-accent);
 }
 
-.axisLabel {
-  fill: var(--color-ink-muted);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+.stopInk {
+  stop-color: var(--color-ink-muted);
 }
 
+.stopMuted {
+  stop-color: var(--color-ink-subtle);
+}
+
+.stopAreaTop {
+  stop-color: var(--color-accent);
+  stop-opacity: 0.07;
+}
+
+.stopAreaBottom {
+  stop-color: var(--color-accent);
+  stop-opacity: 0;
+}
+
+.stopFrictionStart {
+  stop-color: var(--color-pearl);
+  stop-opacity: 0;
+}
+
+.stopFrictionEnd {
+  stop-color: var(--color-pearl);
+  stop-opacity: 0.85;
+}
+
+/* --- Shapes ----------------------------------------------------------------- */
 .area {
-  fill: var(--color-pearl-soft);
+  fill: url(#problem-area-fill);
+}
+
+.friction {
+  fill: url(#problem-friction-fill);
+}
+
+.expected {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  stroke-dasharray: 0.004 0.012;
+  stroke-linecap: round;
+  stroke-width: 1.75;
 }
 
 .curve {
   fill: none;
-  stroke: var(--color-accent);
+  stroke: url(#problem-curve-stroke);
   stroke-dasharray: 1;
   stroke-dashoffset: 0;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 3;
+  stroke-width: 2.75;
 }
 
-.zone {
-  fill: var(--color-surface-sunken);
-  stroke: var(--color-ink-subtle);
-  stroke-dasharray: 6 6;
-  stroke-width: 1.5;
-}
-
-.zoneLabel {
-  dominant-baseline: central;
-  fill: var(--color-ink);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.ceiling {
-  stroke: var(--color-ink);
-  stroke-dasharray: 3 5;
-  stroke-linecap: round;
-  stroke-width: 1.5;
-}
-
-.tick {
-  stroke: var(--color-ink-subtle);
-  stroke-dasharray: 2 4;
-  stroke-width: 1.25;
-}
-
-.stop {
+.end {
   fill: var(--color-surface);
   stroke: var(--color-ink);
   stroke-width: 2;
 }
 
-/* Small screens: the SVG shrinks, the words keep a readable size. */
-@media (max-width: 639px) {
-  .axisLabel {
-    font-size: 22px;
-  }
+.marker,
+.markerCap {
+  stroke: var(--color-ink);
+  stroke-linecap: round;
+  stroke-width: 1.25;
+}
 
-  .zoneLabel {
-    font-size: 22px;
+/* --- Events ----------------------------------------------------------------- */
+/* The outer group reacts to the cause (dimmed / highlighted); the inner group
+   carries the appearance, so the two never fight over the same property. */
+.event {
+  cursor: default;
+  transition: opacity var(--duration-interactive) var(--ease-standard);
+}
+
+/* The one or two events before the friction: barely there. */
+.event[data-early="true"] {
+  opacity: 0.45;
+}
+
+.tether {
+  stroke: var(--color-ink-subtle);
+  stroke-linecap: round;
+  stroke-width: 1;
+  /* Shown when the word of the event is shown, or the event highlighted. */
+  opacity: 0;
+  transition:
+    stroke var(--duration-interactive) var(--ease-standard),
+    opacity var(--duration-interactive) var(--ease-standard);
+}
+
+.event[data-label="rest"] .tether {
+  opacity: 0.45;
+}
+
+@media (min-width: 640px) {
+  .event[data-label="wide"] .tether {
+    opacity: 0.45;
   }
 }
 
-/* --- Drawing on appearance (driven by the enclosing Reveal) ---------------- */
-/* Without JavaScript, Reveal stays « visible »: the chart is complete. */
+/* Invisible, wider hit area: hovering an event points at its cause. */
+.halo {
+  fill: var(--color-accent-soft);
+  opacity: 0;
+  transition: opacity var(--duration-interactive) var(--ease-standard);
+}
+
+.dot {
+  fill: var(--color-ink-subtle);
+  r: 3.4px;
+  transition:
+    fill var(--duration-interactive) var(--ease-standard),
+    r var(--duration-interactive) var(--ease-standard);
+}
+
+.event[data-early="true"] .dot {
+  r: 2.6px;
+}
+
+.event[data-highlighted="true"] {
+  opacity: 1;
+}
+
+.event[data-highlighted="true"] .dot {
+  fill: var(--color-accent);
+  r: 5px;
+}
+
+.event[data-highlighted="true"] .halo {
+  opacity: 1;
+}
+
+.event[data-highlighted="true"] .tether {
+  stroke: var(--color-accent);
+  opacity: 0.6;
+}
+
+:global([data-active-cause]) .event:not([data-highlighted="true"]) {
+  opacity: 0.3;
+}
+
+:global([data-active-cause]) .event:not([data-highlighted="true"]) .tether {
+  opacity: 0;
+}
+
+/* --- Words over the scene -------------------------------------------------- */
+.word {
+  position: absolute;
+  font-size: var(--text-overline);
+  font-weight: 600;
+  letter-spacing: var(--text-overline--letter-spacing);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+  pointer-events: none;
+}
+
+.axisY {
+  top: 0;
+  left: 0;
+}
+
+.axisX {
+  right: 0;
+  bottom: -0.25rem;
+}
+
+/*
+ * The word of an event hangs under the curve, below its event, always at the
+ * same distance: one rule, one rhythm. At rest only a few words are shown;
+ * the others appear with their cause. Hidden words are not hoverable
+ * (`visibility`), so they never steal the pointer.
+ */
+.chipSlot {
+  position: absolute;
+  z-index: 1;
+  translate: -50% 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-interactive) var(--ease-standard),
+    visibility 0s linear var(--duration-interactive);
+}
+
+.chipSlot[data-align="end"] {
+  translate: calc(-100% + 0.75rem) 0.5rem;
+}
+
+.chipSlot[data-label="rest"],
+.chipSlot[data-highlighted="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--duration-interactive) var(--ease-standard),
+    visibility 0s;
+}
+
+@media (min-width: 640px) {
+  .chipSlot[data-label="wide"] {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--duration-interactive) var(--ease-standard),
+      visibility 0s;
+  }
+}
+
+/* A cause is active: only its words stay. */
+:global([data-active-cause]) .chipSlot:not([data-highlighted="true"]) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-interactive) var(--ease-standard),
+    visibility 0s linear var(--duration-interactive);
+}
+
+.chip {
+  display: block;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    color var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-interactive) var(--ease-standard);
+}
+
+.chipSlot[data-highlighted="true"] .chip {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+/* On the row of « Mandats », right-aligned on the measure of the gap, which
+   starts just under it. */
+.capacityLabel {
+  position: absolute;
+  top: -0.125rem;
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Phones: the scene shrinks, the words keep a readable size (12 px). */
+@media (max-width: 639px) {
+  .chip {
+    padding: 0.25rem 0.5rem;
+  }
+
+  .capacityLabel {
+    font-size: 0.75rem;
+  }
+}
+
+/* --- Appearance sequence (driven by the enclosing Reveal) ------------------ */
+/* Without JavaScript, Reveal stays « visible »: the scene is complete. */
 :global(.reveal[data-reveal="hidden"]) .curve {
   stroke-dashoffset: 1;
 }
 
+:global(.reveal[data-reveal="hidden"]) .expected,
 :global(.reveal[data-reveal="hidden"]) .area,
-:global(.reveal[data-reveal="hidden"]) .late {
+:global(.reveal[data-reveal="hidden"]) .friction,
+:global(.reveal[data-reveal="hidden"]) .appear,
+:global(.reveal[data-reveal="hidden"]) .chip,
+:global(.reveal[data-reveal="hidden"]) .capacity,
+:global(.reveal[data-reveal="hidden"]) .capacityLabel,
+:global(.reveal[data-reveal="hidden"]) .end {
   opacity: 0;
 }
 
 :global(.reveal[data-reveal="entering"]) .curve {
-  animation: chart-draw calc(var(--duration-slow) * 4) var(--ease-standard) var(--duration-slow) both;
+  animation: problem-draw var(--curve-duration) cubic-bezier(0.3, 0.1, 0.3, 1) var(--curve-delay) both;
 }
 
+/* The area uncovers itself from left to right, under the curve being drawn. */
 :global(.reveal[data-reveal="entering"]) .area {
-  animation: chart-fade calc(var(--duration-slow) * 2) var(--ease-standard) calc(var(--duration-slow) * 2) both;
+  animation: problem-uncover var(--curve-duration) cubic-bezier(0.3, 0.1, 0.3, 1) var(--curve-delay) both;
 }
 
-:global(.reveal[data-reveal="entering"]) .late {
-  animation: chart-fade var(--duration-slow) var(--ease-standard) calc(var(--duration-slow) * 5) both;
+:global(.reveal[data-reveal="entering"]) .appear {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: problem-event 520ms var(--ease-standard) var(--event-delay) both;
 }
 
-@keyframes chart-draw {
+:global(.reveal[data-reveal="entering"]) .chip {
+  animation: problem-fade 520ms var(--ease-standard) var(--event-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .friction {
+  animation: problem-fade 1400ms var(--ease-standard) var(--friction-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .expected {
+  animation: problem-fade 1400ms var(--ease-standard) var(--friction-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .end {
+  animation: problem-fade var(--duration-slow) var(--ease-standard) calc(var(--curve-delay) + var(--curve-duration))
+    both;
+}
+
+:global(.reveal[data-reveal="entering"]) .capacity,
+:global(.reveal[data-reveal="entering"]) .capacityLabel {
+  animation: problem-fade 700ms var(--ease-standard) var(--capacity-delay) both;
+}
+
+@keyframes problem-draw {
   from {
     stroke-dashoffset: 1;
   }
@@ -119,19 +361,45 @@
   }
 }
 
-@keyframes chart-fade {
+@keyframes problem-uncover {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes problem-fade {
   from {
     opacity: 0;
   }
 }
 
-/* Reduced motion: the final drawing at once, whatever the Reveal state. */
+@keyframes problem-event {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.6);
+  }
+}
+
+/* Reduced motion: the final scene at once, whatever the Reveal state. */
 @media (prefers-reduced-motion: reduce) {
   .curve,
+  .expected,
   .area,
-  .late {
+  .friction,
+  .appear,
+  .chip,
+  .capacity,
+  .capacityLabel,
+  .end {
     animation: none !important;
     opacity: 1 !important;
+    clip-path: none !important;
+  }
+
+  .curve {
     stroke-dashoffset: 0 !important;
   }
 }

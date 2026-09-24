@@ -1,7 +1,11 @@
-import { LANDING_TEXTS } from "@/components/landing-texts";
-import { cn } from "@/components/ui/cn";
+import type { Ref } from "react";
 
-import { STEP_ICONS, type AgentStep } from "./agent-steps";
+import { LANDING_TEXTS } from "@/components/landing-texts";
+import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
+import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+
+import { STEP_GLYPHS, stepNumber, stepVariant, VARIANT_ICON_KIND, type AgentStep } from "./agent-steps";
+import styles from "./agents.module.css";
 
 const TEXTS = LANDING_TEXTS.agents.carousel;
 
@@ -10,46 +14,39 @@ export type StepDetailsProps = {
   /** 1-based position of the step, and the number of steps. */
   position: number;
   count: number;
+  /** The tile of the header: the target of the « open the app » transition. */
+  iconRef?: Ref<HTMLSpanElement>;
 };
 
-/** Left side of the panel: who the step is, what it does, where it stops. */
-export function StepDetails({ step, position, count }: StepDetailsProps) {
-  const Icon = STEP_ICONS[step.key];
-  const human = step.kind === "human";
+/** Header of the opened application: who the step is, what it does, where it stops. */
+export function StepDetails({ step, position, count, iconRef }: StepDetailsProps) {
+  const variant = stepVariant(step);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <span
-          aria-hidden="true"
-          className={cn(
-            "grid size-12 shrink-0 place-items-center",
-            human
-              ? "rounded-full border-[1.5px] border-ink text-ink ring-1 ring-ink-subtle ring-offset-2 ring-offset-surface"
-              : "rounded-lg bg-inverse text-ink-inverse",
-          )}
-        >
-          <Icon width={20} height={20} />
-        </span>
-        <div className="min-w-0">
-          <p className="text-overline font-semibold text-ink-subtle uppercase">
-            {TEXTS.stepPrefix} {position} / {count} · {human ? TEXTS.kinds.human : TEXTS.kinds.agent}
-          </p>
-          <h3 className="mt-1 text-title font-semibold text-ink" data-testid="agent-step-title">
-            {step.name}
-          </h3>
-          <p className="text-sm text-ink-muted">{step.role}</p>
-        </div>
-      </div>
+    <div className={styles.details}>
+      <span ref={iconRef} className={styles.appIcon}>
+        <AgentAppIcon glyph={STEP_GLYPHS[step.key]} kind={VARIANT_ICON_KIND[variant]} size="xl" surface="dark" />
+      </span>
+      <p className={styles.kicker}>
+        {TEXTS.stepPrefix} {stepNumber(position)} / {stepNumber(count)} ·{" "}
+        {variant === "agent" ? TEXTS.kinds.agent : variant === "checkpoint" ? TEXTS.kinds.checkpoint : TEXTS.kinds.outcome}
+      </p>
+      <h3 className={styles.title} data-testid="agent-step-title">
+        {step.name}
+      </h3>
+      <p className={styles.subtitle}>{step.role}</p>
 
-      <dl className="grid gap-5">
+      <dl className={styles.facts}>
         <div>
-          <dt className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.missionLabel}</dt>
-          <dd className="mt-1.5 text-lg leading-relaxed text-ink">{step.action}</dd>
+          <dt className={styles.factLabel}>{TEXTS.missionLabel}</dt>
+          <dd className={styles.statement}>{step.action}</dd>
         </div>
-        <div className="border-t border-line pt-5">
-          <dt className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.boundaryLabel}</dt>
-          <dd className="mt-1.5 text-sm leading-relaxed text-ink-muted">{step.boundary}</dd>
+        <div>
+          <dt className={styles.factLabel}>{TEXTS.boundaryLabel}</dt>
+          <dd className={styles.boundary}>
+            <Glyph name="lock" width={14} />
+            {step.boundary}
+          </dd>
         </div>
       </dl>
     </div>

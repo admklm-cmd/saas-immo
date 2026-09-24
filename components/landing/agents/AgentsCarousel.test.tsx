@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 
-import { AGENT_STEPS, nextStepIndex, type AgentStepKey } from "./agent-steps";
+import { AGENT_STEPS, nextStepIndex, stepVariant, type AgentStepKey } from "./agent-steps";
 import { AgentsCarousel } from "./AgentsCarousel";
 import { StepScene } from "./StepScene";
 
@@ -39,17 +39,71 @@ describe("AgentsCarousel", () => {
     expect(AGENT_STEPS.map((step) => step.kind)).toEqual(LANDING_TEXTS.journey.steps.map((step) => step.kind));
   });
 
-  it("draws the two human steps as distinct cards with a double contour", () => {
+  it("draws the three natures differently: agent modules, a human checkpoint, the outcome", () => {
     render(<AgentsCarousel />);
-    const human = screen.getAllByRole("tab").filter((card) => card.getAttribute("data-kind") === "human");
-    expect(human.map((card) => card.getAttribute("data-step"))).toEqual(["review", "mandate"]);
-    for (const card of human) expect(within(card).getByTestId("human-contour")).toBeDefined();
-    expect(within(tab("Léa")).queryByTestId("human-contour")).toBeNull();
+    const cards = screen.getAllByRole("tab");
+    expect(cards.map((card) => card.getAttribute("data-variant"))).toEqual([
+      "agent",
+      "agent",
+      "agent",
+      "checkpoint",
+      "agent",
+      "agent",
+      "outcome",
+    ]);
+    const shapes = cards.map((card) => within(card).getByTestId("step-app-icon").getAttribute("data-kind"));
+    expect(shapes).toEqual(["agent", "agent", "agent", "human", "agent", "agent", "outcome"]);
+    // A human step names its nature on the tile; an agent is announced as such to assistive technology.
+    expect(tab("Validation humaine").textContent).toContain(TEXTS.carousel.kinds.checkpoint);
+    expect(tab("Mandat").textContent).toContain(TEXTS.carousel.kinds.outcome);
+    expect(tab("Léa").textContent).toContain(TEXTS.carousel.kinds.agent);
+    expect(stepVariant({ key: "mandate", kind: "human" })).toBe("outcome");
   });
 
-  it("puts one arrow between consecutive cards", () => {
+  it("links the modules with one flow piece between consecutive cards, lit up to the open one", () => {
     render(<AgentsCarousel />);
-    expect(screen.getAllByTestId("step-connector")).toHaveLength(AGENT_STEPS.length - 1);
+    const connectors = screen.getAllByTestId("step-connector");
+    expect(connectors).toHaveLength(AGENT_STEPS.length - 1);
+    expect(connectors.filter((item) => item.hasAttribute("data-lit"))).toHaveLength(0);
+    fireEvent.click(tab("Emma"));
+    expect(screen.getAllByTestId("step-connector").map((item) => item.hasAttribute("data-lit"))).toEqual([
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+
+  it("marks only the open module as active (lifted tile with its ring)", () => {
+    render(<AgentsCarousel />);
+    fireEvent.click(tab("Sarah"));
+    const states = screen.getAllByTestId("step-app-icon").map((icon) => icon.getAttribute("data-state"));
+    expect(states).toEqual(["idle", "idle", "idle", "idle", "idle", "active", "idle"]);
+  });
+
+  it("never selects after a mouse drag across the track", () => {
+    render(<AgentsCarousel />);
+    const track = screen.getByTestId("agents-tablist");
+    const hugo = tab("Hugo");
+    fireEvent.pointerDown(hugo, { pointerType: "mouse", button: 0, pointerId: 1, clientX: 400, clientY: 100 });
+    fireEvent.pointerMove(track, { pointerType: "mouse", pointerId: 1, clientX: 300, clientY: 102 });
+    fireEvent.pointerUp(track, { pointerType: "mouse", pointerId: 1, clientX: 300, clientY: 102 });
+    fireEvent.click(hugo);
+    expect(panel().getAttribute("data-step")).toBe("lea");
+    // A press that does not move is a click.
+    fireEvent.pointerDown(hugo, { pointerType: "mouse", button: 0, pointerId: 2, clientX: 400, clientY: 100 });
+    fireEvent.pointerUp(hugo, { pointerType: "mouse", pointerId: 2, clientX: 402, clientY: 100 });
+    fireEvent.click(hugo);
+    expect(panel().getAttribute("data-step")).toBe("hugo");
+  });
+
+  it("shows the position in the discreet navigation", () => {
+    render(<AgentsCarousel />);
+    expect(screen.getByTestId("agents-position").textContent).toContain("01");
+    fireEvent.click(tab("Louis"));
+    expect(screen.getByTestId("agents-position").textContent).toContain("05");
   });
 
   it("shows the first step before any interaction (server HTML, no JavaScript)", () => {
@@ -144,6 +198,12 @@ describe("scenes", () => {
     render(<StepScene stepKey="louis" />);
     expect(screen.getByTestId("louis-slot-taken").getAttribute("data-tone")).toBe("muted");
     expect(screen.getByTestId("louis-slot-proposed").getAttribute("data-tone")).toBe("active");
+  });
+
+  it("concludes the mandate with a human confirmation, never an agent", () => {
+    render(<StepScene stepKey="mandate" />);
+    expect(screen.getByTestId("mandate-confirmed").textContent).toBe(TEXTS.scenes.mandate.confirmed);
+    expect(screen.getByTestId("mandate-confirmed").textContent).toMatch(/conseiller/);
   });
 });
 

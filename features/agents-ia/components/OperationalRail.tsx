@@ -3,6 +3,7 @@ import type { ComponentType, CSSProperties, ReactNode } from "react";
 
 import { cn } from "@/components/ui/cn";
 
+import type { AppIconKind } from "./icons/AgentAppIcon";
 import styles from "./OperationalRail.module.css";
 
 type IconComponent = ComponentType<{ className?: string; width?: number | string; height?: number | string }>;
@@ -39,6 +40,13 @@ export type RailNode = {
    * when a decision is really awaited.
    */
   checkpoint?: boolean;
+  /**
+   * Who acts at this node, in the app-icon family (docs/design-system.md §2.8):
+   * `agent` (rounded square, dark tile once the agent has worked), `human`
+   * (circle), `outcome` (circle, filled once confirmed), `neutral`. Omitted
+   * for the phases of a run, which keep the plain square.
+   */
+  tone?: AppIconKind;
   /** Written status (« Terminé », « Bloqué »…): the words carry the meaning. */
   statusLabel: string;
   /** Measured duration, already formatted. Omitted when nothing was measured. */
@@ -194,8 +202,8 @@ export function OperationalRail({ nodes, label, playback = "stagger", cycle = 0,
               </span>
             ) : null}
 
-            <span className={styles.core} aria-hidden="true" data-testid="rail-core">
-              <Icon className={styles.icon} width={18} height={18} />
+            <span className={styles.core} aria-hidden="true" data-testid="rail-core" data-tone={node.tone}>
+              <Icon className={styles.icon} width={node.tone ? 20 : 18} height={node.tone ? 20 : 18} />
               <span className={styles.dot} />
             </span>
 
