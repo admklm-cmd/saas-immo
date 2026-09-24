@@ -67,6 +67,79 @@ test("écran Agents IA : les cinq agents, l'activité de l'agence et l'historiqu
   await expect(page.getByTestId("run-history")).toBeVisible();
 });
 
+test("écran Agents IA : situation immédiate, puis parcours du dernier dossier traité", async ({ page }) => {
+  await signIn(page, "agentA");
+  // A recorded run on a contact exists: Hugo on the fixture contact.
+  await page.goto(`/contacts/${CONTACT_ID}`);
+  await expect(page.getByTestId("agent-actions")).toBeVisible({ timeout: COLD_START });
+  await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
+  await expect(page.getByTestId("agent-replay")).toBeVisible({ timeout: COLD_START });
+
+  await openAgentsScreen(page);
+
+  // Level 1: four exact counts, the validations linking to the queue.
+  const situation = page.getByTestId("situation");
+  for (const key of ["active", "pending", "blocked", "failed"]) {
+    await expect(situation.getByTestId(`situation-${key}`)).toBeVisible();
+  }
+  await expect(situation.getByTestId("situation-active")).toContainText(/\d+ sur 5/);
+  await expect(situation.getByRole("link", { name: new RegExp(APP_TEXTS.situation.pendingValidation) })).toHaveAttribute(
+    "href",
+    "/agents-ia/a-valider",
+  );
+
+  // Level 2: the rail of the last dossier really worked on — ten stages, recorded states only.
+  const selected = page.getByTestId("selected-dossier");
+  await expect(selected).toContainText(APP_TEXTS.dossierJourney.selectedTitle);
+  const rail = selected.getByTestId("dossier-rail");
+  await expect(rail).toBeVisible({ timeout: COLD_START });
+  await expect(rail.getByTestId("rail-node")).toHaveCount(10);
+  await expect(rail.locator("[data-node='hugo']")).not.toHaveAttribute("data-state", "pending");
+  // No percentage, and no duration outside a replay (none is measured per stage here).
+  await expect(rail).not.toContainText("%");
+  await expect(rail).not.toContainText(/\d+ ms/);
+});
+
+test("rejeu : le rail du dossier ne montre que les étapes enregistrées et la durée mesurée de l'exécution", async ({
+  page,
+}) => {
+  await signIn(page, "agentA");
+  await page.goto(`/contacts/${CONTACT_ID}`);
+  await expect(page.getByTestId("agent-actions")).toBeVisible({ timeout: COLD_START });
+  await page.getByRole("button", { name: APP_TEXTS.agents.runHugo }).click();
+  const replay = page.getByTestId("agent-replay");
+  await expect(replay).toBeVisible({ timeout: COLD_START });
+  await replay.getByRole("link", { name: APP_TEXTS.agentsIa.viewReplay }).click();
+  await expect(page).toHaveURL(/\/agents-ia\/executions\//, { timeout: COLD_START });
+
+  const card = page.getByTestId("run-dossier");
+  await expect(card).toContainText(APP_TEXTS.dossierJourney.title);
+  const rail = card.getByTestId("dossier-rail");
+  await expect(rail).toBeVisible({ timeout: COLD_START });
+  await expect(rail.getByTestId("rail-node")).toHaveCount(10);
+
+  // The replayed run carries the duration the server measured — and only it.
+  const hugo = rail.locator("[data-node='hugo']");
+  await expect(hugo).toHaveAttribute("data-state", "done");
+  await expect(hugo.getByTestId("rail-node-status")).toContainText(/· \d+([,.]\d)? (ms|s)/);
+  const durations = await rail.getByTestId("rail-node-status").allTextContents();
+  expect(durations.filter((text) => text.includes("·"))).toHaveLength(1);
+
+  // The mandate is never shown as reached without a human confirmation.
+  await expect(rail.locator("[data-node='mandate']")).toHaveAttribute("data-state", /pending|untraced/);
+  await expect(rail).not.toContainText("%");
+});
+
+test("rejeu : une exécution inconnue affiche une erreur utile et un retour", async ({ page }) => {
+  await signIn(page, "agentA");
+  await page.goto("/agents-ia/executions/00000000-0000-4000-8000-000000000000");
+  const error = page.getByTestId("run-error");
+  await expect(error).toBeVisible({ timeout: COLD_START });
+  await expect(error).toContainText(APP_TEXTS.runDetail.errorTitle);
+  await expect(error.getByRole("link", { name: APP_TEXTS.runDetail.back })).toHaveAttribute("href", "/agents-ia");
+  await expect(page.getByTestId("run-dossier")).toHaveCount(0);
+});
+
 // The replay only unfolds step by step under real motion: reduced motion (the
 // default for this whole file, see playwright.config.ts) shows every step at
 // once by design (see the accessibility test below). This group opts back

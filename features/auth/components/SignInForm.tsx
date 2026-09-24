@@ -68,7 +68,7 @@ export function SignInForm({ redirectTo }: { redirectTo: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} noValidate data-sensitive="" className="flex flex-col gap-5">
       {error ? <Alert tone="error" title={TEXTS.errorTitle}>{error}</Alert> : null}
 
       <Field

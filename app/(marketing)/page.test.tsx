@@ -2,36 +2,43 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 
+import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
+import { LIVING_SCENES } from "@/components/landing/living/scenes";
+
 import HomePage from "./page";
 
 afterEach(() => {
   cleanup();
 });
 
-it("presents the complete agent journey and its safeguards", () => {
+it("presents the hero, the five agents and the human safeguards", () => {
   render(<HomePage />);
-  expect(
-    screen.getByRole("heading", {
-      level: 1,
-      name: "De la demande vendeur au mandat, sans lâcher le contrôle.",
-    }),
-  ).toBeDefined();
+  expect(screen.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeDefined();
 
-  for (const name of ["Léa", "Hugo", "Emma", "Louis", "Sarah"]) {
-    expect(screen.getByText(name)).toBeDefined();
+  for (const agent of LANDING_TEXTS.agents.list) {
+    expect(screen.getByText(agent.action)).toBeDefined();
   }
-
-  expect(screen.getByText("100 %")).toBeDefined();
-  expect(screen.getByText("Simulation")).toBeDefined();
-  expect(screen.getByText("Validation humaine avant le premier envoi")).toBeDefined();
+  for (const fact of LANDING_TEXTS.control.facts) {
+    expect(screen.getByText(fact.body)).toBeDefined();
+  }
+  expect(screen.getAllByText("Simulation").length).toBeGreaterThan(0);
+  expect(screen.getByText(LANDING_TEXTS.journey.badge)).toBeDefined();
 });
 
-it("offers both public estimation and agency access", () => {
+it("drives one background scene per section, and the background is decorative", () => {
+  const { container } = render(<HomePage />);
+  const scenes = Array.from(container.querySelectorAll("[data-living-scene]")).map((section) =>
+    section.getAttribute("data-living-scene"),
+  );
+  expect(scenes).toEqual([...LIVING_SCENES]);
+  expect(screen.getByTestId("living-background").getAttribute("aria-hidden")).toBe("true");
+});
+
+it("offers both public estimation and agency access, and no floating contact button", () => {
   render(<HomePage />);
-
-  const estimationLinks = screen.getAllByRole("link", { name: "Demander une estimation" });
-  const signInLinks = screen.getAllByRole("link", { name: "Espace agence" });
-
+  const estimationLinks = screen.getAllByRole("link", { name: LANDING_TEXTS.actions.estimation });
+  const signInLinks = screen.getAllByRole("link", { name: LANDING_TEXTS.actions.signIn });
   expect(estimationLinks.every((link) => link.getAttribute("href") === "/estimation")).toBe(true);
   expect(signInLinks.every((link) => link.getAttribute("href") === "/connexion")).toBe(true);
+  expect(screen.queryByRole("link", { name: /whatsapp|contact/i })).toBeNull();
 });

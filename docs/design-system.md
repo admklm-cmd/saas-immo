@@ -25,7 +25,8 @@ composition asymétrique, longues respirations et séparateurs fins. Cette direc
 s'inspire du niveau de contraste et du rythme des studios numériques contemporains,
 sans reprendre leurs contenus, compositions ou effets propriétaires.
 
-- Thème unique clair, strictement monochrome, sans image ni ressource distante.
+- Thème unique clair, monochrome ; l'accent cobalt est réservé à l'étape active, au
+  signal et au point de contrôle humain. Sans image ni ressource distante.
 - Le récit suit le travail réel de Léa, Hugo, Emma, Louis puis Sarah.
 - Les preuves restent vérifiables dans le prototype : cinq rôles bornés, validation
   humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
@@ -36,6 +37,27 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   sans JavaScript et immédiatement disponible avec `prefers-reduced-motion`.
 - Sur mobile, toutes les compositions reviennent à une colonne, les actions peuvent
   passer à la ligne et aucune zone ne dépend d'une hauteur d'écran fixe.
+- **Hero** (`components/landing/LandingHero.tsx`) : étiquette inclinée
+  « 5 AGENTS · CONTRÔLE HUMAIN », titre `HeroTitle` révélé ligne puis mot (masque, flou
+  court, CSS pur ; état final par défaut et sous mouvement réduit ; nom accessible lu
+  une fois depuis une copie `sr-only`), action noire (`primary`) puis claire
+  (`secondary`), ce que le prototype fait réellement, et `HeroJourney` : parcours d'un
+  prospect **fictif** étiqueté « Exemple fictif — simulation » + `SimulationBadge`. Le
+  HTML serveur est l'état final (toutes les étapes terminées).
+- **Fond vivant** (`components/landing/living/`) : un seul canvas fixe, `aria-hidden`,
+  qui illustre des dossiers fictifs (points, signaux, arrêt devant la validation
+  humaine, impulsion stoppée par un garde-fou). Chaque section porte
+  `data-living-scene` (hero, probleme, solution, agents, controle, resultat, final) et
+  la section au centre de l'écran choisit la scène. Boucle `requestAnimationFrame`
+  arrêtée hors écran, onglet caché ou pause ; DPR plafonné (2, 1,5 en compact) ; sous
+  `prefers-reduced-motion`, aucune boucle : une composition statique par scène. Le
+  modèle (`model.ts`, `timeline.ts`) est pur et testé.
+- **Pause (WCAG 2.2.2)** : `MotionToggle` suspend l'illustration du hero et le fond
+  vivant (`landing-motion.ts`, `<html data-landing-motion="paused">`). Masqué quand
+  rien ne bouge.
+- Pas de bouton de contact flottant tant qu'aucun canal réel n'est configuré. Les
+  textes vivent dans `components/landing-texts.ts`, testé contre tout chiffre,
+  pourcentage, prix ou témoignage inventé.
 
 ## 2. Tokens
 
@@ -159,7 +181,7 @@ maximale, la durée, un écran concerné.
 | Apparition d'une alerte ou d'une confirmation | Opacité seule | aucune translation | `--duration-base` | `Alert` d'erreur après une action ; panneau de confirmation du coupe-circuit |
 | Arrivée des cartes (`.stagger`, `Reveal`) | Opacité + translation verticale | 12 px ; pas de 110 ms, plafonné à 5 pas | 550 ms par carte | File « à valider », leads entrants, relances, suivi des rendez-vous, fiche contact, « À faire maintenant » |
 | Survol ou pression d'un bouton | Fond, bordure, ombre, `translate`, `scale` | élévation 2 px ; pression `translateY(1px) scale(.97)` | `--duration-fast` | `Button`, `ButtonLink` (§ 2.5.7) |
-| Survol d'une ligne ou d'un lien | Fond, texte, bordure | aucune | `--duration-fast` | Lignes de `ContactsTable` et `AgentRunsTable`, liens de `AppNav` |
+| Survol d'une ligne ou d'un lien | Fond, texte, bordure | aucune | `--duration-fast` | Lignes de `ContactsTable` et `AgentRunsList`, liens de `AppNav` |
 | Micro-interactions d'état réel | Voir § 2.5.7 | — | — | Badge « Simulation », chargement, attente de validation, erreur |
 | Champ de formulaire | Couleur de bordure (et ombre pour `Field`) | aucune | `--duration-fast` | `Field`, `Select`, `Textarea`. **L'anneau de focus global (`:focus-visible`), lui, n'est jamais animé** : il apparaît instantanément |
 | Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
@@ -350,6 +372,32 @@ travaille. L'état réel est dit par `ThreeDotLoader`, `PendingDots`, les badges
 `data-motion` (`running`, `transition`, `static`, `reduced`, `hidden`) et `data-frame-ms`
 (coût moyen d'une image sur la dernière fenêtre de 2 s). Parcours : `e2e/particules.spec.ts`.
 
+#### 2.5.9 Interactions des contrôles (halo, magnétisme, lettres, flèches)
+
+Couche commune : `components/ui/interactions.css` + un seul écouteur délégué
+(`PointerField`, monté une fois par layout : `(app)` et `(marketing)`), qui écrit
+`--pointer-x/y` et `--magnet-x/y` dans un `requestAnimationFrame`, sans rendu React.
+
+| Effet | Où | Conditions |
+|---|---|---|
+| Halo de bordure cobalt qui suit le curseur | `Button`/`ButtonLink` `primary`, `accent`, `secondary` ; `CardLink` | Souris précise + mouvement autorisé |
+| Magnétisme 3–5 px (`MAGNET_MAX_PX` = 4) | Opt-in (`magnetic`) ; `ButtonLink` par défaut | Idem, et jamais désactivé/occupé |
+| Lettres décalées (≤ 12 ms) | Libellé texte des `primary`/`accent` | Idem |
+| Double flèche qui s'échange | `arrow`, `ArrowLink`, `CardLink` | Survol précis |
+| Montée 2 px / pression 1 px | Bouton actif | `motion-safe:` |
+
+**Jamais** de halo ni de magnétisme :
+- sur un contrôle destructif (`destructive` → `data-destructive`, ni `ui-halo` ni `data-pointer`) ;
+- dans une **zone sensible** marquée `data-sensitive` : connexion (`SignInForm`),
+  estimation (`EstimationForm`), validation/refus/correction d'un message
+  (`PendingMessageCard`), changement d'étape et mandat (`PipelineStageMenu`),
+  consignation d'un rendez-vous (`SarahAppointmentCard`), coupe-circuit
+  (`KillSwitchPanel`). Toute nouvelle zone de ce type doit porter l'attribut ;
+- sur écran tactile, stylet, ou avec `prefers-reduced-motion: reduce` (l'écouteur ne
+  démarre même pas).
+
+L'anneau de focus cobalt reste toujours visible.
+
 ### 2.6 Utilitaires maison
 
 - `.panel-blur` / `.panel-blur-inverse` : fond translucide + `backdrop-filter`, réservés
@@ -488,7 +536,11 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `ActivityFigure` | `ActivityFigure.tsx` | Un compteur **toujours accompagné de sa fenêtre**, « Indisponible » si la lecture a échoué |
 | `AgencyActivityCard` | `AgencyActivityCard.tsx` | Chiffres de l'agence : exécutions décomptées, limite, tentatives, brouillons à valider |
 | `KillSwitchPanel` | `KillSwitchPanel.tsx` (client) | Coupe-circuit : état, confirmation en deux temps, refus expliqué ; `headingLevel` 2 (défaut, `/agents-ia`) ou 3 (sous la section « Agents IA » de `/parametres`) — un seul composant, deux écrans, mêmes règles |
-| `AgentRunsHistory` / `AgentRunsFilters` / `AgentRunsTable` | — | Journal filtrable et paginé (formulaire GET, sans JavaScript) |
+| `AgentRunsHistory` / `AgentRunsFilters` / `AgentRunsList` | — | Journal filtrable et paginé (formulaire GET, sans JavaScript) ; un seul badge « Simulation » par bloc quand toutes les lignes sont simulées (`simulation-scope.ts`) |
+| `SituationStrip` | `SituationStrip.tsx` | Niveau 1 de `/agents-ia` : agents actifs, validations attendues (lien vers la file), blocages et erreurs techniques **du jour**, comptes exacts sommés depuis le tableau de bord |
+| `SelectedDossierCard` | `SelectedDossierCard.tsx` | Niveau 2 : dossier de la dernière exécution enregistrée rattachée à un contact (Léa exclue : lead brut) ; sinon état vide « Ouvrir les contacts » |
+| `OperationalRail` | `OperationalRail.tsx` + `.module.css` | Rail « réseau opérationnel » : icône, nom, action, statut écrit, durée **seulement si mesurée**. États `pending` (en attente, pointillés), `running` (cobalt pulsé), `done`, `human` (validation humaine, accent), `blocked` (garde-fou, pointillés noirs), `stopped`, `failed` (erreur technique, fond inversé), `untraced`. Le signal s'arrête après un blocage/erreur. Horizontal ≥ 768 px, vertical dessous ; statique sous mouvement réduit. Aucun pourcentage |
+| `DossierJourneyRail` / `DossierJourneyLoader` | — | Parcours d'un dossier (Prospect → Léa → validation humaine → Hugo → Emma → validation humaine → Louis → rendez-vous → Sarah → mandat confirmé par un humain), lu de `getContactTimeline` via `dossier-journey.ts` (pur, testé). Sur le rejeu, seule l'exécution rejouée porte sa durée mesurée (aucune si encore en cours) |
 | `PendingMessagesList` | `PendingMessagesList.tsx` (client) | File « à valider » : confirmation persistante (`aria-live`) + rafraîchissement serveur |
 | `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |
 | `MessageRejectionForm` | `MessageRejectionForm.tsx` (client) | Motif obligatoire (liste fermée, `fieldset`/`legend`) + note facultative bornée |

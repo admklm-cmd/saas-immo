@@ -8,6 +8,7 @@ import { AGENT_ACTIVITY_TEXTS, AGENT_MISSIONS } from "@/lib/agents/messages";
 import type { AgentActivity, AgentOverview, AgentRunSummary } from "../types";
 import { ActivityFigure } from "./ActivityFigure";
 import { AgentOverviewCard } from "./AgentOverviewCard";
+import { RecentIssuesList } from "./RecentIssuesList";
 
 const TEXTS = APP_TEXTS.agentsIa;
 const TODAY = "aujourd'hui";
@@ -145,8 +146,9 @@ describe("AgentOverviewCard", () => {
     expect(screen.getByText("3 exécutions aujourd'hui")).toBeDefined();
     expect(screen.getByText("9 exécutions sur 7 jours")).toBeDefined();
     expect(screen.getByText(TEXTS.outcomeBlocked(1))).toBeDefined();
-    expect(screen.getByText(TEXTS.lastErrors)).toBeDefined();
-    expect(screen.getByText(/coupe-circuit de l'agence/)).toBeDefined();
+    // The detail of each issue lives in « Erreurs et blocages récents »; the card counts and links there.
+    expect(screen.getByTestId("agent-issues-count").textContent).toBe(TEXTS.agentIssues(1));
+    expect(screen.getByRole("link", { name: TEXTS.agentIssuesLink }).getAttribute("href")).toBe("#a-examiner");
     // The contact is named, not hidden behind a generic "Voir la fiche".
     expect(screen.getByRole("link", { name: "Sophie Marchand" }).getAttribute("href")).toBe(
       "/contacts/contact-1",
@@ -189,11 +191,11 @@ describe("AgentOverviewCard", () => {
   });
 });
 
-describe("AgentOverviewCard — errors and guard-rail blocks", () => {
+describe("RecentIssuesList — errors and guard-rail blocks", () => {
   it("tells a guard-rail block from a technical error, line by line", () => {
     render(
-      <AgentOverviewCard
-        agent={agent({
+      <RecentIssuesList
+        agents={[agent({
           lastErrors: [
             {
               runId: "run-blocked",
@@ -212,20 +214,18 @@ describe("AgentOverviewCard — errors and guard-rail blocks", () => {
               at: "2026-09-15T10:00:00.000Z",
             },
           ],
-        })}
-        todayLabel={TODAY}
-        last7DaysLabel={LAST_7}
+        })]}
       />,
     );
 
     const lines = screen.getAllByTestId("agent-last-issue");
     expect(lines.map((line) => line.getAttribute("data-status"))).toEqual(["blocked", "failed"]);
-    expect(lines[0]!.textContent).toContain("Bloquée par un garde-fou");
-    expect(lines[0]!.textContent).toContain(APP_TEXTS.guardRail.reason);
-    expect(lines[0]!.textContent).toContain("Mandat signé");
-    expect(lines[0]!.textContent).not.toContain("Erreur technique");
-    expect(lines[1]!.textContent).toContain("Erreur technique");
-    expect(lines[1]!.textContent).not.toContain("garde-fou");
+    expect(lines[0]?.textContent).toContain("Bloquée par un garde-fou");
+    expect(lines[0]?.textContent).toContain(APP_TEXTS.guardRail.reason);
+    expect(lines[0]?.textContent).toContain("Mandat signé");
+    expect(lines[0]?.textContent).not.toContain("Erreur technique");
+    expect(lines[1]?.textContent).toContain("Erreur technique");
+    expect(lines[1]?.textContent).not.toContain("garde-fou");
     // Neither line interrupts the user: this is a history, not an alert.
     expect(screen.queryByRole("alert")).toBeNull();
   });

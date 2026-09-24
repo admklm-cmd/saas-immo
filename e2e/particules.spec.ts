@@ -125,7 +125,12 @@ test("aucun canvas de particules sur le site public", async ({ page }) => {
     await page.goto(href);
     await expect(page.locator("body")).toBeVisible();
     await expect(page.locator("h1").first()).toBeVisible({ timeout: COLD_START });
-    await expect(page.locator("canvas"), `${href}: no canvas`).toHaveCount(0);
+    await expect(page.locator(BACKGROUND), `${href}: no particle canvas`).toHaveCount(0);
+    // The home page has its own illustrative « fond vivant » (e2e/accueil.spec.ts),
+    // and nothing else; the other public pages have no canvas at all.
+    const expected = href === "/" ? 1 : 0;
+    await expect(page.locator("canvas"), `${href}: canvas count`).toHaveCount(expected);
+    if (expected) await expect(page.getByTestId("living-background")).toHaveCount(1);
   }
 });
 

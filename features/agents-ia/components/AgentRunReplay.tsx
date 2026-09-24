@@ -6,6 +6,7 @@ import { formatDurationMs } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Disclosure } from "@/components/ui/Disclosure";
 
 import { AgentRunStepRow } from "./AgentRunStepRow";
 import { AgentRunProcessTrack } from "./AgentRunProcessTrack";
@@ -50,6 +51,11 @@ export type AgentRunReplayProps = {
    * (a past run the user only wants to read).
    */
   autoPlay?: boolean;
+  /**
+   * The run is still « en cours » on the server: the recorded steps are listed
+   * as they are, with no replay, no progress and nothing assumed after them.
+   */
+  inProgress?: boolean;
   testId?: string;
 };
 
@@ -66,12 +72,12 @@ export type AgentRunReplayProps = {
  * demand. `prefers-reduced-motion` is honoured by showing everything at once,
  * with no animation and no timer at all.
  */
-export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunReplayProps) {
+export function AgentRunReplay({ steps, autoPlay = true, inProgress = false, testId }: AgentRunReplayProps) {
   const measuredMs = totalDurationMs(steps);
   const factor = replaySpeedFactor(measuredMs);
   const reducedMotion = useReducedMotion();
 
-  const [mode, setMode] = useState<"play" | "all">(autoPlay ? "play" : "all");
+  const [mode, setMode] = useState<"play" | "all">(autoPlay && !inProgress ? "play" : "all");
   const [doneCount, setDoneCount] = useState(0);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [announced, setAnnounced] = useState("");
@@ -84,7 +90,7 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
     stepsRef.current = steps;
   }, [steps]);
 
-  const animating = mode === "play" && !reducedMotion && steps.length > 0;
+  const animating = mode === "play" && !reducedMotion && !inProgress && steps.length > 0;
 
   useEffect(() => {
     if (!animating) return;
@@ -159,15 +165,13 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
             <Button variant="secondary" size="sm" onClick={showEverything} data-testid="replay-show-all">
               {TEXTS.showAll}
             </Button>
-          ) : reducedMotion ? null : (
+          ) : reducedMotion || inProgress ? null : (
             <Button variant="ghost" size="sm" onClick={restart} data-testid="replay-restart">
               {TEXTS.replayAgain}
             </Button>
           )}
         </div>
       </div>
-
-      {factor > 1 ? <p className="pt-3 text-xs text-ink-subtle">{TEXTS.speedFactorHint}</p> : null}
 
       <AgentRunProcessTrack
         steps={steps}
@@ -177,6 +181,7 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
         replayDurationMs={replayLengthMs(steps, factor)}
         speedFactor={factor}
         replayCycle={replayCycle}
+        inProgress={inProgress}
       />
 
       <ol className="mt-4 flex flex-col" aria-busy={animating || undefined} data-testid="replay-steps">
@@ -196,7 +201,15 @@ export function AgentRunReplay({ steps, autoPlay = true, testId }: AgentRunRepla
         {animating ? announced : TEXTS.finished}
       </p>
 
-      <p className="mt-2 border-t border-line pt-4 text-xs text-ink-muted">{TEXTS.authorLegend}</p>
+      {inProgress ? <p className="mt-4 text-sm text-ink-muted">{TEXTS.inProgressNote}</p> : null}
+
+      {/* Long explanations stay available, folded: the process comes first. */}
+      <Disclosure summary={TEXTS.howToRead} className="mt-4 border-t border-line pt-4" testId="replay-help">
+        <div className="flex max-w-2xl flex-col gap-2 text-xs text-ink-muted">
+          {factor > 1 ? <p>{TEXTS.speedFactorHint}</p> : null}
+          <p>{TEXTS.authorLegend}</p>
+        </div>
+      </Disclosure>
     </div>
   );
 }

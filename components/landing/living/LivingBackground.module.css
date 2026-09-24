@@ -1,0 +1,12 @@
+/*
+ * Fixed behind the whole landing: out of the flow (no layout shift), never
+ * interactive. The page content is painted above it (see LandingPage).
+ */
+.canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}

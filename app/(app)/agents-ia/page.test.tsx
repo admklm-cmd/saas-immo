@@ -29,6 +29,11 @@ vi.mock("@/features/agents-ia/queries", () => ({
   getAgentsOverview: vi.fn(),
   getAiPausedState: vi.fn(),
   getAgentRuns: vi.fn(),
+  getRunSteps: vi.fn(),
+}));
+
+vi.mock("@/features/contacts/queries", () => ({
+  getContactTimeline: vi.fn(),
 }));
 
 const { getAgentRuns, getAgentsOverview, getAiPausedState } = await import(
@@ -103,6 +108,34 @@ describe("Écran Agents IA", () => {
     expect(screen.getAllByText(APP_TEXTS.killSwitch.paused).length).toBeGreaterThan(0);
     // A non-director cannot resume: refusal explained, not silently ignored.
     expect((screen.getByTestId("kill-switch-toggle") as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("montre d'abord la situation immédiate, puis le parcours du dernier dossier (ou un état vide)", async () => {
+    const dashboard: AgentsDashboard = {
+      agencyId: "agency-1",
+      agencyName: "Calanques Immobilier (fictive)",
+      aiPaused: false,
+      dailyRunLimit: 100,
+      runsToday: 0,
+      runsTodayTotal: 0,
+      windows: {
+        today: { key: "today", label: "aujourd'hui", startsAt: "2026-09-19T22:00:00.000Z", days: 1 },
+        last7Days: { key: "last7Days", label: "sur 7 jours", startsAt: "2026-09-13T22:00:00.000Z", days: 7 },
+      },
+      canResume: true,
+      pendingValidationCount: 2,
+      agents: [],
+    };
+    vi.mocked(getAgentsOverview).mockResolvedValue({ data: dashboard, error: null });
+    vi.mocked(getAiPausedState).mockResolvedValue({ data: KILL_SWITCH, error: null });
+    vi.mocked(getAgentRuns).mockResolvedValue({ data: EMPTY_HISTORY, error: null });
+
+    await renderPage();
+
+    expect(screen.getByTestId("situation-pending").textContent).toContain("2");
+    // No run belongs to a contact yet: an empty state with a suggested action, nothing invented.
+    expect(screen.getByTestId("selected-dossier").textContent).toContain(APP_TEXTS.dossierJourney.emptyTitle);
+    expect(screen.queryByTestId("dossier-rail")).toBeNull();
   });
 
   it("explique la panne du coupe-circuit lui-même plutôt que de le faire disparaître", async () => {

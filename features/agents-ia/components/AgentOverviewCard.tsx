@@ -2,12 +2,16 @@ import Link from "next/link";
 
 import { formatDateTime } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
+import { ArrowLink } from "@/components/ui/ArrowLink";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import { Disclosure } from "@/components/ui/Disclosure";
+import { cn } from "@/components/ui/cn";
 import { AGENT_RUN_STATUS_LABELS } from "@/lib/agents/messages";
 
 import type { AgentActivity, AgentOverview } from "../types";
 import { ActivityFigure } from "./ActivityFigure";
+import { RunProcessDisclosure, type RenderRunProcess } from "./RunProcessDisclosure";
 import { RunStatusBadge } from "./RunStatusBadge";
 
 const TEXTS = APP_TEXTS.agentsIa;
@@ -16,17 +20,18 @@ const TEXTS = APP_TEXTS.agentsIa;
 const OUTCOMES = ["succeeded", "failed", "blocked", "running"] as const;
 
 /**
- * Named outcomes: a technical error is inverted (strongest emphasis), a guard
- * rail is outlined and says « Bloquée par un garde-fou » — never an error.
+ * Named outcomes, as plain text (one line, no chip per outcome): a technical
+ * error is written in bold, a guard rail says « Bloquée par un garde-fou » —
+ * never an error. The words carry the meaning, never a colour.
  */
-function outcomeBadge(outcome: (typeof OUTCOMES)[number], count: number) {
+function outcomeText(outcome: (typeof OUTCOMES)[number], count: number): string {
   switch (outcome) {
     case "failed":
-      return { tone: "solid" as const, text: TEXTS.outcomeFailed(count) };
+      return TEXTS.outcomeFailed(count);
     case "blocked":
-      return { tone: "outline" as const, text: TEXTS.outcomeBlocked(count) };
+      return TEXTS.outcomeBlocked(count);
     default:
-      return { tone: "neutral" as const, text: TEXTS.outcome(AGENT_RUN_STATUS_LABELS[outcome], count) };
+      return TEXTS.outcome(AGENT_RUN_STATUS_LABELS[outcome], count);
   }
 }
 
@@ -35,16 +40,13 @@ function Outcomes({ activity }: { activity: AgentActivity }) {
   if (shown.length === 0) return null;
 
   return (
-    <span className="flex flex-wrap gap-1.5">
-      {shown.map((outcome) => {
-        const badge = outcomeBadge(outcome, activity.runs[outcome]);
-        return (
-          <Badge key={outcome} tone={badge.tone}>
-            {badge.text}
-          </Badge>
-        );
-      })}
-    </span>
+    <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
+      {shown.map((outcome) => (
+        <li key={outcome} className={cn(outcome === "failed" && "font-semibold text-ink")}>
+          {outcomeText(outcome, activity.runs[outcome])}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -53,6 +55,8 @@ export type AgentOverviewCardProps = {
   /** French names of the two windows the figures are counted in. */
   todayLabel: string;
   last7DaysLabel: string;
+  /** Folded process of the last run (server read), or nothing. */
+  renderProcess?: RenderRunProcess;
 };
 
 /**
@@ -60,9 +64,14 @@ export type AgentOverviewCardProps = {
  *
  * Every figure comes from an exact count over a NAMED window, and the last run
  * is described by `lastRunLabel` — "Jamais exécuté" is a statement of the
- * server, never something this card deduces from an empty history.
+ * server, never something this card deduces from an empty history. The
+ * recent failures and blocks are listed once, for the five agents together,
+ * in « Erreurs et blocages récents » (`RecentIssuesList`): the card only says
+ * how many there are and links there.
  */
-export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel }: AgentOverviewCardProps) {
+export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel, renderProcess }: AgentOverviewCardProps) {
+  const issues = agent.lastErrors.length;
+
   return (
     <Card
       title={agent.label}
@@ -74,32 +83,29 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel }: AgentOv
         </Badge>
       }
       testId={`agent-card-${agent.agent}`}
-      className="flex flex-col"
+      className="flex h-full flex-col"
     >
-      <dl className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <dl className="grid gap-4 sm:grid-cols-2">
+        <div>
           <dt className="sr-only">{todayLabel}</dt>
-          <dd className="text-sm font-medium text-ink">
+          <dd className="text-base font-semibold text-ink">
             <ActivityFigure runs={agent.today.runs.total} windowLabel={todayLabel} />
           </dd>
-          <dd>
+          <dd className="mt-1">
             <Outcomes activity={agent.today} />
           </dd>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <div>
           <dt className="sr-only">{last7DaysLabel}</dt>
           <dd className="text-sm text-ink-muted">
             <ActivityFigure runs={agent.last7Days.runs.total} windowLabel={last7DaysLabel} />
           </dd>
-          <dd className="text-xs text-ink-subtle">
-            {TEXTS.tokens} : {TEXTS.tokensValue(agent.last7Days.tokens.input, agent.last7Days.tokens.output)}
-          </dd>
         </div>
       </dl>
 
-      <div className="mt-4 border-t border-line pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.lastRun}</p>
-        <p className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-ink">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink">
           {/* The outcome, named like everywhere else (a block is not an error);
               « Jamais exécuté » stays the server's statement. */}
           {agent.lastRun ? (
@@ -126,50 +132,41 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel }: AgentOv
                   {TEXTS.inboundLead}
                 </span>
               )}
-              <Link
-                href={`/agents-ia/executions/${agent.lastRun.id}`}
-                className="rounded-xs text-xs font-medium text-ink underline underline-offset-2"
-              >
+              <ArrowLink href={`/agents-ia/executions/${agent.lastRun.id}`} className="sm:ml-auto">
                 {TEXTS.viewReplay}
-              </Link>
+              </ArrowLink>
             </>
           ) : null}
-        </p>
+        </div>
+        {agent.lastRun && renderProcess ? (
+          <RunProcessDisclosure className="mt-3">{renderProcess(agent.lastRun.id)}</RunProcessDisclosure>
+        ) : null}
       </div>
 
-      <div className="mt-4 border-t border-line pt-4">
-        <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.lastErrors}</p>
-        {agent.lastErrors.length === 0 ? (
-          <p className="mt-1.5 text-sm text-ink-muted">{TEXTS.noError}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-line pt-4 text-sm">
+        <span className="sr-only">{TEXTS.lastErrors} : </span>
+        {issues === 0 ? (
+          <span className="text-ink-muted">{TEXTS.noError}</span>
         ) : (
-          <ul className="mt-1.5 flex flex-col gap-2">
-            {agent.lastErrors.map((error) => (
-              <li key={error.runId} className="text-sm" data-testid="agent-last-issue" data-status={error.status}>
-                <span className="flex flex-wrap items-center gap-2">
-                  <RunStatusBadge status={error.status} />
-                  <time dateTime={error.at} className="text-xs text-ink-subtle">
-                    {formatDateTime(error.at)}
-                  </time>
-                  <Link
-                    href={`/agents-ia/executions/${error.runId}`}
-                    className="rounded-xs text-xs text-ink-muted underline underline-offset-2 hover:text-ink"
-                  >
-                    {TEXTS.viewReplay}
-                  </Link>
-                </span>
-                {error.decision ? (
-                  <p className="mt-1 text-ink-muted">
-                    {error.status === "blocked" ? (
-                      <span className="font-medium text-ink">{APP_TEXTS.guardRail.reason} : </span>
-                    ) : null}
-                    {error.decision}
-                  </p>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <>
+            <span className="font-medium text-ink" data-testid="agent-issues-count">
+              {TEXTS.agentIssues(issues)}
+            </span>
+            <Link href="#a-examiner" className="rounded-xs text-ink-muted underline underline-offset-2 hover:text-ink">
+              {TEXTS.agentIssuesLink}
+            </Link>
+          </>
         )}
       </div>
+
+      <Disclosure summary={TEXTS.technicalDetails} className="mt-4" testId="agent-technical">
+        <p className="text-xs text-ink-muted">
+          {TEXTS.tokens} ({last7DaysLabel}) :{" "}
+          <span className="tabular-nums text-ink">
+            {TEXTS.tokensValue(agent.last7Days.tokens.input, agent.last7Days.tokens.output)}
+          </span>
+        </p>
+      </Disclosure>
     </Card>
   );
 }

@@ -1,0 +1,55 @@
+/*
+ * Hero title of the landing. Editorial scale specific to the public site
+ * (docs/design-system.md §1.1): it complements `text-display` and keeps the
+ * system font stack.
+ */
+.title {
+  max-width: 11.5em;
+  font-size: clamp(2.9rem, 6.1vw, 6rem);
+  font-weight: 600;
+  line-height: 0.94;
+  letter-spacing: -0.058em;
+  color: var(--color-ink);
+}
+
+/* The mask: a word rises from below its own line. A little room is kept for
+   descenders, compensated so the line spacing stays unchanged. */
+.line {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+
+.muted {
+  color: var(--color-ink-muted);
+}
+
+.word {
+  display: inline-block;
+}
+
+/* Progressive enhancement: the final state is the default. The reveal only
+   plays when motion is welcome; `backwards` leaves no transform behind. */
+@media (prefers-reduced-motion: no-preference) {
+  .word {
+    animation: word-in 760ms var(--ease-standard) backwards;
+    animation-delay: calc(90ms + var(--line, 0) * 120ms + var(--word, 0) * 38ms);
+  }
+}
+
+@keyframes word-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 62%, 0);
+    filter: blur(6px);
+  }
+  45% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}

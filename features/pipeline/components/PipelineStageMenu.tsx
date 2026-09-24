@@ -177,7 +177,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
   }
 
   return (
-    <div ref={containerRef}>
+    <div ref={containerRef} data-sensitive="">
       <Button
         ref={triggerRef}
         variant="ghost"

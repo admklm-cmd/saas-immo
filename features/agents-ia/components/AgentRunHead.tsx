@@ -13,6 +13,7 @@ const AGENT_TEXTS = APP_TEXTS.agentsIa;
 /** Identity card of one execution: what ran, on what, with what outcome. */
 export function AgentRunHead({ run }: { run: AgentRunSummary }) {
   return (
+    <div data-testid="run-head">
     <DataList
       items={[
         { label: TEXTS.startedAt, value: formatDateTime(run.startedAt) },
@@ -53,7 +54,12 @@ export function AgentRunHead({ run }: { run: AgentRunSummary }) {
         ...(run.error
           ? [{ label: run.status === "blocked" ? TEXTS.blockedCode : TEXTS.errorCode, value: run.error }]
           : []),
+        {
+          label: TEXTS.runId,
+          value: <span className="font-mono text-xs break-all">{run.id}</span>,
+        },
       ]}
     />
+    </div>
   );
 }

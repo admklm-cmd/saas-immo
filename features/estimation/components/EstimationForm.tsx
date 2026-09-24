@@ -129,6 +129,7 @@ export function EstimationForm() {
   return (
     <form
       noValidate
+      data-sensitive=""
       onSubmit={(event) => void handleSubmit(event)}
       aria-busy={busy || undefined}
       className="flex flex-col gap-10"

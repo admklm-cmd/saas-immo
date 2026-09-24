@@ -79,66 +79,69 @@ export function KillSwitchPanel({ paused, canResume, headingLevel = 2 }: KillSwi
   }
 
   return (
-    <Card
-      title={TEXTS.title}
-      description={paused ? TEXTS.descriptionPaused : TEXTS.descriptionRunning}
-      actions={
-        <Badge tone={paused ? "solid" : "outline"}>{paused ? TEXTS.paused : TEXTS.running}</Badge>
-      }
-      testId="kill-switch"
-      headingLevel={headingLevel}
-    >
-      {state.kind === "confirming" ? (
-        <div data-testid="kill-switch-confirm" className="animate-fade rounded-lg border border-line-strong bg-surface-muted p-4">
-          <p className="text-sm font-semibold text-ink">
-            {paused ? TEXTS.confirmResumeTitle : TEXTS.confirmPauseTitle}
-          </p>
-          <p className="mt-1 text-sm text-ink-muted">
-            {paused ? TEXTS.confirmResumeBody : TEXTS.confirmPauseBody}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button ref={confirmRef} onClick={() => void apply()}>
-              {TEXTS.confirm}
-            </Button>
-            <Button variant="ghost" onClick={() => setState({ kind: "idle" })}>
-              {TEXTS.cancel}
-            </Button>
+    // Sensitive area: no halo, no magnetic pull (interactions.css, pointer-field.ts).
+    <div data-sensitive="" className="contents">
+      <Card
+        title={TEXTS.title}
+        description={paused ? TEXTS.descriptionPaused : TEXTS.descriptionRunning}
+        actions={
+          <Badge tone={paused ? "solid" : "outline"}>{paused ? TEXTS.paused : TEXTS.running}</Badge>
+        }
+        testId="kill-switch"
+        headingLevel={headingLevel}
+      >
+        {state.kind === "confirming" ? (
+          <div data-testid="kill-switch-confirm" className="animate-fade rounded-lg border border-line-strong bg-surface-muted p-4">
+            <p className="text-sm font-semibold text-ink">
+              {paused ? TEXTS.confirmResumeTitle : TEXTS.confirmPauseTitle}
+            </p>
+            <p className="mt-1 text-sm text-ink-muted">
+              {paused ? TEXTS.confirmResumeBody : TEXTS.confirmPauseBody}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button ref={confirmRef} onClick={() => void apply()}>
+                {TEXTS.confirm}
+              </Button>
+              <Button variant="ghost" onClick={() => setState({ kind: "idle" })}>
+                {TEXTS.cancel}
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant={paused ? "primary" : "secondary"}
-            isLoading={state.kind === "pending"}
-            disabled={resumeBlocked}
-            onClick={() => setState({ kind: "confirming" })}
-            data-testid="kill-switch-toggle"
-          >
-            {state.kind === "pending" ? TEXTS.pending : paused ? TEXTS.resume : TEXTS.pause}
-          </Button>
-          {resumeBlocked ? (
-            <p className="text-xs text-ink-muted">{AGENT_ERROR_MESSAGES.only_director_can_resume_ai}</p>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant={paused ? "primary" : "secondary"}
+              isLoading={state.kind === "pending"}
+              disabled={resumeBlocked}
+              onClick={() => setState({ kind: "confirming" })}
+              data-testid="kill-switch-toggle"
+            >
+              {state.kind === "pending" ? TEXTS.pending : paused ? TEXTS.resume : TEXTS.pause}
+            </Button>
+            {resumeBlocked ? (
+              <p className="text-xs text-ink-muted">{AGENT_ERROR_MESSAGES.only_director_can_resume_ai}</p>
+            ) : null}
+          </div>
+        )}
+
+        <div aria-live="polite">
+          {state.kind === "error" ? (
+            <AnimatedErrorState
+              title={TEXTS.errorTitle}
+              className="mt-4"
+              testId="kill-switch-error"
+              onRetry={state.retryable ? () => void apply() : undefined}
+            >
+              {state.message}
+            </AnimatedErrorState>
+          ) : null}
+          {state.kind === "done" ? (
+            <Alert tone="success" className="mt-4" testId="kill-switch-success">
+              {state.message}
+            </Alert>
           ) : null}
         </div>
-      )}
-
-      <div aria-live="polite">
-        {state.kind === "error" ? (
-          <AnimatedErrorState
-            title={TEXTS.errorTitle}
-            className="mt-4"
-            testId="kill-switch-error"
-            onRetry={state.retryable ? () => void apply() : undefined}
-          >
-            {state.message}
-          </AnimatedErrorState>
-        ) : null}
-        {state.kind === "done" ? (
-          <Alert tone="success" className="mt-4" testId="kill-switch-success">
-            {state.message}
-          </Alert>
-        ) : null}
-      </div>
-    </Card>
+      </Card>
+    </div>
   );
 }

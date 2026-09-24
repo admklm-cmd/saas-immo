@@ -77,7 +77,9 @@ describe("AgentRunsHistory", () => {
     expect(screen.getByRole("link", { name: "Sophie Marchand" }).getAttribute("href")).toBe(
       "/contacts/contact-1",
     );
-    expect(screen.getAllByText(APP_TEXTS.states.simulation)).toHaveLength(2);
+    // Every listed run is simulated: ONE badge for the block, not one per line (§3.4).
+    expect(screen.getByTestId("run-history-simulation")).toBeDefined();
+    expect(screen.getAllByText(APP_TEXTS.states.simulation)).toHaveLength(1);
   });
 
   it("keeps the filters in the pagination links", () => {

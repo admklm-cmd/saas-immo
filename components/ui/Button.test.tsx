@@ -155,10 +155,33 @@ describe("Button — real asynchronous states", () => {
     expect(button.hasAttribute("disabled")).toBe(true);
     // No hover, no press: pointer events are off for a disabled button.
     expect(button.className).toContain("disabled:pointer-events-none");
-    // Every movement is gated by prefers-reduced-motion: no-preference.
-    const moves = button.className.split(/\s+/).filter((name) => /translate|scale/.test(name) && !name.startsWith("transition-"));
+    const movesOf = (element: HTMLElement) =>
+      element.className.split(/\s+/).filter((name) => /translate|scale/.test(name) && !name.startsWith("transition-"));
+    // A disabled button carries no movement class at all, and no halo.
+    expect(movesOf(button)).toEqual([]);
+    expect(button.className).not.toContain("ui-halo");
+    expect(button.hasAttribute("data-pointer")).toBe(false);
+
+    // An enabled one: every movement is gated by prefers-reduced-motion: no-preference.
+    render(<Button>Valider</Button>);
+    const enabled = screen.getByRole("button", { name: "Valider" });
+    const moves = movesOf(enabled);
     expect(moves.length).toBeGreaterThan(0);
     for (const name of moves) expect(name.startsWith("motion-safe:")).toBe(true);
-    expect(button.className).toContain("motion-safe:active:scale-[0.97]");
+    expect(enabled.className).toContain("motion-safe:active:translate-y-px");
+  });
+
+  it("never gives a destructive button a halo or a magnetic pull", () => {
+    render(
+      <Button destructive magnetic>
+        Supprimer
+      </Button>,
+    );
+    const button = screen.getByRole("button", { name: "Supprimer" });
+    expect(button.className).not.toContain("ui-halo");
+    expect(button.className).not.toContain("ui-magnetic");
+    expect(button.hasAttribute("data-pointer")).toBe(false);
+    expect(button.hasAttribute("data-magnetic")).toBe(false);
+    expect(button.hasAttribute("data-destructive")).toBe(true);
   });
 });

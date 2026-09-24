@@ -1,0 +1,222 @@
+/*
+ * Shared interaction layer of the controls — docs/design-system.md §2.5.9.
+ *
+ * Plain CSS driven by three custom properties that `PointerField` writes
+ * directly in the DOM, inside a requestAnimationFrame, from ONE delegated
+ * listener on the document (no React render per pointer move):
+ *   --pointer-x / --pointer-y : pointer position inside the hovered element;
+ *   --magnet-x / --magnet-y   : 3-5 px pull of a magnetic control.
+ *
+ * Every effect here is gated twice: a precise hovering pointer
+ * (`(hover: hover) and (pointer: fine)`) AND `prefers-reduced-motion:
+ * no-preference`. On touch screens and with reduced motion, the controls keep
+ * their plain states (colour, border, focus ring) and nothing moves.
+ * A disabled control carries `pointer-events: none`: it never gets any effect.
+ */
+@layer components {
+
+/* --- 1. Border halo that follows the pointer ------------------------------- */
+/* A 1 px ring painted with a radial gradient centred on the pointer, masked to
+   the border only: the content and its contrast are never touched. */
+.ui-halo {
+  position: relative;
+  isolation: isolate;
+}
+
+.ui-halo::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 1;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    7rem circle at var(--pointer-x, 50%) var(--pointer-y, 50%),
+    var(--color-accent) 0%,
+    var(--color-accent-glow) 45%,
+    transparent 75%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  transition: opacity var(--duration-interactive) var(--ease-standard);
+}
+
+/* --- 2. Magnetic pull (opt-in, never destructive, never in a sensitive form) - */
+.ui-magnetic {
+  transform: translate3d(var(--magnet-x, 0px), var(--magnet-y, 0px), 0);
+}
+
+/* --- 3. Letters of a primary label: a short roll, one letter after the other - */
+.ui-letters {
+  display: inline-flex;
+  overflow: hidden;
+  /* Room for the roll without clipping descenders. */
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+}
+
+.ui-letter {
+  display: inline-block;
+  white-space: pre;
+}
+
+/* --- 4. Two stacked arrows that swap ---------------------------------------- */
+.ui-arrow {
+  position: relative;
+  display: inline-grid;
+  overflow: hidden;
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+.ui-arrow > span {
+  grid-area: 1 / 1;
+  display: grid;
+  place-items: center;
+  transition:
+    translate var(--duration-interactive) var(--ease-standard),
+    opacity var(--duration-interactive) var(--ease-standard);
+}
+
+.ui-arrow > span:last-child {
+  translate: -110% 0;
+  opacity: 0;
+}
+
+.ui-arrow[data-direction="back"] > span:last-child {
+  translate: 110% 0;
+}
+
+/* --- 5. Text link: a rail that draws itself under the words ------------------ */
+.ui-rail {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size var(--duration-interactive) var(--ease-standard);
+}
+
+/* --- 6. Clickable card ------------------------------------------------------- */
+.ui-card-link {
+  transition:
+    translate var(--duration-interactive) var(--ease-standard),
+    box-shadow var(--duration-interactive) var(--ease-standard),
+    border-color var(--duration-interactive) var(--ease-standard);
+}
+
+/* --- 7. Tabs: the active capsule moves (FLIP, see Tabs.tsx) ------------------- */
+.ui-tab-capsule {
+  transform-origin: left center;
+}
+
+.ui-tab-capsule[data-flip="play"] {
+  transition: transform var(--duration-interactive) var(--ease-standard);
+}
+
+/* --------------------------------------------------------------------------- */
+/* Hover effects: precise pointer AND full motion only.                        */
+/* --------------------------------------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  .ui-halo:hover::after,
+  .ui-halo:focus-visible::after {
+    opacity: 1;
+  }
+
+  .group\/button:hover .ui-arrow > span:first-child,
+  .group\/link:hover .ui-arrow > span:first-child,
+  .group\/card:hover .ui-arrow > span:first-child {
+    translate: 110% 0;
+    opacity: 0;
+  }
+
+  .group\/button:hover .ui-arrow[data-direction="back"] > span:first-child,
+  .group\/link:hover .ui-arrow[data-direction="back"] > span:first-child {
+    translate: -110% 0;
+  }
+
+  .group\/button:hover .ui-arrow > span:last-child,
+  .group\/link:hover .ui-arrow > span:last-child,
+  .group\/card:hover .ui-arrow > span:last-child {
+    translate: 0 0;
+    opacity: 1;
+  }
+
+  .group\/link:hover .ui-rail,
+  .group\/link:focus-visible .ui-rail {
+    background-size: 100% 1px;
+  }
+
+  .ui-card-link:hover {
+    translate: 0 -2px;
+    box-shadow: var(--shadow-raised);
+    border-color: var(--color-line-strong);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .group\/button:hover .ui-letter {
+    animation: ui-letter-roll var(--duration-interactive) var(--ease-standard) both;
+    animation-delay: calc(var(--i, 0) * var(--letter-step));
+  }
+}
+
+@keyframes ui-letter-roll {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translateY(-105%);
+    opacity: 0;
+  }
+  46% {
+    transform: translateY(105%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Sensitive areas (sign-in, estimation, message validation or refusal, stage
+   or mandate change, kill switch) and destructive controls: no halo, no pull.
+   The plain states and the focus ring stay. */
+[data-sensitive] .ui-halo::after,
+[data-destructive].ui-halo::after {
+  display: none;
+}
+
+[data-sensitive] .ui-magnetic {
+  transform: none;
+}
+
+/* Keyboard focus: the accent ring, instant, a little wider on controls. */
+.ui-focus:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-halo::after {
+    display: none;
+  }
+
+  .ui-magnetic {
+    transform: none;
+  }
+
+  .ui-card-link:hover {
+    translate: none;
+  }
+}
+}

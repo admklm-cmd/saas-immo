@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../components/ui/micro-interactions.css";
+@import "../components/ui/interactions.css";
 
 /*
  * Ascend Strategy design tokens — see docs/design-system.md (frontend-ux agent).
@@ -30,6 +31,13 @@
   --text-heading: 1.3125rem;
   --text-heading--line-height: 1.25;
   --text-heading--letter-spacing: -0.012em;
+  /* Stronger page title and section title (Agents IA screens, docs §2.2). */
+  --text-hero: 2.625rem;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.035em;
+  --text-section: 1.5rem;
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.022em;
   --text-overline: 0.6875rem;
   --text-overline--line-height: 1.2;
   --text-overline--letter-spacing: 0.09em;
@@ -58,7 +66,21 @@
   /* --- Lines and focus --------------------------------------------------- */
   --color-line: #e4e4e9;
   --color-line-strong: #d2d2d8;
-  --color-focus: #0a0a0b;
+  /* Focus ring: the cobalt accent (5.4:1 on white, WCAG 2.4.7 / 1.4.11). */
+  --color-focus: #2457ff;
+
+  /* --- Accent (cobalt) ------------------------------------------------------ */
+  /* ONE accent, reserved to: active step, signal, primary emphasis, important
+     status, keyboard focus, human checkpoint (docs/design-system.md §2.1).
+     Never the only carrier of a meaning: a word always goes with it.
+     accent 5.4:1 on white (4.4:1 on pearl: text on pearl uses accent-strong),
+     accent-strong 7.3:1 on white, 5.9:1 on pearl. */
+  --color-accent: #2457ff;
+  --color-accent-strong: #1b45d6;
+  --color-accent-soft: #eef2ff;
+  --color-accent-line: #c9d5ff;
+  /* Translucent accent for halos and glows only (never behind text). */
+  --color-accent-glow: rgb(36 87 255 / 0.28);
 
   /* --- Error accent ------------------------------------------------------- */
   /* The only hue of the interface: error dots, never text, never alone
@@ -84,6 +106,15 @@
   --duration-fast: 150ms;
   --duration-base: 220ms;
   --duration-slow: 300ms;
+  /* Buttons: hover lift, shadow and arrow nudge (spec §2 E: 150-200 ms). */
+  --duration-press: 180ms;
+  /* Interactive controls (plan 2026-09-24, Lot 1.1: 180-260 ms): arrow swap,
+     letter roll, capsule of the tabs, magnetic return. */
+  --duration-interactive: 240ms;
+  /* Delay between two letters of a primary button label (<= 12 ms). */
+  --letter-step: 10ms;
+  /* Rail « réseau opérationnel »: one recorded node lights up after the other. */
+  --rail-step: 110ms;
   /* Delay between the first cards of a list (spec: 100-120 ms), capped at 5 steps. */
   --stagger-step: 110ms;
 

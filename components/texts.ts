@@ -10,6 +10,7 @@
  */
 
 import { BRAND } from "@/components/brand";
+import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
 import type { AppointmentView } from "@/features/appointments/types";
 import type { ConsentStatus, PropertyType } from "@/features/contacts/types";
 import type { DashboardScopeKey } from "@/features/dashboard/types";
@@ -440,6 +441,31 @@ export const APP_TEXTS = {
       `Étape ${position} sur ${total} : ${phase} — ${status}.`,
     detailSummary: "Détail technique",
     stopped: "Exécution arrêtée à cette étape.",
+    // Folded help under the replay: long explanations stay available, never permanent.
+    howToRead: "Comment lire ce rejeu",
+    // A run still marked « en cours »: the steps recorded so far, nothing assumed after them.
+    inProgressState: "En cours",
+    recordedSoFar: "Étapes enregistrées à ce stade",
+    inProgressNote:
+      "Exécution encore en cours : seules les étapes déjà enregistrées sont affichées, aucune étape suivante n'est supposée.",
+  },
+
+  /**
+   * Compact, folded preview of an execution's process, shown under each run
+   * listed on « Agents IA » (last run of an agent, recent issues, journal).
+   * Same measured steps as the full replay; nothing is invented.
+   */
+  runProcess: {
+    summary: "Voir le processus",
+    loading: "Lecture des étapes enregistrées…",
+    unavailableTitle: "Processus indisponible",
+    stepsCount: (count: number) =>
+      count > 1 ? `${count} étapes enregistrées` : `${count} étape enregistrée`,
+    stoppedAt: (phase: string) => `Arrêt à l'étape « ${phase} »`,
+    completed: "Toutes les étapes enregistrées sont terminées.",
+    stepSr: (position: number, total: number, phase: string, status: string) =>
+      `Étape ${position} sur ${total} : ${phase} — ${status}`,
+    listLabel: "Étapes de l'exécution",
   },
 
   /** Screen « Agents IA » — the five agents, their real activity, the kill switch. */
@@ -479,6 +505,20 @@ export const APP_TEXTS = {
     inboundLead: "Lead entrant",
     inboundLeadHint: "Léa travaille avant toute fiche : cette exécution n'est rattachée à aucun contact.",
     openContact: "Voir la fiche",
+    // Page structure: decision first, then the runs concerned, then details.
+    decisionTitle: "À décider",
+    pendingCta: "Ouvrir la file à valider",
+    pendingNone: "Aucun brouillon n'attend de validation.",
+    figuresHelp: "Comment ces chiffres sont comptés",
+    issuesSubtitle: "Les plus récents de chaque agent, du plus récent au plus ancien.",
+    issuesHelp: "Erreur technique ou garde-fou ?",
+    issuesHelpBody:
+      "Une erreur technique est une défaillance à examiner. Un blocage par un garde-fou est une règle de l'agence qui a refusé l'action : rien n'a été fait, ce n'est pas une erreur.",
+    issuesEmpty: "Aucune erreur ni blocage récent pour les cinq agents.",
+    agentIssues: (count: number) =>
+      count > 1 ? `${count} erreurs ou blocages récents` : `${count} erreur ou blocage récent`,
+    agentIssuesLink: "Voir la liste",
+    technicalDetails: "Détails techniques",
   },
 
   /** Kill switch of the agency — a safety control, not a decorative setting. */
@@ -530,6 +570,10 @@ export const APP_TEXTS = {
     previous: "Page précédente",
     next: "Page suivante",
     noDecision: "Aucune décision journalisée",
+    summaryCount: (total: number) =>
+      total > 1 ? `${total} exécutions enregistrées` : `${total} exécution enregistrée`,
+    summaryHint: "Filtres, pagination et aperçu du processus de chaque exécution.",
+    allSimulated: "Toutes les exécutions de cette liste sont simulées.",
   },
 
   /**
@@ -729,6 +773,73 @@ export const APP_TEXTS = {
     outcome: "Résultat",
     contact: "Contact",
     unknown: "Non renseigné",
+    outcomeTitle: "Résultat",
+    measuredDuration: "Durée mesurée",
+    runId: "Identifiant de l'exécution",
+    technicalHint: "Dates, fournisseur, modèle, jetons et codes journalisés.",
+  },
+
+  /**
+   * Rail « réseau opérationnel » of ONE dossier (docs/design-system.md §3.1).
+   *
+   * Every status comes from a recorded row (run, message review, appointment,
+   * human stage change). A stage with nothing recorded reads « En attente »;
+   * one skipped while a later one was recorded reads « Aucune trace pour ce
+   * dossier ». No percentage, no estimated duration.
+   */
+  dossierJourney: {
+    title: "Parcours du dossier",
+    subtitle:
+      "Étapes réellement enregistrées pour ce dossier. Une étape sans trace reste en attente : rien n'est supposé.",
+    listLabel: (contact: string) => `Parcours du dossier de ${contact}`,
+    selectedTitle: "Dernier dossier traité",
+    selectedSubtitle: (agent: string, contact: string) =>
+      `Dernière exécution enregistrée rattachée à un contact : ${agent}, pour ${contact}.`,
+    emptyTitle: "Aucun dossier traité pour l'instant",
+    emptyBody:
+      "Le parcours apparaîtra ici dès qu'un agent aura travaillé sur un dossier. Lancez Hugo, Emma ou Louis depuis une fiche contact.",
+    emptyCta: "Ouvrir les contacts",
+    unavailableTitle: "Parcours indisponible",
+    loading: "Lecture de l'historique du dossier…",
+    inboundLead:
+      "Léa traite un lead entrant avant toute fiche contact : cette exécution n'appartient encore à aucun dossier.",
+    openContact: "Voir la fiche",
+    durationHint: "Seule l'exécution rejouée ici porte une durée : celle mesurée par le serveur.",
+    stages: {
+      prospect: { name: "Prospect", action: "Dossier ouvert" },
+      lea: { name: "Léa", action: "Source vérifiée, fiche créée" },
+      first_review: { name: "Validation humaine", action: "Premier contact" },
+      hugo: { name: "Hugo", action: "Qualification" },
+      emma: { name: "Emma", action: "Relance préparée" },
+      follow_up_review: { name: "Validation humaine", action: "Relance" },
+      louis: { name: "Louis", action: "Créneau d'estimation" },
+      appointment: { name: "Rendez-vous", action: "Estimation" },
+      sarah: { name: "Sarah", action: "Suivi jusqu'au mandat" },
+      mandate: { name: "Mandat", action: "Confirmé par un humain" },
+    },
+    status: {
+      pending: "En attente",
+      untraced: "Aucune trace pour ce dossier",
+      prospectDone: "Fiche créée",
+      leaDone: "Trace enregistrée",
+      reviewApproved: "Validé par l'agence",
+      reviewRejected: "Refusé par l'agence",
+      reviewPending: "Validation humaine nécessaire",
+      appointmentProposed: "Proposé, à confirmer",
+      mandateDone: "Confirmé par un humain",
+    },
+  },
+
+  /** Level 1 of « Agents IA »: the immediate situation, exact counts only. */
+  situation: {
+    title: "Situation immédiate",
+    listLabel: "Situation immédiate des agents IA",
+    activeAgents: "Agents actifs",
+    activeAgentsValue: (active: number, total: number) => `${active} sur ${total}`,
+    pendingValidation: "Validations attendues",
+    blocked: "Blocages par un garde-fou",
+    failed: "Erreurs techniques",
+    windowNote: (window: string) => `Blocages et erreurs comptés ${window}, dans le journal des exécutions.`,
   },
 
   /**
@@ -903,69 +1014,15 @@ export const APP_TEXTS = {
     backHome: "Retour à l'accueil",
   },
 
+  /**
+   * Shared words of the public site. The landing copy itself lives in
+   * `components/landing-texts.ts`; the h1 is read from there, never retyped.
+   */
   marketing: {
-    heroKicker: "Le cycle vendeur, orchestré",
-    heroTitle: "De la demande vendeur au mandat, sans lâcher le contrôle.",
-    heroSubtitle: "Cinq agents spécialisés préparent le travail. Votre équipe garde chaque décision sensible.",
+    heroTitle: HERO_TITLE,
     heroNote: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
-    signIn: "Espace agence",
-    estimation: "Demander une estimation",
-    proofTitle: "Ce que la démonstration prouve",
-    proofs: [
-      { value: "5", label: "rôles bornés, du lead au mandat" },
-      { value: "100 %", label: "des premiers messages validés par un humain" },
-      { value: "Journalisé", label: "décisions, blocages et erreurs consultables" },
-      { value: "Simulation", label: "aucune action externe réelle" },
-    ],
-    storyKicker: "Un dossier, cinq relais",
-    storyTitle: "Chaque agent sait où son travail commence. Et où il s'arrête.",
-    storyBody:
-      "Le dossier avance dans un ordre lisible. Les informations manquantes deviennent des tâches, jamais des suppositions.",
-    agents: [
-      {
-        name: "Léa",
-        role: "Acquisition",
-        action: "Vérifie la source, dédoublonne et crée une fiche propre.",
-        boundary: "Ne transforme jamais une demande en consentement.",
-      },
-      {
-        name: "Hugo",
-        role: "Qualification",
-        action: "Structure le bien, le secteur, la motivation et le délai.",
-        boundary: "Signale ce qui manque au lieu de l'inventer.",
-      },
-      {
-        name: "Emma",
-        role: "Relation",
-        action: "Prépare une relance adaptée au contexte enregistré.",
-        boundary: "Le premier message reste soumis à validation.",
-      },
-      {
-        name: "Louis",
-        role: "Rendez-vous",
-        action: "Propose un créneau d'estimation et prépare le dossier.",
-        boundary: "Ne réserve jamais deux fois le même créneau.",
-      },
-      {
-        name: "Sarah",
-        role: "Suivi",
-        action: "Transforme le compte-rendu humain en prochaines actions.",
-        boundary: "Ne déclare jamais seule un mandat signé.",
-      },
-    ],
-    controlKicker: "Le contrôle reste humain",
-    controlTitle: "L'automatisation accélère. Elle ne décide pas à votre place.",
-    controlBody:
-      "Consentement, premier contact et mandat signé restent sous contrôle de l'agence. Un coupe-circuit suspend les cinq agents immédiatement.",
-    controls: [
-      "Validation humaine avant le premier envoi",
-      "Décisions, blocages et erreurs journalisés",
-      "Informations du prospect traitées comme des données non fiables",
-      "Mode simulation visible dans toute la démonstration",
-    ],
-    finalTitle: "Voyez le parcours complet avec un bien fictif.",
-    finalBody:
-      "Commencez par une demande d'estimation, puis retrouvez le dossier dans l'espace agence.",
+    signIn: LANDING_TEXTS.actions.signIn,
+    estimation: LANDING_TEXTS.actions.estimation,
   },
 
   emmaFollowUps: {

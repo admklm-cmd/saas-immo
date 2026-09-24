@@ -6,6 +6,7 @@ import { RouteParticles } from "@/components/motion/RouteParticles";
 import { SignOutButton } from "@/components/app/SignOutButton";
 import { APP_TEXTS } from "@/components/texts";
 import { Logo } from "@/components/ui/Logo";
+import { PointerField } from "@/components/ui/PointerField";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -70,6 +71,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         the engine is never remounted: the shape morphs when the route changes.
       */}
       <RouteParticles />
+      {/* One delegated pointer listener for the halo and magnetic controls. */}
+      <PointerField />
 
       {/* overflow-x-clip: the soft edges of `.particle-veil` never add a horizontal
           scroll; clip (unlike hidden) creates no scroll container, so sticky

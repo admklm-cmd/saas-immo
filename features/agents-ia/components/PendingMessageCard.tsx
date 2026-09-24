@@ -100,6 +100,7 @@ export function PendingMessageCard({ message, onDecided }: PendingMessageCardPro
     <article
       aria-labelledby={titleId}
       data-testid="pending-message"
+      data-sensitive=""
       data-status={message.status}
       aria-busy={busy || undefined}
       className="rounded-xl border border-line bg-surface p-6 shadow-subtle"

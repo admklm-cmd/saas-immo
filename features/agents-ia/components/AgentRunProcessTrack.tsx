@@ -1,31 +1,12 @@
-import type { CSSProperties, ComponentType } from "react";
-import {
-  ArchiveIcon,
-  CheckCircledIcon,
-  CodeIcon,
-  FileTextIcon,
-  LockClosedIcon,
-  MagicWandIcon,
-  TargetIcon,
-} from "@radix-ui/react-icons";
+import type { CSSProperties } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
-import type { AgentRunPhase } from "@/lib/agents/steps";
 
+import { PHASE_ICONS } from "./phase-icons";
 import type { ReplayStep } from "./replay";
 import styles from "./AgentRunProcessTrack.module.css";
 
 const TEXTS = APP_TEXTS.replay;
-
-const PHASE_ICONS: Record<AgentRunPhase, ComponentType<{ className?: string; width?: number; height?: number }>> = {
-  guardrails: LockClosedIcon,
-  context_loaded: FileTextIcon,
-  prompt_built: CodeIcon,
-  ai_call: MagicWandIcon,
-  output_validated: CheckCircledIcon,
-  decision: TargetIcon,
-  persisted: ArchiveIcon,
-};
 
 type ProcessState = "pending" | "active" | "done";
 
@@ -37,6 +18,8 @@ export type AgentRunProcessTrackProps = {
   replayDurationMs: number;
   speedFactor: number;
   replayCycle: number;
+  /** Run still « en cours »: recorded steps only, no signal, no progress bar. */
+  inProgress?: boolean;
 };
 
 /**
@@ -54,6 +37,7 @@ export function AgentRunProcessTrack({
   replayDurationMs,
   speedFactor,
   replayCycle,
+  inProgress = false,
 }: AgentRunProcessTrackProps) {
   const lastIndex = Math.max(steps.length - 1, 0);
   const activeReplayDurationMs =
@@ -82,11 +66,13 @@ export function AgentRunProcessTrack({
           <h3 className={styles.title}>{TEXTS.flowTitle}</h3>
           <p className={styles.subtitle}>{TEXTS.flowSubtitle}</p>
         </div>
-        <span className={styles.state}>{animating ? TEXTS.playing : TEXTS.finished}</span>
+        <span className={styles.state} data-testid="replay-process-state">
+          {inProgress ? TEXTS.inProgressState : animating ? TEXTS.playing : TEXTS.finished}
+        </span>
       </div>
 
       <div className={styles.scroller}>
-        <div className={styles.system} style={systemStyle} aria-hidden="true">
+        <div className={styles.system} style={systemStyle} aria-hidden="true" data-live={inProgress ? "true" : undefined}>
           <div className={styles.rail}>
             <span className={styles.signalTravel}>
               <span className={styles.signal} />
@@ -122,6 +108,11 @@ export function AgentRunProcessTrack({
         </div>
       </div>
 
+      {inProgress ? (
+        <p className={styles.activity}>
+          <span className={styles.activityMeta}>{TEXTS.recordedSoFar}</span>
+        </p>
+      ) : (
       <div className={styles.activity}>
         <div className={styles.activityMeta}>
           <span>{animating ? TEXTS.activityRunning : TEXTS.activityComplete}</span>
@@ -142,6 +133,7 @@ export function AgentRunProcessTrack({
           />
         </div>
       </div>
+      )}
     </section>
   );
 }

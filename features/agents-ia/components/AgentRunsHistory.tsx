@@ -1,12 +1,13 @@
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
 import { ButtonLink } from "@/components/ui/ButtonLink";
-import { Card } from "@/components/ui/Card";
+import { Disclosure } from "@/components/ui/Disclosure";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 import type { AgentRunsPage } from "../types";
 import { AgentRunsFilters } from "./AgentRunsFilters";
-import { AgentRunsTable } from "./AgentRunsTable";
+import { AgentRunsList } from "./AgentRunsList";
+import type { RenderRunProcess } from "./RunProcessDisclosure";
 
 const TEXTS = APP_TEXTS.runHistory;
 
@@ -26,6 +27,13 @@ export type AgentRunsHistoryProps = {
   /** French message returned by the server, displayed as-is. */
   errorMessage: string | null;
   selected: { agent: string; status: string };
+  /**
+   * Open on arrival. Closed by default (history is folded); the page opens it
+   * when the URL carries filters or a page, i.e. when the user asked for it.
+   */
+  defaultOpen?: boolean;
+  /** Folded process of each run (server read). */
+  renderProcess?: RenderRunProcess;
 };
 
 /**
@@ -34,18 +42,34 @@ export type AgentRunsHistoryProps = {
  * "x–y sur total" uses the exact total counted by the server, and a page past
  * the end is an empty list with a true total — not an error.
  */
-export function AgentRunsHistory({ page, errorMessage, selected }: AgentRunsHistoryProps) {
+export function AgentRunsHistory({
+  page,
+  errorMessage,
+  selected,
+  defaultOpen = false,
+  renderProcess,
+}: AgentRunsHistoryProps) {
   const from = page && page.runs.length > 0 ? page.offset + 1 : 0;
   const to = page ? page.offset + page.runs.length : 0;
 
   return (
-    <Card
-      title={TEXTS.title}
-      description={TEXTS.subtitle}
+    <Disclosure
+      variant="card"
+      headingLevel={2}
+      id="historique"
+      summary={TEXTS.title}
+      hint={TEXTS.summaryHint}
+      aside={
+        page ? (
+          <span className="text-sm font-medium tabular-nums text-ink-muted">{TEXTS.summaryCount(page.total)}</span>
+        ) : null
+      }
+      defaultOpen={defaultOpen}
       testId="run-history"
       className="scroll-mt-6"
     >
-      <div id="historique" className="flex flex-col gap-5">
+      <div className="flex flex-col gap-5">
+        <p className="text-sm text-ink-muted">{TEXTS.subtitle}</p>
         <AgentRunsFilters selected={selected} />
 
         {errorMessage ? (
@@ -69,7 +93,7 @@ export function AgentRunsHistory({ page, errorMessage, selected }: AgentRunsHist
 
         {page && page.runs.length > 0 ? (
           <>
-            <AgentRunsTable runs={page.runs} />
+            <AgentRunsList runs={page.runs} renderProcess={renderProcess} />
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs tabular-nums text-ink-muted">{TEXTS.range(from, to, page.total)}</p>
               <div className="flex items-center gap-2">
@@ -78,6 +102,7 @@ export function AgentRunsHistory({ page, errorMessage, selected }: AgentRunsHist
                     href={pageHref(selected, Math.max(0, page.offset - page.limit))}
                     variant="secondary"
                     size="sm"
+                    arrow="back"
                   >
                     {TEXTS.previous}
                   </ButtonLink>
@@ -87,6 +112,7 @@ export function AgentRunsHistory({ page, errorMessage, selected }: AgentRunsHist
                     href={pageHref(selected, page.offset + page.limit)}
                     variant="secondary"
                     size="sm"
+                    arrow="forward"
                   >
                     {TEXTS.next}
                   </ButtonLink>
@@ -96,6 +122,6 @@ export function AgentRunsHistory({ page, errorMessage, selected }: AgentRunsHist
           </>
         ) : null}
       </div>
-    </Card>
+    </Disclosure>
   );
 }

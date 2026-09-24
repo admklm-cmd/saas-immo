@@ -22,8 +22,8 @@
 
 .title {
   color: var(--color-ink);
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   letter-spacing: -.015em;
 }
 
@@ -65,7 +65,7 @@
   left: calc(50% / var(--step-count));
   height: 7px;
   overflow: hidden;
-  background: linear-gradient(transparent 3px, #d7d7d4 3px, #d7d7d4 4px, transparent 4px);
+  background: linear-gradient(transparent 2px, var(--color-line-strong) 2px, var(--color-line-strong) 5px, transparent 5px);
 }
 
 .signalTravel {
@@ -78,10 +78,10 @@
 .signal {
   display: block;
   width: 26px;
-  height: 3px;
-  transform: translateY(2px);
+  height: 5px;
+  transform: translateY(1px);
   border-radius: 999px;
-  background: #111;
+  background: var(--color-inverse);
   box-shadow: 0 0 0 3px rgb(255 255 255 / 82%);
 }
 
@@ -147,9 +147,20 @@
 }
 
 .node[data-state="active"] .nodeCore {
-  transform: translateY(-3px) scale(1.07);
-  border-color: #8e8e8a;
-  box-shadow: 0 10px 25px rgb(0 0 0 / 10%), 0 0 0 5px rgb(255 255 255 / 84%);
+  transform: translateY(-4px) scale(1.1);
+  border-color: var(--color-inverse);
+  background: var(--color-inverse);
+  color: var(--color-ink-inverse);
+  box-shadow: var(--shadow-overlay), 0 0 0 5px rgb(255 255 255 / 84%);
+}
+
+.node[data-state="done"] .nodeCore {
+  border-color: var(--color-ink);
+}
+
+/* A run still in progress: recorded steps only, no signal pretending to move. */
+.system[data-live] .signalTravel {
+  display: none;
 }
 
 .node[data-status="blocked"] .nodeCore,
@@ -160,7 +171,7 @@
 .nodeLabel {
   max-width: 88px;
   overflow: hidden;
-  color: var(--color-ink-muted);
+  color: var(--color-ink);
   font-size: 10px;
   font-weight: 600;
   line-height: 1.35;

@@ -263,6 +263,7 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
         <form
           className="mt-5 rounded-lg border border-line-strong bg-surface-muted p-4"
           data-testid="appointment-completion-form"
+          data-sensitive=""
           onSubmit={(event) => {
             event.preventDefault();
             void complete(reportNotes);
