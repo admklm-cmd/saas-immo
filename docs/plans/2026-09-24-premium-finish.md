@@ -57,3 +57,39 @@ Bouton de contact flottant : aucun canal réel configuré → non affiché.
 ## Lot 2 (après validation)
 Tableau de bord, pipeline, contacts, messages à valider, relances, rendez-vous, tâches,
 paramètres, estimation. Puis vérifications complètes, audit cybersecurite, build.
+
+## Ajustements validés (24/09/2026, après le Lot 1)
+Validés par l'utilisateur avant implémentation. Même branche, même règle : aucun push avant
+validation visuelle. Aucune donnée, règle métier, migration ni dépendance modifiée.
+Aucune copie de code, texte, asset ou mise en page d'un site tiers : seuls les mécanismes
+d'interaction et de composition sont repris, recréés dans l'identité Ascend.
+
+### A1. Rail « réseau opérationnel » plus lisible (/agents-ia et rejeu)
+- Connexions entre les ronds plus visibles : traits plus épais et plus contrastés, ronds plus
+  marqués, petits points relais le long de chaque trait (repères visuels uniquement : aucune
+  connexion ajoutée entre agents qui ne se transmettent pas réellement le dossier).
+- Réseau statique blanc/gris/noir. Bleu cobalt #2457FF réservé à : impulsions en mouvement,
+  étape en cours, validation humaine qui attend réellement une action.
+- Validation humaine reconnaissable par sa forme (double contour), pas par la couleur.
+  Remplace la règle du Lot 1 « accent réservé au point de contrôle humain » pour le rail.
+- Pas de lueur, pas d'effet néon. Statuts et durées : uniquement des données enregistrées.
+
+### A2. Carrousel des agents sur la landing (section « agents »)
+- Cartes façon « apps » dans un carrousel défilable : Léa → Hugo → Emma → validation humaine →
+  Louis → Sarah → mandat confirmé par un humain. Les étapes humaines sont des cartes à part.
+- Flèches/connecteurs entre les cartes pour montrer l'enchaînement.
+- Clic sur une carte : panneau avec une scène illustrée de ce que fait l'agent, étiquetée
+  « Exemple fictif — simulation ». Aucune activité réelle simulée.
+- Scroll natif (scroll-snap), boutons précédent/suivant, clavier, tactile ; mouvement réduit =
+  sans animation. Aucune librairie ajoutée.
+- Impact sur le point 4 du Lot 1 : hero et fond vivant inchangés ; le parcours du hero reste un
+  aperçu, le carrousel en est la version détaillée (même ordre, mêmes noms, textes alignés) ;
+  le fond vivant est atténué derrière le carrousel pour la lisibilité.
+
+### A3. Graphique « blocage administratif » (section « problème »)
+- Courbe qui progresse puis plafonne ; zone d'alerte en pointillés = blocage administratif
+  (relances manuelles, dossiers dispersés, doublons entre conseillers), pas une erreur technique.
+- Titre proposé : « Ce n'est pas la prospection qui freine vos mandats. C'est l'administratif. »
+- Aucun chiffre sur les axes (seulement « Temps » et « Mandats »), étiquette
+  « Illustration — exemple fictif ». Tracé à l'apparition, statique en mouvement réduit,
+  description textuelle pour les lecteurs d'écran. Esthétique Ascend.
