@@ -32,6 +32,13 @@ export type RailNode = {
   /** What concretely happened or will happen, one short line. */
   action?: ReactNode;
   state: RailState;
+  /**
+   * Human checkpoint (a validation or a confirmation by a person of the
+   * agency): drawn with a double contour, in grey or black like the rest of the
+   * network. It only takes the cobalt accent when its state is `human`, i.e.
+   * when a decision is really awaited.
+   */
+  checkpoint?: boolean;
   /** Written status (« Terminé », « Bloqué »…): the words carry the meaning. */
   statusLabel: string;
   /** Measured duration, already formatted. Omitted when nothing was measured. */
@@ -102,10 +109,13 @@ function ms(value: number | undefined): string {
 /**
  * Rail « réseau opérationnel » — docs/design-system.md §3.1.
  *
- * One node per recorded step (or per stage of a dossier), a cobalt signal on
- * the line towards the next one. Activation: the signal travels, the border
- * lights up, the pictogram moves once, the status appears, the next line takes
- * over. The signal visibly stops after a blocked, stopped or failed node.
+ * One node per recorded step (or per stage of a dossier), linked to the next
+ * one by a line carrying small relay points (visual marks only: a line exists
+ * only between consecutive nodes). The static network is black, white and
+ * grey; cobalt is kept for what is really active: the moving signal, the node
+ * in progress, and a human validation that awaits an action. Activation: the
+ * signal travels, the border lights up, the pictogram moves once, the status
+ * appears, the next line takes over. The signal visibly stops after a blocked, stopped or failed node.
  *
  * Honest by construction: the nodes and their states are given by the caller
  * from recorded data; this component invents no node, no percentage and no
@@ -150,6 +160,7 @@ export function OperationalRail({ nodes, label, playback = "stagger", cycle = 0,
             key={node.key}
             className={styles.node}
             data-state={node.state}
+            data-checkpoint={node.checkpoint || undefined}
             data-reached={reached || undefined}
             data-play={playback === "external" ? (node.play ?? "done") : undefined}
             data-testid="rail-node"
@@ -169,8 +180,21 @@ export function OperationalRail({ nodes, label, playback = "stagger", cycle = 0,
                 </span>
               </span>
             ) : null}
+            {previous ? (
+              <span
+                className={styles.relays}
+                aria-hidden="true"
+                data-testid="rail-relays"
+                data-cut={lineCut || undefined}
+                data-lit={(reached && !lineCut) || undefined}
+              >
+                <span className={styles.relay} />
+                <span className={styles.relay} />
+                <span className={styles.relay} />
+              </span>
+            ) : null}
 
-            <span className={styles.core} aria-hidden="true">
+            <span className={styles.core} aria-hidden="true" data-testid="rail-core">
               <Icon className={styles.icon} width={18} height={18} />
               <span className={styles.dot} />
             </span>

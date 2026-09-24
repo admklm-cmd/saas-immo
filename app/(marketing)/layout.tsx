@@ -10,10 +10,11 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-dvh flex-1 flex-col">
       <header className="panel-blur sticky top-0 z-40 border-b border-line">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-4">
-          <Link href="/" className="inline-flex items-center gap-3 rounded-xs">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:gap-6 sm:px-6">
+          <Link href="/" className="inline-flex shrink-0 items-center gap-3 rounded-xs">
             <Logo />
-            <span className="text-xs text-ink-subtle">{APP_TEXTS.brand.prototype}</span>
+            {/* Hidden on a phone so the header fits 390 px; the footer still says it is a prototype. */}
+            <span className="hidden text-xs text-ink-subtle sm:inline">{APP_TEXTS.brand.prototype}</span>
           </Link>
           <div className="flex items-center gap-2">
             <ButtonLink href="/estimation" variant="ghost" size="sm">

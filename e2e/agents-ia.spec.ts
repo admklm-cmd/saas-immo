@@ -128,6 +128,20 @@ test("rejeu : le rail du dossier ne montre que les étapes enregistrées et la d
   // The mandate is never shown as reached without a human confirmation.
   await expect(rail.locator("[data-node='mandate']")).toHaveAttribute("data-state", /pending|untraced/);
   await expect(rail).not.toContainText("%");
+
+  // A1: the human checkpoints keep a double contour; cobalt only where an action is awaited.
+  const COBALT = "rgb(36, 87, 255)";
+  for (const key of ["first_review", "follow_up_review", "mandate"]) {
+    await expect(rail.locator(`[data-node='${key}']`)).toHaveAttribute("data-checkpoint", "true");
+  }
+  const mandateCore = rail.locator("[data-node='mandate']").getByTestId("rail-core");
+  await expect(mandateCore).not.toHaveCSS("outline-style", "none");
+  await expect(mandateCore).not.toHaveCSS("outline-color", COBALT);
+  await expect(mandateCore).not.toHaveCSS("border-top-color", COBALT);
+  // A finished stage is black and white, never cobalt.
+  await expect(hugo.getByTestId("rail-core")).not.toHaveCSS("border-top-color", COBALT);
+  // Lines between consecutive stages carry their relay points (nine lines for ten stages).
+  await expect(rail.getByTestId("rail-relays")).toHaveCount(9);
 });
 
 test("rejeu : une exécution inconnue affiche une erreur utile et un retour", async ({ page }) => {

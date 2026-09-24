@@ -8,6 +8,9 @@ import { OperationalRail, type RailNode } from "./OperationalRail";
 
 const TEXTS = APP_TEXTS.dossierJourney;
 
+/** Stages decided by a person of the agency: double contour on the rail. */
+const CHECKPOINTS: ReadonlySet<JourneyStageKey> = new Set(["first_review", "follow_up_review", "mandate"]);
+
 const STAGE_ICONS: Readonly<Record<JourneyStageKey, RailNode["icon"]>> = {
   prospect: JOURNEY_ICONS.prospect,
   lea: AGENT_ICONS.lea,
@@ -46,6 +49,7 @@ export function journeyRailNodes(stages: readonly JourneyStage[], measured?: Mea
       name: TEXTS.stages[stage.key].name,
       action: TEXTS.stages[stage.key].action,
       state: stage.state,
+      checkpoint: CHECKPOINTS.has(stage.key),
       statusLabel: stage.statusLabel,
       duration: isMeasured && measured ? formatDurationMs(measured.durationMs) : undefined,
       href,

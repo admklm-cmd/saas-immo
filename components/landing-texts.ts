@@ -58,13 +58,28 @@ export const LANDING_TEXTS = {
 
   problem: {
     kicker: "Le problème",
-    title: "Les demandes arrivent de partout. Le suivi se perd en chemin.",
-    body: "Formulaire, appel, portail : la même personne revient par deux canaux, une relance attend, une information manque. Sans ordre clair, le dossier s'arrête avant le rendez-vous.",
+    title: "Ce n'est pas la prospection qui freine vos mandats. C'est l'administratif.",
+    body: "Les demandes arrivent. Mais chaque dossier traîne des relances à faire à la main, des informations éparpillées et des fiches en double. Le suivi sature, et le dossier s'arrête avant le rendez-vous.",
+    /** The three causes of the administrative block, as named on the chart. */
     symptoms: [
-      { title: "Doublons", body: "Un même vendeur enregistré deux fois, suivi par deux personnes." },
-      { title: "Relances perdues", body: "Oubliées, ou envoyées deux fois au même contact." },
-      { title: "Suppositions", body: "Une information manquante complétée de mémoire plutôt que demandée." },
+      { title: "Relances manuelles", body: "Notées de mémoire, oubliées, ou envoyées deux fois au même contact." },
+      {
+        title: "Dossiers dispersés",
+        body: "Formulaire, appel, portail : les informations d'un même vendeur vivent à trois endroits.",
+      },
+      { title: "Doublons entre conseillers", body: "Un même vendeur enregistré deux fois, suivi par deux personnes." },
     ],
+    /** Illustrative chart: no figure on the axes, labelled as a fictitious example. */
+    chart: {
+      label: "Illustration — exemple fictif",
+      title: "La progression plafonne au niveau de l'administratif",
+      axisX: "Temps",
+      axisY: "Mandats",
+      zone: "Blocage administratif",
+      causesLabel: "Causes du blocage administratif",
+      description:
+        "Illustration sans chiffres. Une courbe de mandats progresse avec le temps, puis plafonne. Au niveau du plafond, une zone en pointillés nommée « Blocage administratif » regroupe trois causes : relances manuelles, dossiers dispersés, doublons entre conseillers.",
+    },
   },
 
   solution: {
@@ -88,38 +103,154 @@ export const LANDING_TEXTS = {
     kicker: "Cinq agents, cinq périmètres",
     title: "Chaque agent sait où son travail commence. Et où il s'arrête.",
     body: "Le dossier avance dans un ordre lisible. Les informations manquantes deviennent des tâches, jamais des suppositions.",
-    list: [
+    carousel: {
+      label: "Étapes d'un dossier vendeur, de la demande au mandat",
+      hint: "Choisissez une étape pour voir ce qu'elle fait sur un dossier fictif.",
+      previous: "Étape précédente",
+      next: "Étape suivante",
+      kinds: { agent: "Agent IA", human: "Étape humaine" },
+      stepPrefix: "Étape",
+      missionLabel: "Sa mission",
+      boundaryLabel: "Sa limite",
+      sceneBadge: "Exemple fictif — simulation",
+    },
+    /**
+     * The seven steps of the carousel, in the order of the hero journey
+     * (`journey.steps`): same names, detailed. Every scene is a fictitious
+     * example (La Ciotat / Cassis), no real person, no figure presented as a
+     * statistic.
+     */
+    steps: [
       {
+        key: "lea",
+        kind: "agent",
         name: "Léa",
         role: "Acquisition",
         action: "Vérifie la source, dédoublonne et crée une fiche propre.",
         boundary: "Ne transforme jamais une demande en consentement.",
       },
       {
+        key: "hugo",
+        kind: "agent",
         name: "Hugo",
         role: "Qualification",
         action: "Structure le bien, le secteur, la motivation et le délai.",
         boundary: "Signale ce qui manque au lieu de l'inventer.",
       },
       {
+        key: "emma",
+        kind: "agent",
         name: "Emma",
         role: "Relation",
         action: "Prépare une relance adaptée au contexte enregistré.",
         boundary: "Le premier message reste soumis à validation.",
       },
       {
+        key: "review",
+        kind: "human",
+        name: "Validation humaine",
+        role: "Conseiller",
+        action: "Relit le premier message, le modifie, le valide ou le refuse.",
+        boundary: "Aucun premier contact ne part sans elle.",
+      },
+      {
+        key: "louis",
+        kind: "agent",
         name: "Louis",
         role: "Rendez-vous",
         action: "Propose un créneau d'estimation et prépare le dossier.",
         boundary: "Ne réserve jamais deux fois le même créneau.",
       },
       {
+        key: "sarah",
+        kind: "agent",
         name: "Sarah",
         role: "Suivi",
         action: "Transforme le compte-rendu humain en prochaines actions.",
         boundary: "Ne déclare jamais seule un mandat signé.",
       },
+      {
+        key: "mandate",
+        kind: "human",
+        name: "Mandat",
+        role: "Conseiller",
+        action: "Le conseiller confirme lui-même la signature du mandat.",
+        boundary: "Jamais auto-déclaré par un agent IA.",
+      },
     ],
+    /** One illustrated scene per step. Fictitious data only. */
+    scenes: {
+      lea: {
+        title: "Deux demandes entrent, une seule fiche en sort",
+        incoming: [
+          { source: "Formulaire d'estimation du site", detail: "Maison · La Ciotat" },
+          { source: "Appel reçu à l'agence", detail: "Même adresse e-mail" },
+        ],
+        checks: [
+          { label: "Source vérifiée", detail: "Formulaire du site de l'agence" },
+          { label: "Doublon détecté", detail: "Demandes rapprochées, aucune fiche en double" },
+        ],
+        output: "Fiche créée · Maison · La Ciotat",
+        note: "Une demande n'est pas un consentement : aucun n'est déduit.",
+      },
+      hugo: {
+        title: "Le projet structuré, sans supposition",
+        fields: [
+          { label: "Bien", value: "Appartement T3 avec terrasse" },
+          { label: "Secteur", value: "Cassis" },
+          { label: "Délai", value: "Vente souhaitée avant l'été" },
+          { label: "Motivation", value: null },
+        ],
+        missing: "Information manquante — signalée, pas inventée",
+        task: "Tâche créée : demander la motivation au vendeur",
+      },
+      emma: {
+        title: "Une relance préparée, jamais envoyée seule",
+        channel: "E-mail",
+        consent: "Consentement e-mail vérifié avant tout envoi",
+        subject: "Votre demande d'estimation à Cassis",
+        body: "Bonjour, merci pour votre demande concernant votre appartement. Un conseiller peut passer l'estimer la semaine prochaine, au moment qui vous convient.",
+        unsubscribe: "Se désinscrire de nos messages",
+        status: "Brouillon — rien n'est envoyé",
+      },
+      review: {
+        title: "Un conseiller relit, puis décide",
+        reviewer: "Conseiller de l'agence",
+        message: "Premier contact préparé par Emma",
+        actions: { edit: "Modifier", reject: "Refuser", approve: "Valider" },
+        result: "Premier contact validé par un humain",
+        note: "Sans cette validation, rien ne part.",
+      },
+      louis: {
+        title: "Un créneau libre, jamais réservé deux fois",
+        day: "Mardi · estimation à Cassis",
+        slots: [
+          { time: "9 h 30", state: "taken", label: "Déjà réservé" },
+          { time: "11 h 00", state: "proposed", label: "Proposé au vendeur" },
+          { time: "15 h 30", state: "free", label: "Libre" },
+        ],
+        folder: "Dossier d'estimation préparé : bien, secteur, historique",
+        note: "Un créneau déjà réservé n'est jamais reproposé.",
+      },
+      sarah: {
+        title: "Du compte-rendu aux prochaines actions",
+        reportLabel: "Compte-rendu du conseiller",
+        report: "Visite faite. Vendeur intéressé, attend l'avis de valeur avant de décider.",
+        actionsLabel: "Suivi préparé par Sarah",
+        actions: [
+          "Avis de valeur à envoyer, après validation humaine",
+          "Relance prévue si le consentement reste valide",
+          "Étape du dossier : estimation faite",
+        ],
+      },
+      mandate: {
+        title: "Le mandat, confirmé par un humain",
+        proposal: "Sarah signale un mandat à confirmer",
+        pending: "Confirmation humaine requise",
+        confirmed: "Mandat signé, confirmé par le conseiller",
+        note: "Un agent IA ne déclare jamais seul un mandat signé.",
+      },
+    },
   },
 
   control: {

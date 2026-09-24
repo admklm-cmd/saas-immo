@@ -1,0 +1,137 @@
+/*
+ * Illustration « blocage administratif » — docs/design-system.md §1.1.
+ * Black, warm white, pearl grey; cobalt only on the growing curve (discreet
+ * accent). The alert zone is grey/black dashed: a block, not a technical error.
+ * The literal numbers are the SVG geometry (strokes, dashes, font units).
+ */
+
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 1.25rem;
+  overflow: visible;
+}
+
+.axis {
+  fill: none;
+  stroke: var(--color-ink-subtle);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.axisLabel {
+  fill: var(--color-ink-muted);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.area {
+  fill: var(--color-pearl-soft);
+}
+
+.curve {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.zone {
+  fill: var(--color-surface-sunken);
+  stroke: var(--color-ink-subtle);
+  stroke-dasharray: 6 6;
+  stroke-width: 1.5;
+}
+
+.zoneLabel {
+  dominant-baseline: central;
+  fill: var(--color-ink);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ceiling {
+  stroke: var(--color-ink);
+  stroke-dasharray: 3 5;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+}
+
+.tick {
+  stroke: var(--color-ink-subtle);
+  stroke-dasharray: 2 4;
+  stroke-width: 1.25;
+}
+
+.stop {
+  fill: var(--color-surface);
+  stroke: var(--color-ink);
+  stroke-width: 2;
+}
+
+/* Small screens: the SVG shrinks, the words keep a readable size. */
+@media (max-width: 639px) {
+  .axisLabel {
+    font-size: 22px;
+  }
+
+  .zoneLabel {
+    font-size: 22px;
+  }
+}
+
+/* --- Drawing on appearance (driven by the enclosing Reveal) ---------------- */
+/* Without JavaScript, Reveal stays « visible »: the chart is complete. */
+:global(.reveal[data-reveal="hidden"]) .curve {
+  stroke-dashoffset: 1;
+}
+
+:global(.reveal[data-reveal="hidden"]) .area,
+:global(.reveal[data-reveal="hidden"]) .late {
+  opacity: 0;
+}
+
+:global(.reveal[data-reveal="entering"]) .curve {
+  animation: chart-draw calc(var(--duration-slow) * 4) var(--ease-standard) var(--duration-slow) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .area {
+  animation: chart-fade calc(var(--duration-slow) * 2) var(--ease-standard) calc(var(--duration-slow) * 2) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .late {
+  animation: chart-fade var(--duration-slow) var(--ease-standard) calc(var(--duration-slow) * 5) both;
+}
+
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: the final drawing at once, whatever the Reveal state. */
+@media (prefers-reduced-motion: reduce) {
+  .curve,
+  .area,
+  .late {
+    animation: none !important;
+    opacity: 1 !important;
+    stroke-dashoffset: 0 !important;
+  }
+}

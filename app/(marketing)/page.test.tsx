@@ -15,14 +15,16 @@ it("presents the hero, the five agents and the human safeguards", () => {
   render(<HomePage />);
   expect(screen.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeDefined();
 
-  for (const agent of LANDING_TEXTS.agents.list) {
-    expect(screen.getByText(agent.action)).toBeDefined();
-  }
+  // The seven steps of the carousel are tabs; the first one is shown at once.
+  const tabs = screen.getAllByRole("tab");
+  expect(tabs).toHaveLength(LANDING_TEXTS.agents.steps.length);
+  expect(screen.getByText(LANDING_TEXTS.agents.steps[0].action)).toBeDefined();
   for (const fact of LANDING_TEXTS.control.facts) {
     expect(screen.getByText(fact.body)).toBeDefined();
   }
   expect(screen.getAllByText("Simulation").length).toBeGreaterThan(0);
-  expect(screen.getByText(LANDING_TEXTS.journey.badge)).toBeDefined();
+  // Hero journey and carousel scene: both say they are a fictitious simulation.
+  expect(screen.getAllByText(LANDING_TEXTS.journey.badge).length).toBeGreaterThanOrEqual(2);
 });
 
 it("drives one background scene per section, and the background is decorative", () => {

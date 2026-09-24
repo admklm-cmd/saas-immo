@@ -29,6 +29,13 @@ describe("landing copy", () => {
     expect(LANDING_TEXTS.journey.badge).toMatch(/fictif/i);
     expect(LANDING_TEXTS.journey.badge).toMatch(/simulation/i);
     expect(LANDING_TEXTS.hero.illustrationNote).toMatch(/aucune activité en direct/i);
+    expect(LANDING_TEXTS.agents.carousel.sceneBadge).toBe(LANDING_TEXTS.journey.badge);
+    expect(LANDING_TEXTS.problem.chart.label).toBe("Illustration — exemple fictif");
+  });
+
+  it("names the axes of the chart without any figure", () => {
+    expect([LANDING_TEXTS.problem.chart.axisX, LANDING_TEXTS.problem.chart.axisY]).toEqual(["Temps", "Mandats"]);
+    expect(strings(LANDING_TEXTS.problem.chart).join(" ")).not.toMatch(/\d/);
   });
 
   it("carries the tag of the hero and a title made of its lines", () => {

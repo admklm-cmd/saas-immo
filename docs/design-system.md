@@ -26,7 +26,41 @@ s'inspire du niveau de contraste et du rythme des studios numériques contempora
 sans reprendre leurs contenus, compositions ou effets propriétaires.
 
 - Thème unique clair, monochrome ; l'accent cobalt est réservé à l'étape active, au
-  signal et au point de contrôle humain. Sans image ni ressource distante.
+  signal et au point de contrôle humain. Sans image ni ressource distante. Pour le rail
+  et le carrousel des agents (ajustements A1/A2, 24/09/2026) la règle est plus stricte :
+  cobalt seulement pour ce qui est réellement actif (étape en cours / sélectionnée,
+  impulsion, validation qui attend une action) ; une étape humaine se reconnaît à sa
+  **forme** (double contour), pas à la couleur. `LandingSolution` et `HeroJourney`
+  gardent pour l'instant l'accent statique du Lot 1 sur les étapes humaines.
+- **Section « problème »** (`LandingProblem` + `BlockerChart`) : titre « Ce n'est pas
+  la prospection qui freine vos mandats. C'est l'administratif. » ; graphique SVG
+  (Server Component) d'une courbe de mandats qui progresse puis plafonne sous une zone
+  en pointillés « Blocage administratif ». **Aucun chiffre** : axes « Temps » et
+  « Mandats » seulement, étiquette visible « Illustration — exemple fictif ». Courbe
+  cobalt (accent discret), zone grise/noire pointillée (un blocage, pas une erreur),
+  aire gris perle. `role="img"` + `aria-describedby` vers une description écrite. Tracé
+  `stroke-dashoffset` (`pathLength=1`) déclenché par le `Reveal` englobant ; complet
+  sans JavaScript et sous mouvement réduit. Les trois causes (relances manuelles,
+  dossiers dispersés, doublons entre conseillers) sont écrites à côté, en HTML.
+- **Carrousel des agents** (`components/landing/agents/`, section `agents`) : version
+  détaillée du parcours du hero (mêmes noms, même ordre, testé contre
+  `journey.steps`) — Léa → Hugo → Emma → Validation humaine → Louis → Sarah → Mandat.
+  Cartes « app » (`AgentStepCard`) : tuile noire pleine pour un agent IA, **double
+  contour** (carte + tuile ronde) pour une étape humaine ; flèches pointillées
+  (`StepConnector`) entre les cartes. Motif WAI-ARIA **tabs** à activation automatique :
+  `tablist` défilable (`overflow-x-auto`, `snap-x snap-mandatory`, tactile natif),
+  tabindex itinérant, ← → Début Fin, Entrée/Espace (boutons natifs), focus cobalt ;
+  carte sélectionnée = bordure cobalt. Boutons précédent/suivant `Button secondary`
+  (`aria-disabled` aux extrémités, jamais `disabled` : le focus ne tombe pas).
+  Panneau `tabpanel` : `StepDetails` (mission, limite) + `StepScene` → une scène par
+  étape dans `SceneFrame`, qui porte **toujours** `SimulationBadge` + « Exemple fictif —
+  simulation ». Lignes de scène `SceneRow` : `done` (tuile noire), `flag` (pointillés :
+  manquant ou en attente, jamais rouge), `active` (seul cobalt), `muted` (barré),
+  `plain`. Entrée unique `stagger` au changement d'étape, rien sous mouvement réduit ;
+  défilement `smooth` sauf mouvement réduit. Sans JavaScript : Léa sélectionnée, sa
+  scène dans le HTML serveur. Cartes et panneau opaques (`bg-surface`) : le fond vivant
+  reste derrière, jamais sous le texte. Données fictives La Ciotat / Cassis, aucune
+  personne réelle, aucun chiffre présenté comme statistique.
 - Le récit suit le travail réel de Léa, Hugo, Emma, Louis puis Sarah.
 - Les preuves restent vérifiables dans le prototype : cinq rôles bornés, validation
   humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
@@ -539,7 +573,7 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `AgentRunsHistory` / `AgentRunsFilters` / `AgentRunsList` | — | Journal filtrable et paginé (formulaire GET, sans JavaScript) ; un seul badge « Simulation » par bloc quand toutes les lignes sont simulées (`simulation-scope.ts`) |
 | `SituationStrip` | `SituationStrip.tsx` | Niveau 1 de `/agents-ia` : agents actifs, validations attendues (lien vers la file), blocages et erreurs techniques **du jour**, comptes exacts sommés depuis le tableau de bord |
 | `SelectedDossierCard` | `SelectedDossierCard.tsx` | Niveau 2 : dossier de la dernière exécution enregistrée rattachée à un contact (Léa exclue : lead brut) ; sinon état vide « Ouvrir les contacts » |
-| `OperationalRail` | `OperationalRail.tsx` + `.module.css` | Rail « réseau opérationnel » : icône, nom, action, statut écrit, durée **seulement si mesurée**. États `pending` (en attente, pointillés), `running` (cobalt pulsé), `done`, `human` (validation humaine, accent), `blocked` (garde-fou, pointillés noirs), `stopped`, `failed` (erreur technique, fond inversé), `untraced`. Le signal s'arrête après un blocage/erreur. Horizontal ≥ 768 px, vertical dessous ; statique sous mouvement réduit. Aucun pourcentage |
+| `OperationalRail` | `OperationalRail.tsx` + `.module.css` | Rail « réseau opérationnel » : icône, nom, action, statut écrit, durée **seulement si mesurée**. États `pending` (en attente, pointillés), `running` (contour cobalt, pastille qui respire en opacité), `done` (contour noir 2 px), `human` (validation qui attend une action : **seul cobalt statique**), `blocked` (garde-fou, pointillés noirs), `stopped`, `failed` (erreur technique, fond inversé), `untraced`. Réseau (A1) : traits de 3 px, gris `--rail-idle` (mélange `ink-subtle`/`surface`) quand non atteints, noirs quand atteints ; trois **points relais** par trait (`relays`, repères visuels uniquement, aucun trait entre nœuds non consécutifs, masqués sur un trait coupé). `checkpoint` (validations et mandat) = **double contour** (`outline` décalé) gris/noir, cobalt seulement en état `human`. Cobalt limité à l'impulsion en mouvement, à l'étape en cours et à la validation en attente — règle vérifiée sur le CSS par `OperationalRail.test.tsx`. Pas de lueur (`--color-accent-glow` banni du rail). Le signal s'arrête après un blocage/erreur. Horizontal ≥ 768 px, vertical dessous ; statique et sans impulsion sous mouvement réduit. Aucun pourcentage |
 | `DossierJourneyRail` / `DossierJourneyLoader` | — | Parcours d'un dossier (Prospect → Léa → validation humaine → Hugo → Emma → validation humaine → Louis → rendez-vous → Sarah → mandat confirmé par un humain), lu de `getContactTimeline` via `dossier-journey.ts` (pur, testé). Sur le rejeu, seule l'exécution rejouée porte sa durée mesurée (aucune si encore en cours) |
 | `PendingMessagesList` | `PendingMessagesList.tsx` (client) | File « à valider » : confirmation persistante (`aria-live`) + rafraîchissement serveur |
 | `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |

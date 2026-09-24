@@ -1,13 +1,24 @@
 /*
  * Rail « réseau opérationnel » — docs/design-system.md §3.1.
  * Colours, radii, shadows, durations and easings are tokens; the few literal
- * numbers are the geometry of the rail (node size, line thickness).
+ * numbers are the geometry of the rail (node size, line thickness, relays).
+ *
+ * Colour rule (plan A1, validated 24/09/2026): the static network is black,
+ * white and grey. The cobalt accent is ONLY used by
+ *   - the moving signal (`.signal`),
+ *   - the node in progress (`data-state="running"`, `data-play="active"`),
+ *   - a human validation that really awaits an action (`data-state="human"`).
+ * A human checkpoint that is not waiting is recognised by its double contour,
+ * never by the colour. No glow, no neon. Enforced by OperationalRail.test.tsx.
  */
 
 .rail {
   --core: 2.75rem;
-  --line: 2px;
+  --line: 3px;
+  --relay: 7px;
   --gap-link: 0.5rem;
+  /* Grey of the lines and contours not reached yet: clearly visible, never black. */
+  --rail-idle: color-mix(in srgb, var(--color-ink-subtle) 62%, var(--color-surface));
   position: relative;
   display: grid;
   grid-auto-columns: minmax(6.75rem, 1fr);
@@ -29,26 +40,26 @@
 }
 
 /* --- Incoming line (from the previous node to this one) ---------------------- */
-.link {
+.link,
+.relays {
   position: absolute;
-  top: calc(var(--core) / 2 - var(--line) / 2);
   right: calc(50% + var(--core) / 2 + var(--gap-link));
   left: calc(-50% + var(--core) / 2 + var(--gap-link));
+}
+
+.link {
+  top: calc(var(--core) / 2 - var(--line) / 2);
   height: var(--line);
   overflow: hidden;
   border-radius: 999px;
-  background: var(--color-line-strong);
+  background: var(--rail-idle);
 }
 
 /* After a blocked, stopped or failed node the signal does not go on: dashed
    line, and a short bar where it stopped. */
 .link[data-cut] {
   overflow: visible;
-  background: repeating-linear-gradient(
-    to right,
-    var(--color-line-strong) 0 4px,
-    transparent 4px 8px
-  );
+  background: repeating-linear-gradient(to right, var(--rail-idle) 0 4px, transparent 4px 8px);
 }
 
 .link[data-cut]::before {
@@ -57,7 +68,7 @@
   top: -5px;
   left: 0;
   width: 2px;
-  height: 12px;
+  height: 13px;
   border-radius: 999px;
   background: var(--color-ink);
 }
@@ -80,17 +91,46 @@
   transform: translateX(-100%);
 }
 
+/* The impulse in motion: the only moving cobalt of the rail. */
 .signal {
   position: absolute;
-  top: 50%;
+  top: 0;
   right: 0;
-  width: 1rem;
-  height: 4px;
-  margin-top: -2px;
+  width: 1.25rem;
+  height: 100%;
   border-radius: 999px;
   background: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-accent-glow);
   opacity: 0;
+}
+
+/* --- Relay points along the line (visual marks, no extra connection) ------- */
+.relays {
+  z-index: 1;
+  top: calc(var(--core) / 2 - var(--relay) / 2);
+  display: flex;
+  height: var(--relay);
+  align-items: center;
+  justify-content: space-evenly;
+  pointer-events: none;
+}
+
+.relay {
+  width: var(--relay);
+  height: var(--relay);
+  flex: none;
+  border: 1.5px solid var(--rail-idle);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+
+.relays[data-lit] .relay {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+}
+
+/* A cut line reads as stopped: no relay on it. */
+.relays[data-cut] {
+  display: none;
 }
 
 /* --- Node core ------------------------------------------------------------- */
@@ -102,7 +142,7 @@
   height: var(--core);
   flex: none;
   place-items: center;
-  border: 1px solid var(--color-line-strong);
+  border: 1.5px solid var(--rail-idle);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-subtle);
@@ -125,11 +165,11 @@
   position: absolute;
   top: -4px;
   right: -4px;
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border: 2px solid var(--color-surface);
   border-radius: 999px;
-  background: var(--color-line-strong);
+  background: var(--rail-idle);
 }
 
 .text {
@@ -175,6 +215,7 @@
 
 /* --- States (final look; the playback only animates towards it) ------------ */
 .node[data-state="done"] .core {
+  border-width: 2px;
   border-color: var(--color-ink);
 }
 
@@ -213,9 +254,9 @@
   display: none;
 }
 
+/* In progress: cobalt contour, the light breathes (opacity only, no glow). */
 .node[data-state="running"] .core {
   border: 2px solid var(--color-accent);
-  box-shadow: 0 0 0 4px var(--color-accent-soft);
 }
 
 .node[data-state="running"] .dot {
@@ -223,9 +264,27 @@
   animation: rail-pulse 1.4s ease-in-out infinite;
 }
 
-/* Human checkpoint: the accent is reserved to it (plan: « point de contrôle humain »). */
+/* Human checkpoint (validation, confirmation): a double contour, in the grey
+   or black of the network. The shape says « a person decides here ». */
+.node[data-checkpoint] .core {
+  outline: 1.5px solid var(--rail-idle);
+  outline-offset: 3px;
+}
+
+.node[data-checkpoint][data-state="pending"] .core,
+.node[data-checkpoint][data-state="untraced"] .core {
+  outline-style: dashed;
+}
+
+.node[data-checkpoint]:is([data-state="done"], [data-state="blocked"], [data-state="stopped"], [data-state="failed"])
+  .core {
+  outline-color: var(--color-ink);
+}
+
+/* A human decision is REALLY awaited: the only static cobalt of the network. */
 .node[data-state="human"] .core {
-  border: 1.5px solid var(--color-accent);
+  border: 2px solid var(--color-accent);
+  outline-color: var(--color-accent);
   background: var(--color-accent-soft);
   color: var(--color-accent-strong);
 }
@@ -267,11 +326,11 @@
 /* A last node that stopped the flow: a short dashed stub and a stop bar. */
 .endcap {
   position: absolute;
-  top: calc(var(--core) / 2 - 1px);
+  top: calc(var(--core) / 2 - var(--line) / 2);
   left: calc(50% + var(--core) / 2 + var(--gap-link));
   width: 1.25rem;
   height: var(--line);
-  background: repeating-linear-gradient(to right, var(--color-line-strong) 0 4px, transparent 4px 8px);
+  background: repeating-linear-gradient(to right, var(--rail-idle) 0 4px, transparent 4px 8px);
 }
 
 .endcap::after {
@@ -280,7 +339,7 @@
   top: -5px;
   right: 0;
   width: 2px;
-  height: 12px;
+  height: 13px;
   border-radius: 999px;
   background: var(--color-ink);
 }
@@ -310,10 +369,15 @@
   animation: rail-signal var(--link-dur) linear var(--link-at) both;
 }
 
+/* A relay turns black once the signal has passed it (end of the line). */
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .relays[data-lit] .relay {
+  animation: rail-relay var(--duration-base) var(--ease-standard) calc(var(--link-at) + var(--link-dur)) both;
+}
+
 /* --- Playback: external (the replay sets data-play on each node) ------------ */
 .rail[data-playback="external"] .node[data-play="pending"] .core {
   border-style: dashed;
-  border-color: var(--color-line-strong);
+  border-color: var(--rail-idle);
   background: var(--color-surface);
   box-shadow: none;
   color: var(--color-ink-subtle);
@@ -325,17 +389,18 @@
 }
 
 .rail[data-playback="external"] .node[data-play="pending"] .dot {
-  background: var(--color-line-strong);
+  background: var(--rail-idle);
 }
 
 .rail[data-playback="external"] .node[data-play="pending"] .status {
   opacity: 0;
 }
 
+/* The step being replayed is the step in progress. */
 .rail[data-playback="external"] .node[data-play="active"] .core {
   transform: translateY(-3px);
   border: 2px solid var(--color-accent);
-  box-shadow: var(--shadow-raised), 0 0 0 4px var(--color-accent-soft);
+  box-shadow: var(--shadow-raised);
 }
 
 .rail[data-playback="external"] .node[data-play="active"] .dot {
@@ -350,8 +415,18 @@
   transform: scaleX(0);
 }
 
+.rail[data-playback="external"] .relays[data-lit] .relay {
+  border-color: var(--rail-idle);
+  background: var(--color-surface);
+}
+
 .rail[data-playback="external"] .node[data-play="done"] + .node .link[data-lit] .fill {
   transform: none;
+}
+
+.rail[data-playback="external"] .node[data-play="done"] + .node .relays[data-lit] .relay {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
 }
 
 .rail[data-playback="external"] .node[data-play="active"] + .node .link[data-lit] .fill {
@@ -366,14 +441,15 @@
   animation: rail-signal var(--link-dur) linear both;
 }
 
+/* Keyframes: black and grey only. The cobalt stays in the state rules above. */
 @keyframes rail-light {
   from {
-    border-color: var(--color-line-strong);
+    border-color: var(--rail-idle);
     box-shadow: none;
   }
   45% {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 4px var(--color-accent-glow);
+    border-color: var(--color-ink);
+    box-shadow: var(--shadow-raised);
   }
 }
 
@@ -391,6 +467,13 @@
 @keyframes rail-fade {
   from {
     opacity: 0;
+  }
+}
+
+@keyframes rail-relay {
+  from {
+    border-color: var(--rail-idle);
+    background: var(--color-surface);
   }
 }
 
@@ -428,10 +511,10 @@
 @keyframes rail-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 var(--color-accent-glow);
+    opacity: 1;
   }
   50% {
-    box-shadow: 0 0 0 5px var(--color-accent-glow);
+    opacity: 0.35;
   }
 }
 
@@ -456,23 +539,33 @@
     text-align: left;
   }
 
-  .link {
+  .link,
+  .relays {
     top: calc((var(--row) + var(--row-gap) - var(--core) - var(--gap-link)) * -1);
     right: auto;
     bottom: auto;
-    left: calc(var(--core) / 2 - var(--line) / 2);
-    width: var(--line);
     height: calc(var(--row) + var(--row-gap) - var(--core) - var(--gap-link) * 2);
   }
 
+  .link {
+    left: calc(var(--core) / 2 - var(--line) / 2);
+    width: var(--line);
+  }
+
+  .relays {
+    left: calc(var(--core) / 2 - var(--relay) / 2);
+    width: var(--relay);
+    flex-direction: column;
+  }
+
   .link[data-cut] {
-    background: repeating-linear-gradient(to bottom, var(--color-line-strong) 0 4px, transparent 4px 8px);
+    background: repeating-linear-gradient(to bottom, var(--rail-idle) 0 4px, transparent 4px 8px);
   }
 
   .link[data-cut]::before {
     top: 0;
     left: -5px;
-    width: 12px;
+    width: 13px;
     height: 2px;
   }
 
@@ -489,11 +582,9 @@
     top: auto;
     right: auto;
     bottom: 0;
-    left: 50%;
-    width: 4px;
-    height: 1rem;
-    margin-top: 0;
-    margin-left: -2px;
+    left: 0;
+    width: 100%;
+    height: 1.25rem;
   }
 
   .text {
@@ -545,10 +636,15 @@
   }
 }
 
+/* Reduced motion: final state, no impulse travels (the signal stays hidden). */
 @media (prefers-reduced-motion: reduce) {
   .rail *,
   .rail *::before,
   .rail *::after {
     animation: none !important;
+  }
+
+  .signal {
+    display: none;
   }
 }

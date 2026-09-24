@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { PersonIcon } from "@radix-ui/react-icons";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -134,5 +137,55 @@ describe("journeyRailNodes", () => {
       "Sarah",
       "Mandat",
     ]);
+  });
+});
+
+describe("rail colour rule (A1: cobalt only for what is really active)", () => {
+  const CSS_FILE = resolve(process.cwd(), "features/agents-ia/components/OperationalRail.module.css");
+  const css = readFileSync(CSS_FILE, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  /** Innermost `selector { declarations }` blocks (media queries and keyframes unwrapped). */
+  const rules = Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g), (match) => ({
+    selector: (match[1] ?? "").replace(/\s+/g, " ").trim(),
+    body: match[2] ?? "",
+  }));
+  const ACTIVE = /data-state="running"|data-state="human"|data-play="active"|^\.signal$/;
+
+  it("paints cobalt only on the node in progress, the moving signal and an awaited validation", () => {
+    const accented = rules.filter((rule) => rule.body.includes("--color-accent"));
+    expect(accented.length).toBeGreaterThan(0);
+    for (const rule of accented) expect(rule.selector, rule.selector).toMatch(ACTIVE);
+  });
+
+  it("keeps done, pending, blocked and idle checkpoints in black, white and grey", () => {
+    const STATIC = /data-state="(done|pending|untraced|blocked|stopped|failed)"|data-checkpoint|\.link|\.relay|\.fill|\.core$/;
+    const idle = rules.filter((rule) => STATIC.test(rule.selector) && !ACTIVE.test(rule.selector));
+    expect(idle.length).toBeGreaterThan(0);
+    for (const rule of idle) expect(rule.body, rule.selector).not.toContain("--color-accent");
+  });
+
+  it("draws the human checkpoints with a double contour, and no glow anywhere", () => {
+    const checkpoint = rules.find((rule) => rule.selector === ".node[data-checkpoint] .core");
+    expect(checkpoint?.body).toMatch(/outline:/);
+    expect(css).not.toContain("--color-accent-glow");
+  });
+
+  it("marks the checkpoints and puts relay points on each line between consecutive nodes only", () => {
+    const nodes = [
+      node("done", { key: "a" }),
+      node("human", { key: "b", checkpoint: true }),
+      node("pending", { key: "c", checkpoint: true }),
+    ];
+    render(<OperationalRail nodes={nodes} label="Parcours" />);
+    const items = screen.getAllByTestId("rail-node");
+    expect(items.map((item) => item.hasAttribute("data-checkpoint"))).toEqual([false, true, true]);
+    expect(screen.getAllByTestId("rail-relays")).toHaveLength(items.length - 1);
+    expect(items[0]?.querySelector("[data-testid='rail-relays']")).toBeNull();
+  });
+
+  it("flags the two validations and the mandate as human checkpoints of a dossier", () => {
+    const flagged = journeyRailNodes(buildDossierJourney([]))
+      .filter((item) => item.checkpoint)
+      .map((item) => item.key);
+    expect(flagged).toEqual(["first_review", "follow_up_review", "mandate"]);
   });
 });
