@@ -1,19 +1,45 @@
 /*
- * The chart and its causes on one quiet surface: no border, depth from a
- * translucent paper over the living background and a light directional shadow.
- * The causes read as events of the same system: a title, a short
- * text, the words of the events they produce. Cobalt only on the active cause.
+ * The chart and its causes, part of the page itself: no container, no border,
+ * no shadow. A feathered paper veil (edges fading to nothing) only keeps the
+ * words readable over the living background, which stays visible around and,
+ * dimmed, behind. The causes read as nodes of the same system: a fine rail
+ * links them, each one is a node, its events are small tags of the system.
+ * Cobalt only on the active cause.
  */
 
 .system {
+  position: relative;
+  isolation: isolate;
   display: grid;
   gap: 3rem;
   margin-top: 3rem;
   padding: 1.5rem 1.25rem 1.75rem;
-  border-radius: var(--radius-2xl);
-  background-color: color-mix(in srgb, var(--color-surface) 82%, transparent);
-  box-shadow: var(--shadow-raised);
-  backdrop-filter: saturate(160%) blur(18px);
+}
+
+/* The veil: invisible as a shape, it has no edge. */
+.system::before {
+  --veil-edge: 3.5rem;
+  content: "";
+  position: absolute;
+  /* Phones: never wider than the page margins (no horizontal scroll). */
+  inset: -1.5rem -1.25rem;
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 76%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent);
+  mask-composite: intersect;
+}
+
+@media (min-width: 640px) {
+  .system::before {
+    inset: calc(var(--veil-edge) * -0.5);
+  }
 }
 
 @media (min-width: 640px) {
@@ -37,9 +63,28 @@
 }
 
 .list {
+  position: relative;
   display: grid;
   gap: 0.25rem;
   margin: 1.75rem -1rem 0;
+}
+
+/* The rail linking the causes, through the centre of their nodes. */
+.list::before {
+  content: "";
+  position: absolute;
+  top: 1.75rem;
+  bottom: 1.75rem;
+  left: 0.46875rem;
+  width: 1px;
+  background-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-line-strong) 12%,
+    var(--color-line-strong) 88%,
+    transparent
+  );
+  pointer-events: none;
 }
 
 /* --- One cause: an event of the system ------------------------------------ */
@@ -53,8 +98,31 @@
     opacity var(--duration-interactive) var(--ease-standard);
 }
 
+/* The node of the cause, on the rail, level with its title. */
+.cause::before {
+  content: "";
+  position: absolute;
+  top: 1.5rem;
+  left: 0.25rem;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background-color: var(--color-canvas);
+  transition:
+    border-color var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-interactive) var(--ease-standard),
+    box-shadow var(--duration-interactive) var(--ease-standard);
+}
+
 .cause[data-highlighted="true"] {
-  background-color: var(--color-pearl-soft);
+  background-color: color-mix(in srgb, var(--color-pearl-soft) 80%, transparent);
+}
+
+.cause[data-highlighted="true"]::before {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
 }
 
 :global([data-active-cause]) .cause:not([data-highlighted="true"]) {
@@ -92,41 +160,51 @@
   outline: none;
 }
 
-/* The words of the events, written: the same dot as on the chart, no pill. */
+/* The events of the cause: small tags of the system (the same tags as on the
+   chart and in the living background), each carrying the dot of its event. */
 .kinds {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem 1rem;
-  margin-top: 0.625rem;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
 }
 
 .kind {
   display: inline-flex;
-  gap: 0.4375rem;
+  gap: 0.375rem;
   align-items: center;
+  padding: 0.25rem 0.5625rem 0.25rem 0.4375rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-canvas) 88%, transparent);
   color: var(--color-ink-muted);
   font-size: 0.75rem;
   font-weight: 500;
   line-height: 1;
-  transition: color var(--duration-interactive) var(--ease-standard);
+  transition:
+    color var(--duration-interactive) var(--ease-standard),
+    border-color var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-interactive) var(--ease-standard);
 }
 
 /* The same dot as the events of the chart. */
 .kind::before {
   content: "";
-  width: 0.375rem;
-  height: 0.375rem;
+  width: 0.3125rem;
+  height: 0.3125rem;
   border-radius: 999px;
   background-color: var(--color-ink-subtle);
   transition: background-color var(--duration-interactive) var(--ease-standard);
 }
 
-.cause[data-highlighted="true"] .kind::before {
-  background-color: var(--color-accent);
+.cause[data-highlighted="true"] .kind {
+  border-color: var(--color-accent-line);
+  background-color: var(--color-canvas);
+  color: var(--color-accent-strong);
 }
 
-.cause[data-highlighted="true"] .kind {
-  color: var(--color-accent-strong);
+.cause[data-highlighted="true"] .kind::before {
+  background-color: var(--color-accent);
 }
 
 /* --- Appearance: each cause arrives with the first event it produces ------- */

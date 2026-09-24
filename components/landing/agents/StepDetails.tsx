@@ -25,7 +25,7 @@ export function StepDetails({ step, position, count, iconRef }: StepDetailsProps
   return (
     <div className={styles.details}>
       <span ref={iconRef} className={styles.appIcon}>
-        <AgentAppIcon glyph={STEP_GLYPHS[step.key]} kind={VARIANT_ICON_KIND[variant]} size="xl" surface="dark" />
+        <AgentAppIcon glyph={STEP_GLYPHS[step.key]} kind={VARIANT_ICON_KIND[variant]} size="xl" surface="light" />
       </span>
       <p className={styles.kicker}>
         {TEXTS.stepPrefix} {stepNumber(position)} / {stepNumber(count)} ·{" "}

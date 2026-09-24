@@ -57,6 +57,13 @@ export type SceneSpec = {
   build: boolean;
   /** Ambient prospects drift towards the entry (false: they wander). */
   inflow: boolean;
+  /**
+   * Visual presence of the network (1 = reference rendering). Scales the
+   * opacity of links, nodes and prospects, the size of some nodes and the
+   * frequency of impulses. Only the problem and agents scenes raise it; every
+   * other scene keeps exactly 1, hence exactly the reference rendering.
+   */
+  presence: number;
 };
 
 const BASE: SceneSpec = {
@@ -74,7 +81,18 @@ const BASE: SceneSpec = {
   spotlight: false,
   build: false,
   inflow: true,
+  presence: 1,
 };
+
+/** Presence of the problem and agents scenes: about a third more visible. */
+export const RAISED_PRESENCE = 1.35;
+/** Phones keep half of the extra presence: a quieter, less dense network. */
+export const COMPACT_PRESENCE_GAIN = 0.5;
+
+/** Presence actually applied for a scene on a given screen. */
+export function presenceOf(spec: SceneSpec, compact: boolean): number {
+  return compact ? 1 + (spec.presence - 1) * COMPACT_PRESENCE_GAIN : spec.presence;
+}
 
 /** Mobile: one discreet column on the right edge, below the header. */
 const COMPACT_COLUMN: readonly Point[] = [
@@ -138,6 +156,7 @@ export const SCENES: Record<LivingScene, SceneSpec> = {
     broken: true,
     gateHold: 0.9,
     inflow: false,
+    presence: RAISED_PRESENCE,
   },
   // The same flow, reorganised: one clean curve.
   solution: {
@@ -174,6 +193,7 @@ export const SCENES: Record<LivingScene, SceneSpec> = {
     period: 4.2,
     blockRate: 0.06,
     spotlight: true,
+    presence: RAISED_PRESENCE,
   },
   // Every file stops in front of the human validation, then resumes.
   controle: {

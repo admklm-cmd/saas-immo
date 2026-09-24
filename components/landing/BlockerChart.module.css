@@ -2,9 +2,10 @@
  * Illustration of the problem section — mandates progress, the administrative
  * work absorbs the time, progression plateaus.
  *
- * Palette: ink, pearl, and cobalt only where there is momentum (start of the
- * curve, expected progression) or a highlighted event. No border, no axis, no
- * shadow on the words. Literal numbers are SVG geometry (strokes, dashes,
+ * Palette: ink and greys at rest (dark curve, very fine grey strokes); cobalt
+ * only for motion (the curve while it draws itself) and active states (a
+ * highlighted cause: the curve turns slightly blue, its events light up with a
+ * local cobalt veil and one pulse). No border, no axis, no shadow on the words. Literal numbers are SVG geometry (strokes, dashes,
  * radii) and the timings of the narrative sequence, which have no token (they
  * come from problem/problem-scene.ts through CSS variables on the figure).
  */
@@ -29,24 +30,53 @@
 }
 
 /* --- Gradients -------------------------------------------------------------- */
-.stopAccent {
-  stop-color: var(--color-accent);
+/* The curve: ink at rest, slightly blue while it draws or when a cause is active. */
+.stopCurveStart,
+.stopCurveMid,
+.stopCurveEnd {
+  transition: stop-color var(--duration-interactive) var(--ease-standard);
 }
 
-.stopInk {
-  stop-color: var(--color-ink-muted);
+.stopCurveStart {
+  --curve-rest: var(--color-ink);
+  --curve-active: color-mix(in srgb, var(--color-accent) 58%, var(--color-ink));
+  stop-color: var(--curve-rest);
 }
 
-.stopMuted {
-  stop-color: var(--color-ink-subtle);
+.stopCurveMid {
+  --curve-rest: color-mix(in srgb, var(--color-ink) 80%, var(--color-ink-muted));
+  --curve-active: color-mix(in srgb, var(--color-accent) 34%, var(--color-ink));
+  stop-color: var(--curve-rest);
+}
+
+.stopCurveEnd {
+  --curve-rest: var(--color-ink-muted);
+  --curve-active: color-mix(in srgb, var(--color-accent) 18%, var(--color-ink-muted));
+  stop-color: var(--curve-rest);
+}
+
+:global([data-active-cause]) .stopCurveStart,
+:global([data-active-cause]) .stopCurveMid,
+:global([data-active-cause]) .stopCurveEnd {
+  stop-color: var(--curve-active);
 }
 
 .stopAreaTop {
-  stop-color: var(--color-accent);
-  stop-opacity: 0.07;
+  stop-color: var(--color-ink);
+  stop-opacity: 0.028;
 }
 
 .stopAreaBottom {
+  stop-color: var(--color-ink);
+  stop-opacity: 0;
+}
+
+.stopVeilCenter {
+  stop-color: var(--color-accent);
+  stop-opacity: 0.13;
+}
+
+.stopVeilEdge {
   stop-color: var(--color-accent);
   stop-opacity: 0;
 }
@@ -58,7 +88,7 @@
 
 .stopFrictionEnd {
   stop-color: var(--color-pearl);
-  stop-opacity: 0.85;
+  stop-opacity: 0.7;
 }
 
 /* --- Shapes ----------------------------------------------------------------- */
@@ -72,10 +102,15 @@
 
 .expected {
   fill: none;
-  stroke: color-mix(in srgb, var(--color-accent) 55%, transparent);
+  stroke: color-mix(in srgb, var(--color-ink-subtle) 70%, transparent);
   stroke-dasharray: 0.004 0.012;
   stroke-linecap: round;
-  stroke-width: 1.75;
+  stroke-width: 1.5;
+  transition: stroke var(--duration-interactive) var(--ease-standard);
+}
+
+:global([data-active-cause]) .expected {
+  stroke: color-mix(in srgb, var(--color-accent) 50%, transparent);
 }
 
 .curve {
@@ -85,20 +120,20 @@
   stroke-dashoffset: 0;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2.75;
+  stroke-width: 2.25;
 }
 
 .end {
   fill: var(--color-surface);
   stroke: var(--color-ink);
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 
 .marker,
 .markerCap {
-  stroke: var(--color-ink);
+  stroke: var(--color-ink-muted);
   stroke-linecap: round;
-  stroke-width: 1.25;
+  stroke-width: 1;
 }
 
 /* --- Events ----------------------------------------------------------------- */
@@ -117,7 +152,7 @@
 .tether {
   stroke: var(--color-ink-subtle);
   stroke-linecap: round;
-  stroke-width: 1;
+  stroke-width: 0.75;
   /* Shown when the word of the event is shown, or the event highlighted. */
   opacity: 0;
   transition:
@@ -135,18 +170,31 @@
   }
 }
 
-/* Invisible, wider hit area: hovering an event points at its cause. */
-.halo {
-  fill: var(--color-accent-soft);
+/* Local cobalt veil: the zone of the highlighted events lights up slightly.
+   Never a hit area (it would steal the pointer from its neighbours). */
+.veil {
+  fill: url(#problem-event-veil);
   opacity: 0;
-  transition: opacity var(--duration-interactive) var(--ease-standard);
+  pointer-events: none;
+  transition: opacity var(--duration-slow) var(--ease-standard);
 }
 
+/* Invisible, wider hit area: hovering an event points at its cause. It also
+   carries the single pulse of a highlighted event. */
+.halo {
+  fill: var(--color-accent);
+  opacity: 0;
+}
+
+/* An event is a node of the system: a small ring, like the living background. */
 .dot {
-  fill: var(--color-ink-subtle);
+  fill: var(--color-canvas);
+  stroke: var(--color-ink-subtle);
+  stroke-width: 1.25;
   r: 3.4px;
   transition:
     fill var(--duration-interactive) var(--ease-standard),
+    stroke var(--duration-interactive) var(--ease-standard),
     r var(--duration-interactive) var(--ease-standard);
 }
 
@@ -160,11 +208,28 @@
 
 .event[data-highlighted="true"] .dot {
   fill: var(--color-accent);
-  r: 5px;
+  stroke: var(--color-accent);
+  r: 4.5px;
 }
 
-.event[data-highlighted="true"] .halo {
+.event[data-highlighted="true"] .veil {
   opacity: 1;
+}
+
+/* One pulse, once, when the event gets highlighted. */
+.event[data-highlighted="true"] .halo {
+  animation: event-pulse 640ms var(--ease-standard) 1;
+}
+
+@keyframes event-pulse {
+  from {
+    opacity: 0.28;
+    r: 4.5px;
+  }
+  to {
+    opacity: 0;
+    r: 15px;
+  }
 }
 
 .event[data-highlighted="true"] .tether {
@@ -251,11 +316,14 @@
     visibility 0s linear var(--duration-interactive);
 }
 
+/* A tag of the system: the same hairline capsule as the fragments of the
+   living background and the events written under each cause. */
 .chip {
   display: block;
   padding: 0.3125rem 0.625rem;
+  border: 1px solid var(--color-line);
   border-radius: 999px;
-  background-color: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
   color: var(--color-ink-muted);
   font-size: 0.75rem;
   font-weight: 500;
@@ -264,11 +332,13 @@
   cursor: default;
   transition:
     color var(--duration-interactive) var(--ease-standard),
+    border-color var(--duration-interactive) var(--ease-standard),
     background-color var(--duration-interactive) var(--ease-standard);
 }
 
 .chipSlot[data-highlighted="true"] .chip {
-  background-color: var(--color-accent-soft);
+  border-color: var(--color-accent-line);
+  background-color: var(--color-surface);
   color: var(--color-accent-strong);
 }
 
@@ -317,6 +387,20 @@
 
 :global(.reveal[data-reveal="entering"]) .curve {
   animation: problem-draw var(--curve-duration) cubic-bezier(0.3, 0.1, 0.3, 1) var(--curve-delay) both;
+}
+
+/* Motion is cobalt: the curve draws itself slightly blue, then settles to ink. */
+:global(.reveal[data-reveal="entering"]) .stopCurveStart,
+:global(.reveal[data-reveal="entering"]) .stopCurveMid,
+:global(.reveal[data-reveal="entering"]) .stopCurveEnd {
+  animation: problem-settle calc(var(--curve-duration) + 900ms) var(--ease-standard) var(--curve-delay) backwards;
+}
+
+@keyframes problem-settle {
+  from,
+  60% {
+    stop-color: var(--curve-active);
+  }
 }
 
 /* The area uncovers itself from left to right, under the curve being drawn. */
@@ -401,5 +485,13 @@
 
   .curve {
     stroke-dashoffset: 0 !important;
+  }
+
+  /* No pulse; the highlighted state (dot, veil, curve tint) stays visible. */
+  .halo,
+  .stopCurveStart,
+  .stopCurveMid,
+  .stopCurveEnd {
+    animation: none !important;
   }
 }

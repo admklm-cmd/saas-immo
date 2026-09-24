@@ -17,7 +17,7 @@ export type SceneFrameProps = {
 /**
  * Window of the opened application: the Simulation badge and « Exemple fictif
  * — simulation » belong to the frame, so no scene can be shown without them.
- * White surface on the black OS, no border. Its opening is driven by the
+ * White card on the white page (one hairline, a very light shadow). Its opening is driven by the
  * stage (`data-opening`), never on the first render.
  */
 export function SceneFrame({ stepKey, title, children }: SceneFrameProps) {

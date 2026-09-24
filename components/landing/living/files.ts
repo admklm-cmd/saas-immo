@@ -6,7 +6,7 @@
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 
-import { GATE_STOP, GOAL_STOP, SCENES, type LivingScene, type SceneSpec } from "./scenes";
+import { GATE_STOP, GOAL_STOP, presenceOf, SCENES, type LivingScene, type SceneSpec } from "./scenes";
 import {
   buildSchedule,
   clamp01,
@@ -68,7 +68,8 @@ export function addFiles(
   const spec = SCENES[scene];
   const schedule = scheduleOf(scene);
   const life = schedule.end + FADE_SECONDS;
-  const period = spec.period * (viewport.compact ? 1.7 : 1);
+  // A more present scene sends impulses a little more often (same rhythm elsewhere).
+  const period = (spec.period * (viewport.compact ? 1.7 : 1)) / presenceOf(spec, viewport.compact);
   // Hero: the path is built first, then the first file enters.
   const firstBirth = current && spec.build && !state.previous ? state.since + 3.2 : -Infinity;
   const mainLane = Math.floor((spec.lanes - 1) / 2);
@@ -168,7 +169,7 @@ function addFile(
 function trail(points: readonly number[], segment: number, u: number, dy: number, alpha: number): LinkDraw {
   const [x1, y1] = at(points, segment, dy);
   const [x2, y2] = along(points, segment, u, dy);
-  return { x1, y1, x2, y2, alpha, dashed: false, trail: true };
+  return { x1, y1, x2, y2, alpha, dashed: false, trail: true, strong: false };
 }
 
 function bump(frame: Frame, stop: number, dy: number, amount: number) {

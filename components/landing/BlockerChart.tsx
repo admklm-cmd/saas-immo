@@ -106,11 +106,16 @@ export function BlockerChart() {
                 y1={0}
                 y2={0}
               >
-                <stop offset="0" className={styles.stopAccent} />
-                <stop offset="0.42" className={styles.stopAccent} />
-                <stop offset="0.72" className={styles.stopInk} />
-                <stop offset="1" className={styles.stopMuted} />
+                <stop offset="0" className={styles.stopCurveStart} />
+                <stop offset="0.42" className={styles.stopCurveStart} />
+                <stop offset="0.72" className={styles.stopCurveMid} />
+                <stop offset="1" className={styles.stopCurveEnd} />
               </linearGradient>
+              {/* Local cobalt veil around a highlighted event (the zone lights up). */}
+              <radialGradient id="problem-event-veil">
+                <stop offset="0" className={styles.stopVeilCenter} />
+                <stop offset="1" className={styles.stopVeilEdge} />
+              </radialGradient>
               <linearGradient id="problem-area-fill" x1="0" x2="0" y1="0" y2="1">
                 <stop offset="0" className={styles.stopAreaTop} />
                 <stop offset="1" className={styles.stopAreaBottom} />
@@ -163,6 +168,7 @@ export function BlockerChart() {
                       y1={event.label ? labelPoint(event).y : point.anchorY}
                       y2={point.y}
                     />
+                    <circle className={styles.veil} cx={point.x} cy={point.y} r={30} />
                     <circle className={styles.halo} cx={point.x} cy={point.y} r={12} />
                     <circle className={styles.dot} cx={point.x} cy={point.y} r={3.4} />
                   </g>

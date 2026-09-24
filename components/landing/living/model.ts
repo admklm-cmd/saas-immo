@@ -8,7 +8,7 @@ import { LANDING_TEXTS } from "@/components/landing-texts";
 
 import { addFiles, keepStrongestFragments, laneOffset, laneWeight } from "./files";
 import { buildMotes } from "./motes";
-import { SCENES, STOP_AGENT, STOP_COUNT, type LivingScene, type Point, type SceneSpec } from "./scenes";
+import { presenceOf, SCENES, STOP_AGENT, STOP_COUNT, type LivingScene, type Point, type SceneSpec } from "./scenes";
 import { hash01, smoothstep, valueAt } from "./timeline";
 import type { Frame, SceneState, Viewport } from "./types";
 
@@ -33,6 +33,23 @@ const STOP_LABEL: readonly (string | null)[] = [
   TEXTS.agents[4],
   TEXTS.goal,
 ];
+
+/**
+ * Main connections of the path (link from stop i to stop i + 1): they carry a
+ * little more presence than the others when a scene raises it.
+ */
+const STRONG_LINKS: readonly boolean[] = [false, true, false, true, true, false, true];
+
+/**
+ * Presence displayed at `time`: blended from the previous scene with the same
+ * smoothstep as the layout, so a scene change never makes the network jump.
+ */
+export function displayedPresence(state: SceneState, viewport: Viewport, time: number): number {
+  const now = presenceOf(SCENES[state.scene], viewport.compact);
+  if (!state.previous) return now;
+  const before = presenceOf(SCENES[state.previous], viewport.compact);
+  return before + (now - before) * smoothstep((time - state.since) / TRANSITION_SECONDS);
+}
 
 /** Stop positions of a scene, in CSS px, wandering slightly in the problem scene. */
 export function scenePoints(scene: LivingScene, viewport: Viewport, time: number, seed = DEFAULT_SEED): number[] {
@@ -66,7 +83,15 @@ export function displayedPoints(state: SceneState, viewport: Viewport, time: num
 export function buildFrame(input: { time: number; state: SceneState; viewport: Viewport; seed?: number }): Frame {
   const { time, state, viewport } = input;
   const seed = input.seed ?? DEFAULT_SEED;
-  const frame: Frame = { nodes: [], links: [], tokens: [], marks: [], motes: [], fragments: [] };
+  const frame: Frame = {
+    nodes: [],
+    links: [],
+    tokens: [],
+    marks: [],
+    motes: [],
+    fragments: [],
+    presence: displayedPresence(state, viewport, time),
+  };
   const spec = SCENES[state.scene];
   const points = displayedPoints(state, viewport, time, seed);
   const sceneAge = time - state.since;
@@ -93,6 +118,8 @@ export function buildFrame(input: { time: number; state: SceneState; viewport: V
         alpha: presence * appear * (main ? 1 : 0.6),
         activity: spotlight(spec, stop, time) * k,
         label: main && !viewport.compact ? (STOP_LABEL[stop] ?? null) : null,
+        // Organic: a few nodes a little larger than the others (decorative).
+        variance: hash01(stop, lane, 5, seed) < 0.45 ? 1 : 0.25,
       });
       if (stop === STOP_COUNT - 1) continue;
       const connect = spec.build && !state.previous ? smoothstep((sceneAge - 0.7 - stop * 0.45) / 0.7) : 1;
@@ -104,6 +131,7 @@ export function buildFrame(input: { time: number; state: SceneState; viewport: V
         alpha: presence * connect,
         dashed: broken,
         trail: false,
+        strong: main && (STRONG_LINKS[stop] ?? false),
       });
     }
   }

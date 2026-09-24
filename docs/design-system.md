@@ -46,14 +46,20 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   refonte B du 24/09/2026) : version détaillée du parcours du hero (mêmes noms, même
   ordre, testé contre `journey.steps`) — Léa → Hugo → Emma → Validation humaine → Louis →
   Sarah → Mandat. Voir le motif « module OS » et la navigation physique en § 2.9.
-  Une surface noire (`--color-inverse`, `rounded-2xl`) porte une rangée de **modules**
-  (`AgentStepCard`, onglets) au-dessus de **l'application ouverte** (`tabpanel` :
-  `StepDetails` sur le noir + fenêtre blanche `SceneFrame`). Presque aucune bordure :
-  la hiérarchie vient des valeurs (noir → plaque plus claire du module ouvert → fenêtre
-  blanche), des espacements et de la typographie. Trois natures, trois traitements :
-  agent IA = tuile d'app sombre ; validation humaine = **point de contrôle** (cercle à
-  double contour, le trait du flux s'arrête sur une barre devant lui, « Contrôle
-  humain ») ; mandat = **aboutissement** (cercle plein blanc à double contour,
+  **Version claire** (passe de direction artistique du 24/09/2026, remplace la surface
+  noire) : aucun panneau propre, le système est posé directement sur la page blanche,
+  comme les autres sections ; le fond vivant reste visible entre les surfaces. Seules des
+  surfaces **locales et légères** portent du texte : la plaque translucide de chaque
+  **module** (`AgentStepCard`, onglets), le voile givré sans bord de `StepDetails` et la
+  fenêtre blanche `SceneFrame` (un filet `line`, `shadow-raised`, comme les cartes des
+  sections solution et contrôle). Texte `ink` / `ink-muted`, filets gris très fins ;
+  cobalt **uniquement** pour l'actif et le mouvement (module ouvert, arrivée du flux,
+  anneau de la tuile active, marque d'onglet, focus). Hiérarchie : titre de section →
+  modules → application ouverte → réseau. Trois natures, trois traitements (tuiles en
+  surface `light`, identiques à l'espace connecté) : agent IA = tuile d'app noire à
+  symbole clair ; validation humaine = **point de contrôle** (cercle blanc à double
+  contour encre, le trait du flux s'arrête sur une barre devant lui, « Contrôle
+  humain ») ; mandat = **aboutissement** (cercle plein noir à double contour,
   « Aboutissement », aucun flux après, scène conclue par un bloc noir « confirmé par le
   conseiller »). Chaque scène porte **toujours** `SimulationBadge` + « Exemple fictif —
   simulation ». Lignes `SceneRow` sans bordure : le ton est porté par la pastille
@@ -563,11 +569,23 @@ restent pour les icônes utilitaires de l'application (phases d'une exécution, 
 
 ### 2.9 Motif « module OS » et navigation physique
 
-- **Module** (onglet) : aucune bordure. Repos : tuile, prénom, rôle. Survol : plaque très
-  légère, tuile soulevée, l'accent du symbole bouge, la mission se précise (70 %).
-  Ouvert : plaque plus claire + reflet haut, tuile `active` (anneau cobalt fin), mission
-  visible, **flux** allumé jusqu'à lui (trait de 1,5 px, gris sombre → blanc à 72 %).
-  Signaux combinés, jamais une simple bordure cobalt.
+- **Module** (onglet), version claire : plaque translucide gris perle (`pearl-soft` à
+  72 %, flou 6 px) avec un filet `line` à 55 % ; prénom `ink`, rôle `ink-muted`.
+  Survol : plaque `surface-sunken`, tuile soulevée, l'accent du symbole bouge, la
+  mission se précise (70 %). Ouvert : teinte `accent-soft` (88 %), filet cobalt à 42 %,
+  élévation `shadow-raised` + 2 px, tuile `active` (anneau cobalt fin, symbole qui joue
+  son mouvement), mission visible, petite **marque d'onglet** cobalt (24 × 2 px) en bas du
+  module qui s'étire en 300 ms, **flux** : trait de 1,5 px `line-strong` au repos, gris
+  foncé (`ink` à 55 %) là où le dossier est passé, **cobalt** sur le segment qui arrive
+  au module ouvert. Signaux combinés, jamais une grosse bordure cobalt.
+- **Icônes de la landing** : `AgentAppIcon surface="light"` partout (modules, en-tête de
+  l'application) — la même variante que /agents-ia et les rails de l'espace connecté ; la
+  variante `dark` ne sert plus sur la landing qu'à la pastille du bloc noir de la scène
+  du mandat.
+- **Application ouverte** : `StepDetails` sur un voile blanc givré sans bord (84 %, flou
+  10 px) pour que le réseau passe derrière les mots, jamais dessous ; fenêtre de scène
+  blanche (94 %, flou 8 px), un filet `line`, `shadow-raised` ; surfaces internes
+  `surface-muted`, étiquettes « Simulation » + « Exemple fictif — simulation » inchangées.
 - **Ouvrir l'application** : la tuile du module grandit jusqu'à l'en-tête du panneau
   (FLIP fait main, WAAPI, 460 ms, `cubic-bezier(0.2, 0.8, 0.2, 1)`), puis les mots
   (110–170 ms), la fenêtre s'ouvre (échelle 0,985 → 1) et son contenu arrive ligne par
@@ -587,7 +605,8 @@ restent pour les icônes utilitaires de l'application (phases d'une exécution, 
   immédiatement sur son arrêt.
 - **Clavier et accessibilité** : motif WAI-ARIA tabs (tabindex itinérant, ← → Début Fin,
   Entrée/Espace natifs), panneau focusable et étiqueté par l'onglet, nature de l'étape lue
-  en premier, focus cobalt visible sur le noir (≥ 3:1).
+  en premier, focus cobalt visible sur le blanc (5,4:1) ; texte `ink` 17,7:1 et
+  `ink-muted` ≥ 6:1 sur les plaques claires (WCAG AA).
 
 ## 3. Composants (`components/ui/`)
 

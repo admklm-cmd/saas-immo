@@ -4,6 +4,10 @@
  *
  * Opacities stay low (the page text always wins): grey links, grey prospects,
  * a single cobalt accent for signals, active stages and the human gate.
+ *
+ * `frame.presence` (1 = reference) raises the network a little in the scenes
+ * that ask for it: every term below multiplies by `presence` or adds a share
+ * of `presence - 1`, so a presence of 1 draws exactly the reference frame.
  */
 
 import { GATE_STOP, GOAL_STOP } from "./scenes";
@@ -29,6 +33,9 @@ export type DrawOptions = {
   compact: boolean;
   palette?: Palette;
 };
+
+/** Share of the extra presence given to sizes (nodes, prospects, signals) and to the main links. */
+const LIFT = { node: 0.9, mote: 0.35, signal: 0.3, strongLink: 1, strongWidth: 0.6, label: 0.5 };
 
 /** Upper opacities, before `intensity` and each element's own presence. */
 const ALPHA = {
@@ -58,6 +65,8 @@ export function parseColor(value: string | null | undefined, fallback: Rgb): Rgb
 export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: DrawOptions) {
   const palette = options.palette ?? DEFAULT_PALETTE;
   const level = options.intensity;
+  const presence = frame.presence;
+  const lift = presence - 1;
   ctx.setTransform(options.dpr, 0, 0, options.dpr, 0, 0);
   ctx.clearRect(0, 0, options.width, options.height);
   ctx.lineCap = "round";
@@ -66,9 +75,9 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
   // Ambient prospects.
   for (const mote of frame.motes) {
     if (mote.alpha <= 0.01) continue;
-    ctx.fillStyle = rgba(palette.ink, ALPHA.mote * mote.alpha * level);
+    ctx.fillStyle = rgba(palette.ink, ALPHA.mote * mote.alpha * level * presence);
     ctx.beginPath();
-    ctx.arc(mote.x, mote.y, mote.r, 0, Math.PI * 2);
+    ctx.arc(mote.x, mote.y, mote.r * (1 + lift * LIFT.mote), 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -77,8 +86,12 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
   for (const link of frame.links) {
     if (link.alpha <= 0.01) continue;
     ctx.setLineDash(link.dashed && !link.trail ? [3, 7] : []);
-    ctx.strokeStyle = rgba(palette.line, (link.trail ? ALPHA.trail : ALPHA.skeleton) * link.alpha * level);
-    ctx.lineWidth = link.trail ? 1.25 : 1;
+    const strong = link.strong ? lift : 0;
+    ctx.strokeStyle = rgba(
+      palette.line,
+      (link.trail ? ALPHA.trail : ALPHA.skeleton) * link.alpha * level * presence * (1 + strong * LIFT.strongLink),
+    );
+    ctx.lineWidth = link.trail ? 1.25 : 1 + strong * LIFT.strongWidth;
     ctx.beginPath();
     ctx.moveTo(link.x1, link.y1);
     ctx.lineTo(link.x2, link.y2);
@@ -86,12 +99,12 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
   }
   ctx.setLineDash([]);
 
-  for (const node of frame.nodes) drawNode(ctx, node, palette, level, options);
+  for (const node of frame.nodes) drawNode(ctx, node, palette, level, presence, options);
 
   // Signals (fictitious files).
   for (const token of frame.tokens) {
     if (token.alpha <= 0.01) continue;
-    const alpha = ALPHA.signal * token.alpha * level;
+    const alpha = ALPHA.signal * token.alpha * level * presence;
     if (!token.still) {
       ctx.strokeStyle = rgba(palette.accent, alpha * 0.4);
       ctx.lineWidth = 2;
@@ -102,7 +115,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
     }
     ctx.fillStyle = rgba(palette.accent, alpha);
     ctx.beginPath();
-    ctx.arc(token.x, token.y, options.compact ? 2 : 2.6, 0, Math.PI * 2);
+    ctx.arc(token.x, token.y, (options.compact ? 2 : 2.6) * (1 + lift * LIFT.signal), 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -135,11 +148,19 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
   if (!options.compact) drawFragments(ctx, frame, palette, level, options);
 }
 
-function drawNode(ctx: CanvasRenderingContext2D, node: NodeDraw, palette: Palette, level: number, options: DrawOptions) {
+function drawNode(
+  ctx: CanvasRenderingContext2D,
+  node: NodeDraw,
+  palette: Palette,
+  level: number,
+  presence: number,
+  options: DrawOptions,
+) {
   if (node.alpha <= 0.01) return;
-  const alpha = ALPHA.node * node.alpha * level;
+  const lift = presence - 1;
+  const alpha = ALPHA.node * node.alpha * level * presence;
   const active = node.activity * node.alpha * level;
-  const size = options.compact ? 3.4 : 4.6;
+  const size = (options.compact ? 3.4 : 4.6) * (1 + lift * LIFT.node * node.variance);
 
   if (node.stop === 0) {
     ctx.fillStyle = rgba(palette.ink, alpha * 0.6);
@@ -151,7 +172,7 @@ function drawNode(ctx: CanvasRenderingContext2D, node: NodeDraw, palette: Palett
 
   // Halo of an active stage (cobalt), then the stage itself on paper.
   if (active > 0.02) {
-    ctx.fillStyle = rgba(palette.accent, 0.12 * active);
+    ctx.fillStyle = rgba(palette.accent, 0.12 * active * presence);
     ctx.beginPath();
     ctx.arc(node.x, node.y, size + 7 * node.activity, 0, Math.PI * 2);
     ctx.fill();
@@ -193,7 +214,10 @@ function drawNode(ctx: CanvasRenderingContext2D, node: NodeDraw, palette: Palett
     const leftSide = node.x + 10 + width > options.width - 8;
     ctx.textAlign = leftSide ? "right" : "left";
     ctx.textBaseline = "middle";
-    ctx.fillStyle = rgba(palette.ink, ALPHA.label * node.alpha * level * (0.7 + 0.3 * node.activity));
+    ctx.fillStyle = rgba(
+      palette.ink,
+      ALPHA.label * node.alpha * level * (0.7 + 0.3 * node.activity) * (1 + lift * LIFT.label),
+    );
     ctx.fillText(node.label, leftSide ? node.x - 10 : node.x + 10, node.y + 0.5);
   }
 }

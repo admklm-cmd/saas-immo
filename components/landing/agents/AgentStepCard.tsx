@@ -24,8 +24,10 @@ export type AgentStepCardProps = {
 
 /**
  * One module of the OS row — a tab of the WAI-ARIA tabs pattern (roving
- * tabindex). No border: a plate appears under the open module, its icon lifts
- * with a thin cobalt ring and plays its motion, and its mission appears.
+ * tabindex). A light translucent plate on the white page; the open module takes a
+ * soft cobalt tint, a hairline cobalt edge and lifts, its icon lifts with a thin
+ * cobalt ring and plays its motion, the flow arrives in cobalt, a short cobalt
+ * mark points to its application and its mission appears.
  *
  * The three natures are drawn differently (`stepVariant`): an AI agent is an
  * app tile; the human validation is a checkpoint (circle with a double
@@ -72,7 +74,7 @@ export function AgentStepCard({
             glyph={STEP_GLYPHS[step.key]}
             kind={VARIANT_ICON_KIND[variant]}
             size="lg"
-            surface="dark"
+            surface="light"
             state={selected ? "active" : "idle"}
             testId="step-app-icon"
           />

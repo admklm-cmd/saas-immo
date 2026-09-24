@@ -1,42 +1,40 @@
 /*
  * Section « agents » of the landing, drawn as the interface of an OS —
- * docs/design-system.md §1.1 and §2.8.
+ * docs/design-system.md §1.1, §2.8 and §2.9.
  *
- * One near-black surface holds a row of modules (the seven steps) and the
- * application opened below it. Few borders: the hierarchy comes from values
- * (black surface, lighter plate for the open module, white window for the
- * scene), spacing and type. The cobalt accent only rings the open module and
+ * Light version (DA pass of 24/09/2026): no panel of its own — the row of
+ * modules and the application sit directly on the white page, over the living
+ * background, like the other sections. Only local, light surfaces carry text
+ * (the translucent plate of each module, the white window of the scene), so the
+ * network stays visible between them. Black / dark grey text, hairlines; the
+ * cobalt accent is kept for what is active or moving: the open module (thin
+ * edge, soft tint, ring of its tile, the arrival of the flow, the tab mark) and
  * the keyboard focus.
  *
  * Colours are tokens; the literal numbers are geometry (widths, line weight).
  */
 
 .os {
-  --os-line: color-mix(in srgb, var(--color-ink-inverse) 16%, var(--color-inverse));
-  --os-line-lit: color-mix(in srgb, var(--color-ink-inverse) 72%, var(--color-inverse));
-  --os-plate: color-mix(in srgb, var(--color-ink-inverse) 7%, var(--color-inverse));
-  --os-plate-hover: color-mix(in srgb, var(--color-ink-inverse) 4%, var(--color-inverse));
+  /* Flow line: pearl at rest, dark grey where the dossier has passed, cobalt
+     where it arrives (the open module). */
+  --os-line: var(--color-line-strong);
+  --os-line-lit: color-mix(in srgb, var(--color-ink) 55%, var(--color-surface));
+  --os-line-arrival: var(--color-accent);
+  /* Local plates: translucent, so the living background shows through. */
+  --os-plate: color-mix(in srgb, var(--color-pearl-soft) 72%, transparent);
+  --os-plate-hover: color-mix(in srgb, var(--color-surface-sunken) 92%, transparent);
+  --os-plate-open: color-mix(in srgb, var(--color-accent-soft) 88%, transparent);
+  --os-edge-open: color-mix(in srgb, var(--color-accent) 42%, transparent);
   --module-pad: 1rem;
   --module-icon: 3.5rem;
   position: relative;
-  margin-top: 3.5rem;
-  padding: 1.25rem 0.75rem 0.75rem;
-  border-radius: var(--radius-2xl);
-  background: var(--color-inverse);
-  box-shadow: var(--shadow-overlay);
-  color: var(--color-ink-inverse);
-}
-
-@media (min-width: 640px) {
-  .os {
-    padding: 2rem 1.75rem 1.75rem;
-  }
+  margin-top: 3rem;
+  color: var(--color-ink);
 }
 
 @media (min-width: 1024px) {
   .os {
-    margin-top: 4.5rem;
-    padding: 2.25rem 2.5rem 2.5rem;
+    margin-top: 4rem;
   }
 }
 
@@ -47,12 +45,11 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem 1.5rem;
-  padding-inline: 0.5rem;
 }
 
 .hint {
   max-width: 34rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: 0.875rem;
   line-height: 1.5;
 }
@@ -69,14 +66,14 @@
   height: 2.25rem;
   place-items: center;
   border-radius: 999px;
-  color: var(--color-ink-inverse);
+  color: var(--color-ink);
   transition:
     background-color var(--duration-fast) var(--ease-standard),
     opacity var(--duration-fast) var(--ease-standard);
 }
 
 .navButton:hover:not([aria-disabled="true"]) {
-  background: var(--os-plate);
+  background: var(--color-surface-sunken);
 }
 
 .navButton svg {
@@ -97,12 +94,12 @@
 
 .navButton[aria-disabled="true"] {
   cursor: default;
-  opacity: 0.32;
+  opacity: 0.38;
 }
 
 .navCount {
   min-width: 4.5rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
@@ -110,7 +107,7 @@
 }
 
 .navCurrent {
-  color: var(--color-ink-inverse);
+  color: var(--color-ink);
   font-weight: 600;
 }
 
@@ -120,8 +117,9 @@
   --fade-end: 2.5rem;
   position: relative;
   display: flex;
-  margin-top: 1.25rem;
-  padding: 0.5rem 0.5rem 0.25rem;
+  margin-top: 1rem;
+  margin-inline: -0.5rem;
+  padding: 0.75rem 0.5rem 1.25rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-padding-inline: 0.5rem;
@@ -178,11 +176,18 @@
   flex-direction: column;
   padding: var(--module-pad);
   border-radius: var(--radius-xl);
+  background: var(--os-plate);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-line) 55%, transparent);
   color: inherit;
   cursor: pointer;
   scroll-snap-align: start;
   text-align: left;
-  transition: background-color var(--duration-base) var(--ease-standard);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition:
+    background-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
 }
 
 .module[data-variant="checkpoint"] {
@@ -194,8 +199,34 @@
 }
 
 .module[aria-selected="true"] {
-  background: var(--os-plate);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-ink-inverse) 7%, transparent);
+  background: var(--os-plate-open);
+  box-shadow:
+    inset 0 0 0 1px var(--os-edge-open),
+    var(--shadow-raised);
+  transform: translateY(-2px);
+}
+
+/* The tab mark: a short cobalt line under the open module, towards its application. */
+.module::after {
+  content: "";
+  position: absolute;
+  bottom: 0.5rem;
+  left: var(--module-pad);
+  width: 1.5rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  opacity: 0;
+  transform: scaleX(0.2);
+  transform-origin: left center;
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-slow) var(--ease-standard);
+}
+
+.module[aria-selected="true"]::after {
+  opacity: 1;
+  transform: none;
 }
 
 .module:focus-visible {
@@ -246,6 +277,11 @@
   background: var(--os-line-lit);
 }
 
+/* The flow arrives at the open module in cobalt. */
+.module[aria-selected="true"] .flowIn[data-lit] {
+  background: var(--os-line-arrival);
+}
+
 /* In front of a human checkpoint the flow stops: a short bar across the line. */
 .module[data-variant="checkpoint"] .flowIn::after {
   content: "";
@@ -268,13 +304,13 @@
 
 .role {
   margin-top: 0.125rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: 0.8125rem;
   line-height: 1.4;
 }
 
 .role[data-emphasis] {
-  color: var(--color-ink-inverse);
+  color: var(--color-ink);
   font-weight: 500;
 }
 
@@ -282,7 +318,7 @@
 .mission {
   min-height: calc(2 * 1.45 * 0.8125rem);
   margin-top: 0.625rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: 0.8125rem;
   line-height: 1.45;
   opacity: 0;
@@ -306,8 +342,7 @@
 .stage {
   display: grid;
   gap: 1.75rem;
-  margin-top: 1.25rem;
-  padding: 0.5rem;
+  margin-top: 0.75rem;
   border-radius: var(--radius-xl);
 }
 
@@ -315,19 +350,24 @@
   .stage {
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     gap: 3rem;
-    margin-top: 1.75rem;
+    margin-top: 1.5rem;
   }
 }
 
 .stage:focus-visible {
   outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
+  outline-offset: 6px;
 }
 
+/* Local frosted veil, no edge: the network passes behind the words, never under them. */
 .details {
   display: flex;
   flex-direction: column;
-  padding: 0.5rem 0.5rem 0;
+  padding: var(--module-pad);
+  border-radius: var(--radius-xl);
+  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 .appIcon {
@@ -345,7 +385,7 @@
 
 .kicker {
   margin-top: 1.5rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: var(--text-overline);
   font-weight: 600;
   letter-spacing: var(--text-overline--letter-spacing);
@@ -362,7 +402,7 @@
 
 .subtitle {
   margin-top: 0.25rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: 0.9375rem;
 }
 
@@ -373,7 +413,7 @@
 }
 
 .factLabel {
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: var(--text-overline);
   font-weight: 600;
   letter-spacing: var(--text-overline--letter-spacing);
@@ -391,7 +431,7 @@
   align-items: flex-start;
   gap: 0.5rem;
   margin-top: 0.5rem;
-  color: var(--color-ink-inverse-muted);
+  color: var(--color-ink-muted);
   font-size: 0.875rem;
   line-height: 1.55;
 }
@@ -399,10 +439,11 @@
 .boundary svg {
   flex: none;
   margin-top: 0.1875rem;
-  color: var(--color-ink-inverse);
+  color: var(--color-ink);
 }
 
-/* The window of the application: the scene, on a white surface. */
+/* The window of the application: the scene, on a white surface with one
+   hairline and a very light shadow — the same card as the other sections. */
 .window {
   display: flex;
   min-width: 0;
@@ -410,8 +451,13 @@
   flex-direction: column;
   padding: 1.25rem;
   border-radius: var(--radius-xl);
-  background: var(--color-surface);
+  background: color-mix(in srgb, var(--color-surface) 94%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--color-line),
+    var(--shadow-raised);
   color: var(--color-ink);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   transform-origin: 0 0;
 }
 
@@ -495,6 +541,7 @@
   }
 
   .mission,
+  .module::after,
   .flowIn,
   .flowOut,
   .connector,

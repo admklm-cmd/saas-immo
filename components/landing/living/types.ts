@@ -22,8 +22,20 @@ export type NodeDraw = {
   alpha: number;
   activity: number;
   label: string | null;
+  /** Organic variation of the node size (0..1), used only when presence > 1. */
+  variance: number;
 };
-export type LinkDraw = { x1: number; y1: number; x2: number; y2: number; alpha: number; dashed: boolean; trail: boolean };
+export type LinkDraw = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  alpha: number;
+  dashed: boolean;
+  trail: boolean;
+  /** A main connection, drawn a little more present when presence > 1. */
+  strong: boolean;
+};
 export type TokenDraw = { x: number; y: number; tx: number; ty: number; alpha: number; still: boolean };
 export type MarkDraw = { x: number; y: number; kind: "halt" | "check"; angle: number; alpha: number };
 export type MoteDraw = { x: number; y: number; r: number; alpha: number };
@@ -36,4 +48,6 @@ export type Frame = {
   marks: MarkDraw[];
   motes: MoteDraw[];
   fragments: FragmentDraw[];
+  /** Visual presence, blended between scenes (1 = reference rendering). */
+  presence: number;
 };
