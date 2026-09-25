@@ -2,14 +2,37 @@
  * Ambient fictitious prospects of the living background: small grey points that
  * drift towards the entry of the path (or towards the mandate in the final
  * scene), or wander when the flow is broken (problem scene). Pure function of time.
+ *
+ * In the scenes that draw the mesh (`mesh > 0`), each prospect also gives the
+ * mesh one vertex (its resting place), sits on a near or a far plane (the far
+ * one paler and smaller) and follows the scroll parallax of its plane. With a
+ * mesh weight of 0 every one of those terms is neutral: same prospects as before.
  */
 
-import type { MoteDraw, SceneState, Viewport } from "./types";
+import type { MeshPointDraw, MoteDraw, SceneState, Viewport } from "./types";
 import { GOAL_STOP, SCENES } from "./scenes";
 import { hash01, valueAt } from "./timeline";
 
 const MOTES_WIDE = 64;
 const MOTES_COMPACT = 20;
+/** Share of prospects on the far plane. */
+const FAR_SHARE = 0.45;
+/** Far plane: parallax share, size and opacity reductions (at full mesh weight). */
+export const FAR_PLANE = { parallax: 0.4, shrink: 0.3, fade: 0.35 };
+
+export function moteCount(viewport: Viewport): number {
+  return viewport.compact ? MOTES_COMPACT : MOTES_WIDE;
+}
+
+/** Whether a prospect (and its mesh vertex) belongs to the far plane. Stable. */
+export function isFar(index: number, seed: number): boolean {
+  return hash01(index, 11, 5, seed) < FAR_SHARE;
+}
+
+/** Resting place of a prospect inside the box around the stops (no drift). */
+export function moteBase(index: number, box: Box, seed: number): [number, number] {
+  return [box.x + hash01(index, 11, 1, seed) * box.width, box.y + hash01(index, 11, 2, seed) * box.height];
+}
 
 export function buildMotes(
   state: SceneState,
@@ -18,9 +41,12 @@ export function buildMotes(
   k: number,
   viewport: Viewport,
   seed: number,
+  mesh = 0,
+  parallax = 0,
+  vertices?: MeshPointDraw[],
 ): MoteDraw[] {
   const motes: MoteDraw[] = [];
-  const count = viewport.compact ? MOTES_COMPACT : MOTES_WIDE;
+  const count = moteCount(viewport);
   const box = bounds(points, viewport);
   const targetStop = state.scene === "final" ? GOAL_STOP : 0;
   const targetX = valueAt(points, targetStop * 2);
@@ -33,6 +59,8 @@ export function buildMotes(
     const r2 = hash01(index, 11, 2, seed);
     const r3 = hash01(index, 11, 3, seed);
     const r4 = hash01(index, 11, 4, seed);
+    const far = isFar(index, seed);
+    const shift = parallax * (far ? FAR_PLANE.parallax : 1);
     const baseX = box.x + r1 * box.width;
     const baseY = box.y + r2 * box.height;
     const wanderX = baseX + Math.sin(time * 0.13 * (1 + r3) + r4 * 6.283) * 18;
@@ -47,16 +75,21 @@ export function buildMotes(
     const wanderAlpha = 0.55 + 0.45 * Math.sin(time * 0.35 + r2 * 6.283);
     motes.push({
       x: wanderX + (flowX - wanderX) * flows,
-      y: wanderY + (flowY - wanderY) * flows,
-      r: (viewport.compact ? 0.8 : 0.9) + r4 * 0.7,
-      alpha: wanderAlpha + (flowAlpha - wanderAlpha) * flows,
+      y: wanderY + (flowY - wanderY) * flows + shift,
+      r: ((viewport.compact ? 0.8 : 0.9) + r4 * 0.7) * (far ? 1 - FAR_PLANE.shrink * mesh : 1),
+      alpha: (wanderAlpha + (flowAlpha - wanderAlpha) * flows) * (far ? 1 - FAR_PLANE.fade * mesh : 1),
     });
+    // The vertex stays at the resting place; its own dot shows only once the
+    // prospect has left it (otherwise the prospect is drawn right there).
+    if (vertices && mesh > 0) vertices.push({ x: wanderX, y: wanderY + shift, alpha: flows, far });
   }
   return motes;
 }
 
+export type Box = { x: number; y: number; width: number; height: number };
+
 /** Box around the stops, widened: denser in the large empty zones around the path. */
-function bounds(points: readonly number[], viewport: Viewport) {
+export function bounds(points: readonly number[], viewport: Viewport): Box {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

@@ -126,3 +126,40 @@ dépendance ajoutée. Aucun push avant validation visuelle.
 
 ### B3. Graphique « blocage administratif » refait en scène de friction
 - Réalisé par un autre agent, en parallèle (section « problème »).
+
+### B4. Retouche claire des sections agents et problème
+- Retouche du commit 03ff51f (24/09/2026, non documentée jusqu'ici) : sections « agents » et
+  « problème » passées en direction artistique claire (plus de surface noire, le fond vivant
+  reste visible entre les surfaces) et présence du réseau relevée à 1,35 dans ces deux scènes
+  seulement (`RAISED_PRESENCE`, moitié du gain sur mobile) ; les autres scènes restent à 1.
+
+## C1. Réseau vivant plus lisible (probleme et agents, validé 25/09/2026)
+Validé par l'utilisateur (option B). Même branche. Aucune donnée, texte, section, dépendance
+ni second moteur : le fond vivant existant (`components/landing/living/`) est étendu.
+- **Portée** : scènes `probleme` et `agents` uniquement (`SceneSpec.mesh` = 1 ; 0 ailleurs).
+  Hero, solution, contrôle, résultat et final dessinent exactement les mêmes appels qu'avant
+  (empreintes figées dans `mesh.test.ts`). Rail /agents-ia et particules de l'espace connecté
+  non touchés.
+- **Trame** (`mesh.ts`) : chaque point ambiant est relié à 2 voisins (35 % à un 3ᵉ) et au
+  nœud du chemin le plus proche (≤ 190 px), liens choisis une fois par scène et par taille
+  d'écran depuis les positions de repos (cache, aucun calcul de voisins par image, aucun
+  clignotement). Plafond : 150 liens en large, 30 en compact ; traits gris très fins dont
+  l'opacité baisse avec la longueur courante et plafonnée à 0,08 par trait. Les dossiers
+  fictifs circulent toujours sur le seul chemin des 8 étapes.
+- **Nœuds et connexions principales** un peu plus présents (extension de `LIFT` :
+  contour des étapes, pastille de l'étape active, liens `strong`).
+- **Visibilité** mesurée (« encre » = opacité × surface, `canvas-recorder.test-helper.ts`) :
+  +33 % (probleme) et +37 % (agents) par rapport au rendu d'avant, dans la fourchette
+  [+30 %, +40 %] ; +15 % et +14 % sur mobile (moitié du gain).
+- **Impulsions** : au plus 3 petites impulsions cobalt simultanées (1 sur mobile), une
+  toutes les 7,5 s par emplacement, 2,8 s de trajet, le long de liens bien visibles de la
+  trame. Cobalt réservé à ce qui bouge ou est actif : aucun lien de repos bleu. Aucune
+  lueur, aucun `shadowBlur`, aucun dégradé.
+- **Mouvement** : dérive lente des points (celle des prospects ambiants) ; deux plans
+  (lointain : 45 % des points, plus pâles, plus petits, parallaxe × 0,4) ; parallaxe liée à
+  la progression du défilement dans la section, lissée (0,25 s), ≤ 20 px (≤ 10 px sur
+  mobile), appliquée à la trame seule, pondérée par le poids de trame. Mouvement réduit :
+  aucune parallaxe, image statique comme avant.
+- **Transitions** : poids de trame mélangé en smoothstep sur 1,6 s, comme la présence.
+- **Performance** : mesurée 0,94 ms/image (probleme) et 0,62 ms/image (agents) à
+  1440 × 900 en Chromium (`data-frame-ms`), budget < 4 ms vérifié par `e2e/accueil.spec.ts`.

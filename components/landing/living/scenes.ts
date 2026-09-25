@@ -64,6 +64,13 @@ export type SceneSpec = {
    * other scene keeps exactly 1, hence exactly the reference rendering.
    */
   presence: number;
+  /**
+   * Weight of the mesh (0..1): ambient prospects linked to their neighbours and
+   * to the path, slow cobalt impulses along a few links, light scroll parallax.
+   * Only the problem and agents scenes draw it; every other scene keeps 0,
+   * hence exactly the reference rendering.
+   */
+  mesh: number;
 };
 
 const BASE: SceneSpec = {
@@ -82,6 +89,7 @@ const BASE: SceneSpec = {
   build: false,
   inflow: true,
   presence: 1,
+  mesh: 0,
 };
 
 /** Presence of the problem and agents scenes: about a third more visible. */
@@ -92,6 +100,11 @@ export const COMPACT_PRESENCE_GAIN = 0.5;
 /** Presence actually applied for a scene on a given screen. */
 export function presenceOf(spec: SceneSpec, compact: boolean): number {
   return compact ? 1 + (spec.presence - 1) * COMPACT_PRESENCE_GAIN : spec.presence;
+}
+
+/** Mesh weight actually applied: phones keep half of it, like the presence. */
+export function meshOf(spec: SceneSpec, compact: boolean): number {
+  return compact ? spec.mesh * COMPACT_PRESENCE_GAIN : spec.mesh;
 }
 
 /** Mobile: one discreet column on the right edge, below the header. */
@@ -157,6 +170,7 @@ export const SCENES: Record<LivingScene, SceneSpec> = {
     gateHold: 0.9,
     inflow: false,
     presence: RAISED_PRESENCE,
+    mesh: 1,
   },
   // The same flow, reorganised: one clean curve.
   solution: {
@@ -194,6 +208,7 @@ export const SCENES: Record<LivingScene, SceneSpec> = {
     blockRate: 0.06,
     spotlight: true,
     presence: RAISED_PRESENCE,
+    mesh: 1,
   },
   // Every file stops in front of the human validation, then resumes.
   controle: {

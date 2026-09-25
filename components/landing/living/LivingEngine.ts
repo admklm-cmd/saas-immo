@@ -37,6 +37,8 @@ const MAX_STEP = 0.05;
 /** Opacity at rest; scrolling raises it briefly towards 1. */
 export const REST_INTENSITY = 0.72;
 const BOOST_DECAY_SECONDS = 1.6;
+/** Time constant of the parallax easing, seconds: the mesh never jumps with the scroll. */
+const PARALLAX_EASE_SECONDS = 0.25;
 const STATS_WINDOW_MS = 2000;
 export const MAX_PIXEL_RATIO = 2;
 export const MAX_PIXEL_RATIO_COMPACT = 1.5;
@@ -66,6 +68,8 @@ export class LivingEngine {
   private lastTimestamp: number | null = null;
   private frameId: number | null = null;
   private boostLevel = 0;
+  private parallaxTarget = 0;
+  private parallax = 0;
   private motion: MotionState = "idle";
   private statsStart = 0;
   private statsTotal = 0;
@@ -136,6 +140,15 @@ export class LivingEngine {
     this.refresh();
   }
 
+  /**
+   * Scroll progress through the section in view (-1..1). Drives the light
+   * parallax of the mesh (problem and agents scenes only, see mesh.ts);
+   * ignored under reduced motion.
+   */
+  setParallax(progress: number) {
+    this.parallaxTarget = Number.isFinite(progress) ? Math.max(-1, Math.min(1, progress)) : 0;
+  }
+
   /** Scrolling: the background gets slightly more present, then calms down. */
   boost() {
     this.boostLevel = 1;
@@ -179,9 +192,10 @@ export class LivingEngine {
     this.lastTimestamp = timestamp;
     this.clock += step;
     this.boostLevel = Math.max(0, this.boostLevel - step / BOOST_DECAY_SECONDS);
+    this.parallax += (this.parallaxTarget - this.parallax) * (1 - Math.exp(-step / PARALLAX_EASE_SECONDS));
 
     const started = this.env.now();
-    this.draw(this.clock, this.state, REST_INTENSITY + (1 - REST_INTENSITY) * this.boostLevel);
+    this.draw(this.clock, this.state, REST_INTENSITY + (1 - REST_INTENSITY) * this.boostLevel, this.parallax);
     this.recordCost(this.env.now() - started, started);
 
     if (!this.reduced && !this.hidden && !this.offscreen) this.frameId = this.env.requestFrame(this.tick);
@@ -191,9 +205,10 @@ export class LivingEngine {
     this.draw(STATIC_TIME, { scene: this.state.scene, since: STATIC_TIME - 60, previous: null, from: null }, REST_INTENSITY);
   }
 
-  private draw(time: number, state: SceneState, intensity: number) {
+  /** `parallax` stays 0 for the static composition (reduced motion). */
+  private draw(time: number, state: SceneState, intensity: number, parallax = 0) {
     if (!this.context || this.viewport.width <= 0) return;
-    const frame = buildFrame({ time, state, viewport: this.viewport, seed: this.seed });
+    const frame = buildFrame({ time, state, viewport: this.viewport, seed: this.seed, parallax });
     drawFrame(this.context, frame, {
       width: this.viewport.width,
       height: this.viewport.height,

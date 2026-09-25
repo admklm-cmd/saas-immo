@@ -40,6 +40,19 @@ export type TokenDraw = { x: number; y: number; tx: number; ty: number; alpha: n
 export type MarkDraw = { x: number; y: number; kind: "halt" | "check"; angle: number; alpha: number };
 export type MoteDraw = { x: number; y: number; r: number; alpha: number };
 export type FragmentDraw = { x: number; y: number; text: string; alpha: number };
+/** A vertex of the mesh: the resting place of an ambient prospect. */
+export type MeshPointDraw = {
+  x: number;
+  y: number;
+  /** Opacity of the vertex dot (0 when the prospect itself is drawn there). */
+  alpha: number;
+  /** Far plane: paler, smaller, less parallax. */
+  far: boolean;
+};
+/** A resting connection of the mesh: always grey, never the accent colour. */
+export type MeshLinkDraw = { x1: number; y1: number; x2: number; y2: number; alpha: number; far: boolean };
+/** A small cobalt impulse travelling along a mesh link (tail → head). */
+export type PulseDraw = { x: number; y: number; tx: number; ty: number; alpha: number };
 
 export type Frame = {
   nodes: NodeDraw[];
@@ -48,6 +61,14 @@ export type Frame = {
   marks: MarkDraw[];
   motes: MoteDraw[];
   fragments: FragmentDraw[];
+  /** Mesh of the problem and agents scenes (empty everywhere else). */
+  meshPoints: MeshPointDraw[];
+  meshLinks: MeshLinkDraw[];
+  pulses: PulseDraw[];
   /** Visual presence, blended between scenes (1 = reference rendering). */
   presence: number;
+  /** Mesh weight, blended between scenes (0 = no mesh, reference rendering). */
+  mesh: number;
+  /** Largest vertical parallax shift applied to the mesh in this frame, CSS px. */
+  parallax: number;
 };

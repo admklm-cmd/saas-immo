@@ -93,6 +93,32 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   arrêtée hors écran, onglet caché ou pause ; DPR plafonné (2, 1,5 en compact) ; sous
   `prefers-reduced-motion`, aucune boucle : une composition statique par scène. Le
   modèle (`model.ts`, `timeline.ts`) est pur et testé.
+  - **Présence** (`SceneSpec.presence`) : 1,35 dans `probleme` et `agents`, 1 partout
+    ailleurs ; mobile = moitié du gain (`COMPACT_PRESENCE_GAIN`).
+  - **Trame** (`mesh.ts`, `SceneSpec.mesh` : 1 dans `probleme` et `agents`, **0 ailleurs**,
+    donc rendu strictement inchangé dans les 5 autres scènes) : réseau neuronal sobre. Chaque
+    point ambiant relié à 2–3 voisins et au nœud du chemin le plus proche ; liens choisis une
+    fois par scène et par taille d'écran (stables, sans clignotement). Plafonds : 150 liens
+    (large), 30 (compact) ; opacité d'un trait ≤ 0,08, décroissante avec la longueur ;
+    épaisseur 0,8 px (plan proche) / 0,55 px (plan lointain). Les dossiers fictifs ne
+    circulent que sur le chemin des 8 étapes.
+  - **Impulsions de trame** : ≤ 3 simultanées (1 sur mobile), lentes (2,8 s de trajet, une
+    toutes les 7,5 s par emplacement), point cobalt + courte traîne.
+  - **Règle cobalt** : l'accent `#2457FF` (palette `accent`, lue depuis `--color-accent`)
+    est réservé à ce qui bouge ou est actif (dossiers, impulsions, étape active, validation
+    humaine). **Aucun lien de repos bleu.** Aucune lueur, aucun halo néon, aucun
+    `shadowBlur`, aucun dégradé : traits et disques plats uniquement (testé).
+  - **Plans et parallaxe** : 45 % des points sur un plan lointain (plus pâles, plus petits,
+    parallaxe × 0,4). Décalage vertical lié à la progression du défilement dans la section,
+    lissé sur 0,25 s, **≤ 20 px** (≤ 10 px sur mobile), appliqué à la trame seule et pondéré
+    par le poids de trame (0 ailleurs). Mouvement réduit : aucune parallaxe.
+  - **Plafond de visibilité** : +30 à +40 % d'« encre » (opacité × surface) par rapport au
+    rendu de référence de ces deux scènes (mesuré : +33 % / +37 %), moitié sur mobile. Le
+    fond reste dilué derrière le contenu.
+  - **Transitions** : poids de trame et présence mélangés en smoothstep sur 1,6 s (aucun
+    saut au changement de section).
+  - **Budget** : < 4 ms par image sur ordinateur (`data-frame-ms` du canvas ; mesuré
+    < 1 ms dans les deux scènes à 1440 × 900).
 - **Pause (WCAG 2.2.2)** : `MotionToggle` suspend l'illustration du hero et le fond
   vivant (`landing-motion.ts`, `<html data-landing-motion="paused">`). Masqué quand
   rien ne bouge.

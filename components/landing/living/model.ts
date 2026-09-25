@@ -7,6 +7,7 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
 
 import { addFiles, keepStrongestFragments, laneOffset, laneWeight } from "./files";
+import { addMesh, meshWeight, PARALLAX_MAX } from "./mesh";
 import { buildMotes } from "./motes";
 import { presenceOf, SCENES, STOP_AGENT, STOP_COUNT, type LivingScene, type Point, type SceneSpec } from "./scenes";
 import { hash01, smoothstep, valueAt } from "./timeline";
@@ -51,6 +52,22 @@ export function displayedPresence(state: SceneState, viewport: Viewport, time: n
   return before + (now - before) * smoothstep((time - state.since) / TRANSITION_SECONDS);
 }
 
+/** Mesh weight displayed at `time` (0 outside the problem and agents scenes), blended without jump. */
+export function displayedMesh(state: SceneState, viewport: Viewport, time: number): number {
+  return meshWeight(state, viewport, state.previous ? smoothstep((time - state.since) / TRANSITION_SECONDS) : 1);
+}
+
+/**
+ * Vertical shift of the mesh's near plane, CSS px: the scroll progress through
+ * the section (-1..1) times at most `PARALLAX_MAX`, weighted by the mesh. Hence
+ * 0 in every scene without mesh, and 0 when no progress is given (reduced motion).
+ */
+export function parallaxShift(parallax: number, mesh: number): number {
+  const progress = parallax < -1 ? -1 : parallax > 1 ? 1 : parallax;
+  const shift = -progress * PARALLAX_MAX * mesh;
+  return shift === 0 ? 0 : shift;
+}
+
 /** Stop positions of a scene, in CSS px, wandering slightly in the problem scene. */
 export function scenePoints(scene: LivingScene, viewport: Viewport, time: number, seed = DEFAULT_SEED): number[] {
   const spec = SCENES[scene];
@@ -80,7 +97,14 @@ export function displayedPoints(state: SceneState, viewport: Viewport, time: num
   });
 }
 
-export function buildFrame(input: { time: number; state: SceneState; viewport: Viewport; seed?: number }): Frame {
+export function buildFrame(input: {
+  time: number;
+  state: SceneState;
+  viewport: Viewport;
+  seed?: number;
+  /** Scroll progress through the current section, -1..1 (0: no parallax). */
+  parallax?: number;
+}): Frame {
   const { time, state, viewport } = input;
   const seed = input.seed ?? DEFAULT_SEED;
   const frame: Frame = {
@@ -90,7 +114,12 @@ export function buildFrame(input: { time: number; state: SceneState; viewport: V
     marks: [],
     motes: [],
     fragments: [],
+    meshPoints: [],
+    meshLinks: [],
+    pulses: [],
     presence: displayedPresence(state, viewport, time),
+    mesh: displayedMesh(state, viewport, time),
+    parallax: 0,
   };
   const spec = SCENES[state.scene];
   const points = displayedPoints(state, viewport, time, seed);
@@ -140,7 +169,10 @@ export function buildFrame(input: { time: number; state: SceneState; viewport: V
   addFiles(frame, state.scene, points, time, state, k, true, viewport, seed);
   if (state.previous && k < 1) addFiles(frame, state.previous, points, time, state, 1 - k, false, viewport, seed);
 
-  frame.motes = buildMotes(state, points, time, k, viewport, seed);
+  // Mesh (problem and agents only): its vertices come with the prospects.
+  frame.parallax = parallaxShift(input.parallax ?? 0, frame.mesh);
+  frame.motes = buildMotes(state, points, time, k, viewport, seed, frame.mesh, frame.parallax, frame.meshPoints);
+  if (frame.mesh > 0) addMesh(frame, state, points, time, k, viewport, seed);
   keepStrongestFragments(frame);
   return frame;
 }

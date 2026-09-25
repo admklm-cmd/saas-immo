@@ -61,7 +61,19 @@ export function LivingBackground({ initialScene = "hero" }: { initialScene?: Liv
     document.addEventListener("visibilitychange", onVisibility);
     const unsubscribePause = onLandingMotion(onVisibility);
 
-    const onScroll = () => engine.boost();
+    // Scroll progress through the section in view (-1 entering, 1 leaving):
+    // feeds the light parallax of the mesh (problem and agents scenes only).
+    let section: HTMLElement | null = null;
+    const followScroll = () => {
+      if (!section) return;
+      const rect = section.getBoundingClientRect();
+      const span = rect.height / 2 + window.innerHeight / 2;
+      engine.setParallax(span > 0 ? (window.innerHeight / 2 - (rect.top + rect.height / 2)) / span : 0);
+    };
+    const onScroll = () => {
+      engine.boost();
+      followScroll();
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
 
     const observers: IntersectionObserver[] = [];
@@ -75,6 +87,8 @@ export function LivingBackground({ initialScene = "hero" }: { initialScene?: Liv
             if (!isLivingScene(scene)) continue;
             engine.setScene(scene);
             canvas.dataset.scene = scene;
+            section = entry.target as HTMLElement;
+            followScroll();
           }
         },
         { rootMargin: "-45% 0px -45% 0px" },

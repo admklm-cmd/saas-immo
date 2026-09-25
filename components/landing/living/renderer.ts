@@ -8,6 +8,12 @@
  * `frame.presence` (1 = reference) raises the network a little in the scenes
  * that ask for it: every term below multiplies by `presence` or adds a share
  * of `presence - 1`, so a presence of 1 draws exactly the reference frame.
+ *
+ * The mesh (problem and agents scenes) is drawn first, behind everything: grey
+ * hairlines, never the accent colour, each opacity capped by `MESH.linkCap`.
+ * Its cobalt impulses move; nothing at rest is cobalt. No shadow, no blur, no
+ * gradient: flat strokes and fills only. Other scenes have no mesh at all,
+ * so none of these calls happen there.
  */
 
 import { GATE_STOP, GOAL_STOP } from "./scenes";
@@ -35,7 +41,37 @@ export type DrawOptions = {
 };
 
 /** Share of the extra presence given to sizes (nodes, prospects, signals) and to the main links. */
-const LIFT = { node: 0.9, mote: 0.35, signal: 0.3, strongLink: 1, strongWidth: 0.6, label: 0.5 };
+const LIFT = {
+  node: 0.9,
+  /** Outline opacity of the stages. */
+  nodeAlpha: 0.2,
+  /** Cobalt disc of an active stage (its pulsation). */
+  halo: 0.6,
+  mote: 0.35,
+  signal: 0.3,
+  strongLink: 1.2,
+  strongWidth: 0.6,
+  label: 0.5,
+};
+
+/** Mesh: grey hairlines (near / far plane), vertex dots, cobalt impulses. */
+const MESH = {
+  link: 0.079,
+  /** Phones: fewer prospects, hence a sparser mesh; each hairline slightly firmer. */
+  compactLink: 2,
+  /** Upper opacity of a single mesh link, whatever the intensity. */
+  linkCap: 0.08,
+  farLink: 0.55,
+  width: 0.8,
+  farWidth: 0.55,
+  point: 0.22,
+  farPoint: 0.6,
+  pointRadius: 1,
+  farPointRadius: 0.7,
+  pulse: 0.75,
+  pulseRadius: 1.8,
+  pulseRadiusCompact: 1.4,
+};
 
 /** Upper opacities, before `intensity` and each element's own presence. */
 const ALPHA = {
@@ -71,6 +107,8 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
   ctx.clearRect(0, 0, options.width, options.height);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
+
+  if (frame.meshLinks.length > 0 || frame.meshPoints.length > 0) drawMesh(ctx, frame, palette, level, options.compact);
 
   // Ambient prospects.
   for (const mote of frame.motes) {
@@ -119,6 +157,22 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
     ctx.fill();
   }
 
+  // Impulses of the mesh: small cobalt dots with a short tail, no glow.
+  for (const pulse of frame.pulses) {
+    if (pulse.alpha <= 0.01) continue;
+    const alpha = MESH.pulse * pulse.alpha * level;
+    ctx.strokeStyle = rgba(palette.accent, alpha * 0.4);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(pulse.tx, pulse.ty);
+    ctx.lineTo(pulse.x, pulse.y);
+    ctx.stroke();
+    ctx.fillStyle = rgba(palette.accent, alpha);
+    ctx.beginPath();
+    ctx.arc(pulse.x, pulse.y, options.compact ? MESH.pulseRadiusCompact : MESH.pulseRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Halted impulses and confirmations.
   for (const mark of frame.marks) {
     if (mark.alpha <= 0.01) continue;
@@ -148,6 +202,29 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
   if (!options.compact) drawFragments(ctx, frame, palette, level, options);
 }
 
+function drawMesh(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette, level: number, compact: boolean) {
+  const base = MESH.link * level * (compact ? MESH.compactLink : 1);
+  for (const link of frame.meshLinks) {
+    const alpha = Math.min(MESH.linkCap, base * link.alpha * (link.far ? MESH.farLink : 1));
+    if (alpha <= 0.002) continue;
+    ctx.strokeStyle = rgba(palette.line, alpha);
+    ctx.lineWidth = link.far ? MESH.farWidth : MESH.width;
+    ctx.beginPath();
+    ctx.moveTo(link.x1, link.y1);
+    ctx.lineTo(link.x2, link.y2);
+    ctx.stroke();
+  }
+  // Vertices left by a prospect that went towards the entry.
+  for (const point of frame.meshPoints) {
+    const alpha = MESH.point * point.alpha * frame.mesh * level * (point.far ? MESH.farPoint : 1);
+    if (alpha <= 0.005) continue;
+    ctx.fillStyle = rgba(palette.ink, alpha);
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, point.far ? MESH.farPointRadius : MESH.pointRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 function drawNode(
   ctx: CanvasRenderingContext2D,
   node: NodeDraw,
@@ -158,7 +235,7 @@ function drawNode(
 ) {
   if (node.alpha <= 0.01) return;
   const lift = presence - 1;
-  const alpha = ALPHA.node * node.alpha * level * presence;
+  const alpha = ALPHA.node * node.alpha * level * presence * (1 + lift * LIFT.nodeAlpha);
   const active = node.activity * node.alpha * level;
   const size = (options.compact ? 3.4 : 4.6) * (1 + lift * LIFT.node * node.variance);
 
@@ -172,7 +249,7 @@ function drawNode(
 
   // Halo of an active stage (cobalt), then the stage itself on paper.
   if (active > 0.02) {
-    ctx.fillStyle = rgba(palette.accent, 0.12 * active * presence);
+    ctx.fillStyle = rgba(palette.accent, 0.12 * active * presence * (1 + lift * LIFT.halo));
     ctx.beginPath();
     ctx.arc(node.x, node.y, size + 7 * node.activity, 0, Math.PI * 2);
     ctx.fill();

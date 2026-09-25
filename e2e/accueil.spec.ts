@@ -186,4 +186,33 @@ test.describe("avec animations", () => {
     await toggle.click();
     await expect(canvas).toHaveAttribute("data-motion", "running");
   });
+
+  test("le réseau des sections problème et agents reste sous 4 ms par image", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const canvas = page.getByTestId("living-background");
+    await expect(canvas).toHaveAttribute("data-motion", "running");
+
+    for (const scene of ["probleme", "agents"] as const) {
+      // Put the section across the middle of the screen, like a reader would.
+      await page.locator(`section[data-living-scene='${scene}']`).evaluate((section) => {
+        window.scrollTo(0, section.getBoundingClientRect().top + window.scrollY + 120);
+      });
+      await expect(canvas).toHaveAttribute("data-scene", scene, { timeout: 10_000 });
+      await expect(canvas).toHaveAttribute("data-motion", "running");
+      // data-frame-ms is the average cost of a frame over the last 2 s window.
+      // Skip the window running during the scroll, then read one measured
+      // entirely in this scene.
+      for (let pass = 0; pass < 2; pass++) {
+        await canvas.evaluate((element) => {
+          delete (element as HTMLCanvasElement).dataset.frameMs;
+        });
+        await expect.poll(async () => canvas.getAttribute("data-frame-ms"), { timeout: 10_000 }).not.toBeNull();
+      }
+      const cost = Number(await canvas.getAttribute("data-frame-ms"));
+      test.info().annotations.push({ type: `data-frame-ms ${scene}`, description: String(cost) });
+      expect(cost).toBeGreaterThan(0);
+      expect(cost).toBeLessThan(4);
+    }
+  });
 });
