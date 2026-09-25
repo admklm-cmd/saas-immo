@@ -2,81 +2,94 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
 import { cn } from "@/components/ui/cn";
+import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
 
-const TEXTS = APP_TEXTS.nav;
+import { isNavItemActive, NAV_GROUPS } from "./nav-items";
 
-type NavItem = { href: string; label: string };
+export type AppNavProps = {
+  /**
+   * `sidebar`: the fixed column of the desktop (≥ 1024 px).
+   * `sheet`: the full-height panel of the compact navigation, larger touch targets.
+   */
+  variant?: "sidebar" | "sheet";
+};
 
-const ITEMS: readonly NavItem[] = [
-  { href: "/dashboard", label: TEXTS.dashboard },
-  { href: "/contacts", label: TEXTS.contacts },
-  { href: "/pipeline", label: TEXTS.pipeline },
-  // Daily work of a human member, next to the pipeline it feeds.
-  { href: "/taches", label: TEXTS.tasks },
-  { href: "/rendez-vous", label: TEXTS.appointments },
-  { href: "/agents-ia", label: TEXTS.agents },
-  // Order of the real work: a lead arrives, a record is created, then a first
-  // message goes to a human for validation.
-  { href: "/agents-ia/leads-entrants", label: TEXTS.agentsLeads },
-  { href: "/agents-ia/relances", label: TEXTS.agentsFollowUps },
-  { href: "/agents-ia/a-valider", label: TEXTS.agentsToValidate },
-  { href: "/agents-ia/suivi-rendez-vous", label: TEXTS.agentsFollowThrough },
-  { href: "/parametres", label: TEXTS.settings },
-];
-
-function isActive(pathname: string, href: string): boolean {
-  // "Agents IA" owns the replay of one execution, but none of its sub-screens
-  // that have a menu entry of their own (inbound leads, validation queue):
-  // without this, two entries would carry aria-current at the same time.
-  if (href === "/agents-ia") {
-    return pathname === href || pathname.startsWith("/agents-ia/executions");
-  }
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-/** Primary navigation of the signed-in space (client-side only for the active state). */
-export function AppNav() {
+/**
+ * Primary navigation of the signed-in space, in three groups
+ * (docs/design-system.md §2.10). Client-side only for the current entry.
+ *
+ * Current entry: a white raised row, the label in medium weight, the glyph in
+ * ink, and a thin cobalt mark on its left edge — cobalt says « you are here ».
+ * Never the colour alone: `aria-current="page"` and the weight say it too.
+ */
+export function AppNav({ variant = "sidebar" }: AppNavProps) {
   const pathname = usePathname();
-  const listRef = useRef<HTMLUListElement>(null);
-
-  // Below 1024 px the menu is a horizontal strip: bring the current entry into
-  // view, otherwise « Tâches » or « Paramètres » would be active off-screen.
-  // Only the strip scrolls (never the page), and nothing moves on desktop.
-  useEffect(() => {
-    const list = listRef.current;
-    const active = list?.querySelector<HTMLElement>("[aria-current=\"page\"]");
-    if (!list || !active || list.scrollWidth <= list.clientWidth) return;
-    list.scrollLeft = active.offsetLeft - (list.clientWidth - active.offsetWidth) / 2;
-  }, [pathname]);
+  const sheet = variant === "sheet";
 
   return (
-    <nav aria-label={TEXTS.primaryLabel}>
-      <ul ref={listRef} className="relative flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible">
-        {ITEMS.map((item) => {
-          const active = isActive(pathname, item.href);
+    <nav aria-label={APP_TEXTS.nav.primaryLabel} data-variant={variant}>
+      <div className={cn("flex flex-col", sheet ? "gap-7" : "gap-6")}>
+        {NAV_GROUPS.map((group) => {
+          const headingId = `nav-group-${variant}-${group.id}`;
           return (
-            <li key={item.href} className="shrink-0 lg:shrink">
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
+            <div key={group.id} className={cn(!group.showLabel && "border-t border-line pt-4")}>
+              <p
+                id={headingId}
                 className={cn(
-                  "block rounded-md px-3 py-2 text-sm whitespace-nowrap",
-                  "transition-[background-color,color] duration-150 ease-standard",
-                  active
-                    ? "bg-inverse font-medium text-ink-inverse"
-                    : "text-ink-muted hover:bg-surface-sunken hover:text-ink",
+                  "mb-1.5 px-3 text-overline font-semibold text-ink-subtle uppercase",
+                  !group.showLabel && "sr-only",
                 )}
               >
-                {item.label}
-              </Link>
-            </li>
+                {group.label}
+              </p>
+              <ul aria-labelledby={headingId} className="flex flex-col gap-0.5">
+                {group.items.map((item) => {
+                  const active = isNavItemActive(pathname, item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        data-active={active ? "" : undefined}
+                        className={cn(
+                          "group/nav relative flex items-center gap-3 rounded-md px-3 whitespace-nowrap",
+                          sheet ? "min-h-12 text-base" : "min-h-9 text-sm",
+                          "transition-[background-color,color,box-shadow] duration-150 ease-standard",
+                          active
+                            ? "bg-surface font-medium text-ink shadow-subtle ring-1 ring-line"
+                            : "text-ink-muted hover:bg-surface-sunken hover:text-ink",
+                        )}
+                      >
+                        {/* The « you are here » mark: thin, cobalt, on the left edge. */}
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "absolute top-1/2 left-1 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent",
+                            "transition-[opacity,scale] duration-200 ease-standard",
+                            active ? "scale-y-100 opacity-100" : "scale-y-50 opacity-0",
+                          )}
+                        />
+                        <Glyph
+                          name={item.glyph}
+                          width={sheet ? 20 : 18}
+                          className={cn(
+                            "shrink-0 transition-colors duration-150 ease-standard",
+                            active ? "text-ink" : "text-ink-subtle group-hover/nav:text-ink",
+                          )}
+                        />
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           );
         })}
-      </ul>
+      </div>
     </nav>
   );
 }

@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   // `next dev` would otherwise append a managed block to CLAUDE.md / AGENTS.md.
   // CLAUDE.md is the project's source of truth and is edited by humans only.
   agentRules: false,
+  // The floating « N » indicator of `next dev` covered « Se déconnecter » at the
+  // bottom of the navigation. Development only: no effect on a production build.
+  devIndicators: false,
 };
 
 export default nextConfig;

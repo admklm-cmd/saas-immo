@@ -55,7 +55,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
   const selected: AppointmentView | null = rawView === "" ? "upcoming" : isView(rawView) ? rawView : null;
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-10 lg:py-12">
+    <div className="page-frame page-frame-reading">
       <PageHeader title={TEXTS.title} description={TEXTS.subtitle} meta={<SimulationBadge />} />
 
       <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">

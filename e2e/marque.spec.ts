@@ -40,7 +40,8 @@ test("the signed-in space shows the same lock-up, marked as a prototype", async 
   await signIn(page, "agentA");
 
   await expect(page.getByRole("img", { name: BRAND.name }).first()).toBeVisible();
-  await expect(page.getByText(BRAND.prototype).first()).toBeVisible();
+  // The top bar (< 1024 px) and the column (≥ 1024 px) both carry the lock-up: check the one shown.
+  await expect(page.getByText(BRAND.prototype).filter({ visible: true }).first()).toBeVisible();
 });
 
 test("an unknown page still carries the brand and offers a way back", async ({ page }) => {

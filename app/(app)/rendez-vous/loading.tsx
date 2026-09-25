@@ -8,7 +8,7 @@ export default function AppointmentsLoading() {
     <div
       aria-busy="true"
       aria-label={APP_TEXTS.states.loading}
-      className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-10 lg:py-12"
+      className="page-frame page-frame-reading"
     >
       <Skeleton className="h-9 w-72 max-w-full" />
       <Skeleton className="mt-3 h-4 w-[30rem] max-w-full" />

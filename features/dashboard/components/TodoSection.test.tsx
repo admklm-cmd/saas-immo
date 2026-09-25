@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { APP_TEXTS } from "@/components/texts";
 
 import { makeSummary, message, okList, SCOPES } from "./summary-fixture";
+import { TODO_ROW_SAMPLE } from "./TodoRow";
 import { TodoSection } from "./TodoSection";
 
 const TEXTS = APP_TEXTS.dashboard;
@@ -18,7 +19,7 @@ function hrefs(container: HTMLElement): string[] {
 }
 
 describe("TodoSection", () => {
-  it("affiche le total exact, un échantillon et « Tout voir » quand la liste est partielle", () => {
+  it("affiche le total exact, les deux premiers éléments annoncés comme tels, et le lien explicite vers la file", () => {
     const todo = makeSummary().todo;
     const items = Array.from({ length: 5 }, (_, index) =>
       message({ id: `m-${index}`, contactId: `c-${index}`, contactName: `Contact ${index}` }),
@@ -31,11 +32,11 @@ describe("TodoSection", () => {
     expect(within(card).getByTestId("dashboard-figure").textContent).toContain("12");
     expect(card.textContent).toContain(TEXTS.messagesUnit(12));
     expect(card.textContent).toContain(TEXTS.scopes.pending_all_time);
-    expect(card.textContent).toContain(TEXTS.sample(5, 12));
-    expect(within(card).getAllByRole("listitem")).toHaveLength(5);
+    expect(card.textContent).toContain(TEXTS.sample(TODO_ROW_SAMPLE, 12));
+    expect(within(card).getAllByRole("listitem")).toHaveLength(TODO_ROW_SAMPLE);
 
-    const viewAll = within(card).getByRole("link", { name: new RegExp(TEXTS.viewAll) });
-    expect(viewAll.getAttribute("href")).toBe("/agents-ia/a-valider");
+    const open = within(card).getByRole("link", { name: new RegExp(TEXTS.messagesLink) });
+    expect(open.getAttribute("href")).toBe("/agents-ia/a-valider");
     expect(hrefs(card)).toContain("/contacts/c-0");
   });
 
@@ -72,9 +73,9 @@ describe("TodoSection", () => {
     const empty = within(toClose).getByTestId("dashboard-empty");
     expect(empty.textContent).toContain(TEXTS.toCloseEmpty);
     expect(within(toClose).queryByRole("list")).toBeNull();
-    // Cards of « À faire maintenant » share their row tracks: aligned dividers and footers.
-    expect(toClose.className).toContain("grid-rows-subgrid");
-    expect(toClose.className).toContain("row-span-3");
+    // One row of one panel, sharing the column grid of its neighbours: no card of its own.
+    expect(toClose.className).toContain("lg:grid-cols-[18rem_minmax(0,1fr)]");
+    expect(toClose.parentElement?.className).toContain("divide-y");
   });
 
   it("un indicateur indisponible n'affiche ni liste ni faux état vide", () => {
@@ -143,7 +144,7 @@ describe("TodoSection", () => {
     expect(hrefs(tasks)).toEqual(["/taches"]);
   });
 
-  it("« Tâches ouvertes » mène à l'écran Tâches, avec « Tout voir » quand l'échantillon est partiel", () => {
+  it("« Tâches ouvertes » mène à l'écran Tâches et annonce l'échantillon partiel", () => {
     const todo = makeSummary().todo;
     const first = todo.openTasks.status === "ok" ? todo.openTasks.value.items[0] : undefined;
     if (!first) throw new Error("fixture");
@@ -153,8 +154,8 @@ describe("TodoSection", () => {
     render(<TodoSection todo={todo} />);
 
     const tasks = screen.getByTestId("dashboard-tasks");
-    expect(tasks.textContent).toContain(TEXTS.sampleFeminine(5, 131));
-    expect(within(tasks).getByRole("link", { name: new RegExp(TEXTS.viewAll) }).getAttribute("href")).toBe("/taches");
+    expect(tasks.textContent).toContain(TEXTS.sampleFeminine(TODO_ROW_SAMPLE, 131));
+    expect(within(tasks).getByRole("link", { name: new RegExp(TEXTS.tasksLink) }).getAttribute("href")).toBe("/taches");
   });
 
   it("affiche « 0 » et l'état vide quand la liste mesurée est vide", () => {
@@ -209,6 +210,21 @@ describe("TodoSection", () => {
     // The id stays one path segment under /contacts/.
     expect(hrefs(tasks)).toContain(`/contacts/${encodeURIComponent("../../agents-ia?x=1")}`);
     expect(hrefs(tasks).every((href) => href === "/taches" || href.startsWith("/contacts/"))).toBe(true);
+  });
+
+  it("signale par la forme ce qui attend un humain : anneau actif seulement quand le total est positif", () => {
+    const todo = makeSummary().todo;
+    todo.openTasks = { status: "unavailable", scope: SCOPES.open };
+
+    const { container } = render(<TodoSection todo={todo} />);
+
+    const state = (id: string) =>
+      container.querySelector(`[data-testid="dashboard-${id}"] [data-kind="human"]`)?.getAttribute("data-state");
+    expect(state("messages")).toBe("active");
+    expect(state("appointments-to-close")).toBe("idle");
+    expect(state("tasks")).toBe("inactive");
+    expect(screen.getByTestId("dashboard-messages").getAttribute("data-waiting")).toBe("true");
+    expect(screen.getByTestId("dashboard-appointments-to-close").getAttribute("data-waiting")).toBe("false");
   });
 
   it("présente un lead par sa source et sa date, sans texte libre du prospect", () => {

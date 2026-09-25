@@ -25,7 +25,7 @@ export default async function MessagesToValidatePage() {
   const { data: messages, error } = await getMessagesToValidate();
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-10 lg:px-10 lg:py-12">
+    <div className="page-frame page-frame-reading">
       <PageHeader
         title={TEXTS.title}
         description={TEXTS.subtitle}

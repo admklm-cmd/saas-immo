@@ -29,7 +29,7 @@ export default async function SettingsPage() {
   const { data: settings, error } = await getAgencySettings();
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-10 lg:px-10 lg:py-12">
+    <div className="page-frame page-frame-medium">
       <PageHeader
         title={TEXTS.title}
         description={TEXTS.subtitle}

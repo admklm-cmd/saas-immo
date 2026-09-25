@@ -98,6 +98,14 @@ export const APP_TEXTS = {
     tasks: "Tâches",
     appointments: "Rendez-vous",
     settings: "Paramètres",
+    /** Groups of the primary navigation (docs/design-system.md §2.10). */
+    groupPilotage: "Pilotage",
+    groupAgents: "Agents IA",
+    groupSettings: "Réglages",
+    /** Entry of `/agents-ia` inside the « Agents IA » group. */
+    agentsOverview: "Vue d'ensemble",
+    menuOpen: "Menu",
+    menuClose: "Fermer",
     signedInAs: "Connecté en tant que",
     signOut: "Se déconnecter",
     signingOut: "Déconnexion…",
@@ -913,11 +921,34 @@ export const APP_TEXTS = {
     noDueDate: "Sans échéance",
     openedBy: (agent: string) => `Ouverte par ${agent}`,
 
-    pipelineTitle: "Pipeline",
-    pipelineSubtitle: "Nombre de dossiers à chaque étape, compté exactement en base.",
     pipelineUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
     pipelineLink: "Ouvrir le pipeline",
     pipelineLostNote: "Étape qui n'est plus travaillée activement.",
+
+    /** Pipeline frieze: the demonstration of the screen (docs/design-system.md §3.5). */
+    friezeTitle: "Où en sont les dossiers",
+    friezeSubtitle: "Chaque dossier à son étape, et les décisions humaines en chemin",
+    friezeListLabel: "Étapes du pipeline, dans l'ordre du parcours vendeur",
+    friezeLegendDot: "1 point = 1 dossier",
+    friezeLegendHuman: "Décision humaine attendue",
+    friezeCapped: (drawn: number) => `${drawn} points affichés`,
+    friezeMandateNote: "Confirmé par un humain",
+    friezeCheckpointNone: "Rien en attente",
+    friezeCheckpoints: {
+      leads: {
+        title: "Leads à traiter",
+        unit: (total: number) => (total > 1 ? "leads à traiter" : "lead à traiter"),
+      },
+      "to-confirm": {
+        title: "Rendez-vous à confirmer",
+        // "rendez-vous" is invariable.
+        unit: () => "rendez-vous à confirmer",
+      },
+      "to-close": {
+        title: "Comptes-rendus à saisir",
+        unit: (total: number) => (total > 1 ? "comptes-rendus à saisir" : "compte-rendu à saisir"),
+      },
+    },
 
     agentsTitle: "Agents IA",
     agentsSubtitle: "Coupe-circuit et exécutions réellement enregistrées, sur simulateur.",

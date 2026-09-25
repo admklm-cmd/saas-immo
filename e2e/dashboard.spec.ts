@@ -11,8 +11,11 @@ import { signIn } from "./helpers/sign-in";
  *
  * What this suite protects, against the real local database:
  *   * the logo of the signed-in space leads to the dashboard;
- *   * every block is there, « À faire maintenant » first, each figure with its
- *     scope, and no « Indisponible » in normal conditions;
+ *   * every block is there, the pipeline frieze first then « À faire
+ *     maintenant », each figure with its scope, and no « Indisponible » in
+ *     normal conditions;
+ *   * the whole screen is in the server HTML: complete without JavaScript and
+ *     under reduced motion (nothing hidden behind an entrance animation);
  *   * the action links land on the right screen or contact file;
  *   * a pipeline figure equals what `/pipeline` shows (exact counts, not a page);
  *   * an agency never sees the other agency's contacts;
@@ -49,9 +52,10 @@ test("parcours principal : le logo mène au tableau de bord, chaque bloc affiche
   await signIn(page, "agentA");
   await openDashboardFromLogo(page);
 
-  // --- « À faire maintenant » comes first ---------------------------------------
+  // --- The frieze comes first, then « À faire maintenant » ----------------------
   const h2 = page.getByRole("heading", { level: 2 });
-  await expect(h2.first()).toHaveText(TEXTS.todoTitle);
+  await expect(h2.nth(0)).toHaveText(TEXTS.friezeTitle);
+  await expect(h2.nth(1)).toHaveText(TEXTS.todoTitle);
 
   const scopes: Array<[string, string]> = [
     ["messages", TEXTS.scopes.pending_all_time],
@@ -72,11 +76,25 @@ test("parcours principal : le logo mène au tableau de bord, chaque bloc affiche
   await expect(card(page, "messages")).toContainText(/pas encore envoyés?/);
   await expect(card(page, "messages")).toContainText(TEXTS.messagesHint);
 
-  // --- Pipeline: one figure per stage, with its scope ---------------------------
+  // --- Pipeline frieze: one figure per stage, its scope, the human checkpoints ---
   const pipeline = card(page, "pipeline");
   await expect(pipeline).toBeVisible();
   await expect(pipeline.getByTestId("dashboard-figure")).toHaveCount(7);
-  await expect(pipeline.getByTestId("dashboard-scope").first()).toContainText(TEXTS.scopes.current);
+  await expect(pipeline.getByTestId("dashboard-scope")).toContainText(TEXTS.scopes.current);
+  for (const id of ["leads", "to-confirm", "to-close"]) {
+    await expect(pipeline.getByTestId(`dashboard-checkpoint-${id}`)).toBeVisible();
+  }
+  // One dot per dossier: the dots of a stage are exactly its written count.
+  const nouveau = pipeline.getByTestId("dashboard-stage-nouveau");
+  const written = Number.parseInt((await nouveau.getByTestId("dashboard-figure").locator("p").first().textContent()) ?? "", 10);
+  await expect(nouveau.getByTestId("frieze-dots")).toHaveAttribute("data-drawn", String(written));
+  // A checkpoint's figure is the same as the « À faire » row it stands for.
+  const leadsRow = Number.parseInt(
+    (await card(page, "leads").getByTestId("dashboard-figure").locator("p").first().textContent()) ?? "",
+    10,
+  );
+  await expect(pipeline.getByTestId("dashboard-checkpoint-leads")).toContainText(TEXTS.friezeCheckpoints.leads.unit(leadsRow));
+  await expect(pipeline.getByTestId("dashboard-checkpoint-leads").locator("a")).toContainText(String(leadsRow));
 
   // --- Agents IA: kill switch state + today / 7 days ----------------------------
   const agents = card(page, "agents");
@@ -162,6 +180,73 @@ test("un compte du pipeline est identique à celui de l'écran Pipeline", async 
     APP_TEXTS.pipeline.columnCount(count),
     { timeout: COLD_START },
   );
+});
+
+const ALL_BLOCKS = [
+  "pipeline",
+  "messages",
+  "leads",
+  "tasks",
+  "appointments-to-confirm",
+  "appointments-to-close",
+  "agents",
+  "upcoming",
+];
+
+/** Product of the opacities of an element and its ancestors: 1 = fully shown. */
+async function effectiveOpacity(locator: Locator): Promise<number> {
+  return locator.evaluate((element) => {
+    let node: Element | null = element;
+    let value = 1;
+    while (node) {
+      value *= Number(getComputedStyle(node).opacity);
+      node = node.parentElement;
+    }
+    return value;
+  });
+}
+
+/**
+ * Nothing waits for a scroll or an entrance animation to be shown (the former
+ * `Reveal` blocks stayed invisible until scrolled to). Checked WITHOUT
+ * scrolling, in reduced motion and with the animations on.
+ */
+for (const reducedMotion of ["reduce", "no-preference"] as const) {
+  test(`chaque bloc est entièrement visible sans défiler (mouvement : ${reducedMotion})`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page, "agentA");
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { level: 1, name: TEXTS.title })).toBeVisible({ timeout: COLD_START });
+
+    for (const id of ALL_BLOCKS) {
+      const block = card(page, id);
+      await expect(block, id).toBeVisible();
+      // Entrance animations last 550 ms at most: poll, never scroll.
+      await expect.poll(() => effectiveOpacity(block), { message: id, timeout: 5_000 }).toBe(1);
+    }
+    await expect(page.locator("[data-reveal]")).toHaveCount(0);
+  });
+}
+
+/**
+ * The whole screen is in the server HTML (Server Components, no client-only
+ * block). Known limit, reported: `dashboard/loading.tsx` streams the page
+ * behind a Suspense boundary, so a browser with JavaScript OFF receives the
+ * content but keeps showing the skeleton — the skeleton is a required state.
+ */
+test("tout le contenu du tableau de bord est dans le HTML envoyé par le serveur", async ({ page }) => {
+  await signIn(page, "agentA");
+  const response = await page.request.get("/dashboard");
+  expect(response.status()).toBe(200);
+  const html = await response.text();
+
+  for (const id of ALL_BLOCKS) expect(html, id).toContain(`data-testid="dashboard-${id}"`);
+  for (const stage of ["nouveau", "qualifie", "chaud", "rdv_planifie", "estimation_faite", "mandat_signe", "perdu"]) {
+    expect(html, stage).toContain(`data-testid="dashboard-stage-${stage}"`);
+  }
+  for (const id of ["leads", "to-confirm", "to-close"]) expect(html, id).toContain(`data-testid="dashboard-checkpoint-${id}"`);
+  expect(html).not.toContain("data-reveal");
 });
 
 test("isolation : l'agence B ne voit jamais les dossiers de l'agence A", async ({ page }) => {

@@ -176,7 +176,7 @@ test.describe("avec animations", () => {
 
     // Four menu entries in a row, without waiting for any page to settle.
     const nav = primaryNav(page);
-    for (const label of [NAV.dashboard, NAV.pipeline, NAV.agents, NAV.settings]) {
+    for (const label of [NAV.dashboard, NAV.pipeline, NAV.agentsOverview, NAV.settings]) {
       await nav.getByRole("link", { name: label, exact: true }).click();
     }
     await expect(page).toHaveURL(/\/parametres$/, { timeout: COLD_START });

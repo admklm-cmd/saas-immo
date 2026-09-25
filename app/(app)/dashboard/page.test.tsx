@@ -9,7 +9,7 @@ import { makeSummary } from "@/features/dashboard/components/summary-fixture";
  * The `/dashboard` screen, assembled from `getDashboardSummary()`.
  *
  * Only an invalid session or agency replaces the screen with an error; in every
- * other case the four blocks are rendered, « À faire maintenant » first.
+ * other case the four blocks are rendered, the pipeline frieze first.
  */
 
 vi.mock("@/features/dashboard/queries", () => ({
@@ -24,17 +24,15 @@ const TEXTS = APP_TEXTS.dashboard;
 afterEach(() => cleanup());
 
 describe("Écran Tableau de bord", () => {
-  it("affiche les quatre blocs, « À faire maintenant » en premier", async () => {
+  it("affiche la frise des dossiers en premier, puis « À faire maintenant », les agents et les rendez-vous", async () => {
     vi.mocked(getDashboardSummary).mockResolvedValue({ data: makeSummary(), error: null });
 
     render(await DashboardPage());
 
     expect(screen.getByRole("heading", { level: 1, name: TEXTS.title })).toBeDefined();
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    expect(headings[0]).toBe(TEXTS.todoTitle);
-    expect(headings).toEqual(
-      expect.arrayContaining([TEXTS.pipelineTitle, TEXTS.agentsTitle, TEXTS.upcomingTitle]),
-    );
+    expect(headings.slice(0, 2)).toEqual([TEXTS.friezeTitle, TEXTS.todoTitle]);
+    expect(headings).toEqual(expect.arrayContaining([TEXTS.agentsTitle, TEXTS.upcomingTitle]));
     expect(screen.queryByText(TEXTS.unavailable)).toBeNull();
   });
 

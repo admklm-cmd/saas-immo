@@ -148,6 +148,58 @@ export const GLYPHS = {
     accent: ["M4.5 7.5 12 13l7.5-5.5"],
     motion: "drop",
   },
+
+  // --- Navigation of the signed-in space (same grid, same weight) ------------------
+  /** Dashboard: the agency at a glance, one pane standing out. */
+  dashboard: {
+    paths: [
+      "M5.75 3.75h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2z",
+      "M5.75 15.75h3a2 2 0 0 1 2 2v.5a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-.5a2 2 0 0 1 2-2z",
+      "M15.25 3.75h3a2 2 0 0 1 2 2v.5a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-.5a2 2 0 0 1 2-2z",
+    ],
+    accent: ["M15.25 11.25h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2z"],
+    motion: "pop",
+  },
+  /** Pipeline: stages on one line, the dossier moving to the next one. */
+  pipeline: {
+    paths: [circle(5.5, 12, 1.75), circle(12, 12, 1.75), "M7.25 12h3", "M13.75 12h3"],
+    accent: [circle(18.5, 12, 1.75)],
+    motion: "nudge",
+  },
+  /** Tasks: one line done, one still open. */
+  tasks: {
+    paths: [
+      "M5.25 14.25h2a1.5 1.5 0 0 1 1.5 1.5v2a1.5 1.5 0 0 1-1.5 1.5h-2a1.5 1.5 0 0 1-1.5-1.5v-2a1.5 1.5 0 0 1 1.5-1.5z",
+      "M12 7.25h8.25",
+      "M12 16.75h8.25",
+    ],
+    accent: ["M3.75 7.25l2 2 3.75-4"],
+    motion: "draw",
+  },
+  /** AI agents at a glance: modules linked to one active node. */
+  network: {
+    paths: [circle(6, 6.5, 2.25), circle(6, 17.5, 2.25), "M8.1 7.55l6.8 3.25", "M8.1 16.45l6.8-3.25"],
+    accent: [circle(17.5, 12, 2.75)],
+    motion: "pop",
+  },
+  /** Settings: two sliders, each set by hand. */
+  settings: {
+    paths: ["M3.75 7.25h6.5", "M14.75 7.25h5.5", "M3.75 16.75h2.5", "M10.75 16.75h9.5"],
+    accent: [circle(12.5, 7.25, 2.25), circle(8.5, 16.75, 2.25)],
+    motion: "nudge",
+  },
+  /** Menu of the compact navigation. */
+  menu: {
+    paths: ["M4.75 8h14.5", "M4.75 16h14.5"],
+    accent: [],
+    motion: "pop",
+  },
+  /** Close the compact navigation. */
+  close: {
+    paths: [],
+    accent: ["M6.5 6.5l11 11", "M17.5 6.5l-11 11"],
+    motion: "pop",
+  },
 } as const satisfies Record<string, GlyphDefinition>;
 
 export type GlyphName = keyof typeof GLYPHS;

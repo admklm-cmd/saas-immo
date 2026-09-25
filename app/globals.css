@@ -203,6 +203,33 @@
 }
 
 @layer utilities {
+  /*
+   * Common frame of every signed-in page (docs/design-system.md §2.10). One
+   * left edge and one top for all titles, whatever the width of the content:
+   * a narrower page is capped with `page-frame-reading` / `page-frame-medium`
+   * but stays LEFT-aligned on the same edge, instead of being centred.
+   */
+  .page-frame {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--container-7xl, 80rem);
+    padding: calc(var(--spacing) * 10) calc(var(--spacing) * 6) calc(var(--spacing) * 16);
+  }
+
+  @media (width >= 64rem) {
+    .page-frame {
+      padding: calc(var(--spacing) * 12) calc(var(--spacing) * 10) calc(var(--spacing) * 20);
+    }
+  }
+
+  .page-frame-reading > * {
+    max-width: var(--container-4xl, 56rem);
+  }
+
+  .page-frame-medium > * {
+    max-width: var(--container-5xl, 64rem);
+  }
+
   /* Discreet translucent panel (navigation bars, sticky headers). */
   .panel-blur {
     background-color: color-mix(in srgb, var(--color-canvas) 78%, transparent);

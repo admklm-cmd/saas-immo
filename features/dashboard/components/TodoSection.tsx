@@ -1,35 +1,34 @@
 import { APP_TEXTS } from "@/components/texts";
 
 import type { DashboardTodo } from "../types";
-import { ActionListCard } from "./ActionListCard";
 import { AppointmentItem } from "./AppointmentItem";
 import { InboundLeadItem } from "./InboundLeadItem";
 import { MessageItem } from "./MessageItem";
 import { TaskItem } from "./TaskItem";
+import { TodoRow } from "./TodoRow";
 
 const TEXTS = APP_TEXTS.dashboard;
 const FOLLOW_THROUGH = { href: "/agents-ia/suivi-rendez-vous", label: TEXTS.followThroughLink };
 
 /**
- * « À faire maintenant » — first block of the screen. Each card uses the same
- * definition as the screen it links to, so the figure matches what the user
- * finds after the click.
+ * « À faire maintenant » — one panel, one row per kind of human decision.
+ * Each row uses the same definition as the screen it links to, so the figure
+ * matches what the user finds after the click.
  */
 export function TodoSection({ todo }: { todo: DashboardTodo }) {
   return (
     <section aria-labelledby="dashboard-todo-title" data-testid="dashboard-todo">
       <div className="particle-veil w-fit max-w-full">
-        <h2 id="dashboard-todo-title" className="text-heading font-semibold text-ink">
+        <h2 id="dashboard-todo-title" className="text-section font-semibold text-ink">
           {TEXTS.todoTitle}
         </h2>
-        <p className="mt-1 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
+        <p className="mt-1.5 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
       </div>
 
-      {/* Row gap carried by each card (mb-6) so the subgrid tracks stay tight. */}
-      <div className="stagger mt-5 -mb-6 grid gap-x-6 gap-y-0 md:grid-cols-2 xl:grid-cols-3">
-        <ActionListCard
-          layout="subgrid"
+      <div className="stagger mt-5 divide-y divide-line rounded-2xl border border-line bg-surface shadow-subtle">
+        <TodoRow
           id="messages"
+          glyph="human"
           title={TEXTS.messagesTitle}
           hint={TEXTS.messagesHint}
           list={todo.messagesToValidate}
@@ -39,9 +38,9 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           renderItem={(item) => <MessageItem item={item} />}
           link={{ href: "/agents-ia/a-valider", label: TEXTS.messagesLink }}
         />
-        <ActionListCard
-          layout="subgrid"
+        <TodoRow
           id="leads"
+          glyph="lea"
           title={TEXTS.leadsTitle}
           list={todo.inboundLeadsToProcess}
           unit={TEXTS.leadsUnit}
@@ -50,22 +49,9 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           renderItem={(item) => <InboundLeadItem item={item} />}
           link={{ href: "/agents-ia/leads-entrants", label: TEXTS.leadsLink }}
         />
-        <ActionListCard
-          layout="subgrid"
-          id="tasks"
-          title={TEXTS.tasksTitle}
-          hint={TEXTS.tasksHint}
-          list={todo.openTasks}
-          unit={TEXTS.tasksUnit}
-          emptyText={TEXTS.tasksEmpty}
-          getKey={(item) => item.id}
-          renderItem={(item) => <TaskItem item={item} />}
-          link={{ href: "/taches", label: TEXTS.tasksLink }}
-          sampleLabel={TEXTS.sampleFeminine}
-        />
-        <ActionListCard
-          layout="subgrid"
+        <TodoRow
           id="appointments-to-confirm"
+          glyph="louis"
           title={TEXTS.toConfirmTitle}
           list={todo.appointmentsToConfirm}
           unit={TEXTS.toConfirmUnit}
@@ -75,9 +61,9 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           link={FOLLOW_THROUGH}
           sampleLabel={TEXTS.sampleFeminine}
         />
-        <ActionListCard
-          layout="subgrid"
+        <TodoRow
           id="appointments-to-close"
+          glyph="sarah"
           title={TEXTS.toCloseTitle}
           list={todo.appointmentsToClose}
           unit={TEXTS.toCloseUnit}
@@ -85,6 +71,19 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           getKey={(item) => item.id}
           renderItem={(item) => <AppointmentItem item={item} />}
           link={FOLLOW_THROUGH}
+        />
+        <TodoRow
+          id="tasks"
+          glyph="tasks"
+          title={TEXTS.tasksTitle}
+          hint={TEXTS.tasksHint}
+          list={todo.openTasks}
+          unit={TEXTS.tasksUnit}
+          emptyText={TEXTS.tasksEmpty}
+          getKey={(item) => item.id}
+          renderItem={(item) => <TaskItem item={item} />}
+          link={{ href: "/taches", label: TEXTS.tasksLink }}
+          sampleLabel={TEXTS.sampleFeminine}
         />
       </div>
     </section>

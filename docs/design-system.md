@@ -679,6 +679,46 @@ restent pour les icônes utilitaires de l'application (phases d'une exécution, 
   en premier, focus cobalt visible sur le blanc (5,4:1) ; texte `ink` 17,7:1 et
   `ink-muted` ≥ 6:1 sur les plaques claires (WCAG AA).
 
+### 2.10 Cadre de l'espace connecté et navigation groupée
+
+Un seul cadre pour toutes les pages de `app/(app)/` : même bord gauche, même hauteur de
+titre, quelle que soit la largeur du contenu.
+
+- **Classe de page** (`app/globals.css`, `@layer utilities`) : `page-frame` sur la racine de
+  chaque `page.tsx` **et** de son `loading.tsx` (`max-w-7xl`, `px-6 pt-10 pb-16`, puis
+  `px-10 pt-12 pb-20` dès 1024 px). Une page de lecture ajoute `page-frame-reading`
+  (enfants plafonnés à `max-w-4xl`) ou `page-frame-medium` (`max-w-5xl`) : le contenu
+  reste **aligné à gauche** sur le même bord, jamais recentré. Tableau de bord, pipeline et
+  contacts : `page-frame` seul. Ne plus écrire `mx-auto max-w-* px-6 py-10…` dans une page.
+- **En-tête** : `PageHeader` (`components/ui/PageHeader.tsx`) — `h1` en `text-title`
+  (téléphone) puis `text-hero` dès 640 px, une phrase `text-base text-ink-muted`
+  (`max-w-2xl`), badges (`meta`, ex. `SimulationBadge`) **sous** la phrase, actions à
+  droite. `size="hero"` ne change que la graisse (écrans Agents IA).
+- **Navigation** (`components/app/`) : `nav-items.ts` est la source unique (`NAV_GROUPS`,
+  `NAV_ITEMS`, `isNavItemActive`). Trois groupes : **Pilotage** (Tableau de bord, Contacts
+  vendeurs, Pipeline, Tâches, Rendez-vous), **Agents IA** (Vue d'ensemble, Leads entrants,
+  Messages à valider, Relances Emma, Suivi des rendez-vous), puis Paramètres seul, séparé par
+  un filet (titre de groupe `sr-only`). Chaque groupe est une `ul` nommée par son titre
+  (`aria-labelledby`). Une entrée = un glyphe de la famille maison (§ 2.8 ;
+  `dashboard`, `prospect`, `pipeline`, `tasks`, `appointment`, `network`, `lea`, `human`,
+  `emma`, `sarah`, `settings`) + le libellé.
+- **Entrée courante** : rangée blanche surélevée (`bg-surface shadow-subtle ring-1 ring-line`),
+  libellé `font-medium`, glyphe en `ink`, et un **repère cobalt** de 2 × 16 px sur le bord
+  gauche (`bg-accent`, apparition `opacity` + `scale-y` en 200 ms). Le cobalt dit « vous êtes
+  ici » ; `aria-current="page"` et la graisse le disent aussi. Une seule entrée courante par
+  écran (`/agents-ia/executions/*` appartient à « Vue d'ensemble »).
+- **≥ 1024 px** : `AppNav variant="sidebar"` dans une colonne fixe de 256 px (`panel-blur`,
+  `h-dvh`, défilement propre), compte et « Se déconnecter » en bas.
+- **< 1024 px** : barre haute de 64 px (logo + bouton « Menu », `panel-blur`) et
+  `MobileNav` : un `<details>` natif (fonctionne sans JavaScript) qui ouvre une feuille
+  pleine hauteur, `AppNav variant="sheet"` (cibles de 48 px, `text-base`), compte en bas.
+  Avec JavaScript, la feuille se comporte comme une modale : le focus boucle entre
+  « Fermer » et la feuille, `#content` est `inert` et la page ne défile plus ; Échap
+  referme et rend le focus au bouton ; suivre un lien, changer de page ou passer à
+  1024 px referme.
+- `devIndicators: false` dans `next.config.ts` : l'indicateur « N » de `next dev` masquait
+  « Se déconnecter » (développement seulement).
+
 ## 3. Composants (`components/ui/`)
 
 | Composant | Fichier | États |
@@ -878,8 +918,8 @@ réduit ni à une couleur ni à une icône.
 | `DashboardFigure` | `DashboardFigure.tsx` | Un chiffre **toujours suivi de son périmètre** (« en attente, toutes dates », « ouvertes, toutes dates », « état actuel », « aujourd'hui », « sur 7 jours », « à venir ») ; « Indisponible » si le calcul a échoué, jamais `0` |
 | `ActionListCard` | `ActionListCard.tsx` | Liste d'action générique : titre (`h3`, ou `h2` en bloc de premier niveau), total exact, aide d'**une ligne** sur bureau, échantillon (« Les 5 premiers sur 12 » si `hasMore`), lien vers l'écran de travail (« Tout voir » quand l'échantillon est partiel et que l'écran liste tout). **État vide compact** : une seule rangée (pastille ✓ `aria-hidden` + texte atténué) à la place du premier élément, sous le même filet. `layout="subgrid"` : la carte occupe trois rangées de la grille parente (`row-span-3 grid-rows-subgrid`) — en-tête, liste, pied — pour que filets et pieds des cartes d'une même rangée soient alignés au pixel |
 | `MessageItem` / `InboundLeadItem` / `AppointmentItem` / `TaskItem` / `ContactLink` | — | Un élément d'échantillon : contact lié à sa fiche, statut en badge, `SimulationBadge` si simulé. Un lead n'a pas de fiche : il mène à « Leads entrants ». Aucun texte libre du prospect |
-| `TodoSection` | `TodoSection.tsx` | Bloc « À faire maintenant », premier de l'écran : cinq `ActionListCard` |
-| `PipelineSummary` / `PipelineStageTile` | — | Un compte par étape avec `PipelineStageBadge` dans une grille de six tuiles ; `perdu` **intégré sous un filet léger**, sur une rangée pleine largeur et lue sur une ligne (badge, chiffre + périmètre, note « Étape qui n'est plus travaillée activement » à droite dès `sm`) — pointillés, fond atténué, chiffre en `text-ink-subtle` : en retrait, jamais une tuile orpheline |
+| `PipelineFrieze` (+ `FriezeStage`, `FriezeCheckpoint`, `FriezeRail`, `FriezeDots`, `frieze.ts`, `PipelineFrieze.module.css`) | — | **Démonstration de l'écran**, premier bloc : « Où en sont les dossiers ». Voir « Frise du pipeline » ci-dessous |
+| `TodoSection` / `TodoRow` | `TodoSection.tsx`, `TodoRow.tsx` | « À faire maintenant » : **un seul panneau**, une rangée par type de décision humaine (messages, leads, rendez-vous à confirmer, à clôturer, tâches). Grille commune `lg:grid-cols-[18rem_minmax(0,1fr)]` : à gauche la tuile humaine (`AgentAppIcon kind="human"`, anneau cobalt seulement si quelque chose attend), le titre, le chiffre + périmètre, l'aide et **le lien vers l'écran de travail sous l'en-tête** ; à droite, toute la largeur pour les deux premiers éléments (`TODO_ROW_SAMPLE`, deux colonnes dès 1280 px), précédés de « Les 2 premiers sur N » si partiel. État vide : une ligne ✓ à la place des éléments. Sous 1024 px : en-tête, éléments, puis lien |
 | `AgentsSummary` / `RunCountsList` | — | Badge « Simulation » sur la ligne du titre (actions de `Card`, comme la fiche contact). État du coupe-circuit (lu à part, visible même si les exécutions sont indisponibles) ; exécutions aujourd'hui et sur 7 jours : total, **erreurs techniques**, **bloquées par un garde-fou** (dit explicitement « pas une erreur »). Lien vers `/agents-ia`, jamais de bouton dupliqué |
 | `UpcomingAppointments` | `UpcomingAppointments.tsx` | `ActionListCard` de premier niveau : total à venir + 5 prochains créneaux (heure de Paris) |
 
@@ -887,6 +927,41 @@ réduit ni à une couleur ni à une icône.
 unité en `text-sm text-ink-muted` sur la même ligne de base, périmètre en dessous en
 `text-xs text-ink-subtle`, précédé d'un « Périmètre : » réservé aux lecteurs d'écran.
 Ni tendance, ni flèche, ni pourcentage : l'écran n'affiche que ce que le serveur a compté.
+
+**Frise du pipeline (`PipelineFrieze`).** Ce qu'elle raconte : *où sont les dossiers, et où
+une personne doit décider*. `buildFrieze(pipeline, todo)` ne fait que **réordonner** ce que
+`getDashboardSummary` a compté (aucun taux, aucune tendance, aucun nouveau chiffre).
+
+- **Une ligne** (`bg-line-strong`, 1 px) dans l'ordre du parcours vendeur : horizontale dès
+  1280 px, verticale à gauche en dessous. Chaque pas dessine son propre segment
+  (`FriezeRail`), la ligne est continue quelle que soit la largeur.
+- **Étape** (`FriezeStage`) : un nœud creux de 10 px sur la ligne, le libellé
+  (`PIPELINE_STAGE_LABELS`), le compte exact (`text-hero` dès 1280 px) + « dossier(s) », et
+  **un point par dossier** (`FriezeDots`, 8 px, `bg-ink-subtle/55`) : barre de points qui monte
+  depuis la ligne, 10 par colonne (`FRIEZE_COLUMN_ROWS`), plafonnée à `FRIEZE_DOT_CAP` = 40
+  points et alors dite (« 40 points affichés »). La hauteur de la bande = la plus haute barre
+  réellement dessinée. Compte indisponible : « Indisponible » et une barre en pointillés, jamais 0.
+- **Décision humaine** (`FriezeCheckpoint`) : la tuile `AgentAppIcon kind="human" size="sm"`
+  posée **sur** la ligne, là où la décision se prend (leads à traiter avant « Nouveau »,
+  rendez-vous à confirmer avant « RDV planifié », comptes-rendus à saisir avant « Estimation
+  faite »). Anneau cobalt (`state="active"`) **seulement** si le total est > 0 ; gris à zéro ;
+  inactif si indisponible. Le chiffre est un lien vers l'écran où la décision se prend et vaut
+  exactement le total de la rangée « À faire » correspondante.
+- **Mandat signé** termine la ligne : forme « issue » (`AgentAppIcon glyph="mandate"
+  kind="outcome"`, disque noir), points en `ink`, mention « Confirmé par un humain ».
+- **Perdu** : hors de la ligne, en dessous, rangée en pointillés sur fond atténué, chiffre
+  `text-ink-subtle`, points creux, note « Étape qui n'est plus travaillée activement ».
+- Légende `aria-hidden` (le sens est porté par le texte) : « 1 point = 1 dossier »,
+  « Décision humaine attendue ». Sous-titre : « Chaque dossier à son étape, et les
+  décisions humaines en chemin · état actuel ».
+- **Mouvement** : un seul, avec une cause — survoler une étape (pointeur fin) passe ses
+  points en `ink` et grossit son nœud (×1,3), les autres barres reculent à 32 %
+  (`--duration-base`, propriétés de peinture/transform seulement). Rien ne bouge seul ; en
+  reduced motion, les états restent, les transitions disparaissent. Aucune information
+  n'est derrière `Reveal` : l'écran entier est dans le HTML serveur.
+- Pour `/pipeline` : reprendre les mêmes signes (nœud creux = étape, tuile humaine à double
+  contour + anneau cobalt = décision humaine attendue, disque noir = mandat confirmé par un
+  humain, pointillés = perdu) pour que les deux écrans se lisent de la même façon.
 
 ### 3.6 Tâches (`features/tasks/components/`) et rendez-vous (`features/appointments/components/`)
 
@@ -959,7 +1034,9 @@ Chaque écran gère quatre états :
 
 ## 7. Grille et points de rupture
 
-- Conteneur applicatif : `max-w-7xl`, gouttières `px-6` (mobile) / `px-10` (≥ 1024 px).
+- Conteneur applicatif : classe `page-frame` (§ 2.10) — `max-w-7xl`, gouttières `px-6`
+  (mobile) / `px-10` (≥ 1024 px) ; `page-frame-reading` (`max-w-4xl`) et
+  `page-frame-medium` (`max-w-5xl`) plafonnent sans recentrer.
 - Fiche contact : `lg:grid-cols-[minmax(0,1fr)_22rem]`, colonne de droite collante.
 - Écran Agents IA : bandeau `lg:grid-cols-2` (coupe-circuit + activité), grille des
   cinq agents `lg:grid-cols-2 2xl:grid-cols-3`, journal pleine largeur.
@@ -970,23 +1047,29 @@ Chaque écran gère quatre états :
   `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3` (deux rangées de trois à partir de
   1280 px, jamais de défilement horizontal disgracieux), `perdu` en dessous sur
   une colonne unique `max-w-sm`.
-- Tableau de bord (`/dashboard`) : `max-w-7xl`. « À faire maintenant » en grille
-  `md:grid-cols-2 xl:grid-cols-3`, sans espacement vertical de grille (`gap-x-6 gap-y-0`,
-  chaque carte porte `mb-6`) : les cartes sont en `grid-rows-subgrid`, donc en-têtes, filets,
-  premiers éléments et pieds sont alignés d'une carte à l'autre d'une même rangée, et un état
-  vide tient sur une rangée. Pipeline pleine largeur en `grid-cols-2 sm:grid-cols-3 xl:grid-cols-6`
-  (tuiles `p-3`, `p-4` dès `sm`) avec `perdu` en rangée pleine largeur sous un filet, puis agents IA et prochains rendez-vous en
-  `lg:grid-cols-2`. Blocs espacés de `gap-12`, entrée des blocs suivants via `Reveal`.
+- Tableau de bord (`/dashboard`) : `page-frame`. Frise du pipeline pleine largeur (ligne
+  horizontale dès 1280 px ; verticale en dessous, plafonnée à `max-w-xl` de 1024 à 1279 px),
+  puis « À faire maintenant » en un panneau à rangées (`TodoRow`,
+  `lg:grid-cols-[18rem_minmax(0,1fr)]`), puis agents IA et prochains rendez-vous en
+  `xl:grid-cols-2`. Blocs espacés de `gap-12` (`gap-14` dès 1024 px). Aucun `Reveal` : seule
+  l'arrivée `stagger` (CSS pur, coupée en reduced motion) anime les rangées.
 - Pages publiques de saisie (`/estimation`, `/politique-confidentialite`) : colonne
   unique `max-w-2xl`, gouttières `px-6`, respiration `py-16` (`sm:py-20`). Le
   formulaire vit dans une `Card` unique, ses sections espacées de `gap-10`, l'action
   principale séparée par un filet `border-t border-line`. Les champs passent de deux
   colonnes (`sm:grid-cols-2`) à une seule sous 640 px.
 - Listes paginées (`/taches`, `/rendez-vous`) : colonne unique `max-w-4xl`, comme les files de travail ; lignes empilées sous 640 px (action sous le texte).
-- Navigation : barre horizontale défilante sous 1024 px (l'entrée courante est ramenée dans la bande visible), colonne fixe de 256 px au-dessus.
+- Navigation : barre haute + bouton « Menu » (feuille pleine hauteur) sous 1024 px, colonne
+  fixe de 256 px au-dessus (§ 2.10).
 - Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
 
 ## 8. Limites connues (à traiter plus tard)
+
+- Sans JavaScript, une page de l'espace connecté qui a un `loading.tsx` reste sur son
+  squelette : Next.js envoie bien tout le contenu dans le HTML (vérifié par
+  `e2e/dashboard.spec.ts`), mais c'est un script qui remplace le squelette par le contenu.
+  Le squelette (état de chargement obligatoire) a été gardé ; le menu, lui, fonctionne
+  sans JavaScript.
 
 - Pas de thème sombre : les tokens sont prêts (surfaces inverses), le basculement ne l'est pas.
 - Une seule modale (`Dialog`), réservée aux confirmations qui engagent l'agence
