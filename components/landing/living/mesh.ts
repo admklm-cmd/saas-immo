@@ -11,19 +11,29 @@
  * - Every opacity is scaled by the blended mesh weight, so the mesh fades in
  *   and out with the scene and is absent (0) from every other scene.
  * - The fictitious files keep travelling the 8-stop path only (files.ts).
+ *
+ * A scene with a mesh profile (`SceneSpec.meshStyle`, agents only, see
+ * mesh-style.ts) draws a denser network (more vertices and links, longest link
+ * bounded, no line across a text of its section) and sends its impulses along
+ * short ROUTES of links kept clear of the content and of the labels. Without
+ * profile (problem scene) everything below draws exactly the C1/C2 mesh.
  */
 
-import { LABEL, labelRect, outsideRects, segmentRectDistance, type Rect } from "./labels";
+import { LABEL, labelClearance, labelRect, outsideRects, segmentRectDistance, type Rect } from "./labels";
+import type { MeshLook } from "./mesh-style";
 import { bounds, fieldBase, fieldOf, isFar, moteBase, moteCount } from "./motes";
-import { frameOf, meshOf, SCENES, STOP_COUNT, type LivingScene, type Point } from "./scenes";
+import { addRoutePulses, withRoutes, type MeshGraph } from "./routes";
+import { contentOf, frameOf, meshLookOf, meshOf, SCENES, STOP_COUNT, type LivingScene, type Point } from "./scenes";
 import { ease, hash01, smoothstep, valueAt } from "./timeline";
 import type { Frame, MeshPointDraw, NodeDraw, SceneState, Viewport } from "./types";
 
-/** Most links a scene may draw (wide, compact). */
+export { labelClearance };
+
+/** Most links a scene without mesh profile may draw (wide, compact). */
 export const MESH_LINK_CAP = { wide: 150, compact: 30 } as const;
 /** Largest vertical parallax shift of the near plane, CSS px. */
 export const PARALLAX_MAX = 20;
-/** Impulses travelling at once, seconds between two departures of a slot, travel time. */
+/** Impulses travelling at once (any scene), seconds between two departures of a slot, travel time. */
 export const PULSES = { wide: 3, compact: 1, period: 7.5, travel: 2.8 } as const;
 
 /** Each prospect links to its 2 nearest neighbours, some to a third one. */
@@ -35,24 +45,32 @@ const STOP_REACH = { wide: 190, compact: 80 } as const;
 const FADE_LENGTH = { wide: [80, 220], compact: [60, 150] } as const;
 /** Radius of an impulse dot, CSS px (largest, see renderer.ts): kept off the labels too. */
 const PULSE_REACH = 2;
+/** Mesh profile: no link comes closer than this to a text of the section, CSS px. */
+const TEXT_CLEARANCE = 3;
 
 /** A link between two prospects (`b` a prospect) or a prospect and a stop (`b` a stop). */
 export type MeshLink = { a: number; b: number; toStop: boolean; far: boolean };
 
-const cache = new Map<string, readonly MeshLink[]>();
-const NONE: readonly MeshLink[] = [];
+const cache = new Map<string, MeshGraph>();
+const NONE: MeshGraph = { links: [], places: [], open: [], next: new Map() };
 
 /**
  * Links of a scene on a given viewport. Computed once, then read from a cache
  * (a resize or a new scene computes a new set; nothing is computed per frame).
  */
 export function meshLinksOf(scene: LivingScene, viewport: Viewport, seed: number): readonly MeshLink[] {
+  return meshGraphOf(scene, viewport, seed).links;
+}
+
+function meshGraphOf(scene: LivingScene, viewport: Viewport, seed: number): MeshGraph {
   const spec = SCENES[scene];
   if (spec.mesh <= 0) return NONE;
   const key = `${scene}|${viewport.width}|${viewport.height}|${viewport.compact ? 1 : 0}|${seed}`;
   const known = cache.get(key);
   if (known) return known;
 
+  const look = meshLookOf(scene, viewport.compact);
+  const size = viewport.compact ? "compact" : "wide";
   const layout: readonly Point[] = viewport.compact ? spec.compact : spec.wide;
   const frame = frameOf(spec, viewport);
   const stops: number[] = [];
@@ -61,19 +79,27 @@ export function meshLinksOf(scene: LivingScene, viewport: Viewport, seed: number
     stops.push(frame.x + nx * frame.width, ny * frame.height);
   }
   const box = bounds(stops, viewport);
-  const count = moteCount(viewport);
+  const count = moteCount(viewport, scene);
   const field = fieldOf(scene, viewport);
   const places = Array.from({ length: count }, (_, index): [number, number] => {
     if (!field) return moteBase(index, box, seed);
-    const [x, y] = fieldBase(index, field, frame, viewport, seed);
+    const [x, y] = fieldBase(index, field, frame, viewport, seed, count);
     return [x, y];
   });
+  const neighbours = look ? look.neighbours : NEIGHBOURS;
+  const thirdShare = look ? look.thirdShare : THIRD_NEIGHBOUR_SHARE;
+  const stopReach = look ? look.stopReach : STOP_REACH[size];
+  const maxLength = look ? look.maxLength : Infinity;
+  const texts: Rect[] = contentOf(scene, viewport).filter((zone) => zone.text);
+  // A mesh profile never draws a line across a text of its section.
+  const clearOfText = (x1: number, y1: number, x2: number, y2: number) =>
+    texts.every((rect) => segmentRectDistance(x1, y1, x2, y2, rect) >= TEXT_CLEARANCE);
 
   const candidates: { link: MeshLink; length: number }[] = [];
   const seen = new Set<number>();
   for (let a = 0; a < count; a++) {
     const [ax, ay] = places[a] ?? [0, 0];
-    const wanted = NEIGHBOURS + (hash01(a, 17, 1, seed) < THIRD_NEIGHBOUR_SHARE ? 1 : 0);
+    const wanted = neighbours + (hash01(a, 17, 1, seed) < thirdShare ? 1 : 0);
     const nearest = places
       .map(([bx, by], b) => ({ b, length: Math.hypot(bx - ax, by - ay) }))
       .filter((entry) => entry.b !== a)
@@ -83,6 +109,8 @@ export function meshLinksOf(scene: LivingScene, viewport: Viewport, seed: number
       const id = Math.min(a, b) * 1024 + Math.max(a, b);
       if (seen.has(id)) continue;
       seen.add(id);
+      const [bx, by] = places[b] ?? [ax, ay];
+      if (length > maxLength || !clearOfText(ax, ay, bx, by)) continue;
       candidates.push({ link: { a, b, toStop: false, far: isFar(a, seed) && isFar(b, seed) }, length });
     }
     let bestStop = 0;
@@ -94,16 +122,21 @@ export function meshLinksOf(scene: LivingScene, viewport: Viewport, seed: number
         bestStop = stop;
       }
     }
-    if (bestLength <= STOP_REACH[viewport.compact ? "compact" : "wide"]) {
+    if (
+      bestLength <= stopReach &&
+      clearOfText(ax, ay, valueAt(stops, bestStop * 2), valueAt(stops, bestStop * 2 + 1))
+    ) {
       candidates.push({ link: { a, b: bestStop, toStop: true, far: false }, length: bestLength });
     }
   }
   // Shortest links first: the cap drops the long, faint ones.
   candidates.sort((left, right) => left.length - right.length);
-  const links = candidates.slice(0, MESH_LINK_CAP[viewport.compact ? "compact" : "wide"]).map((entry) => entry.link);
+  const cap = look ? look.links : MESH_LINK_CAP[size];
+  const links = candidates.slice(0, cap).map((entry) => entry.link);
+  const graph = look ? withRoutes(scene, viewport, links, places, stops) : { ...NONE, links, places };
   if (cache.size > 24) cache.clear();
-  cache.set(key, links);
-  return links;
+  cache.set(key, graph);
+  return graph;
 }
 
 /** Mesh weight displayed at `time`, blended like the presence: no jump between scenes. */
@@ -128,15 +161,39 @@ export function addMesh(
   viewport: Viewport,
   seed: number,
 ) {
-  const current = meshOf(SCENES[state.scene], viewport.compact) * (state.previous ? k : 1);
+  const shareNow = state.previous ? k : 1;
+  const current = meshOf(SCENES[state.scene], viewport.compact) * shareNow;
   const previous = state.previous ? meshOf(SCENES[state.previous], viewport.compact) * (1 - k) : 0;
   const labels = labelRects(frame.nodes, viewport);
-  if (current > 0.01) addLinks(frame, meshLinksOf(state.scene, viewport, seed), current, points, viewport, labels);
+  const lookNow = meshLookOf(state.scene, viewport.compact);
+  const lookBefore = state.previous ? meshLookOf(state.previous, viewport.compact) : null;
+  if (lookNow || lookBefore) {
+    // Mesh profile: no vertex dot on a label either (it fades out near one).
+    for (const point of frame.meshPoints) {
+      const look = point.look;
+      if (look) look.alpha *= labelClearance(point.x, point.y, point.x, point.y, labels, look.r + 1);
+    }
+  }
+  if (current > 0.01) {
+    const links = meshLinksOf(state.scene, viewport, seed);
+    if (lookNow) addStyledLinks(frame, links, shareNow, lookNow, points, labels);
+    else addLinks(frame, links, current, points, viewport, labels);
+  }
   if (state.previous && previous > 0.01) {
-    addLinks(frame, meshLinksOf(state.previous, viewport, seed), previous, points, viewport, labels);
+    const links = meshLinksOf(state.previous, viewport, seed);
+    if (lookBefore) addStyledLinks(frame, links, 1 - k, lookBefore, points, labels);
+    else addLinks(frame, links, previous, points, viewport, labels);
   }
   // Impulses follow the dominant scene only: never twice as many during a change.
-  const scene = current >= previous || !state.previous ? state.scene : state.previous;
+  const nowLeads = current >= previous || !state.previous;
+  const scene = nowLeads ? state.scene : (state.previous as LivingScene);
+  const look = nowLeads ? lookNow : lookBefore;
+  if (look) {
+    const share = nowLeads ? shareNow : 1 - k;
+    const cap = viewport.compact ? PULSES.compact : PULSES.wide;
+    addRoutePulses(frame, meshGraphOf(scene, viewport, seed), share, look, time, viewport, seed, labels, cap);
+    return;
+  }
   addPulses(frame, meshLinksOf(scene, viewport, seed), Math.max(current, previous), points, time, viewport, seed, labels);
 }
 
@@ -147,28 +204,6 @@ export function labelRects(nodes: readonly NodeDraw[], viewport: Viewport): Rect
     if (node.label && node.alpha > 0.01) rects.push(labelRect(node.x, node.y, node.label, viewport.width));
   }
   return rects;
-}
-
-/**
- * 1 for an impulse well away from every label, fading to 0 at
- * `LABEL.clearance` px: an impulse fades out while it passes a label, then
- * comes back, without any jump.
- */
-export function labelClearance(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  labels: readonly Rect[],
-  reach = 0,
-): number {
-  let clear = 1;
-  for (const rect of labels) {
-    const distance = segmentRectDistance(x1, y1, x2, y2, rect) - reach;
-    clear = Math.min(clear, smoothstep((distance - LABEL.clearance) / LABEL.fade));
-    if (clear === 0) break;
-  }
-  return clear;
 }
 
 function ends(link: MeshLink, vertices: readonly MeshPointDraw[], points: readonly number[]): [number, number, number, number] {
@@ -185,6 +220,17 @@ function lengthFade(length: number, viewport: Viewport): number {
   return 1 - smoothstep((length - start) / (end - start));
 }
 
+/** Pieces of a link left around the labels, or null when nothing is left. */
+function cut(x1: number, y1: number, x2: number, y2: number, labels: readonly Rect[]) {
+  // Interrupted around the labels: the hairline stops LABEL.clearance px
+  // before a label and resumes after it, so it never crosses nor touches
+  // one; the gap opens and closes continuously as the points drift.
+  const parts = outsideRects(x1, y1, x2, y2, labels, LABEL.clearance);
+  if (parts.length === 0) return null;
+  const whole = parts.length === 1 && parts[0]?.[0] === 0 && parts[0]?.[1] === 1;
+  return whole ? undefined : parts;
+}
+
 function addLinks(
   frame: Frame,
   links: readonly MeshLink[],
@@ -197,13 +243,31 @@ function addLinks(
     const [x1, y1, x2, y2] = ends(link, frame.meshPoints, points);
     const alpha = weight * lengthFade(Math.hypot(x2 - x1, y2 - y1), viewport);
     if (alpha <= 0.01) continue;
-    // Interrupted around the labels: the hairline stops LABEL.clearance px
-    // before a label and resumes after it, so it never crosses nor touches
-    // one; the gap opens and closes continuously as the points drift.
-    const parts = outsideRects(x1, y1, x2, y2, labels, LABEL.clearance);
-    if (parts.length === 0) continue;
-    const whole = parts.length === 1 && parts[0]?.[0] === 0 && parts[0]?.[1] === 1;
-    frame.meshLinks.push(whole ? { x1, y1, x2, y2, alpha, far: link.far } : { x1, y1, x2, y2, alpha, far: link.far, parts });
+    const parts = cut(x1, y1, x2, y2, labels);
+    if (parts === null) continue;
+    frame.meshLinks.push(parts ? { x1, y1, x2, y2, alpha, far: link.far, parts } : { x1, y1, x2, y2, alpha, far: link.far });
+  }
+}
+
+/** Mesh profile: plane and length set the opacity (never below `longFade`), plane sets the width. */
+function addStyledLinks(
+  frame: Frame,
+  links: readonly MeshLink[],
+  share: number,
+  look: MeshLook,
+  points: readonly number[],
+  labels: readonly Rect[],
+) {
+  const [start, end] = look.fade;
+  for (const link of links) {
+    const [x1, y1, x2, y2] = ends(link, frame.meshPoints, points);
+    const fade = 1 - (1 - look.longFade) * smoothstep((Math.hypot(x2 - x1, y2 - y1) - start) / (end - start));
+    const alpha = share * (link.far ? look.farLine : look.line) * fade;
+    if (alpha <= 0.01) continue;
+    const parts = cut(x1, y1, x2, y2, labels);
+    if (parts === null) continue;
+    const width = link.far ? look.farWidth : look.width;
+    frame.meshLinks.push({ x1, y1, x2, y2, alpha, far: link.far, width, ...(parts ? { parts } : {}) });
   }
 }
 
@@ -252,3 +316,4 @@ function addPulses(
     frame.pulses.push(pulse);
   }
 }
+

@@ -10,6 +10,8 @@
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 
+import { smoothstep } from "./timeline";
+
 const TEXTS = LANDING_TEXTS.living;
 
 /** Agents with a label drawn next to them (decorative, aria-hidden canvas). */
@@ -147,3 +149,26 @@ export function outsideRects(
   if (1 - cursor >= minimum) parts.push([cursor, 1]);
   return parts;
 }
+
+/**
+ * 1 for an impulse well away from every label, fading to 0 at
+ * `LABEL.clearance` px: an impulse fades out while it passes a label, then
+ * comes back, without any jump.
+ */
+export function labelClearance(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  labels: readonly Rect[],
+  reach = 0,
+): number {
+  let clear = 1;
+  for (const rect of labels) {
+    const distance = segmentRectDistance(x1, y1, x2, y2, rect) - reach;
+    clear = Math.min(clear, smoothstep((distance - LABEL.clearance) / LABEL.fade));
+    if (clear === 0) break;
+  }
+  return clear;
+}
+

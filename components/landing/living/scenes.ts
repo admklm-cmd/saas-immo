@@ -11,6 +11,8 @@
  * partly hidden on purpose.
  */
 
+import { AGENTS_MESH_STYLE, type MeshLook, type MeshStyle } from "./mesh-style";
+
 export const LIVING_SCENES = ["hero", "probleme", "solution", "agents", "controle", "resultat", "final"] as const;
 export type LivingScene = (typeof LIVING_SCENES)[number];
 
@@ -35,6 +37,14 @@ export type Point = readonly [number, number];
  * Shares are relative weights (they need not add up to 1).
  */
 export type FieldZone = { x0: number; y0: number; x1: number; y1: number; share: number; sway?: number };
+
+/**
+ * An element of a section (normalised to the scene frame, desktop, reading
+ * position). `text`: no mesh line may cross it (title, introduction, text of
+ * the modules); otherwise a surface lines may pass behind (a frosted module).
+ * Impulses keep off every element.
+ */
+export type ContentZone = { x0: number; y0: number; x1: number; y1: number; text: boolean };
 
 export type SceneSpec = {
   /** 8 stops, desktop and tablet (≥ 768 px). */
@@ -93,6 +103,13 @@ export type SceneSpec = {
    * next to the same elements. Only the agents scene sets it.
    */
   frame?: { width: number; height: number };
+  /**
+   * Style profile of the mesh (mesh-style.ts). Absent: the reference mesh of
+   * C1 (problem scene). Only the agents scene sets it.
+   */
+  meshStyle?: MeshStyle;
+  /** Desktop only: elements of the section the mesh keeps clear of (see ContentZone). */
+  content?: readonly ContentZone[];
 };
 
 const BASE: SceneSpec = {
@@ -124,6 +141,13 @@ export function presenceOf(spec: SceneSpec, compact: boolean): number {
   return compact ? 1 + (spec.presence - 1) * COMPACT_PRESENCE_GAIN : spec.presence;
 }
 
+/**
+ * Narrowest viewport (CSS px) drawing a scene frame at its pixel size: the
+ * landing content is 1280 px wide at most (max-w-7xl), centred, so from there
+ * its elements sit at the same pixels relative to the centre.
+ */
+export const FRAME_PIXEL_MIN = 1280;
+
 /** Size and offset of the box a scene's normalised coordinates are drawn in, CSS px. */
 export function frameOf(
   spec: SceneSpec,
@@ -131,8 +155,37 @@ export function frameOf(
 ): { x: number; width: number; height: number } {
   const frame = viewport.compact ? undefined : spec.frame;
   if (!frame) return { x: 0, width: viewport.width, height: viewport.height };
+  // From FRAME_PIXEL_MIN px wide the content (max width, centred) sits at the
+  // same pixels relative to the centre as at the reference size: the frame
+  // keeps its pixel size, centred (it may overflow the viewport a little).
+  if (viewport.width >= FRAME_PIXEL_MIN) {
+    return { x: (viewport.width - frame.width) / 2, width: frame.width, height: frame.height };
+  }
   const width = Math.min(viewport.width, frame.width);
   return { x: (viewport.width - width) / 2, width, height: Math.min(viewport.height, frame.height) };
+}
+
+/** Mesh look of a scene on a given screen, or null (reference mesh). */
+export function meshLookOf(scene: LivingScene, compact: boolean): MeshLook | null {
+  const style = SCENES[scene].meshStyle;
+  return style ? (compact ? style.compact : style.wide) : null;
+}
+
+/** Elements a scene's mesh keeps clear of on this screen (desktop only), CSS px. */
+export function contentOf(
+  scene: LivingScene,
+  viewport: { width: number; height: number; compact: boolean },
+): readonly ContentZone[] {
+  const content = SCENES[scene].content;
+  if (viewport.compact || !content) return [];
+  const frame = frameOf(SCENES[scene], viewport);
+  return content.map((zone) => ({
+    x0: frame.x + zone.x0 * frame.width,
+    y0: zone.y0 * frame.height,
+    x1: frame.x + zone.x1 * frame.width,
+    y1: zone.y1 * frame.height,
+    text: zone.text,
+  }));
 }
 
 /** Mesh weight actually applied: phones keep half of it, like the presence. */
@@ -242,29 +295,50 @@ export const SCENES: Record<LivingScene, SceneSpec> = {
       [0.6875, 0.2778],
       [0.7083, 0.3533],
       [0.6875, 0.4311],
-      [0.6819, 0.5056],
+      [0.6819, 0.488],
       [0.6819, 0.7778],
     ],
     compact: COMPACT_COLUMN,
     frame: { width: 1440, height: 900 },
+    // C3: the network breathes through the whole section, around the content
+    // (a third of it right of the title, the rest in bands and margins that
+    // wrap the heading, the modules and the window), never under a text.
     field: [
       // Right of the title and the introduction, below the fixed header.
-      { x0: 0.6, y0: 0.1, x1: 0.98, y1: 0.43, share: 0.55 },
-      // Band of the bar, between the hint and the navigation.
-      { x0: 0.38, y0: 0.43, x1: 0.79, y1: 0.505, share: 0.07, sway: 0.5 },
-      // Under the introduction, above the hint.
-      { x0: 0.09, y0: 0.385, x1: 0.36, y1: 0.44, share: 0.03, sway: 0.4 },
-      // Through the gaps between the first modules: a chain of points, hence
-      // short vertical hairlines seen between two modules.
-      { x0: 0.2375, y0: 0.47, x1: 0.2375, y1: 0.8, share: 0.08, sway: 0.15 },
-      { x0: 0.3903, y0: 0.47, x1: 0.3903, y1: 0.8, share: 0.08, sway: 0.15 },
-      { x0: 0.5431, y0: 0.47, x1: 0.5431, y1: 0.8, share: 0.08, sway: 0.15 },
-      // Band between the modules and the scene window.
-      { x0: 0.06, y0: 0.765, x1: 0.96, y1: 0.795, share: 0.16, sway: 0.4 },
-      // Left and right margins.
-      { x0: 0.012, y0: 0.1, x1: 0.07, y1: 0.96, share: 0.03, sway: 0.5 },
-      { x0: 0.925, y0: 0.52, x1: 0.99, y1: 0.97, share: 0.03, sway: 0.5 },
+      { x0: 0.57, y0: 0.085, x1: 0.99, y1: 0.43, share: 0.34 },
+      // Full-width band between the introduction and the bar.
+      { x0: 0.015, y0: 0.392, x1: 0.8, y1: 0.445, share: 0.15, sway: 0.35 },
+      // Left and right margins, top to bottom.
+      { x0: 0.008, y0: 0.085, x1: 0.07, y1: 0.97, share: 0.08, sway: 0.5 },
+      { x0: 0.93, y0: 0.47, x1: 0.995, y1: 0.97, share: 0.06, sway: 0.5 },
+      // Band between the modules and the scene window, open around « Mandat ».
+      { x0: 0.02, y0: 0.762, x1: 0.655, y1: 0.795, share: 0.1, sway: 0.3 },
+      { x0: 0.75, y0: 0.762, x1: 0.98, y1: 0.795, share: 0.04, sway: 0.3 },
+      // Chains through the gaps between modules (the path uses the one at x 982)
+      // and between the detail text and the window: short vertical hairlines.
+      { x0: 0.2375, y0: 0.47, x1: 0.2375, y1: 0.8, share: 0.025, sway: 0.15 },
+      { x0: 0.3903, y0: 0.47, x1: 0.3903, y1: 0.8, share: 0.025, sway: 0.15 },
+      { x0: 0.5431, y0: 0.47, x1: 0.5431, y1: 0.8, share: 0.025, sway: 0.15 },
+      { x0: 0.8347, y0: 0.47, x1: 0.8347, y1: 0.8, share: 0.025, sway: 0.15 },
+      { x0: 0.4208, y0: 0.815, x1: 0.4208, y1: 0.99, share: 0.025, sway: 0.15 },
     ],
+    // Elements of the section at the reading position (same measure as above).
+    content: [
+      { x0: 0, y0: 0, x1: 1, y1: 0.0711, text: false },
+      { x0: 0.0889, y0: 0.0511, x1: 0.5278, y1: 0.3067, text: true },
+      { x0: 0.0889, y0: 0.3233, x1: 0.5417, y1: 0.3756, text: true },
+      { x0: 0.0889, y0: 0.4589, x1: 0.3653, y1: 0.48, text: true },
+      { x0: 0.8056, y0: 0.45, x1: 0.9111, y1: 0.49, text: true },
+      { x0: 0.0889, y0: 0.52, x1: 0.2333, y1: 0.7533, text: true },
+      { x0: 0.2417, y0: 0.52, x1: 0.3861, y1: 0.7533, text: true },
+      { x0: 0.3944, y0: 0.52, x1: 0.5389, y1: 0.7533, text: true },
+      { x0: 0.5472, y0: 0.52, x1: 0.6778, y1: 0.7533, text: true },
+      { x0: 0.6861, y0: 0.52, x1: 0.8306, y1: 0.7533, text: true },
+      { x0: 0.8389, y0: 0.52, x1: 0.9167, y1: 0.7533, text: true },
+      { x0: 0.0889, y0: 0.8033, x1: 0.4042, y1: 1, text: true },
+      { x0: 0.4375, y0: 0.8033, x1: 0.9111, y1: 1, text: true },
+    ],
+    meshStyle: AGENTS_MESH_STYLE,
     // Calm: agents light up in turn (cobalt pulses), few impulses, rare halts.
     period: 4.2,
     blockRate: 0.06,

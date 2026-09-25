@@ -48,6 +48,11 @@ export type MeshPointDraw = {
   alpha: number;
   /** Far plane: paler, smaller, less parallax. */
   far: boolean;
+  /**
+   * Scenes with a mesh profile (agents): every vertex drawn, with this radius
+   * and opacity (before intensity); a hub is an outlined circle.
+   */
+  look?: { r: number; alpha: number; hub: boolean };
 };
 /**
  * A resting connection of the mesh: always grey, never the accent colour.
@@ -62,9 +67,30 @@ export type MeshLinkDraw = {
   alpha: number;
   far: boolean;
   parts?: readonly (readonly [number, number])[];
+  /**
+   * Scenes with a mesh profile (agents): line width, CSS px. `alpha` is then
+   * the final opacity before intensity (the reference cap does not apply).
+   */
+  width?: number;
 };
 /** A small cobalt impulse travelling along a mesh link (tail → head). */
-export type PulseDraw = { x: number; y: number; tx: number; ty: number; alpha: number };
+export type PulseDraw = {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  alpha: number;
+  /**
+   * Scenes with a mesh profile (agents): the impulse travels a route of links.
+   * `trail` lists the tail points from the head backwards (x, y pairs), drawn
+   * in segments of decreasing opacity; `r` is the dot radius; `flash` the
+   * vertex it just reached, briefly cobalt (no halo).
+   */
+  trail?: readonly number[];
+  r?: number;
+  trailWidth?: number;
+  flash?: { x: number; y: number; r: number; alpha: number };
+};
 
 export type Frame = {
   nodes: NodeDraw[];

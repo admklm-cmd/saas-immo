@@ -67,11 +67,30 @@ describe("labels of the path stay clear of the mesh", () => {
               }
             }
           }
-          // Impulses fade out before reaching a label (dot radius included).
+          // Impulses fade out before reaching a label (dot radius included),
+          // tail pieces included; a lit vertex never sits on a label either.
           for (const pulse of frame.pulses) {
-            if (pulse.alpha <= 0.001) continue;
             for (const rect of labels) {
-              expect(segmentRectDistance(pulse.tx, pulse.ty, pulse.x, pulse.y, rect)).toBeGreaterThan(LABEL.clearance + 1.8);
+              if (pulse.alpha > 0.001) {
+                expect(segmentRectDistance(pulse.tx, pulse.ty, pulse.x, pulse.y, rect)).toBeGreaterThan(LABEL.clearance + 1.8);
+                const trail = pulse.trail ?? [];
+                for (let piece = 0; piece + 3 < trail.length; piece += 2) {
+                  const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] = trail.slice(piece, piece + 4);
+                  expect(segmentRectDistance(x1, y1, x2, y2, rect)).toBeGreaterThan(LABEL.clearance + 1.8);
+                }
+              }
+              const flash = pulse.flash;
+              if (flash && flash.alpha > 0.001) {
+                expect(segmentRectDistance(flash.x, flash.y, flash.x, flash.y, rect) - flash.r).toBeGreaterThan(LABEL.clearance);
+              }
+            }
+          }
+          // Vertex dots of a mesh profile (agents): none on a label.
+          for (const point of frame.meshPoints) {
+            const look = point.look;
+            if (!look || look.alpha <= 0.001) continue;
+            for (const rect of labels) {
+              expect(segmentRectDistance(point.x, point.y, point.x, point.y, rect) - look.r).toBeGreaterThan(LABEL.clearance);
             }
           }
         }
@@ -137,8 +156,9 @@ describe("composition of the agents scene", () => {
         if (!occupied(pulse.x, pulse.y)) pulsesOut += 1;
       }
     }
-    // Measured: 100 % of the vertices, 96 % of the link ink and 46 of 47
-    // impulses (the composition before C2: 45 %, 46 % and 15 of 43).
+    // C2 measured 100 % of the vertices, 96 % of the link ink and 46 of 47
+    // impulses (before C2: 45 %, 46 % and 15 of 43). C3 keeps these bounds
+    // with a denser network spread around the whole section.
     expect(pointsOut / points).toBeGreaterThan(0.9);
     expect(inkOut / ink).toBeGreaterThan(0.85);
     expect(pulses).toBeGreaterThan(20);
@@ -206,8 +226,14 @@ describe("composition of the agents scene", () => {
       let last = buildFrame({ time: since, state, viewport: WIDE }).motes;
       // First frame of the change: the prospects are where the previous scene left them.
       const before = buildFrame({ time: since, state: still(previous), viewport: WIDE }).motes;
+      // The agents scene carries more prospects (C3): the extra ones start invisible.
       last.forEach((mote, index) => {
-        expect(Math.hypot(mote.x - (before[index]?.x ?? NaN), mote.y - (before[index]?.y ?? NaN))).toBeLessThan(1);
+        const was = before[index];
+        if (!was) {
+          expect(mote.alpha, `${previous}>${scene} extra #${index}`).toBe(0);
+          return;
+        }
+        expect(Math.hypot(mote.x - was.x, mote.y - was.y)).toBeLessThan(1);
       });
       for (let time = since + 1 / 60; time < since + 2; time += 1 / 60) {
         const motes = buildFrame({ time, state, viewport: WIDE }).motes;
@@ -222,6 +248,58 @@ describe("composition of the agents scene", () => {
         last = motes;
       }
     }
+  });
+});
+
+describe("readability and life of the agents network (C3)", () => {
+  /** Text lines of the heading and the introduction at the reading position (1440 × 900). */
+  const TEXT: readonly Rect[] = [
+    { x0: 128, y0: 46, x1: 760, y1: 276 },
+    { x0: 128, y0: 291, x1: 780, y1: 338 },
+  ];
+
+  it("keeps the heading and the introduction clear of the mesh (no dot, almost no line)", () => {
+    let inside = 0;
+    let total = 0;
+    // Around the reading position the scroll progress stays within ±0.3 (about
+    // -0.15 measured there); further on, the text itself has moved away.
+    for (let time = 0; time < 60; time += 1.5) {
+      for (const parallax of [0, -0.3, 0.3]) {
+        const frame = buildFrame({ time, state: still("agents"), viewport: WIDE, parallax });
+        for (const point of frame.meshPoints) {
+          if (!point.look || point.look.alpha < 0.01) continue;
+          expect(TEXT.some((rect) => point.x >= rect.x0 && point.x <= rect.x1 && point.y >= rect.y0 && point.y <= rect.y1)).toBe(false);
+        }
+        for (const link of frame.meshLinks) {
+          for (const [x1 = 0, y1 = 0, x2 = 0, y2 = 0] of pieces(link)) {
+            for (let step = 0; step < 20; step++) {
+              const share = (step + 0.5) / 20;
+              const x = x1 + (x2 - x1) * share;
+              const y = y1 + (y2 - y1) * share;
+              const ink = (link.alpha * (link.width ?? 1) * Math.hypot(x2 - x1, y2 - y1)) / 20;
+              total += ink;
+              if (TEXT.some((rect) => x >= rect.x0 && x <= rect.x1 && y >= rect.y0 && y <= rect.y1)) inside += ink;
+            }
+          }
+        }
+      }
+    }
+    // Links crossing a text are never chosen; only the drift of a nearby end
+    // (≤ 18 px, parallax ≤ 20 px) may bring a line's tip over a text box.
+    expect(inside / total).toBeLessThan(0.01);
+  });
+
+  it("shows at least one impulse, off the elements of the section, at 80 % of the instants", () => {
+    let seen = 0;
+    let samples = 0;
+    for (let time = 0; time < 30; time += 0.1) {
+      samples += 1;
+      const frame = buildFrame({ time, state: still("agents"), viewport: WIDE });
+      expect(frame.pulses.length).toBeLessThanOrEqual(3);
+      // Visible: at least 0.5 of opacity on screen (rest intensity 0.72).
+      if (frame.pulses.some((pulse) => pulse.alpha * 0.72 >= 0.5 && !occupied(pulse.x, pulse.y))) seen += 1;
+    }
+    expect(seen / samples).toBeGreaterThanOrEqual(0.8);
   });
 });
 

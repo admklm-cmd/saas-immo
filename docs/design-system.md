@@ -101,8 +101,31 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
     fois par scène et par taille d'écran (stables, sans clignotement). Plafonds : 150 liens
     (large), 30 (compact) ; opacité d'un trait ≤ 0,08, décroissante avec la longueur ;
     épaisseur 0,8 px (plan proche) / 0,55 px (plan lointain). Les dossiers fictifs ne
-    circulent que sur le chemin des 8 étapes.
-  - **Impulsions de trame** : ≤ 3 simultanées (1 sur mobile), lentes (2,8 s de trajet, une
+    circulent que sur le chemin des 8 étapes. Ces valeurs sont celles de `probleme` ; la scène
+    `agents` suit son propre profil (ci-dessous).
+  - **Profil de trame par scène** (`mesh-style.ts`, `SceneSpec.meshStyle`, C3) : seule
+    `agents` en a un ; sans profil, la trame de référence C1/C2 est dessinée à l'identique
+    (empreintes de `probleme` figées). Profil `agents`, ordinateur : **116 points**, ≤ **260**
+    liens (≈ 205 tracés), 2 voisins par point (60 % un 3ᵉ), lien le plus long 240 px, **aucun lien
+    ne traverse un texte** de la section (`SceneSpec.content`, marge 3 px). Traits gris
+    `line` : opacité à l'écran **≈ 0,16–0,29** (proche, décroît avec la longueur jusqu'à 55 %),
+    plan lointain × 0,6 ; épaisseur **0,95 px** (proche) / **0,7 px** (lointain). Chaque sommet
+    est dessiné : point gris (encre) de **1,5–2,3 px** de rayon, opacité ≈ **0,45** à l'écran
+    (lointain : 1,2 px, ≈ 0,26) ; **hubs** (10 % des points proches) : cercle contouré de
+    **3,4 px** (trait 1 px, ≈ 0,52) sur papier, point central. Aucun sommet ni trait sur une
+    étiquette (effacement en fondu). Seuls les prospects au repos à moins de 360 px de l'entrée
+    (la moitié d'entre eux) glissent vers elle ; les autres restent sur leur sommet.
+    Mobile : 26 points, ≤ 42 liens, traits ≈ 0,11–0,17, points 1,2–1,7 px, 1 impulsion.
+  - **Impulsions du profil agents** : **3 au plus** (1 sur mobile), une toutes les **4 s** par
+    emplacement, vitesse **64 px/s** (lente), le long d'un **itinéraire de 2 à 5 liens** « ouverts »
+    (entre deux points, hors éléments de la section à 10 px près et hors étiquettes), le plus
+    long de 4 essais déterministes. Point cobalt plein de **2,4 px**, opacité ≈ **0,95** à
+    l'écran, traîne de **30 px en 4 segments** d'opacité et d'épaisseur décroissantes (1,8 → 1 px),
+    le sommet atteint s'allume en cobalt **0,7 s** (disque plat ≤ 2,6 px). Mesuré : au moins une
+    impulsion visible (≥ 0,5 d'opacité, hors éléments) **99 %** du temps, 1,9 en moyenne. Aucune
+    lueur, aucun `shadowBlur`, aucun dégradé. Cobalt : **8 %** de l'encre de la scène (réseau seul
+    **1,7 %**) ; aucun lien de repos bleu.
+  - **Impulsions de trame** (`probleme`) : ≤ 3 simultanées (1 sur mobile), lentes (2,8 s de trajet, une
     toutes les 7,5 s par emplacement), point cobalt + courte traîne.
   - **Règle cobalt** : l'accent `#2457FF` (palette `accent`, lue depuis `--color-accent`)
     est réservé à ce qui bouge ou est actif (dossiers, impulsions, étape active, validation
@@ -112,9 +135,10 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
     parallaxe × 0,4). Décalage vertical lié à la progression du défilement dans la section,
     lissé sur 0,25 s, **≤ 20 px** (≤ 10 px sur mobile), appliqué à la trame seule et pondéré
     par le poids de trame (0 ailleurs). Mouvement réduit : aucune parallaxe.
-  - **Plafond de visibilité** : +30 à +40 % d'« encre » (opacité × surface) par rapport au
-    rendu de référence de ces deux scènes (mesuré : +33 % / +37 %), moitié sur mobile. Le
-    fond reste dilué derrière le contenu.
+  - **Plafond de visibilité** : `probleme` : +30 à +40 % d'« encre » (opacité × surface) par
+    rapport au rendu de référence (mesuré : +33 %), moitié sur mobile. `agents` (plafond levé
+    par l'utilisateur le 25/09/2026) : **× 3,8** l'encre de C2 sur ordinateur (garde : ≥ × 2,5),
+    × 1,4 sur mobile ; encre de la trame sur le titre et l'introduction : **0 %** (garde < 1 %).
   - **Transitions** : poids de trame et présence mélangés en smoothstep sur 1,6 s (aucun
     saut au changement de section).
   - **Étiquettes dégagées** (`labels.ts`, règle générique) : aucun trait de trame ne traverse
@@ -129,12 +153,17 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
     « Mandat » sous la rangée. Les points de la trame reposent dans des zones libres
     (`SceneSpec.field`, ordinateur seulement) : à droite du titre, bande de la barre, sous
     l'introduction, trois colonnes dans les interstices des modules, bande entre modules et
-    fenêtre, marges. Au-delà de 1440 × 900, la composition garde cette géométrie en pixels,
-    centrée comme le contenu (`SceneSpec.frame`). Mobile : colonne à droite inchangée.
+    fenêtre, marges. Dès **1280 px** de large (`FRAME_PIXEL_MIN`), la composition garde cette
+    géométrie en pixels (1440 × 900), centrée comme le contenu (`SceneSpec.frame`) : le contenu
+    (`max-w-7xl` centré) y est aux mêmes pixels ; en dessous, mise à l'échelle. Mobile : colonne
+    à droite. C3 : le réseau respire dans toute la section — un tiers à droite du titre, le reste
+    en bande pleine largeur sous l'introduction, marges gauche et droite, bande entre modules et
+    fenêtre (ouverte autour de « Mandat »), chaînes dans les interstices des modules et entre le
+    texte de détail et la fenêtre. Sarah remonte à y 0,488 (dégagée de la rangée de 1280 à 1920).
     Mesuré : 100 % des points, 96 % de l'encre des liens et 46 impulsions sur 47 hors des
     éléments (avant : 45 %, 46 %, 15 sur 43), présence et plafonds inchangés.
   - **Budget** : < 4 ms par image sur ordinateur (`data-frame-ms` du canvas ; mesuré
-    < 1 ms dans les deux scènes à 1440 × 900).
+    ≈ 1,0 ms (agents) et ≈ 0,9 ms (probleme) à 1440 × 900, 1,2 ms à 1280, 0,25 ms sur mobile).
 - **Pause (WCAG 2.2.2)** : `MotionToggle` suspend l'illustration du hero et le fond
   vivant (`landing-motion.ts`, `<html data-landing-motion="paused">`). Masqué quand
   rien ne bouge.

@@ -177,3 +177,26 @@ et d'impulsions inchangés. Les 5 autres scènes restent identiques (empreintes)
   étiquette, les impulsions s'y effacent en fondu ; seul changement de la scène probleme.
 - **Visibilité** : +37 % (agents, référence remesurée pour la nouvelle composition avec le
   rendu d'avant la trame) et +32 % (probleme) ; mobile +14 % / +15 %. Budget : 0,6–0,8 ms/image.
+
+## C3. Réseau agents dense et lisible (validé 25/09/2026)
+Verdict utilisateur sur C2 : réseau beaucoup trop discret. Plafond de visibilité levé pour la
+scène `agents` uniquement (validé par l'utilisateur). Même branche ; aucune dépendance, aucun
+texte ni composant de section modifié ; `probleme` et les 5 autres scènes strictement inchangées
+(empreintes figées : `probleme` relevée sur 01348a6, transitions hero>probleme et
+probleme>solution comprises).
+- **Profil de trame par scène** (`mesh-style.ts`, `SceneSpec.meshStyle`) : seule `agents` en a un.
+  Ordinateur : 116 points, ≤ 260 liens (≈ 205), lien ≤ 240 px, aucun lien à travers un texte de la
+  section (`SceneSpec.content`, éléments mesurés en position de lecture). Traits gris 0,95 / 0,7 px,
+  ≈ 0,16–0,29 à l'écran ; tous les sommets dessinés (points 1,5–2,3 px ≈ 0,45 ; lointains 1,2 px
+  ≈ 0,26 ; 10 % de hubs contourés 3,4 px). Mobile : 26 points, ≤ 42 liens, plus sobre.
+- **Composition** : le réseau entoure tout le contenu (droite du titre, bande sous l'introduction,
+  marges, bande modules/fenêtre ouverte autour de « Mandat », chaînes dans les interstices).
+  Géométrie en pixels centrée dès 1280 px (`FRAME_PIXEL_MIN`), Sarah remontée à y 0,488.
+- **Impulsions** : ≤ 3 (1 sur mobile), itinéraires de 2 à 5 liens hors contenu et étiquettes,
+  64 px/s, une toutes les 4 s par emplacement, point 2,4 px ≈ 0,95, traîne 30 px en 4 segments
+  décroissants, sommet atteint allumé 0,7 s. Aucune lueur, aucun dégradé.
+- **Mesures** (Vitest, `canvas-recorder.test-helper.ts`) : encre × 3,8 celle de C2 (garde ≥ × 2,5),
+  × 1,4 sur mobile ; cobalt 8 % de l'encre de la scène (réseau seul 1,7 %) ; ≥ 1 impulsion visible
+  hors éléments à 99 % des instants (garde ≥ 80 %) ; 0 % d'encre de trame sur le titre et
+  l'introduction (garde < 1 %) ; aucun trait, point, impulsion ni allumage sur une étiquette.
+  Budget : ≈ 1,0–1,2 ms/image (agents), ≈ 0,9–1,0 ms (probleme).

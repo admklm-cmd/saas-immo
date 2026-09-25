@@ -10,14 +10,16 @@
  * of `presence - 1`, so a presence of 1 draws exactly the reference frame.
  *
  * The mesh (problem and agents scenes) is drawn first, behind everything: grey
- * hairlines, never the accent colour, each opacity capped by `MESH.linkCap`.
+ * hairlines, never the accent colour, each opacity capped by `MESH.linkCap`
+ * (a scene with a mesh profile, agents, gives each hairline its own opacity
+ * and width, draws every vertex and sends route impulses: see mesh-style.ts).
  * Its cobalt impulses move; nothing at rest is cobalt. No shadow, no blur, no
  * gradient: flat strokes and fills only. Other scenes have no mesh at all,
  * so none of these calls happen there.
  */
 
 import { GATE_STOP, GOAL_STOP } from "./scenes";
-import type { Frame, NodeDraw } from "./types";
+import type { Frame, NodeDraw, PulseDraw } from "./types";
 
 export type Rgb = readonly [number, number, number];
 
@@ -159,6 +161,10 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
 
   // Impulses of the mesh: small cobalt dots with a short tail, no glow.
   for (const pulse of frame.pulses) {
+    if (pulse.trail) {
+      drawRoutePulse(ctx, pulse, palette, level);
+      continue;
+    }
     if (pulse.alpha <= 0.01) continue;
     const alpha = MESH.pulse * pulse.alpha * level;
     ctx.strokeStyle = rgba(palette.accent, alpha * 0.4);
@@ -205,10 +211,14 @@ export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: 
 function drawMesh(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette, level: number, compact: boolean) {
   const base = MESH.link * level * (compact ? MESH.compactLink : 1);
   for (const link of frame.meshLinks) {
-    const alpha = Math.min(MESH.linkCap, base * link.alpha * (link.far ? MESH.farLink : 1));
+    // A mesh profile (agents) gives its own final opacity and width.
+    const alpha =
+      link.width !== undefined
+        ? link.alpha * level
+        : Math.min(MESH.linkCap, base * link.alpha * (link.far ? MESH.farLink : 1));
     if (alpha <= 0.002) continue;
     ctx.strokeStyle = rgba(palette.line, alpha);
-    ctx.lineWidth = link.far ? MESH.farWidth : MESH.width;
+    ctx.lineWidth = link.width ?? (link.far ? MESH.farWidth : MESH.width);
     ctx.beginPath();
     if (link.parts) {
       // Pieces left around the labels, still one stroke per link.
@@ -222,6 +232,27 @@ function drawMesh(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette,
     }
     ctx.stroke();
   }
+  // Mesh profile: every vertex, a small grey dot; a hub, an outlined circle.
+  for (const point of frame.meshPoints) {
+    const look = point.look;
+    if (!look || look.alpha * level <= 0.005) continue;
+    const alpha = look.alpha * level;
+    ctx.beginPath();
+    ctx.arc(point.x, point.y, look.r, 0, Math.PI * 2);
+    if (look.hub) {
+      ctx.fillStyle = rgba(palette.paper, Math.min(1, alpha * 2));
+      ctx.fill();
+      ctx.strokeStyle = rgba(palette.ink, alpha);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.fillStyle = rgba(palette.ink, alpha);
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 1.1, 0, Math.PI * 2);
+    } else {
+      ctx.fillStyle = rgba(palette.ink, alpha);
+    }
+    ctx.fill();
+  }
   // Vertices left by a prospect that went towards the entry.
   for (const point of frame.meshPoints) {
     const alpha = MESH.point * point.alpha * frame.mesh * level * (point.far ? MESH.farPoint : 1);
@@ -231,6 +262,43 @@ function drawMesh(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette,
     ctx.arc(point.x, point.y, point.far ? MESH.farPointRadius : MESH.pointRadius, 0, Math.PI * 2);
     ctx.fill();
   }
+}
+
+/**
+ * Impulse of a mesh profile: the vertex it reached (brief cobalt disc), a tail
+ * in segments of decreasing opacity and width along its route, then the dot.
+ * Flat fills and strokes only: no shadow, no blur, no gradient.
+ */
+function drawRoutePulse(ctx: CanvasRenderingContext2D, pulse: PulseDraw, palette: Palette, level: number) {
+  const flash = pulse.flash;
+  if (flash && flash.alpha * level > 0.01) {
+    ctx.fillStyle = rgba(palette.accent, flash.alpha * level);
+    ctx.beginPath();
+    ctx.arc(flash.x, flash.y, flash.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (pulse.alpha <= 0.01 || !pulse.trail) return;
+  const alpha = pulse.alpha * level;
+  const trail = pulse.trail;
+  const pieces = trail.length / 2 - 1;
+  const width = pulse.trailWidth ?? 1.4;
+  for (let piece = 0; piece < pieces; piece++) {
+    const x1 = trail[piece * 2] ?? 0;
+    const y1 = trail[piece * 2 + 1] ?? 0;
+    const x2 = trail[piece * 2 + 2] ?? x1;
+    const y2 = trail[piece * 2 + 3] ?? y1;
+    if (Math.hypot(x2 - x1, y2 - y1) < 0.3) continue;
+    ctx.strokeStyle = rgba(palette.accent, alpha * 0.62 * (1 - piece / pieces));
+    ctx.lineWidth = width * (1 - (0.5 * piece) / pieces);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = rgba(palette.accent, alpha);
+  ctx.beginPath();
+  ctx.arc(pulse.x, pulse.y, pulse.r ?? MESH.pulseRadius, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawNode(

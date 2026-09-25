@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { digest, recordDraw } from "./canvas-recorder.test-helper";
 import { MESH_LINK_CAP, meshLinksOf, PARALLAX_MAX, PULSES } from "./mesh";
+import { AGENTS_MESH_STYLE } from "./mesh-style";
 import { buildFrame, displayedMesh, parallaxShift, STATIC_TIME, TRANSITION_SECONDS } from "./model";
 import type { Palette } from "./renderer";
-import { LIVING_SCENES, type LivingScene } from "./scenes";
+import { LIVING_SCENES, SCENES, type LivingScene } from "./scenes";
 import type { Frame, SceneState, Viewport } from "./types";
 
 const WIDE: Viewport = { width: 1440, height: 900, compact: false };
@@ -60,15 +61,39 @@ const INK_BEFORE: Record<string, number> = {
   "agents|compact": 366.9802782056812,
 };
 
+/**
+ * Fingerprints of the problem scene recorded with the code of commit 01348a6
+ * (C2), before the agents mesh profile (C3): its mesh, its impulses and its
+ * transitions to and from the scenes without mesh are drawn exactly as before.
+ */
+const PROBLEME_REFERENCE: Record<string, string> = {
+  "probleme|wide": "3662d0e98a5c66a7",
+  "probleme|compact": "f0474ca99078981b",
+  "hero>probleme|wide": "890c15ceb9b9f006",
+  "hero>probleme|compact": "db3d27c89f73603c",
+  "probleme>solution|wide": "8976214581544c2d",
+  "probleme>solution|compact": "1ec6d55bbf4469e3",
+};
+
+/** Average ink of the agents scene with the code of commit 01348a6 (C2), same procedure. */
+const AGENTS_INK_C2 = { wide: 1259.3257866751696, compact: 419.7682131997187 } as const;
+
 function averageInk(scene: LivingScene, viewport: Viewport): number {
-  let total = 0;
+  return averageRecording(scene, viewport).ink;
+}
+
+function averageRecording(scene: LivingScene, viewport: Viewport): { ink: number; accentInk: number } {
+  let ink = 0;
+  let accentInk = 0;
   let count = 0;
   for (let time = 0; time < 60; time += 0.5) {
     const state: SceneState = { scene, since: -100, previous: null, from: null };
-    total += recordDraw(buildFrame({ time, state, viewport }), drawOptions(viewport)).ink;
+    const recording = recordDraw(buildFrame({ time, state, viewport }), drawOptions(viewport));
+    ink += recording.ink;
+    accentInk += recording.accentInk;
     count += 1;
   }
-  return total / count;
+  return { ink: ink / count, accentInk: accentInk / count };
 }
 
 describe("scenes without mesh", () => {
@@ -102,6 +127,32 @@ describe("scenes without mesh", () => {
       }
       expect(digest(calls)).toBe(REFERENCE[`${previous}>${scene}`]);
     }
+  });
+
+  it("leave the problem scene and its transitions exactly as in C2 (the agents profile changes nothing there)", () => {
+    for (const viewport of [WIDE, COMPACT]) {
+      const size = viewport.compact ? "compact" : "wide";
+      const calls: string[] = [];
+      for (const time of TIMES) {
+        for (const parallax of [0, 0.8]) {
+          calls.push(...recordDraw(buildFrame({ time, state: still("probleme"), viewport, parallax }), drawOptions(viewport)).calls);
+        }
+      }
+      expect(digest(calls), `probleme ${size}`).toBe(PROBLEME_REFERENCE[`probleme|${size}`]);
+      const pairs: [LivingScene, LivingScene][] = [
+        ["hero", "probleme"],
+        ["probleme", "solution"],
+      ];
+      for (const [previous, scene] of pairs) {
+        const moves: string[] = [];
+        for (const time of [10, 10.4, 11.1, 12]) {
+          const state: SceneState = { scene, since: 10, previous, from: null };
+          moves.push(...recordDraw(buildFrame({ time, state, viewport }), drawOptions(viewport)).calls);
+        }
+        expect(digest(moves), `${previous}>${scene} ${size}`).toBe(PROBLEME_REFERENCE[`${previous}>${scene}|${size}`]);
+      }
+    }
+    expect(SCENES.probleme.meshStyle).toBeUndefined();
   });
 
   it("carry no mesh link, no impulse, no parallax", () => {
@@ -146,19 +197,37 @@ describe("mesh of the problem and agents scenes", () => {
     }
   });
 
-  it("caps the number of links, wide and compact", () => {
+  it("caps the number of points, links and impulses, wide and compact", () => {
+    // The problem scene keeps the C1 caps; the agents profile has its own (C3).
+    const caps = {
+      probleme: { wide: MESH_LINK_CAP.wide, compact: MESH_LINK_CAP.compact, points: { wide: 64, compact: 20 } },
+      agents: {
+        wide: AGENTS_MESH_STYLE.wide.links,
+        compact: AGENTS_MESH_STYLE.compact.links,
+        points: { wide: AGENTS_MESH_STYLE.wide.points, compact: AGENTS_MESH_STYLE.compact.points },
+      },
+    } as const;
+    expect(MESH_LINK_CAP.wide).toBeLessThanOrEqual(160);
+    expect(AGENTS_MESH_STYLE.wide.links).toBeLessThanOrEqual(260);
+    expect(AGENTS_MESH_STYLE.compact.links).toBeLessThanOrEqual(45);
+    expect(AGENTS_MESH_STYLE.wide.points).toBeLessThanOrEqual(120);
+    expect(AGENTS_MESH_STYLE.compact.points).toBeLessThanOrEqual(30);
+    expect(AGENTS_MESH_STYLE.wide.pulses).toBeLessThanOrEqual(PULSES.wide);
+    expect(AGENTS_MESH_STYLE.compact.pulses).toBeLessThanOrEqual(PULSES.compact);
+    expect(PULSES.wide).toBeLessThanOrEqual(3);
     for (const scene of MESHED) {
+      const cap = caps[scene as keyof typeof caps];
       const wide = meshLinksOf(scene, WIDE, 20260924);
       const compact = meshLinksOf(scene, COMPACT, 20260924);
       expect(wide.length).toBeGreaterThan(40);
-      expect(wide.length).toBeLessThanOrEqual(MESH_LINK_CAP.wide);
-      expect(MESH_LINK_CAP.wide).toBeLessThanOrEqual(160);
+      expect(wide.length).toBeLessThanOrEqual(cap.wide);
       expect(compact.length).toBeGreaterThan(5);
-      expect(compact.length).toBeLessThanOrEqual(MESH_LINK_CAP.compact);
+      expect(compact.length).toBeLessThanOrEqual(cap.compact);
       for (let time = 0; time < 40; time += 1.3) {
-        expect(buildFrame({ time, state: still(scene), viewport: WIDE }).meshLinks.length).toBeLessThanOrEqual(
-          MESH_LINK_CAP.wide,
-        );
+        const frame = buildFrame({ time, state: still(scene), viewport: WIDE });
+        expect(frame.meshLinks.length).toBeLessThanOrEqual(cap.wide);
+        expect(frame.meshPoints.length).toBe(cap.points.wide);
+        expect(buildFrame({ time, state: still(scene), viewport: COMPACT }).meshPoints.length).toBe(cap.points.compact);
         const pulses = buildFrame({ time, state: still(scene), viewport: WIDE }).pulses.length;
         expect(pulses).toBeLessThanOrEqual(PULSES.wide);
         expect(buildFrame({ time, state: still(scene), viewport: COMPACT }).pulses.length).toBeLessThanOrEqual(
@@ -201,10 +270,14 @@ describe("mesh of the problem and agents scenes", () => {
           const quiet = recordDraw(rest, { ...drawOptions(viewport), palette });
           expect(quiet.strokes.length).toBeGreaterThan(0);
           expect(quiet.calls.join("\n")).not.toContain("rgba(1,2,3,");
-          // Every mesh link is a hairline under the opacity cap.
-          for (const style of quiet.strokes) {
+          // Every mesh link is a hairline under the opacity cap (C1: 0.08;
+          // agents profile, C3: 0.3, about 0.15 to 0.3 on screen).
+          const cap = scene === "agents" ? 0.3 : 0.08;
+          const hairlines = quiet.strokes.filter((style) => style.startsWith("rgba(150,150,160,"));
+          expect(hairlines.length).toBeGreaterThan(0);
+          for (const style of hairlines) {
             const alpha = Number(style.match(/,([\d.]+)\)$/)?.[1]);
-            expect(alpha).toBeLessThanOrEqual(0.08);
+            expect(alpha).toBeLessThanOrEqual(cap);
           }
           const full = recordDraw(frame, { ...drawOptions(viewport), palette }).calls.join("\n");
           expect(full).not.toMatch(/shadowBlur|shadowColor|filter=|createLinearGradient|createRadialGradient/);
@@ -213,8 +286,8 @@ describe("mesh of the problem and agents scenes", () => {
     }
   });
 
-  it("raises the visibility of these two scenes by 30 to 40 %, half of it on phones", () => {
-    for (const scene of MESHED) {
+  it("raises the visibility of the problem scene by 30 to 40 %, half of it on phones", () => {
+    for (const scene of ["probleme"] as const) {
       const wide = averageInk(scene, WIDE) / (INK_BEFORE[`${scene}|wide`] ?? NaN);
       const compact = averageInk(scene, COMPACT) / (INK_BEFORE[`${scene}|compact`] ?? NaN);
       expect(wide, `${scene} wide`).toBeGreaterThanOrEqual(1.3);
@@ -223,6 +296,55 @@ describe("mesh of the problem and agents scenes", () => {
       expect(compact, `${scene} compact`).toBeLessThan(1.25);
       expect(compact).toBeLessThan(wide);
     }
+  });
+
+  it("makes the agents network clearly visible: at least 2.5 times the ink of C2, less on phones", () => {
+    const wide = averageInk("agents", WIDE) / AGENTS_INK_C2.wide;
+    const compact = averageInk("agents", COMPACT) / AGENTS_INK_C2.compact;
+    // Measured: 3.8 (wide) and 1.4 (phones, a sober column, a little more present).
+    expect(wide).toBeGreaterThanOrEqual(2.5);
+    expect(wide).toBeLessThan(5);
+    expect(compact).toBeGreaterThan(1.2);
+    expect(compact).toBeLessThan(wide);
+  });
+
+  it("keeps cobalt a small share of the agents network ink (under 15 %)", () => {
+    for (const viewport of [WIDE, COMPACT]) {
+      // The mesh alone (hairlines, vertices, impulses and the vertices they light).
+      let ink = 0;
+      let accentInk = 0;
+      for (let time = 0; time < 60; time += 0.5) {
+        const frame = buildFrame({ time, state: { scene: "agents", since: -100, previous: null, from: null }, viewport });
+        const mesh: Frame = { ...frame, nodes: [], links: [], tokens: [], marks: [], motes: [], fragments: [] };
+        const recording = recordDraw(mesh, drawOptions(viewport));
+        ink += recording.ink;
+        accentInk += recording.accentInk;
+      }
+      expect(accentInk / ink, viewport.compact ? "mesh compact" : "mesh wide").toBeLessThan(0.15);
+    }
+    // The whole scene: under 15 % on desktop. On phones the path's own signals
+    // (unchanged) weigh more: 27 % in C2, lower now that the mesh adds grey.
+    const wide = averageRecording("agents", WIDE);
+    expect(wide.accentInk / wide.ink).toBeLessThan(0.15);
+    const compact = averageRecording("agents", COMPACT);
+    expect(compact.accentInk / compact.ink).toBeLessThan(0.21);
+  });
+
+  it("draws the agents vertices as small grey dots, a few outlined hubs, never cobalt at rest", () => {
+    const frame = buildFrame({ time: 17, state: still("agents"), viewport: WIDE });
+    const looks = frame.meshPoints.map((point) => point.look).filter((look) => look !== undefined);
+    expect(looks).toHaveLength(AGENTS_MESH_STYLE.wide.points);
+    const hubs = looks.filter((look) => look.hub);
+    expect(hubs.length).toBeGreaterThanOrEqual(3);
+    expect(hubs.length).toBeLessThan(looks.length * 0.15);
+    for (const look of looks) {
+      expect(look.r).toBeGreaterThanOrEqual(1);
+      expect(look.r).toBeLessThanOrEqual(4);
+      // On screen (rest intensity 0.72): at most about 0.55.
+      expect(look.alpha * 0.72).toBeLessThanOrEqual(0.56);
+    }
+    const near = looks.filter((look) => !look.hub && look.r >= AGENTS_MESH_STYLE.wide.radius[0]);
+    expect(Math.max(...near.map((look) => look.alpha * 0.72))).toBeGreaterThanOrEqual(0.35);
   });
 });
 

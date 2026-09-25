@@ -10,7 +10,8 @@
  */
 
 import type { MeshPointDraw, MoteDraw, SceneState, Viewport } from "./types";
-import { frameOf, GOAL_STOP, SCENES, type FieldZone, type LivingScene } from "./scenes";
+import type { MeshLook } from "./mesh-style";
+import { frameOf, GOAL_STOP, meshLookOf, SCENES, type FieldZone, type LivingScene } from "./scenes";
 import { hash01, valueAt } from "./timeline";
 
 const MOTES_WIDE = 64;
@@ -20,8 +21,10 @@ const FAR_SHARE = 0.45;
 /** Far plane: parallax share, size and opacity reductions (at full mesh weight). */
 export const FAR_PLANE = { parallax: 0.4, shrink: 0.3, fade: 0.35 };
 
-export function moteCount(viewport: Viewport): number {
-  return viewport.compact ? MOTES_COMPACT : MOTES_WIDE;
+/** Prospects of a scene (its mesh profile may ask for more), or the reference count. */
+export function moteCount(viewport: Viewport, scene?: LivingScene): number {
+  const look = scene ? meshLookOf(scene, viewport.compact) : null;
+  return look ? look.points : viewport.compact ? MOTES_COMPACT : MOTES_WIDE;
 }
 
 /** Whether a prospect (and its mesh vertex) belongs to the far plane. Stable. */
@@ -98,8 +101,9 @@ export function fieldBase(
   frame: { x: number; width: number; height: number },
   viewport: Viewport,
   seed: number,
+  count = moteCount(viewport),
 ): [number, number, number] {
-  const seat = seatsOf(field, moteCount(viewport), seed)[index];
+  const seat = seatsOf(field, count, seed)[index];
   const zone = seat?.zone ?? (field[0] as FieldZone);
   const along = ((seat?.rank ?? 0) + 0.25 + 0.5 * hash01(index, 11, 2, seed)) / (seat?.size ?? 1);
   const across = hash01(index, 11, 1, seed);
@@ -123,20 +127,34 @@ export function buildMotes(
   vertices?: MeshPointDraw[],
 ): MoteDraw[] {
   const motes: MoteDraw[] = [];
-  const count = moteCount(viewport);
+  // A scene with a mesh profile may carry more prospects: the extra ones fade
+  // in and out with that scene (`own`), the others are shared by both scenes.
+  const countNow = moteCount(viewport, state.scene);
+  const countBefore = state.previous ? moteCount(viewport, state.previous) : countNow;
+  const count = Math.max(countNow, countBefore);
+  const kNow = state.previous ? k : 1;
   const box = bounds(points, viewport);
   const targetStop = state.scene === "final" ? GOAL_STOP : 0;
   const targetX = valueAt(points, targetStop * 2);
   const targetY = valueAt(points, targetStop * 2 + 1);
   const inflowNow = SCENES[state.scene].inflow ? 1 : 0;
   const inflowBefore = state.previous ? (SCENES[state.previous].inflow ? 1 : 0) : inflowNow;
-  const inflow = inflowBefore + (inflowNow - inflowBefore) * k;
+  // Mesh profile (agents): every vertex drawn, resting prospects hidden behind
+  // it, fewer prospects drifting towards the entry. `styled` blends it in.
+  const lookNow = meshLookOf(state.scene, viewport.compact);
+  const lookBefore = state.previous ? meshLookOf(state.previous, viewport.compact) : lookNow;
+  const look = lookNow ?? lookBefore;
+  const styled = (lookNow ? kNow : 0) + (state.previous && lookBefore ? 1 - k : 0);
   // Field of the scene (agents, desktop) and of the previous one: the resting
   // places blend from one to the other like the stops, no jump.
   const fieldNow = fieldOf(state.scene, viewport);
   const fieldBefore = state.previous ? fieldOf(state.previous, viewport) : null;
   const frameNow = frameOf(SCENES[state.scene], viewport);
   const frameBefore = state.previous ? frameOf(SCENES[state.previous], viewport) : frameNow;
+  // Resting place of each scene's entry (static): which prospects drift never
+  // changes while the displayed path moves between two layouts.
+  const entryNow = lookNow ? restingStop(state.scene, targetStop, viewport) : null;
+  const entryBefore = state.previous && lookBefore ? restingStop(state.previous, targetStop, viewport) : null;
   for (let index = 0; index < count; index++) {
     const r1 = hash01(index, 11, 1, seed);
     const r2 = hash01(index, 11, 2, seed);
@@ -147,12 +165,14 @@ export function buildMotes(
     let baseX = box.x + r1 * box.width;
     let baseY = box.y + r2 * box.height;
     let sway = 1;
+    let now: readonly number[] = [baseX, baseY, 1];
+    let before: readonly number[] = now;
     if (fieldNow || fieldBefore) {
-      const now = fieldNow ? fieldBase(index, fieldNow, frameNow, viewport, seed) : [baseX, baseY, 1];
-      const before = !state.previous
+      now = fieldNow ? fieldBase(index, fieldNow, frameNow, viewport, seed, countNow) : [baseX, baseY, 1];
+      before = !state.previous
         ? now
         : fieldBefore
-          ? fieldBase(index, fieldBefore, frameBefore, viewport, seed)
+          ? fieldBase(index, fieldBefore, frameBefore, viewport, seed, countBefore)
           : [baseX, baseY, 1];
       baseX = valueAt(before, 0) + (valueAt(now, 0) - valueAt(before, 0)) * k;
       baseY = valueAt(before, 1) + (valueAt(now, 1) - valueAt(before, 1)) * k;
@@ -160,7 +180,9 @@ export function buildMotes(
     }
     const wanderX = baseX + Math.sin(time * 0.13 * (1 + r3) + r4 * 6.283) * 18 * sway;
     const wanderY = baseY + Math.cos(time * 0.11 * (1 + r4) + r3 * 6.283) * 14 * sway;
-    const flows = r3 < 0.6 ? inflow : 0;
+    const flowsNow = drifts(r3, lookNow, now, entryNow) ? inflowNow : 0;
+    const flowsBefore = state.previous ? (drifts(r3, lookBefore, before, entryBefore) ? inflowBefore : 0) : flowsNow;
+    const flows = flowsBefore + (flowsNow - flowsBefore) * k;
     const cycle = 9 + r4 * 7;
     const f = (time / cycle + r1) % 1;
     const pull = f * f;
@@ -168,17 +190,62 @@ export function buildMotes(
     const flowY = baseY + (targetY - baseY) * pull;
     const flowAlpha = Math.sin(Math.PI * f);
     const wanderAlpha = 0.55 + 0.45 * Math.sin(time * 0.35 + r2 * 6.283);
+    const own = index < countNow ? (index < countBefore ? 1 : kNow) : 1 - k;
+    let alpha = (wanderAlpha + (flowAlpha - wanderAlpha) * flows) * (far ? 1 - FAR_PLANE.fade * mesh : 1);
+    if (styled > 0) alpha *= 1 - styled * (1 - flows);
+    if (own < 1) alpha *= own;
+    // Entering or leaving a mesh profile, a prospect may drift in one scene and
+    // rest in the other: its drift restarts (jump back to its resting place)
+    // while invisible, as in the reference inflow.
+    if (look && flowsNow !== flowsBefore) alpha *= Math.min(1, flowAlpha / 0.25);
     motes.push({
       x: wanderX + (flowX - wanderX) * flows,
       y: wanderY + (flowY - wanderY) * flows + shift,
       r: ((viewport.compact ? 0.8 : 0.9) + r4 * 0.7) * (far ? 1 - FAR_PLANE.shrink * mesh : 1),
-      alpha: (wanderAlpha + (flowAlpha - wanderAlpha) * flows) * (far ? 1 - FAR_PLANE.fade * mesh : 1),
+      alpha,
     });
-    // The vertex stays at the resting place; its own dot shows only once the
-    // prospect has left it (otherwise the prospect is drawn right there).
-    if (vertices && mesh > 0) vertices.push({ x: wanderX, y: wanderY + shift, alpha: flows, far });
+    // The vertex stays at the resting place; in the reference mesh its own dot
+    // shows only once the prospect has left it (otherwise the prospect is drawn
+    // right there). With a mesh profile every vertex is drawn (`look`).
+    if (vertices && mesh > 0) {
+      const vertex: MeshPointDraw = {
+        x: wanderX,
+        y: wanderY + shift,
+        alpha: styled > 0 || own < 1 ? flows * (1 - styled) * own : flows,
+        far,
+      };
+      if (look && styled > 0) vertex.look = vertexLook(index, far, look, styled * own, seed);
+      vertices.push(vertex);
+    }
   }
   return motes;
+}
+
+/** Whether a prospect drifts towards the entry in a scene (reference: 60 % of them). */
+function drifts(r3: number, look: MeshLook | null, rest: readonly number[], entry: readonly number[] | null): boolean {
+  if (!look) return r3 < 0.6;
+  if (r3 >= look.inflowShare) return false;
+  if (!entry) return true;
+  return Math.hypot(valueAt(rest, 0) - valueAt(entry, 0), valueAt(rest, 1) - valueAt(entry, 1)) <= look.inflowReach;
+}
+
+/** Resting place of a stop in a scene's layout, CSS px (no wandering). */
+function restingStop(scene: LivingScene, stop: number, viewport: Viewport): readonly number[] {
+  const spec = SCENES[scene];
+  const frame = frameOf(spec, viewport);
+  const [nx, ny] = (viewport.compact ? spec.compact : spec.wide)[stop] ?? [0.5, 0.5];
+  return [frame.x + nx * frame.width, ny * frame.height];
+}
+
+/** Dot of a vertex under a mesh profile: size, opacity (times `weight`), hub or not. Stable. */
+export function vertexLook(index: number, far: boolean, look: MeshLook, weight: number, seed: number) {
+  const hub = !far && hash01(index, 11, 7, seed) < look.hubShare;
+  const r = far
+    ? look.farRadius
+    : hub
+      ? look.hubRadius
+      : look.radius[0] + hash01(index, 11, 8, seed) * (look.radius[1] - look.radius[0]);
+  return { r, hub, alpha: weight * (far ? look.farPoint : hub ? look.hub : look.point) };
 }
 
 export type Box = { x: number; y: number; width: number; height: number };
