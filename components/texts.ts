@@ -179,6 +179,8 @@ export const APP_TEXTS = {
     listLabel: "Contacts de l'agence",
     /** Legend of the shapes of the table (decorative: each shape also carries its words). */
     legendOpenTasks: "Tâches ouvertes",
+    /** Last update under the name, when the table folds its own column away (768–1279 px). */
+    updatedOn: "Mis à jour le",
   },
 
   contact: {

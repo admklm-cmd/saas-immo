@@ -65,3 +65,35 @@ test("cas d'erreur : une fiche inconnue affiche « Contact introuvable » et le 
   await page.getByRole("link", { name: APP_TEXTS.contact.backToList }).last().click();
   await expect(page).toHaveURL(/\/contacts$/, { timeout: COLD_START });
 });
+
+for (const width of [1280, 1440]) {
+  test(`${width} px : le tableau tient sans défilement horizontal, la dernière colonne est entière`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await signIn(page, "directorA");
+
+    const container = page.getByTestId("contacts-table");
+    await expect(container).toBeVisible();
+    const box = await container.evaluate((element) => ({
+      scrollWidth: element.scrollWidth,
+      clientWidth: element.clientWidth,
+      right: element.getBoundingClientRect().right,
+    }));
+    expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+
+    // The last column, header and every date, is visible from edge to edge.
+    const lastHeader = container.getByRole("columnheader", { name: TEXTS.columnUpdated });
+    await expect(lastHeader).toBeVisible();
+    const headerBox = await lastHeader.boundingBox();
+    expect(headerBox!.x + headerBox!.width).toBeLessThanOrEqual(box.right + 0.5);
+    const clipped = await container.evaluate((element) =>
+      [...element.querySelectorAll("th, td")]
+        .filter((cell) => (cell as HTMLElement).offsetParent !== null)
+        .filter((cell) => cell.scrollWidth > cell.clientWidth + 1)
+        .map((cell) => cell.textContent),
+    );
+    expect(clipped).toEqual([]);
+  });
+}
