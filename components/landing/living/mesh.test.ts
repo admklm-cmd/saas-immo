@@ -46,11 +46,17 @@ const REFERENCE: Record<string, string> = {
 /**
  * Average ink of the problem and agents scenes with the code BEFORE the mesh
  * (same commit, t = 0..60 s every 0.5 s, see canvas-recorder.test-helper.ts).
+ *
+ * `agents|wide`: the composition of that scene moved (C2, around and between
+ * the elements of its section), so its reference was measured again the same
+ * way: the renderer of commit 03ff51f drawing the NEW composition without mesh
+ * (1091.37 for the old composition). The same procedure reproduces the three
+ * other values exactly.
  */
 const INK_BEFORE: Record<string, number> = {
   "probleme|wide": 1410.4920064347125,
   "probleme|compact": 337.9707099954822,
-  "agents|wide": 1091.3719875846973,
+  "agents|wide": 916.9266221758869,
   "agents|compact": 366.9802782056812,
 };
 

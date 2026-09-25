@@ -28,6 +28,14 @@ export const STOP_AGENT = [-1, 0, 1, 2, -1, 3, 4, -1] as const;
 
 export type Point = readonly [number, number];
 
+/**
+ * A zone where some ambient prospects rest (normalised to the viewport, like
+ * the stops). `share` is the part of the prospects placed there; `sway` scales
+ * their wandering (1 = as everywhere else), so a narrow zone keeps its points.
+ * Shares are relative weights (they need not add up to 1).
+ */
+export type FieldZone = { x0: number; y0: number; x1: number; y1: number; share: number; sway?: number };
+
 export type SceneSpec = {
   /** 8 stops, desktop and tablet (≥ 768 px). */
   wide: readonly Point[];
@@ -71,6 +79,20 @@ export type SceneSpec = {
    * hence exactly the reference rendering.
    */
   mesh: number;
+  /**
+   * Desktop only: zones where the ambient prospects (hence the mesh vertices)
+   * rest, instead of the box around the stops. Lets a scene keep its network
+   * in the free space AROUND and BETWEEN the elements of its section. Only the
+   * agents scene sets it; every other scene keeps the box (reference rendering).
+   */
+  field?: readonly FieldZone[];
+  /**
+   * Desktop only: reference frame of the layouts, CSS px. On a larger screen
+   * the layouts keep this size, centred horizontally and anchored at the top,
+   * like the content (max width): the composition measured at this size stays
+   * next to the same elements. Only the agents scene sets it.
+   */
+  frame?: { width: number; height: number };
 };
 
 const BASE: SceneSpec = {
@@ -100,6 +122,17 @@ export const COMPACT_PRESENCE_GAIN = 0.5;
 /** Presence actually applied for a scene on a given screen. */
 export function presenceOf(spec: SceneSpec, compact: boolean): number {
   return compact ? 1 + (spec.presence - 1) * COMPACT_PRESENCE_GAIN : spec.presence;
+}
+
+/** Size and offset of the box a scene's normalised coordinates are drawn in, CSS px. */
+export function frameOf(
+  spec: SceneSpec,
+  viewport: { width: number; height: number; compact: boolean },
+): { x: number; width: number; height: number } {
+  const frame = viewport.compact ? undefined : spec.frame;
+  if (!frame) return { x: 0, width: viewport.width, height: viewport.height };
+  const width = Math.min(viewport.width, frame.width);
+  return { x: (viewport.width - width) / 2, width, height: Math.min(viewport.height, frame.height) };
 }
 
 /** Mesh weight actually applied: phones keep half of it, like the presence. */
@@ -189,20 +222,49 @@ export const SCENES: Record<LivingScene, SceneSpec> = {
     period: 2.8,
     blockRate: 0.08,
   },
-  // Agents activate one after another, in the empty space under the sticky title.
+  // Agents activate one after another, around and between the elements of the
+  // section, measured at 1440 × 900 at the reading position (section top 120 px
+  // above the viewport: title lines up to x 758 / y 276, text up to y 338, bar
+  // y 405–441 with the navigation from x 1160, modules y 468–680 separated by
+  // 12 px gaps centred on x 342, 562, 782, 982 and 1202, detail text and scene
+  // window from y 723, window right edge x 1312). The path stays right of the
+  // title column (x ≥ 0.68, clear of it at every scroll position, 1280 to
+  // 1920 px wide): Léa, Hugo, Emma beside the title, the human validation above
+  // the gap at x 1202, down between two modules to Louis, along the band between
+  // the modules and the window to Sarah, and back up between two other modules
+  // to the mandate.
   agents: {
     ...BASE,
     wide: [
-      [0.04, 0.99],
-      [0.08, 0.88],
-      [0.16, 0.8],
-      [0.24, 0.88],
-      [0.31, 0.78],
-      [0.37, 0.88],
-      [0.43, 0.77],
-      [0.47, 0.92],
+      [0.66, 0.1056],
+      [0.6875, 0.1333],
+      [0.7083, 0.2056],
+      [0.6875, 0.2778],
+      [0.7083, 0.3533],
+      [0.6875, 0.4311],
+      [0.6819, 0.5056],
+      [0.6819, 0.7778],
     ],
     compact: COMPACT_COLUMN,
+    frame: { width: 1440, height: 900 },
+    field: [
+      // Right of the title and the introduction, below the fixed header.
+      { x0: 0.6, y0: 0.1, x1: 0.98, y1: 0.43, share: 0.55 },
+      // Band of the bar, between the hint and the navigation.
+      { x0: 0.38, y0: 0.43, x1: 0.79, y1: 0.505, share: 0.07, sway: 0.5 },
+      // Under the introduction, above the hint.
+      { x0: 0.09, y0: 0.385, x1: 0.36, y1: 0.44, share: 0.03, sway: 0.4 },
+      // Through the gaps between the first modules: a chain of points, hence
+      // short vertical hairlines seen between two modules.
+      { x0: 0.2375, y0: 0.47, x1: 0.2375, y1: 0.8, share: 0.08, sway: 0.15 },
+      { x0: 0.3903, y0: 0.47, x1: 0.3903, y1: 0.8, share: 0.08, sway: 0.15 },
+      { x0: 0.5431, y0: 0.47, x1: 0.5431, y1: 0.8, share: 0.08, sway: 0.15 },
+      // Band between the modules and the scene window.
+      { x0: 0.06, y0: 0.765, x1: 0.96, y1: 0.795, share: 0.16, sway: 0.4 },
+      // Left and right margins.
+      { x0: 0.012, y0: 0.1, x1: 0.07, y1: 0.96, share: 0.03, sway: 0.5 },
+      { x0: 0.925, y0: 0.52, x1: 0.99, y1: 0.97, share: 0.03, sway: 0.5 },
+    ],
     // Calm: agents light up in turn (cobalt pulses), few impulses, rare halts.
     period: 4.2,
     blockRate: 0.06,

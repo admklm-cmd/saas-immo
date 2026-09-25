@@ -210,8 +210,16 @@ function drawMesh(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette,
     ctx.strokeStyle = rgba(palette.line, alpha);
     ctx.lineWidth = link.far ? MESH.farWidth : MESH.width;
     ctx.beginPath();
-    ctx.moveTo(link.x1, link.y1);
-    ctx.lineTo(link.x2, link.y2);
+    if (link.parts) {
+      // Pieces left around the labels, still one stroke per link.
+      for (const [from, to] of link.parts) {
+        ctx.moveTo(link.x1 + (link.x2 - link.x1) * from, link.y1 + (link.y2 - link.y1) * from);
+        ctx.lineTo(link.x1 + (link.x2 - link.x1) * to, link.y1 + (link.y2 - link.y1) * to);
+      }
+    } else {
+      ctx.moveTo(link.x1, link.y1);
+      ctx.lineTo(link.x2, link.y2);
+    }
     ctx.stroke();
   }
   // Vertices left by a prospect that went towards the entry.

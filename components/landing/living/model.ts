@@ -4,12 +4,11 @@
  * fixed seed: the same input always yields the same frame.
  */
 
-import { LANDING_TEXTS } from "@/components/landing-texts";
-
 import { addFiles, keepStrongestFragments, laneOffset, laneWeight } from "./files";
+import { STOP_LABEL } from "./labels";
 import { addMesh, meshWeight, PARALLAX_MAX } from "./mesh";
 import { buildMotes } from "./motes";
-import { presenceOf, SCENES, STOP_AGENT, STOP_COUNT, type LivingScene, type Point, type SceneSpec } from "./scenes";
+import { frameOf, presenceOf, SCENES, STOP_AGENT, STOP_COUNT, type LivingScene, type Point, type SceneSpec } from "./scenes";
 import { hash01, smoothstep, valueAt } from "./timeline";
 import type { Frame, SceneState, Viewport } from "./types";
 
@@ -21,19 +20,7 @@ export const TRANSITION_SECONDS = 1.6;
 /** Instant drawn once under prefers-reduced-motion: every stage is visible. */
 export const STATIC_TIME = 41.3;
 
-const TEXTS = LANDING_TEXTS.living;
 const CENTER: Point = [0.5, 0.5];
-/** Agents with a label drawn next to them (decorative, aria-hidden canvas). */
-const STOP_LABEL: readonly (string | null)[] = [
-  null,
-  TEXTS.agents[0],
-  TEXTS.agents[1],
-  TEXTS.agents[2],
-  TEXTS.gate,
-  TEXTS.agents[3],
-  TEXTS.agents[4],
-  TEXTS.goal,
-];
 
 /**
  * Main connections of the path (link from stop i to stop i + 1): they carry a
@@ -72,14 +59,15 @@ export function parallaxShift(parallax: number, mesh: number): number {
 export function scenePoints(scene: LivingScene, viewport: Viewport, time: number, seed = DEFAULT_SEED): number[] {
   const spec = SCENES[scene];
   const layout: readonly Point[] = viewport.compact ? spec.compact : spec.wide;
+  const frame = frameOf(spec, viewport);
   const points: number[] = [];
   for (let stop = 0; stop < STOP_COUNT; stop++) {
     const [nx, ny] = layout[stop] ?? CENTER;
     const phase = hash01(stop, 7, 3, seed) * Math.PI * 2;
     const wobble = spec.scatter * (viewport.compact ? 0.4 : 1);
     points.push(
-      nx * viewport.width + Math.sin(time * 0.37 + phase) * wobble,
-      ny * viewport.height + Math.cos(time * 0.29 + phase * 1.7) * wobble,
+      frame.x + nx * frame.width + Math.sin(time * 0.37 + phase) * wobble,
+      ny * frame.height + Math.cos(time * 0.29 + phase * 1.7) * wobble,
     );
   }
   return points;

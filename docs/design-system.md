@@ -117,6 +117,22 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
     fond reste dilué derrière le contenu.
   - **Transitions** : poids de trame et présence mélangés en smoothstep sur 1,6 s (aucun
     saut au changement de section).
+  - **Étiquettes dégagées** (`labels.ts`, règle générique) : aucun trait de trame ne traverse
+    ni ne touche l'étiquette d'un nœud (Léa, Hugo…, boîte estimée + 4 px) : le trait est
+    interrompu autour de l'étiquette (un seul tracé par lien, plafonds inchangés) et une
+    impulsion s'efface en fondu en passant près d'elle. Une étiquette est toujours à droite de
+    son nœud : un lien du chemin n'y arrive que par la gauche ou presque verticalement (testé
+    dans `agents`).
+  - **Composition de la scène agents** (mesurée à 1440 × 900, section en position de lecture) :
+    chemin en colonne quasi verticale à droite du titre (x ≈ 0,66–0,71, hors de la colonne du
+    titre de 1280 à 1920 px), qui descend entre deux modules (interstice x 982) jusqu'au
+    « Mandat » sous la rangée. Les points de la trame reposent dans des zones libres
+    (`SceneSpec.field`, ordinateur seulement) : à droite du titre, bande de la barre, sous
+    l'introduction, trois colonnes dans les interstices des modules, bande entre modules et
+    fenêtre, marges. Au-delà de 1440 × 900, la composition garde cette géométrie en pixels,
+    centrée comme le contenu (`SceneSpec.frame`). Mobile : colonne à droite inchangée.
+    Mesuré : 100 % des points, 96 % de l'encre des liens et 46 impulsions sur 47 hors des
+    éléments (avant : 45 %, 46 %, 15 sur 43), présence et plafonds inchangés.
   - **Budget** : < 4 ms par image sur ordinateur (`data-frame-ms` du canvas ; mesuré
     < 1 ms dans les deux scènes à 1440 × 900).
 - **Pause (WCAG 2.2.2)** : `MotionToggle` suspend l'illustration du hero et le fond

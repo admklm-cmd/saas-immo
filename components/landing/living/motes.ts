@@ -10,7 +10,7 @@
  */
 
 import type { MeshPointDraw, MoteDraw, SceneState, Viewport } from "./types";
-import { GOAL_STOP, SCENES } from "./scenes";
+import { frameOf, GOAL_STOP, SCENES, type FieldZone, type LivingScene } from "./scenes";
 import { hash01, valueAt } from "./timeline";
 
 const MOTES_WIDE = 64;
@@ -34,6 +34,83 @@ export function moteBase(index: number, box: Box, seed: number): [number, number
   return [box.x + hash01(index, 11, 1, seed) * box.width, box.y + hash01(index, 11, 2, seed) * box.height];
 }
 
+/** Zones of a scene's field on this screen, or null (box around the stops). */
+export function fieldOf(scene: LivingScene, viewport: Viewport): readonly FieldZone[] | null {
+  const field = SCENES[scene].field;
+  return !viewport.compact && field && field.length > 0 ? field : null;
+}
+
+/** A prospect's seat in a field: its zone, its rank there and how many share it. */
+type Seat = { zone: FieldZone; rank: number; size: number };
+
+const GOLDEN = 0.6180339887498949;
+const seats = new WeakMap<readonly FieldZone[], Map<string, readonly Seat[]>>();
+
+/**
+ * Seats of the prospects in a field, computed once per field, count and seed.
+ * A low-discrepancy sequence gives each zone its share of the prospects
+ * (not left to chance: a narrow zone always holds its chain of points).
+ */
+function seatsOf(field: readonly FieldZone[], count: number, seed: number): readonly Seat[] {
+  let byField = seats.get(field);
+  if (!byField) {
+    byField = new Map();
+    seats.set(field, byField);
+  }
+  const key = `${count}|${seed}`;
+  const known = byField.get(key);
+  if (known) return known;
+  const total = field.reduce((sum, zone) => sum + zone.share, 0);
+  const offset = hash01(0, 11, 6, seed);
+  const zones: FieldZone[] = [];
+  const sizes = new Map<FieldZone, number>();
+  for (let index = 0; index < count; index++) {
+    let pick = (((index + 1) * GOLDEN + offset) % 1) * total;
+    let chosen = field[field.length - 1] as FieldZone;
+    for (const zone of field) {
+      pick -= zone.share;
+      if (pick < 0) {
+        chosen = zone;
+        break;
+      }
+    }
+    zones.push(chosen);
+    sizes.set(chosen, (sizes.get(chosen) ?? 0) + 1);
+  }
+  const ranks = new Map<FieldZone, number>();
+  const result = zones.map((zone) => {
+    const rank = ranks.get(zone) ?? 0;
+    ranks.set(zone, rank + 1);
+    return { zone, rank, size: sizes.get(zone) ?? 1 };
+  });
+  byField.set(key, result);
+  return result;
+}
+
+/**
+ * Resting place of a prospect in a scene's field, CSS px, and its wandering
+ * scale. Along the long side of its zone the prospects are spread evenly
+ * (jittered), across it at random: bands and columns keep a regular chain.
+ */
+export function fieldBase(
+  index: number,
+  field: readonly FieldZone[],
+  frame: { x: number; width: number; height: number },
+  viewport: Viewport,
+  seed: number,
+): [number, number, number] {
+  const seat = seatsOf(field, moteCount(viewport), seed)[index];
+  const zone = seat?.zone ?? (field[0] as FieldZone);
+  const along = ((seat?.rank ?? 0) + 0.25 + 0.5 * hash01(index, 11, 2, seed)) / (seat?.size ?? 1);
+  const across = hash01(index, 11, 1, seed);
+  const wide = (zone.x1 - zone.x0) * frame.width >= (zone.y1 - zone.y0) * frame.height;
+  return [
+    frame.x + (zone.x0 + (wide ? along : across) * (zone.x1 - zone.x0)) * frame.width,
+    (zone.y0 + (wide ? across : along) * (zone.y1 - zone.y0)) * frame.height,
+    zone.sway ?? 1,
+  ];
+}
+
 export function buildMotes(
   state: SceneState,
   points: readonly number[],
@@ -54,6 +131,12 @@ export function buildMotes(
   const inflowNow = SCENES[state.scene].inflow ? 1 : 0;
   const inflowBefore = state.previous ? (SCENES[state.previous].inflow ? 1 : 0) : inflowNow;
   const inflow = inflowBefore + (inflowNow - inflowBefore) * k;
+  // Field of the scene (agents, desktop) and of the previous one: the resting
+  // places blend from one to the other like the stops, no jump.
+  const fieldNow = fieldOf(state.scene, viewport);
+  const fieldBefore = state.previous ? fieldOf(state.previous, viewport) : null;
+  const frameNow = frameOf(SCENES[state.scene], viewport);
+  const frameBefore = state.previous ? frameOf(SCENES[state.previous], viewport) : frameNow;
   for (let index = 0; index < count; index++) {
     const r1 = hash01(index, 11, 1, seed);
     const r2 = hash01(index, 11, 2, seed);
@@ -61,10 +144,22 @@ export function buildMotes(
     const r4 = hash01(index, 11, 4, seed);
     const far = isFar(index, seed);
     const shift = parallax * (far ? FAR_PLANE.parallax : 1);
-    const baseX = box.x + r1 * box.width;
-    const baseY = box.y + r2 * box.height;
-    const wanderX = baseX + Math.sin(time * 0.13 * (1 + r3) + r4 * 6.283) * 18;
-    const wanderY = baseY + Math.cos(time * 0.11 * (1 + r4) + r3 * 6.283) * 14;
+    let baseX = box.x + r1 * box.width;
+    let baseY = box.y + r2 * box.height;
+    let sway = 1;
+    if (fieldNow || fieldBefore) {
+      const now = fieldNow ? fieldBase(index, fieldNow, frameNow, viewport, seed) : [baseX, baseY, 1];
+      const before = !state.previous
+        ? now
+        : fieldBefore
+          ? fieldBase(index, fieldBefore, frameBefore, viewport, seed)
+          : [baseX, baseY, 1];
+      baseX = valueAt(before, 0) + (valueAt(now, 0) - valueAt(before, 0)) * k;
+      baseY = valueAt(before, 1) + (valueAt(now, 1) - valueAt(before, 1)) * k;
+      sway = valueAt(before, 2) + (valueAt(now, 2) - valueAt(before, 2)) * k;
+    }
+    const wanderX = baseX + Math.sin(time * 0.13 * (1 + r3) + r4 * 6.283) * 18 * sway;
+    const wanderY = baseY + Math.cos(time * 0.11 * (1 + r4) + r3 * 6.283) * 14 * sway;
     const flows = r3 < 0.6 ? inflow : 0;
     const cycle = 9 + r4 * 7;
     const f = (time / cycle + r1) % 1;

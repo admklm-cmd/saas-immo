@@ -49,8 +49,20 @@ export type MeshPointDraw = {
   /** Far plane: paler, smaller, less parallax. */
   far: boolean;
 };
-/** A resting connection of the mesh: always grey, never the accent colour. */
-export type MeshLinkDraw = { x1: number; y1: number; x2: number; y2: number; alpha: number; far: boolean };
+/**
+ * A resting connection of the mesh: always grey, never the accent colour.
+ * `parts` (shares of the segment, 0..1) lists the pieces actually drawn when a
+ * label interrupts the line; absent, the whole segment is drawn.
+ */
+export type MeshLinkDraw = {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  alpha: number;
+  far: boolean;
+  parts?: readonly (readonly [number, number])[];
+};
 /** A small cobalt impulse travelling along a mesh link (tail → head). */
 export type PulseDraw = { x: number; y: number; tx: number; ty: number; alpha: number };
 

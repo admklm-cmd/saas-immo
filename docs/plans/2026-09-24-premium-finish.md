@@ -163,3 +163,17 @@ ni second moteur : le fond vivant existant (`components/landing/living/`) est é
 - **Transitions** : poids de trame mélangé en smoothstep sur 1,6 s, comme la présence.
 - **Performance** : mesurée 0,94 ms/image (probleme) et 0,62 ms/image (agents) à
   1440 × 900 en Chromium (`data-frame-ms`), budget < 4 ms vérifié par `e2e/accueil.spec.ts`.
+
+## C2. Ajustement de composition (agents) et étiquettes dégagées (25/09/2026)
+Même branche. Aucune donnée, texte, section ni dépendance ; présence, ALPHA, plafonds d'arêtes
+et d'impulsions inchangés. Les 5 autres scènes restent identiques (empreintes).
+- **Scène agents** : positions mesurées dans Chromium (`getBoundingClientRect`) à 1440 × 900,
+  1280 × 800 et 1920 × 1080 pendant que la scène est active. Chemin en colonne quasi verticale
+  à droite du titre, descendant entre les modules « Validation humaine » et « Louis » jusqu'au
+  « Mandat » sous la rangée. Points de la trame placés dans les zones libres (`field`,
+  répartition régulière) : à droite du titre, barre, sous l'introduction, interstices des
+  modules, bande modules/fenêtre, marges. Cadre de référence 1440 × 900 centré sur grand écran.
+- **Étiquettes dégagées** (`labels.ts`) : les traits de trame sont interrompus à 4 px d'une
+  étiquette, les impulsions s'y effacent en fondu ; seul changement de la scène probleme.
+- **Visibilité** : +37 % (agents, référence remesurée pour la nouvelle composition avec le
+  rendu d'avant la trame) et +32 % (probleme) ; mobile +14 % / +15 %. Budget : 0,6–0,8 ms/image.

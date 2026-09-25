@@ -13,10 +13,11 @@
  * - The fictitious files keep travelling the 8-stop path only (files.ts).
  */
 
-import { bounds, isFar, moteBase, moteCount } from "./motes";
-import { meshOf, SCENES, STOP_COUNT, type LivingScene, type Point } from "./scenes";
+import { LABEL, labelRect, outsideRects, segmentRectDistance, type Rect } from "./labels";
+import { bounds, fieldBase, fieldOf, isFar, moteBase, moteCount } from "./motes";
+import { frameOf, meshOf, SCENES, STOP_COUNT, type LivingScene, type Point } from "./scenes";
 import { ease, hash01, smoothstep, valueAt } from "./timeline";
-import type { Frame, MeshPointDraw, SceneState, Viewport } from "./types";
+import type { Frame, MeshPointDraw, NodeDraw, SceneState, Viewport } from "./types";
 
 /** Most links a scene may draw (wide, compact). */
 export const MESH_LINK_CAP = { wide: 150, compact: 30 } as const;
@@ -32,6 +33,8 @@ const THIRD_NEIGHBOUR_SHARE = 0.35;
 const STOP_REACH = { wide: 190, compact: 80 } as const;
 /** Links fade with their current length: full up to the first value, gone at the second. */
 const FADE_LENGTH = { wide: [80, 220], compact: [60, 150] } as const;
+/** Radius of an impulse dot, CSS px (largest, see renderer.ts): kept off the labels too. */
+const PULSE_REACH = 2;
 
 /** A link between two prospects (`b` a prospect) or a prospect and a stop (`b` a stop). */
 export type MeshLink = { a: number; b: number; toStop: boolean; far: boolean };
@@ -51,14 +54,20 @@ export function meshLinksOf(scene: LivingScene, viewport: Viewport, seed: number
   if (known) return known;
 
   const layout: readonly Point[] = viewport.compact ? spec.compact : spec.wide;
+  const frame = frameOf(spec, viewport);
   const stops: number[] = [];
   for (let stop = 0; stop < STOP_COUNT; stop++) {
     const [nx, ny] = layout[stop] ?? [0.5, 0.5];
-    stops.push(nx * viewport.width, ny * viewport.height);
+    stops.push(frame.x + nx * frame.width, ny * frame.height);
   }
   const box = bounds(stops, viewport);
   const count = moteCount(viewport);
-  const places = Array.from({ length: count }, (_, index) => moteBase(index, box, seed));
+  const field = fieldOf(scene, viewport);
+  const places = Array.from({ length: count }, (_, index): [number, number] => {
+    if (!field) return moteBase(index, box, seed);
+    const [x, y] = fieldBase(index, field, frame, viewport, seed);
+    return [x, y];
+  });
 
   const candidates: { link: MeshLink; length: number }[] = [];
   const seen = new Set<number>();
@@ -121,11 +130,45 @@ export function addMesh(
 ) {
   const current = meshOf(SCENES[state.scene], viewport.compact) * (state.previous ? k : 1);
   const previous = state.previous ? meshOf(SCENES[state.previous], viewport.compact) * (1 - k) : 0;
-  if (current > 0.01) addLinks(frame, meshLinksOf(state.scene, viewport, seed), current, points, viewport);
-  if (state.previous && previous > 0.01) addLinks(frame, meshLinksOf(state.previous, viewport, seed), previous, points, viewport);
+  const labels = labelRects(frame.nodes, viewport);
+  if (current > 0.01) addLinks(frame, meshLinksOf(state.scene, viewport, seed), current, points, viewport, labels);
+  if (state.previous && previous > 0.01) {
+    addLinks(frame, meshLinksOf(state.previous, viewport, seed), previous, points, viewport, labels);
+  }
   // Impulses follow the dominant scene only: never twice as many during a change.
   const scene = current >= previous || !state.previous ? state.scene : state.previous;
-  addPulses(frame, meshLinksOf(scene, viewport, seed), Math.max(current, previous), points, time, viewport, seed);
+  addPulses(frame, meshLinksOf(scene, viewport, seed), Math.max(current, previous), points, time, viewport, seed, labels);
+}
+
+/** Boxes of the labels drawn in this frame (see labels.ts). */
+export function labelRects(nodes: readonly NodeDraw[], viewport: Viewport): Rect[] {
+  const rects: Rect[] = [];
+  for (const node of nodes) {
+    if (node.label && node.alpha > 0.01) rects.push(labelRect(node.x, node.y, node.label, viewport.width));
+  }
+  return rects;
+}
+
+/**
+ * 1 for an impulse well away from every label, fading to 0 at
+ * `LABEL.clearance` px: an impulse fades out while it passes a label, then
+ * comes back, without any jump.
+ */
+export function labelClearance(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  labels: readonly Rect[],
+  reach = 0,
+): number {
+  let clear = 1;
+  for (const rect of labels) {
+    const distance = segmentRectDistance(x1, y1, x2, y2, rect) - reach;
+    clear = Math.min(clear, smoothstep((distance - LABEL.clearance) / LABEL.fade));
+    if (clear === 0) break;
+  }
+  return clear;
 }
 
 function ends(link: MeshLink, vertices: readonly MeshPointDraw[], points: readonly number[]): [number, number, number, number] {
@@ -148,12 +191,19 @@ function addLinks(
   weight: number,
   points: readonly number[],
   viewport: Viewport,
+  labels: readonly Rect[],
 ) {
   for (const link of links) {
     const [x1, y1, x2, y2] = ends(link, frame.meshPoints, points);
     const alpha = weight * lengthFade(Math.hypot(x2 - x1, y2 - y1), viewport);
     if (alpha <= 0.01) continue;
-    frame.meshLinks.push({ x1, y1, x2, y2, alpha, far: link.far });
+    // Interrupted around the labels: the hairline stops LABEL.clearance px
+    // before a label and resumes after it, so it never crosses nor touches
+    // one; the gap opens and closes continuously as the points drift.
+    const parts = outsideRects(x1, y1, x2, y2, labels, LABEL.clearance);
+    if (parts.length === 0) continue;
+    const whole = parts.length === 1 && parts[0]?.[0] === 0 && parts[0]?.[1] === 1;
+    frame.meshLinks.push(whole ? { x1, y1, x2, y2, alpha, far: link.far } : { x1, y1, x2, y2, alpha, far: link.far, parts });
   }
 }
 
@@ -165,6 +215,7 @@ function addPulses(
   time: number,
   viewport: Viewport,
   seed: number,
+  labels: readonly Rect[],
 ) {
   if (weight <= 0.01 || links.length === 0) return;
   const slots = viewport.compact ? PULSES.compact : PULSES.wide;
@@ -189,12 +240,15 @@ function addPulses(
     const share = age / PULSES.travel;
     const head = ease(share);
     const tail = ease(Math.max(0, share - 0.16));
-    frame.pulses.push({
+    const pulse = {
       x: x1 + (x2 - x1) * head,
       y: y1 + (y2 - y1) * head,
       tx: x1 + (x2 - x1) * tail,
       ty: y1 + (y2 - y1) * tail,
       alpha: weight * fade * Math.sin(Math.PI * share),
-    });
+    };
+    // Faded out while it passes a label (dot radius included), back after it.
+    pulse.alpha *= labelClearance(pulse.tx, pulse.ty, pulse.x, pulse.y, labels, PULSE_REACH);
+    frame.pulses.push(pulse);
   }
 }
