@@ -22,7 +22,7 @@ export default function ContactDetailLoading() {
     <div
       aria-busy="true"
       aria-label={APP_TEXTS.states.loading}
-      className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-12"
+      className="page-frame"
     >
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-4 h-9 w-80" />

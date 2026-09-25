@@ -1,9 +1,9 @@
 import { formatDateAtTime, formatDateTime } from "@/components/format";
 import { APP_TEXTS, MEMBERSHIP_ROLE_LABELS } from "@/components/texts";
-import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PendingDots } from "@/components/ui/PendingDots";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
 import { RunStatusBadge } from "@/features/agents-ia/components/RunStatusBadge";
 import {
   PIPELINE_STAGE_LABELS,
@@ -13,10 +13,9 @@ import {
 } from "@/features/contacts/types";
 import { AGENT_LABELS } from "@/lib/agents/messages";
 
-const TEXTS = APP_TEXTS.contact;
+import { STAGE_CHANGE_TYPE, timelineMark } from "./timeline-mark";
 
-/** Activity type written by the human stage change (`change_contact_stage`). */
-const STAGE_CHANGE_TYPE = "contact_stage_changed";
+const TEXTS = APP_TEXTS.contact;
 
 /**
  * Who acted. A human stage change records the role of its author
@@ -132,7 +131,15 @@ function runOutcomeOf(entry: TimelineEntry): "blocked" | "failed" | null {
   return entry.status === "blocked" || entry.status === "failed" ? entry.status : null;
 }
 
-/** Chronological history of a contact, most recent first. */
+/**
+ * Chronological history of a contact, most recent first.
+ *
+ * A rail of tiles from the glyph family (`timelineMark`): the symbol says
+ * what happened, the shape who acted — an AI agent (dark tile), a person
+ * (double circle), the system (light tile), the mandate (filled disc, always
+ * confirmed by a person). The words next to each tile say the same thing;
+ * the tiles are decorative. « Simulation » badges and human reviews unchanged.
+ */
 export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[] }) {
   if (entries.length === 0) {
     return <EmptyState title={TEXTS.timelineEmpty} />;
@@ -145,26 +152,41 @@ export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[]
         const stageChange = stageChangeOf(entry);
         const review = reviewOf(entry);
         const runOutcome = runOutcomeOf(entry);
+        const mark = timelineMark(entry);
         return (
-          <li key={`${entry.kind}-${entry.id}`} className="relative flex gap-4 pb-6 last:pb-0">
-            {/* Vertical rail, purely decorative. */}
+          <li
+            key={`${entry.kind}-${entry.id}`}
+            data-kind={entry.kind}
+            className="relative flex gap-4 pb-7 last:pb-0"
+          >
+            {/* Vertical rail, purely decorative: from this tile to the next one. */}
             {index < entries.length - 1 ? (
-              <span aria-hidden="true" className="absolute top-4 bottom-0 left-[5px] w-px bg-line" />
+              <span aria-hidden="true" className="absolute top-9 bottom-2 left-3.5 w-px -translate-x-1/2 bg-line" />
             ) : null}
-            <span
-              aria-hidden="true"
-              className="relative mt-1.5 size-2.5 shrink-0 rounded-full border border-ink bg-surface"
+            <AgentAppIcon
+              glyph={mark.glyph}
+              kind={mark.kind}
+              size="sm"
+              state={runOutcome ? "inactive" : "idle"}
+              testId="timeline-mark"
             />
 
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="outline">{TIMELINE_KIND_LABELS[entry.kind]}</Badge>
-                {actor ? <Badge>{actor}</Badge> : null}
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1.5">
+                <span className="text-xs font-medium text-ink-muted">{TIMELINE_KIND_LABELS[entry.kind]}</span>
+                {actor ? (
+                  <>
+                    <span aria-hidden="true" className="text-xs text-ink-subtle">
+                      ·
+                    </span>
+                    <span className="text-xs font-medium text-ink">{actor}</span>
+                  </>
+                ) : null}
                 {runOutcome ? <RunStatusBadge status={runOutcome} /> : null}
                 {entry.isSimulation ? <SimulationBadge /> : null}
                 <time
                   dateTime={entry.occurredAt}
-                  className="ml-auto text-xs whitespace-nowrap text-ink-subtle"
+                  className="ml-auto text-xs whitespace-nowrap text-ink-subtle tabular-nums"
                 >
                   {formatDateTime(entry.occurredAt)}
                 </time>
@@ -172,7 +194,7 @@ export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[]
 
               {stageChange ? (
                 <>
-                  <p className="mt-2 text-sm font-medium text-ink" data-testid="timeline-stage-change">
+                  <p className="mt-1.5 text-sm font-medium text-ink" data-testid="timeline-stage-change">
                     {stageChange.title}
                   </p>
                   {stageChange.reason ? (
@@ -183,7 +205,7 @@ export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[]
                   ) : null}
                 </>
               ) : (
-                <p className="mt-2 text-sm font-medium text-ink">{entry.title}</p>
+                <p className="mt-1.5 text-sm font-medium text-pretty text-ink">{entry.title}</p>
               )}
               {!stageChange && entry.description ? (
                 <p className="mt-1 text-sm whitespace-pre-line text-ink-muted">{entry.description}</p>

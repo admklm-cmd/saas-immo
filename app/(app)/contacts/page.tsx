@@ -17,7 +17,7 @@ export default async function ContactsPage() {
   const { data: contacts, error } = await getContacts();
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-12">
+    <div className="page-frame">
       <PageHeader
         title={TEXTS.title}
         description={TEXTS.subtitle}

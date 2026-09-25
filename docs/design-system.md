@@ -238,7 +238,7 @@ Boutons et badges : `rounded-full`.
 |---|---|
 | `shadow-subtle` | Cartes, boutons au repos |
 | `shadow-raised` | Panneau de connexion, tableau flottant |
-| `shadow-overlay` | Éléments superposés : `Dialog`, panneau « Changer d'étape » du pipeline, pastille de confirmation du pipeline |
+| `shadow-overlay` | Éléments superposés : `Dialog`, pastille de confirmation du pipeline |
 
 ### 2.5 Mouvement
 
@@ -298,7 +298,7 @@ maximale, la durée, un écran concerné.
 | Champ de formulaire | Couleur de bordure (et ombre pour `Field`) | aucune | `--duration-fast` | `Field`, `Select`, `Textarea`. **L'anneau de focus global (`:focus-visible`), lui, n'est jamais animé** : il apparaît instantanément |
 | Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
 | Ouverture d'une fenêtre de confirmation (`Dialog`) | Opacité + `scale(.98)` → `scale(1)` (`animate-settle`), fond flouté fixe | `scale(0.98)` | `--duration-base` | Confirmation du mandat signé (pipeline) |
-| Ouverture d'un panneau ancré ou d'une pastille de confirmation | Opacité + translation de 4 px (`animate-rise-soft`) | 4 px | `--duration-base` | Panneau « Changer d'étape », pastille « dossier déplacé » du pipeline |
+| Ouverture d'un panneau ancré ou d'une pastille de confirmation | Opacité + translation de 4 px (`animate-rise-soft`) | 4 px | `--duration-base` | Liste « Changer d'étape » dépliée dans la carte, pastille « dossier déplacé » du pipeline |
 | Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(écran livré ; variante `settle` encore attendue en phase 1)* |
 
 #### 2.5.4 Interdits
@@ -615,7 +615,8 @@ restent pour les icônes utilitaires de l'application (phases d'une exécution, 
   `emma` (bulle, lignes écrites), `louis` (page de calendrier, un créneau),
   `sarah` (dossier qui avance), `human` (personne + décision), `mandate` (document +
   signature), `prospect`, `appointment` (lieu de la visite) ; utilitaires `check`,
-  flèches, `lock`, `clock`, `document`, `merge`, `question`, `mail`.
+  flèches, `lock`, `clock`, `document`, `merge`, `question`, `mail` ; pipeline : `stageMove`
+  (un nœud envoyé le long de la ligne, bouton « Changer d'étape »).
 - **Deux calques** : le corps (immobile) et l'**accent** (la partie qui dit le métier, la
   seule qui bouge). Mouvements nommés : `drop`, `nudge`, `pop`, `draw` (tracé). Ils
   ne jouent qu'au survol d'un parent interactif ou à l'activation ; jamais sous mouvement
@@ -821,42 +822,77 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 
 ### 3.2 Composants du module « Pipeline » (`features/pipeline/components/`)
 
+**Ce que l'écran raconte** : *chaque dossier avance de gauche à droite, jusqu'au mandat
+scellé par une personne* — avec les mêmes signes que la frise du tableau de bord (§ 3.5),
+pour que les deux écrans se lisent pareil : un point de la frise = une carte ici.
+
 | Composant | Fichier | Rôle |
 |---|---|---|
-| `PipelineBoard` | `PipelineBoard.tsx` | Répartit les contacts par étape (`groupContactsByStage`) et pose la grille des six étapes actives, puis `perdu` à part |
-| `PipelineColumn` | `PipelineColumn.tsx` | Une étape : `section`/`h2` (landmark correctement annoncé), compteur réel, état vide, `emphasis="muted"` pour `perdu` |
-| `PipelineContactCard` | `PipelineContactCard.tsx` | Une carte compacte en deux cibles jamais imbriquées : le bloc haut est un lien vers `/contacts/[id]` (nom, bien via `propertySummary`, badges de reprise humaine et de tâches ouvertes), le pied porte « Changer d'étape » |
-| `PipelineStageMenu` | `PipelineStageMenu.tsx` (client) | Bouton de divulgation (`aria-expanded`, nom accessible « Changer d'étape pour {nom} ») + panneau ancré opaque : sept étapes, actuelle cochée (`aria-current`) et non sélectionnable, flèches / Début / Fin, Échap rend le focus. Déplacement direct avec spinner sur l'option ; erreur serveur affichée telle quelle dans le panneau, sélection conservée |
-| `MandateEnterDialog` | `MandateEnterDialog.tsx` (client) | Entrée en « Mandat signé » : rappel « décision humaine, jamais un agent IA », `Checkbox` obligatoire, bouton désactivé tant qu'elle n'est pas cochée (raison écrite sous la case) |
-| `MandateExitDialog` | `MandateExitDialog.tsx` (client) | Sortie de « Mandat signé » (directeur) : `Checkbox` + `Textarea` « Motif (obligatoire) » 3–500 caractères avec compteur, bouton désactivé tant que les deux ne sont pas remplis |
-| `PipelineStageChangeProvider` | `PipelineStageChangeProvider.tsx` (client) | Zone `role="status"` toujours présente au niveau du tableau (la carte déplacée change de colonne, elle ne peut pas porter sa propre confirmation) : pastille noire translucide en bas d'écran, 6 s ; rend le focus au bouton de la carte dans sa nouvelle colonne |
+| `PipelineBoard` | `PipelineBoard.tsx` (+ `PipelineBoard.module.css`) | Répartit les contacts (`groupContactsByStage`), pose la carte des étapes, puis **une seule ligne** des six étapes actives dans une zone qui défile horizontalement, puis `perdu` à part, sous la ligne |
+| `PipelineStageNav` | `PipelineStageNav.tsx` (client) | Carte du parcours au-dessus de la ligne : un segment par étape (2 px, `line-strong`), libellé + compte exact (libellé en `sr-only` sous 640 px), « Perdu » en pointillés à part. Les segments des colonnes visibles passent en `ink` (`IntersectionObserver`, 60 % de la colonne) : c'est la position dans le parcours, surtout sur téléphone. Liens d'ancre : sans JavaScript, saut natif ; avec, la zone est amenée **instantanément** sur la colonne (pas de défilement animé) sans bouger la page, et le focus va au titre de la colonne |
+| `PipelineColumn` | `PipelineColumn.tsx` | Une étape : `section`/`h2` (`tabIndex=-1` pour la carte des étapes). En-tête sur la ligne du parcours : nœud creux 10 px (`border-ink-subtle`), segment `bg-line-strong` 1 px jusqu'au nœud suivant (chaque colonne dessine le sien), libellé `text-base`, compte exact `text-heading` + « dossier(s) » (`data-testid="pipeline-column-count"`). « Étape n sur 6 » visible sous 640 px, `sr-only` au-dessus. « Mandat signé » termine la ligne : `AgentAppIcon glyph="mandate" kind="outcome"` + « Confirmé par un humain » posé sur la ligne. Colonne vide : cadre pointillé « Aucun dossier à cette étape. ». Colonnes en `subgrid` (en-tête / cartes) : toutes les cartes commencent à la même hauteur |
+| `PipelineLostLane` | `PipelineLostLane.tsx` | `perdu` hors de la ligne : cadre `border-dashed border-line-strong bg-surface-muted`, nœud pointillé, chiffre `text-ink-subtle`, note « Affichée à part… », cartes en grille qui passe à la ligne (jamais de défilement) |
+| `PipelineContactCard` | `PipelineContactCard.tsx` | Un dossier : `rounded-xl`, `shadow-subtle` → `shadow-raised` + filet `line-strong` au survol du lien. Deux cibles jamais imbriquées : le corps est un lien vers `/contacts/[id]` (nom ; « Maison · 142 m² » ; secteur, sinon ville ; états via `ContactStateMarks` : forme humaine + « Repris par un conseiller », glyphe tâches + « 1 tâche ouverte ») ; « Changer d'étape » est un petit bouton rond dans le coin haut droit |
+| `PipelineStageMenu` | `PipelineStageMenu.tsx` (client) | Bouton rond 32 px, glyphe `stageMove` (un nœud envoyé le long de la ligne), **toujours visible** (`ink-subtle`, `ink` au survol), nom accessible « Changer d'étape pour {nom} », et « Changer d'étape » en bulle noire au survol (pointeur fin) et au focus clavier. Ouvert : la flèche tourne de 90° vers la liste, qui se **déplie dans la carte** (`bg-surface-muted`, jamais coupée par la zone qui défile) : sept étapes, actuelle cochée (`aria-current`) et non sélectionnable, flèches / Début / Fin, Échap rend le focus. Déplacement direct avec spinner sur l'option ; erreur serveur affichée telle quelle, sélection conservée |
+| `MandateEnterDialog` | `MandateEnterDialog.tsx` (client) | Entrée en « Mandat signé » : rappel « décision humaine, jamais un agent IA », `Checkbox` obligatoire, bouton désactivé tant qu'elle n'est pas cochée — **inchangé** |
+| `MandateExitDialog` | `MandateExitDialog.tsx` (client) | Sortie de « Mandat signé » (directeur) : `Checkbox` + `Textarea` « Motif (obligatoire) » 3–500 caractères avec compteur — **inchangé** |
+| `PipelineStageChangeProvider` | `PipelineStageChangeProvider.tsx` (client) | Zone `role="status"` toujours présente (pastille noire translucide en bas d'écran, 6 s) ; rend le focus au bouton de la carte dans sa nouvelle colonne — **inchangé** |
 
-**Changer d'étape, au clavier, sans glisser-déposer.** Seul `PipelineStageMenu`
-(et ses fenêtres) est un composant client ; colonnes et cartes restent des Server
-Components, et seuls l'identifiant, le nom et l'étape du contact atteignent le
-navigateur. Règles :
+**Une ligne, défilement natif.** `.scroller` : `overflow-x: auto`, `container-type:
+inline-size`, déborde dans la gouttière de `.page-frame` (marges négatives + même padding)
+avec un fondu (`mask-image`) limité à cette gouttière : au repos, rien n'est estompé.
+Largeur d'une colonne : `max(16rem, (100cqw − 5 × 0,75rem) / 6)` dès 640 px (les six
+tiennent sur un grand écran, sinon la ligne défile) ; téléphone : `100cqw − 2,75rem` (une
+colonne et le bord de la suivante) avec `scroll-snap-type: x mandatory`. **Pas
+d'aimantation dès 1024 px** : le navigateur ré-aimante sur l'élément qui prend le focus, ce
+qui ferait sauter les colonnes. Aucun défilement scripté ni amorti : molette horizontale /
+Maj + molette, tactile, flèches du clavier une fois la zone focalisée (`role="region"`,
+`tabIndex=0`, nom « Parcours des dossiers, de gauche à droite » — **jamais** un libellé
+d'étape dans ce nom : les tests cherchent les colonnes par sous-chaîne), Tab à travers les
+cartes (le navigateur amène la carte à l'écran). `overflow-anchor: none` sur le tableau :
+une carte qui change de colonne ne fait pas sauter la page.
 
-1. Un déplacement ordinaire part au clic ; entrer dans ou sortir de « Mandat signé »
-   passe **toujours** par un `Dialog` avec une case non précochée.
+**Mouvement (deux, chacun avec une cause).**
+1. Survol d'une carte (pointeur fin) : le nœud de son étape passe en `ink` et grossit
+   (×1,3), comme la frise.
+2. Changement d'étape (une décision humaine) : la carte arrive dans sa nouvelle colonne
+   (`card-arrive`, 560 ms : descend de 6 px, contour `ink` 1,5 px qui s'efface) et le nœud de
+   l'étape l'enregistre une fois (`node-register`, 640 ms : ×1,5 et rempli, puis retour).
+   Marques `data-arrived` / `data-arrival` posées par `PipelineStageMenu` quand le focus
+   revient à la carte, retirées après 900 ms ; la carte est amenée à l'écran par
+   `scrollIntoView({ block: "nearest", inline: "nearest" })` (instantané).
+
+Rien ne bouge seul. Mouvement réduit : aucune animation (règle globale + règle explicite du
+module), tous les états restent.
+
+**Règles qui ne changent pas.**
+1. Un déplacement ordinaire part au clic ; entrer dans ou sortir de « Mandat signé » passe
+   **toujours** par un `Dialog` avec une case non précochée.
 2. Une option indisponible (sortie de mandat pour un conseiller) reste focalisable
-   (`aria-disabled`, pas `disabled`) et porte sa raison via `aria-describedby` :
-   l'explication est lue, l'action ne part pas. Le serveur refuse de toute façon.
-3. Le panneau est **opaque** (`bg-surface`) : un flou laissait transparaître les
-   cartes du dessous et nuisait à la lecture. Le flou est réservé aux barres fixes et
-   à la pastille de confirmation.
-4. Les guillemets « … » de ces textes utilisent des espaces insécables pour ne jamais couper un
-   libellé d'étape en fin de ligne.
+   (`aria-disabled`, pas `disabled`) et porte sa raison via `aria-describedby`.
+3. La liste des étapes est **opaque** et dans le flux de la carte (un panneau flottant
+   serait coupé par la zone qui défile).
+4. Les guillemets « … » de ces textes utilisent des espaces insécables.
 
-**`perdu` n'a pas le même poids visuel que les étapes actives.** Elle est
-affichée à part, sur une largeur contrainte (`max-w-sm`), en bordure
-pointillée et texte atténué — jamais seulement par la couleur : le libellé
-« Perdu » et la bordure pointillée le disent tous les deux, comme pour
-`PipelineStageBadge`.
+**`perdu` n'a pas le même poids visuel que les étapes actives** : hors de la ligne,
+pointillés et texte atténué — jamais seulement par la couleur (le libellé le dit aussi).
 
-**Compteurs réels uniquement.** Chaque colonne affiche le nombre de dossiers
-réellement lus par `getContacts()`. Aucun taux de conversion, aucune durée
-moyenne, aucune évolution : ce que l'écran ne peut pas compter, il ne
-l'affiche pas.
+**Compteurs réels uniquement.** Chaque colonne affiche le nombre de dossiers réellement lus
+par `getContacts()`. Aucun taux de conversion, aucune durée moyenne, aucune évolution.
+
+### 3.2.1 Contacts vendeurs et fiche contact (`features/contacts/components/`)
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `ContactsTable` | `ContactsTable.tsx` | Dès 768 px : tableau `rounded-2xl`, colonnes Contact · Étape · Bien · Coordonnées · Source · Mise à jour (largeur automatique, `whitespace-nowrap` là où un mot ne doit pas se couper). Toute la ligne mène à la fiche : le nom est le vrai lien, sa zone (`after:absolute inset-0`) couvre la ligne ; survol : fond `surface-muted`, nom souligné `line-strong`, flèche qui avance de 2 px en fin de ligne. Légende `aria-hidden` des formes au-dessus, à droite |
+| `ContactsMobileList` | `ContactsMobileList.tsx` | Sous 768 px : une carte par contact (nom + date, badge d'étape + états, bien, coordonnées, source), toute la carte est la cible. Jamais un tableau miniature |
+| `ContactStateMarks` | `ContactStateMarks.tsx` | Les deux états réels d'un dossier **par la forme** : reprise par un conseiller = petit cercle à double contour (famille `human`) ; tâches ouvertes = glyphe `tasks` + nombre. `labelled` (forme + mots : pipeline, fiche, téléphone) ou `compact` (forme + chiffre, mots en `sr-only` et en infobulle : tableau). Rien si aucun état |
+| `PropertyCell` / `propertyParts` | `PropertyCell.tsx`, `property-summary.ts` | Bien sur deux lignes : « Maison · 142 m² » (espace insécable avant « m² »), puis secteur, sinon ville (« Saint-Cyr-sur-Mer — Les Lecques », jamais coupé). Rien d'inventé : « Bien non identifié » sinon |
+| `ContactTimeline` | `ContactTimeline.tsx` + `timeline-mark.ts` | Rail de tuiles `AgentAppIcon size="sm"` : le **symbole** dit ce qui s'est passé (symbole de l'agent pour une exécution IA, `mail`, `tasks`, `appointment`, `pipeline` pour un changement d'étape, `document` sinon), la **forme** dit qui a agi (tuile sombre = agent IA, double cercle = personne, tuile claire = système ; passage humain en « Mandat signé » = disque plein). Exécution bloquée ou en échec : tuile en creux + `RunStatusBadge`. En-tête : type · acteur en texte, badges « Simulation », date. Revue humaine inchangée |
+
+Fiche contact : en-tête = badge d'étape, `ContactStateMarks`, « Dernière mise à jour … » en
+texte atténué ; panneau Agents IA et carte Consentements **inchangés** (comportement et
+textes : consentement vérifié côté serveur, simulation).
 
 ### 3.3 Composants du formulaire public d'estimation (`features/estimation/components/`)
 
@@ -1043,10 +1079,10 @@ Chaque écran gère quatre états :
 - Rejeu d'une exécution : colonne unique `max-w-4xl` (la lecture prime).
 - Files de travail (« Leads entrants », « Messages à valider ») : colonne unique
   `max-w-4xl`, une carte par élément, règle produit en `Alert tone="info"` en tête.
-- Tableau de pipeline (`/pipeline`) : `max-w-7xl`, grille des six étapes actives
-  `grid-cols-1 sm:grid-cols-2 xl:grid-cols-3` (deux rangées de trois à partir de
-  1280 px, jamais de défilement horizontal disgracieux), `perdu` en dessous sur
-  une colonne unique `max-w-sm`.
+- Pipeline (`/pipeline`) : `page-frame`. Carte des étapes, puis les six étapes sur **une
+  ligne** qui défile horizontalement (déborde dans la gouttière du cadre), colonnes de 16rem
+  minimum ; une colonne par écran sous 640 px ; `perdu` en dessous, pleine largeur (§ 3.2).
+- Contacts (`/contacts`) : `page-frame`, tableau dès 768 px, cartes en dessous (§ 3.2.1).
 - Tableau de bord (`/dashboard`) : `page-frame`. Frise du pipeline pleine largeur (ligne
   horizontale dès 1280 px ; verticale en dessous, plafonnée à `max-w-xl` de 1024 à 1279 px),
   puis « À faire maintenant » en un panneau à rangées (`TodoRow`,

@@ -1,0 +1,208 @@
+/*
+ * Pipeline board of /pipeline — docs/design-system.md §3.2.
+ *
+ * Layout: the six active stages on ONE line, in a native horizontal scroller
+ * (touch, trackpad, Shift + wheel, arrow keys once focused, Tab through the
+ * cards). No scripted or eased scrolling: the browser scrolls, CSS snaps.
+ *
+ * Motion, each with one cause:
+ *   * pointing at a card brings its stage forward on the line (node inked and
+ *     grown), like the frieze of the dashboard;
+ *   * a stage change (a human decision) lands the card in its new column: the
+ *     card settles with a brief ink contour and the node of that stage
+ *     registers it once. Nothing moves on its own. Only paint and transform
+ *     properties change; reduced motion keeps the states and drops the motion
+ *     (global rule in app/globals.css, plus the explicit rule below).
+ */
+
+/* --- Scroller ------------------------------------------------------------------ */
+
+.scroller {
+  /* Same gutter as `.page-frame`: the shelf bleeds to the edge of the page
+     frame, and the snap stops keep the first column on the text edge. */
+  --gutter: 1.5rem;
+
+  container-type: inline-size;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--gutter);
+  margin-inline: calc(var(--gutter) * -1);
+  padding: 0.25rem var(--gutter) 1.25rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+  /* Content that scrolls into the gutter fades out; at rest nothing is faded. */
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--gutter),
+    #000 calc(100% - var(--gutter)),
+    transparent
+  );
+}
+
+/* From 1024 px, no snapping: a column never jumps to the edge because a card
+   inside it got the focus or changed size (the browser re-snaps to the
+   focused element). The phone keeps its one-column-per-screen snap. */
+@media (width >= 64rem) {
+  .scroller {
+    --gutter: 2.5rem;
+    scroll-snap-type: none;
+  }
+}
+
+/* A card that leaves a column must not make the page jump: no scroll
+   anchoring inside the board (the moved card is brought into view on purpose). */
+.board {
+  overflow-anchor: none;
+}
+
+/* Keyboard focus on the scroller itself (arrow keys scroll it). */
+.scroller:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+  border-radius: var(--radius-md);
+  mask-image: none;
+}
+
+/* The track is as wide as its columns (so the end padding of the scroller
+   is kept after « Mandat signé »). Column width from the scroller's width
+   (`cqw`): a phone shows one column and the edge of the next; from 640 px
+   a column never goes under 16rem, and the six share a wide screen. */
+.track {
+  display: grid;
+  width: max-content;
+  min-width: 100%;
+  grid-auto-flow: column;
+  grid-auto-columns: calc(100cqw - 2.75rem);
+  grid-template-rows: auto 1fr;
+  column-gap: 0.75rem;
+}
+
+@media (width >= 40rem) {
+  .track {
+    grid-auto-columns: max(16rem, calc((100cqw - 3.75rem) / 6));
+  }
+}
+
+/* Each column spans the two rows of the track (header, cards), so every
+   header ends on the same line whatever its content (the mandate note). */
+.column {
+  display: grid;
+  grid-row: span 2;
+  grid-template-rows: subgrid;
+  scroll-snap-align: start;
+}
+
+/* --- Line of the journey ----------------------------------------------------------- */
+
+.node,
+.card {
+  transition:
+    background-color var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    scale var(--duration-base) var(--ease-standard);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .column:has(.card:hover) .node {
+    border-color: var(--color-ink);
+    scale: 1.3;
+  }
+}
+
+/* --- Stage change: the card lands, the stage registers it --------------------- */
+
+.card[data-arrived] {
+  animation: card-arrive 560ms var(--ease-standard) both;
+}
+
+[data-arrival] .node {
+  animation: node-register 640ms var(--ease-standard) both;
+}
+
+@keyframes card-arrive {
+  from {
+    translate: 0 -6px;
+    box-shadow:
+      0 0 0 1.5px var(--color-ink),
+      var(--shadow-raised);
+  }
+  to {
+    translate: 0 0;
+  }
+}
+
+@keyframes node-register {
+  0% {
+    scale: 1;
+  }
+  35% {
+    scale: 1.5;
+    background-color: var(--color-ink);
+    border-color: var(--color-ink);
+  }
+  100% {
+    scale: 1;
+  }
+}
+
+/* --- « Changer d'étape » ------------------------------------------------------------ */
+
+.trigger [data-glyph-accent] {
+  transition: translate var(--duration-base) var(--ease-standard);
+}
+
+.trigger svg {
+  transition: rotate var(--duration-base) var(--ease-standard);
+}
+
+/* Open: the arrow turns towards the list of stages it has unfolded. */
+.trigger[aria-expanded="true"] svg {
+  rotate: 90deg;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .trigger:hover [data-glyph-accent] {
+    translate: 1.5px 0;
+  }
+}
+
+.trigger[aria-expanded="true"] .tip {
+  display: none;
+}
+
+/* Name of the control, shown next to it on hover and keyboard focus. */
+.tip {
+  opacity: 0;
+  translate: 0 3px;
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard);
+}
+
+.trigger:focus-visible .tip {
+  opacity: 1;
+  translate: 0 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .trigger[aria-expanded="false"]:hover .tip {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card[data-arrived],
+  [data-arrival] .node {
+    animation: none;
+  }
+
+  .trigger svg,
+  .trigger [data-glyph-accent],
+  .tip {
+    transition: none;
+  }
+}

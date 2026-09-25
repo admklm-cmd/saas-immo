@@ -1,21 +1,22 @@
 "use client";
 
-import { CheckIcon, ChevronDownIcon } from "@radix-ui/react-icons";
+import { CheckIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
 import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
-import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 import { isRetryableErrorCode } from "@/components/ui/retryable";
 import { ThreeDotLoader } from "@/components/ui/ThreeDotLoader";
+import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
 import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/features/contacts/types";
 import { changeContactStage } from "@/features/pipeline/actions";
 import { PIPELINE_STAGES } from "@/features/pipeline/types";
 
 import { MandateEnterDialog } from "./MandateEnterDialog";
 import { MandateExitDialog } from "./MandateExitDialog";
+import styles from "./PipelineBoard.module.css";
 import { useStageChangeAnnouncer } from "./PipelineStageChangeProvider";
 
 const TEXTS = APP_TEXTS.pipeline.stageChange;
@@ -34,8 +35,9 @@ type DialogState = { kind: "enter" | "exit"; target: PipelineStage } | null;
 /**
  * « Changer d'étape » on a pipeline card — keyboard first, no drag-and-drop.
  *
- * A disclosure button opens a small panel listing every stage (the current one
- * is marked, not selectable). A plain move is sent at once; entering or leaving
+ * A small disclosure button (top-right corner of the card, named « Changer
+ * d'étape pour {nom} ») unfolds, inside the card, a list of every stage (the
+ * current one is marked, not selectable). A plain move is sent at once; entering or leaving
  * « Mandat signé » goes through a confirmation dialog. The rules shown here
  * are explanations only: `changeContactStage` and the database enforce them.
  */
@@ -63,9 +65,13 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
 
   const exitLocked = stage === SIGNED && !canExitSignedMandate;
 
-  // The card was re-rendered in its new column: give it the focus back.
+  // The card was re-rendered in its new column: give it the focus back (the
+  // browser brings it into view, natively), and let the card and the node of
+  // its new stage play their one « arrived » motion (presentation only).
   useEffect(() => {
-    if (consumeFocus(contactId)) triggerRef.current?.focus();
+    if (!consumeFocus(contactId)) return;
+    triggerRef.current?.focus({ preventScroll: true });
+    markArrival(triggerRef.current);
   }, [consumeFocus, contactId]);
 
   // First selectable option gets the focus when the panel opens.
@@ -178,26 +184,36 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
 
   return (
     <div ref={containerRef} data-sensitive="">
-      <Button
+      {/* Discreet but always there: the glyph of a dossier sent along the line.
+          Its full name is read by screen readers and shown on hover / focus. */}
+      <button
         ref={triggerRef}
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2.5 text-xs"
+        type="button"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => (open ? closePanel(false) : setOpen(true))}
         data-testid="stage-menu-trigger"
+        className={cn(
+          styles.trigger,
+          "ui-focus absolute top-2 right-2 grid size-8 place-items-center rounded-full text-ink-subtle",
+          "transition-colors duration-150 ease-standard hover:bg-surface-sunken hover:text-ink",
+          "aria-expanded:bg-surface-sunken aria-expanded:text-ink",
+        )}
       >
-        {TEXTS.trigger}{" "}
-        <span className="sr-only">{TEXTS.triggerFor(contactName)}</span>
-        <ChevronDownIcon
+        <span className="sr-only">
+          {TEXTS.trigger} {TEXTS.triggerFor(contactName)}
+        </span>
+        <Glyph name="stageMove" width={16} />
+        <span
           aria-hidden="true"
           className={cn(
-            "ml-1 inline size-3.5 transition-transform duration-150 ease-standard",
-            open && "rotate-180",
+            styles.tip,
+            "pointer-events-none absolute right-0 bottom-full z-10 mb-1.5 rounded-md bg-inverse px-2 py-1 text-xs font-medium whitespace-nowrap text-ink-inverse shadow-raised",
           )}
-        />
-      </Button>
+        >
+          {TEXTS.trigger}
+        </span>
+      </button>
 
       {open ? (
         <div
@@ -208,7 +224,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
           aria-busy={pending || undefined}
           onKeyDown={onPanelKeyDown}
           data-testid="stage-menu"
-          className="absolute inset-x-0 top-full z-30 mt-1.5 animate-rise-soft rounded-lg border border-line bg-surface p-1.5 shadow-overlay"
+          className="mx-1.5 mb-1.5 animate-rise-soft rounded-lg border border-line bg-surface-muted p-1.5"
         >
           <p id={titleId} className="px-2.5 pt-1.5 pb-1 text-overline font-semibold text-ink-subtle uppercase">
             {TEXTS.menuTitle}
@@ -312,4 +328,28 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
 function optionsOf(panel: HTMLElement | null): HTMLButtonElement[] {
   if (!panel) return [];
   return Array.from(panel.querySelectorAll<HTMLButtonElement>("button[data-stage-option]"));
+}
+
+/** How long the « arrived » marks stay on the card and its column (longest animation + margin). */
+const ARRIVAL_MS = 900;
+
+/**
+ * Marks the card that has just changed column, and that column, so their CSS
+ * animation plays once (PipelineBoard.module.css; none under reduced motion).
+ * Presentation only: the move itself is already done and announced.
+ */
+function markArrival(trigger: HTMLElement | null): void {
+  const card = trigger?.closest<HTMLElement>('[data-testid="pipeline-contact"]');
+  const column = trigger?.closest<HTMLElement>("[data-pipeline-column]");
+  if (!card) return;
+  // Native, instant, and only as much as needed: the card and the head of its
+  // column come into view; nothing moves when they already are.
+  card.scrollIntoView({ block: "nearest", inline: "nearest" });
+  card.setAttribute("data-arrived", "");
+  column?.setAttribute("data-arrival", "");
+  // Not cleared on unmount: removing an attribute from a detached node is harmless.
+  window.setTimeout(() => {
+    card.removeAttribute("data-arrived");
+    column?.removeAttribute("data-arrival");
+  }, ARRIVAL_MS);
 }

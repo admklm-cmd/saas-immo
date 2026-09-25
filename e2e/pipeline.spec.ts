@@ -301,3 +301,127 @@ test.describe.serial("changement d'étape depuis le pipeline", () => {
     ).toBeVisible();
   });
 });
+
+// -----------------------------------------------------------------------------
+// One line, native horizontal scrolling (Lot 2A)
+// -----------------------------------------------------------------------------
+
+const ACTIVE_STAGES = ["nouveau", "qualifie", "chaud", "rdv_planifie", "estimation_faite", "mandat_signe"] as const;
+
+function scroller(page: Page): Locator {
+  return page.getByRole("region", { name: TEXTS.boardLabel });
+}
+
+test("une ligne : sur ordinateur, les six étapes sont côte à côte, de gauche à droite, « Perdu » à part", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, "agentA");
+  await openPipelineFromNav(page);
+  await expect(column(page, PIPELINE_STAGE_LABELS.nouveau)).toBeVisible({ timeout: COLD_START });
+
+  const boxes: { x: number; y: number }[] = [];
+  for (const stage of ACTIVE_STAGES) {
+    const box = await page.getByTestId(`pipeline-column-${stage}`).boundingBox();
+    expect(box, stage).not.toBeNull();
+    boxes.push(box!);
+  }
+  // Same top for all six, strictly increasing left: one row, in the order of the journey.
+  for (const box of boxes) expect(Math.abs(box.y - boxes[0]!.y)).toBeLessThan(1);
+  for (let index = 1; index < boxes.length; index += 1) expect(boxes[index]!.x).toBeGreaterThan(boxes[index - 1]!.x);
+
+  // « Perdu » sits under the line, outside the scroller.
+  const lostBox = await page.getByTestId("pipeline-column-perdu").boundingBox();
+  expect(lostBox!.y).toBeGreaterThan(boxes[0]!.y + 100);
+  await expect(scroller(page).getByTestId("pipeline-column-perdu")).toHaveCount(0);
+
+  // The mandate ends the line and says who seals it.
+  await expect(column(page, PIPELINE_STAGE_LABELS.mandat_signe)).toContainText(APP_TEXTS.dashboard.friezeMandateNote);
+});
+
+test("clavier : la zone défile aux flèches, et Tab atteint « Mandat signé » sans souris", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, "agentA");
+  await openPipelineFromNav(page);
+
+  const board = scroller(page);
+  await expect(board).toBeVisible({ timeout: COLD_START });
+  await expect(board).toHaveAttribute("tabindex", "0");
+
+  // 1) The scroller itself is focusable and scrolls with the arrow keys (native).
+  await board.focus();
+  await expect(board).toBeFocused();
+  for (let press = 0; press < 12; press += 1) await page.keyboard.press("ArrowRight");
+  await expect.poll(() => board.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+  await board.evaluate((node) => {
+    node.scrollLeft = 0;
+  });
+
+  // 2) Tab through the cards: the focus reaches the last card of « Mandat signé ».
+  const mandate = column(page, PIPELINE_STAGE_LABELS.mandat_signe);
+  const lastTrigger = mandate.getByTestId("stage-menu-trigger").last();
+  let reached = false;
+  for (let press = 0; press < 80 && !reached; press += 1) {
+    await page.keyboard.press("Tab");
+    reached = await lastTrigger.evaluate((node) => node === document.activeElement);
+  }
+  expect(reached).toBe(true);
+  // Native scrolling brought it into the visible part of the scroller.
+  const [triggerBox, boardBox] = await Promise.all([lastTrigger.boundingBox(), board.boundingBox()]);
+  expect(triggerBox!.x + triggerBox!.width).toBeLessThanOrEqual(boardBox!.x + boardBox!.width + 1);
+  await expect(lastTrigger).toHaveAccessibleName(new RegExp(`^${STAGE_TEXTS.trigger} `));
+});
+
+test("carte des étapes : un lien amène la colonne à l'écran et donne le focus à son titre", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, "agentA");
+  await openPipelineFromNav(page);
+
+  const map = page.getByRole("navigation", { name: TEXTS.stageNavLabel });
+  await map.getByRole("link", { name: new RegExp(`^${PIPELINE_STAGE_LABELS.mandat_signe}`) }).click();
+  const heading = column(page, PIPELINE_STAGE_LABELS.mandat_signe).getByRole("heading", { level: 2 });
+  await expect(heading).toBeFocused();
+  await expect(heading).toBeInViewport();
+  // No page jump: only the board moved.
+  expect(await page.evaluate(() => window.scrollY)).toBeLessThan(5);
+});
+
+test("téléphone 390 px : une colonne par écran, la page ne déborde jamais", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page, "agentA");
+  await page.goto("/pipeline");
+  const nouveau = column(page, PIPELINE_STAGE_LABELS.nouveau);
+  await expect(nouveau).toBeVisible({ timeout: COLD_START });
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  const box = await nouveau.boundingBox();
+  expect(box!.width).toBeGreaterThan(260);
+  await expect(nouveau.getByText(TEXTS.stageIndex(1, 6))).toBeVisible();
+});
+
+test.describe("mouvement réduit", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("tout le pipeline est lisible, sans aucune animation en cours", async ({ page }) => {
+    await signIn(page, "agentA");
+    await page.goto("/pipeline");
+    await expect(column(page, PIPELINE_STAGE_LABELS.mandat_signe)).toBeAttached({ timeout: COLD_START });
+    for (const stage of ACTIVE_STAGES) {
+      await expect(page.getByTestId(`pipeline-column-${stage}`).getByTestId("pipeline-column-count")).toHaveText(
+        /^\d+ dossiers?$/,
+      );
+    }
+    // Arrival animations are cut to 0.01 ms: nothing keeps running in the page.
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.getAnimations().filter((animation) => {
+              const target = (animation.effect as KeyframeEffect | null)?.target as Element | null;
+              return animation.playState === "running" && Boolean(target?.closest("main"));
+            }).length,
+        ),
+      )
+      .toBe(0);
+  });
+});

@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { formatDate } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
-import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -14,6 +13,7 @@ import { AgentActionsPanel } from "@/features/contacts/components/AgentActionsPa
 import { ContactConsentsCard } from "@/features/contacts/components/ContactConsentsCard";
 import { ContactIdentityCard } from "@/features/contacts/components/ContactIdentityCard";
 import { ContactPropertyCard } from "@/features/contacts/components/ContactPropertyCard";
+import { ContactStateMarks } from "@/features/contacts/components/ContactStateMarks";
 import { ContactTimeline } from "@/features/contacts/components/ContactTimeline";
 import { getContactById, getContactTimeline } from "@/features/contacts/queries";
 
@@ -35,7 +35,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
 
   if (contactResult.error) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-6 py-12">
+      <div className="page-frame page-frame-reading">
         <Alert
           tone="error"
           title={APP_TEXTS.states.errorTitle}
@@ -54,7 +54,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const contact = contactResult.data;
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-12">
+    <div className="page-frame">
       <PageHeader
         eyebrow={
           <Link href="/contacts" className="rounded-xs hover:text-ink hover:underline">
@@ -65,15 +65,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         meta={
           <>
             <PipelineStageBadge stage={contact.stage} />
-            {contact.humanTakeover ? (
-              <Badge tone="outline">{APP_TEXTS.contacts.humanTakeover}</Badge>
-            ) : null}
-            {contact.openTasksCount > 0 ? (
-              <Badge tone="dashed">{APP_TEXTS.contacts.openTasks(contact.openTasksCount)}</Badge>
-            ) : null}
-            <Badge>
+            <ContactStateMarks contact={contact} className="mx-1" />
+            <span className="text-xs text-ink-subtle">
               {TEXTS.updatedAt} {formatDate(contact.updatedAt)}
-            </Badge>
+            </span>
           </>
         }
       />

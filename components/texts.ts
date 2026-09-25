@@ -175,6 +175,10 @@ export const APP_TEXTS = {
     openContact: "Ouvrir la fiche",
     humanTakeover: "Repris par un conseiller",
     openTasks: (total: number) => (total > 1 ? `${total} tâches ouvertes` : `${total} tâche ouverte`),
+    /** Mobile list of contacts (the table becomes one card per contact under 768 px). */
+    listLabel: "Contacts de l'agence",
+    /** Legend of the shapes of the table (decorative: each shape also carries its words). */
+    legendOpenTasks: "Tâches ouvertes",
   },
 
   contact: {
@@ -242,8 +246,16 @@ export const APP_TEXTS = {
     subtitle: "Vue par étape, du premier contact au mandat signé.",
     errorTitle: "Impossible d'afficher le pipeline",
     columnCount: (total: number) => (total > 1 ? `${total} dossiers` : `${total} dossier`),
+    /** Unit written after the big figure of a column (figure + unit read as `columnCount`). */
+    columnUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
     columnEmpty: "Aucun dossier à cette étape.",
     lostSubtitle: "Affichée à part : cette étape n'est plus travaillée activement.",
+    /** Position of a column in the seller's journey (readable on a phone, one column per screen). */
+    stageIndex: (position: number, total: number) => `Étape ${position} sur ${total}`,
+    /** Name of the horizontally scrolling board. Must never contain a stage label. */
+    boardLabel: "Parcours des dossiers, de gauche à droite",
+    /** Jump links above the board, one per stage. */
+    stageNavLabel: "Aller à une étape du parcours",
 
     /** Human stage change from a pipeline card (server action `changeContactStage`). */
     stageChange: {

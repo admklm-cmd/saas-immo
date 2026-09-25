@@ -44,7 +44,8 @@ test.beforeAll(async () => {
 });
 
 async function openContactFile(page: Page, contactId: string): Promise<string> {
-  const link = page.locator(`a[href="/contacts/${contactId}"]`);
+  // The list is a table from 768 px and cards on a phone: only one of them is shown.
+  const link = page.locator(`a[href="/contacts/${contactId}"]:visible`);
   await expect(link).toBeVisible({ timeout: COLD_START });
   const name = (await link.innerText()).trim();
 

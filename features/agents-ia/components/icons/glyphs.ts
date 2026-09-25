@@ -200,6 +200,14 @@ export const GLYPHS = {
     accent: ["M6.5 6.5l11 11", "M17.5 6.5l-11 11"],
     motion: "pop",
   },
+
+  // --- Pipeline -----------------------------------------------------------------
+  /** Change the stage of a dossier: its node on the line, sent along it. */
+  stageMove: {
+    paths: [circle(6, 12, 2.25), "M8.25 12h10.5"],
+    accent: ["M15 8.25 18.75 12 15 15.75"],
+    motion: "nudge",
+  },
 } as const satisfies Record<string, GlyphDefinition>;
 
 export type GlyphName = keyof typeof GLYPHS;

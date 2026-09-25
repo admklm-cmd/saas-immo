@@ -1,0 +1,131 @@
+"use client";
+
+import { useEffect, useState, type MouseEvent } from "react";
+
+import { APP_TEXTS } from "@/components/texts";
+import { cn } from "@/components/ui/cn";
+import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/features/contacts/types";
+
+const TEXTS = APP_TEXTS.pipeline;
+
+export type PipelineStageNavItem = {
+  stage: PipelineStage;
+  count: number;
+  /** Id of the column (or of the lost lane) the link leads to. */
+  targetId: string;
+};
+
+export type PipelineStageNavProps = {
+  /** The six active stages, in the order of the journey. */
+  stages: readonly PipelineStageNavItem[];
+  /** « Perdu », set apart (dashed). */
+  lost: PipelineStageNavItem;
+  /** Id of the horizontal scroller that holds the six columns. */
+  scrollerId: string;
+};
+
+/** Share of a column that must be visible in the scroller for it to count as « in view ». */
+const IN_VIEW_RATIO = 0.6;
+
+/**
+ * Map of the board: one segment per stage, in the order of the line, with
+ * its exact count. It is also the position of the scroller — the segments of
+ * the columns in view are inked — so on a phone (one column per screen) it
+ * says where you are in the journey.
+ *
+ * Plain in-page links: without JavaScript the browser jumps to the column.
+ * With it, the scroller is brought to the column at once (no scripted,
+ * eased scrolling) without moving the page, and the focus goes to the
+ * column's heading so Tab continues from there.
+ */
+export function PipelineStageNav({ stages, lost, scrollerId }: PipelineStageNavProps) {
+  const [inView, setInView] = useState<ReadonlySet<PipelineStage>>(() => new Set());
+
+  useEffect(() => {
+    const scroller = document.getElementById(scrollerId);
+    if (!scroller || typeof IntersectionObserver === "undefined") return;
+    const columns = Array.from(scroller.querySelectorAll<HTMLElement>("[data-pipeline-column]"));
+    const visible = new Set<PipelineStage>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const stage = (entry.target as HTMLElement).dataset.pipelineColumn as PipelineStage;
+          if (entry.intersectionRatio >= IN_VIEW_RATIO) visible.add(stage);
+          else visible.delete(stage);
+        }
+        setInView(new Set(visible));
+      },
+      { root: scroller, threshold: [0, IN_VIEW_RATIO, 1] },
+    );
+    for (const column of columns) observer.observe(column);
+    return () => observer.disconnect();
+  }, [scrollerId]);
+
+  function jump(event: MouseEvent<HTMLAnchorElement>, targetId: string) {
+    const scroller = document.getElementById(scrollerId);
+    const target = document.getElementById(targetId);
+    if (!scroller || !target || !scroller.contains(target)) return; // the lost lane: native jump
+    event.preventDefault();
+    const padding = Number.parseFloat(getComputedStyle(scroller).scrollPaddingInlineStart) || 0;
+    const left = target.getBoundingClientRect().left - scroller.getBoundingClientRect().left + scroller.scrollLeft;
+    scroller.scrollTo({ left: left - padding, behavior: "instant" });
+    target.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+  }
+
+  return (
+    <nav aria-label={TEXTS.stageNavLabel}>
+      <ol className="flex items-start gap-1.5 sm:gap-2">
+        {stages.map((item) => {
+          const active = inView.has(item.stage);
+          return (
+            <li key={item.stage} className="min-w-0 flex-1">
+              <a
+                href={`#${item.targetId}`}
+                onClick={(event) => jump(event, item.targetId)}
+                data-in-view={active ? "true" : undefined}
+                className="group/seg ui-focus block rounded-xs pt-1.5 pb-1"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "block h-0.5 rounded-full transition-colors duration-(--duration-base) ease-standard",
+                    active ? "bg-ink" : "bg-line-strong group-hover/seg:bg-ink-subtle",
+                  )}
+                />
+                <span className="mt-2 flex min-w-0 items-baseline gap-1.5 text-xs">
+                  <span
+                    className={cn(
+                      "truncate max-sm:sr-only",
+                      active ? "font-medium text-ink" : "text-ink-muted group-hover/seg:text-ink",
+                    )}
+                  >
+                    {PIPELINE_STAGE_LABELS[item.stage]}
+                  </span>
+                  <span aria-hidden="true" className="text-ink-subtle tabular-nums">
+                    {item.count}
+                  </span>
+                  <span className="sr-only">, {TEXTS.columnCount(item.count)}</span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+        <li className="w-14 shrink-0 pl-1.5 sm:w-24 sm:pl-3">
+          <a href={`#${lost.targetId}`} className="group/seg ui-focus block rounded-xs pt-1.5 pb-1">
+            <span
+              aria-hidden="true"
+              className="block h-0 border-t-2 border-dotted border-line-strong group-hover/seg:border-ink-subtle"
+            />
+            <span className="mt-2 flex min-w-0 items-baseline gap-1.5 text-xs">
+              <span className="truncate text-ink-subtle max-sm:sr-only">{PIPELINE_STAGE_LABELS[lost.stage]}</span>
+              <span aria-hidden="true" className="text-ink-subtle tabular-nums">
+                {lost.count}
+              </span>
+              <span className="sr-only">, {TEXTS.columnCount(lost.count)}</span>
+            </span>
+          </a>
+        </li>
+      </ol>
+    </nav>
+  );
+}

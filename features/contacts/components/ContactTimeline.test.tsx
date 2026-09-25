@@ -385,3 +385,23 @@ describe("ContactTimeline — AI runs refused or failed", () => {
     expect(screen.getByText("Erreur technique")).toBeDefined();
   });
 });
+
+describe("ContactTimeline — glyph tiles", () => {
+  it("draws one decorative tile per entry, shaped by who acted", () => {
+    const { container } = render(
+      <ContactTimeline
+        entries={[
+          entry({ id: "1", kind: "ai_run", actor: { type: "ai_agent", agent: "hugo", userId: null }, isSimulation: true }),
+          entry({ id: "2", kind: "task", actor: { type: "user", agent: null, userId: "u1" } }),
+        ]}
+      />,
+    );
+
+    const tiles = Array.from(container.querySelectorAll('[data-testid="timeline-mark"]'));
+    expect(tiles.map((tile) => tile.getAttribute("data-kind"))).toEqual(["agent", "human"]);
+    for (const tile of tiles) expect(tile.getAttribute("aria-hidden")).toBe("true");
+    // The simulation badge and the words stay.
+    expect(screen.getAllByText(APP_TEXTS.states.simulation)).toHaveLength(1);
+    expect(screen.getByText("Hugo")).toBeDefined();
+  });
+});
