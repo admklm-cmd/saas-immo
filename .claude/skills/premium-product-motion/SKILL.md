@@ -674,3 +674,113 @@ Le rapport d'une grosse section contient obligatoirement :
 - Les captures : 1440 px, 390 px, reduced motion (et 1024 px si la mise en page change).
 - Le résultat des 7 passes de finition, honnêtement (ce qui reste perfectible).
 - Les tests réellement exécutés et leur résultat.
+
+---
+
+# 24. VISUAL STORYTELLING (complément validé le 25/09/2026)
+
+## RÈGLE ABSOLUE
+
+SHOW, DON'T TELL.
+
+Une interface premium ne doit pas décrire longuement ce qu'elle sait faire.
+Elle doit le démontrer visuellement.
+
+Avant d'ajouter du texte explicatif, se demander :
+
+> « Est-ce que cette information peut être comprise par une scène,
+> une interface, un mouvement ou une transformation visuelle ? »
+
+Si oui : montrer d'abord, expliquer ensuite, brièvement.
+
+## HIÉRARCHIE D'UNE SECTION
+
+80 % perception visuelle / 20 % texte. Le texte donne le contexte, la scène raconte
+l'histoire. Le visiteur comprend l'idée principale avant d'avoir lu le paragraphe.
+
+## TYPES DE VISUELS À PRIVILÉGIER
+
+Interfaces vivantes plutôt qu'illustrations décoratives : mini-dashboard, cartes
+d'agents, conversations, fichiers qui arrivent, données qui se transforment, pipeline
+qui avance, tâches qui apparaissent puis se terminent, notifications, connexions entre
+outils, résultats qui se construisent, tableaux qui se mettent à jour, workflows,
+états avant / après, petites fenêtres applicatives, composants UI qui réagissent entre
+eux. Une scène peut en combiner plusieurs.
+
+## UNE ANIMATION DOIT RACONTER QUELQUE CHOSE
+
+Chaque mouvement a une fonction : attirer l'œil, montrer une relation, une
+transformation, une progression, un résultat, ou confirmer une action.
+
+MAUVAIS : une carte flotte lentement sans raison.
+BON : un lead arrive → est analysé → passe dans une étape → un agent intervient →
+une action apparaît.
+
+## SCÈNES D'INTERFACE
+
+Une grosse section contient idéalement une petite scène autonome :
+
+INPUT → TRAITEMENT → DÉCISION → ACTION → RÉSULTAT
+
+représentée par des cartes, lignes, fenêtres, états et micro-animations. On suit le
+scénario sans lire chaque mot.
+
+## MOTION
+
+Référence Apple / produits technologiques premium : subtil, précis, lent pour
+l'ambiance, plus rapide lors d'une action, physiquement cohérent, hiérarchisé, jamais
+spectaculaire gratuitement. Éviter : gros glow, animations permanentes agressives,
+rotations inutiles, bouncing excessif, parallaxes exagérées, éléments qui flottent sans
+fonction, transitions « template SaaS ». L'interface doit sembler fonctionner réellement.
+
+## PROFONDEUR
+
+BACKGROUND (ambiance, réseau, texture) → MIDGROUND (connexions, flux, éléments
+secondaires) → FOREGROUND (interface principale) → HERO UI (élément actuellement
+important). Le regard sait où aller en premier.
+
+## ILLUSTRATION + UI
+
+L'illustration peut être construite entièrement en div, SVG, CSS, composants React,
+formes, cartes, typographie, icônes, lignes, données fictives clairement identifiées
+si nécessaire. Elle doit ressembler à une véritable interface produit, pas à une image
+posée dans une section.
+
+## DENSITÉ
+
+RICHE ≠ CHARGÉ. Un élément principal, quelques éléments secondaires, plusieurs petits
+éléments, profondeur, mouvement, relations visuelles — et beaucoup d'espace négatif.
+Une section importante n'est pas vide simplement pour respecter une grille.
+
+## LIBERTÉ CRÉATIVE
+
+Libre d'inventer (interface, scène, animation, workflow, composition abstraite,
+composants combinés), jamais de dégrader la DA : premium, sobre, éditoriale,
+technologique, précise, cohérente.
+
+## AVANT D'ÉCRIRE DU TEXTE
+
+1. Que doit comprendre le visiteur ? 2. Quelle scène peut le montrer ? 3. Quel élément
+doit attirer l'œil ? 4. Quelle transformation visuelle raconte l'idée ? 5. Quel est le
+minimum de texte nécessaire ? Seulement ensuite : écrire le texte.
+
+## CRITÈRE DE RÉUSSITE
+
+Couper mentalement tous les paragraphes. Si la section ne raconte plus rien sans son
+texte, la représentation visuelle est insuffisante.
+
+## VALIDATION VISUELLE (grosses sections)
+
+CONCEPT → SCÈNE → IMPLÉMENTATION → DESKTOP → MOBILE → REDUCED MOTION → TESTS → CAPTURE
+→ PASSE DE FINITION → VALIDATION VISUELLE. Jamais « terminé » uniquement parce que les
+tests passent.
+
+## APPLICATION À L'ESPACE CONNECTÉ (outil de travail)
+
+Dans l'application, « données fictives » = uniquement les données réelles de la base
+(fixtures) : aucune donnée ni scène inventée pour décorer un écran de travail. Les
+scènes racontent les états réels (en attente, validé, bloqué, en retard) ; les
+animations suivent les vraies réponses du serveur ; tout envoi reste marqué
+« Simulation ». Les textes légaux et de garde-fou ne sont jamais supprimés : on peut
+seulement éviter de les répéter sur chaque carte (une fois par écran, au bon endroit,
+texte inchangé).
