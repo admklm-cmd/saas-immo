@@ -154,9 +154,12 @@ async function validateThenSendSimulated(page: Page, preparedBy: string): Promis
     .filter({ hasText: QUEUE.preparedBy(preparedBy) });
   await expect(draft).toHaveCount(1, { timeout: COLD_START });
   await expect(draft).toHaveAttribute("data-status", "pending_validation");
+  // Dual view: open this message from the queue (its letter is already in the page).
+  await page.getByRole("tab", { name: new RegExp(FULL_NAME) }).filter({ hasText: QUEUE.preparedBy(preparedBy) }).click();
+  await expect(draft).toBeVisible();
   // What the member decides on: the channel, the consent of that channel, and the text.
   await expect(draft).toContainText(QUEUE.consent);
-  await expect(draft.getByText(APP_TEXTS.states.simulation)).toBeVisible();
+  await expect(draft.getByText(APP_TEXTS.states.simulation, { exact: true })).toBeVisible();
 
   // Validating is NOT sending.
   await draft.getByTestId("validate-message").click();

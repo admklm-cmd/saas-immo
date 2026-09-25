@@ -775,8 +775,8 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | `SelectedDossierCard` | `SelectedDossierCard.tsx` | Niveau 2 : dossier de la dernière exécution enregistrée rattachée à un contact (Léa exclue : lead brut) ; sinon état vide « Ouvrir les contacts » |
 | `OperationalRail` | `OperationalRail.tsx` + `.module.css` | Rail « réseau opérationnel » : icône, nom, action, statut écrit, durée **seulement si mesurée**. États `pending` (en attente, pointillés), `running` (contour cobalt, pastille qui respire en opacité), `done` (contour noir 2 px), `human` (validation qui attend une action : **seul cobalt statique**), `blocked` (garde-fou, pointillés noirs), `stopped`, `failed` (erreur technique, fond inversé), `untraced`. Réseau (A1) : traits de 3 px, gris `--rail-idle` (mélange `ink-subtle`/`surface`) quand non atteints, noirs quand atteints ; trois **points relais** par trait (`relays`, repères visuels uniquement, aucun trait entre nœuds non consécutifs, masqués sur un trait coupé). `checkpoint` (validations et mandat) = **double contour** (`outline` décalé) gris/noir, cobalt seulement en état `human`. Cobalt limité à l'impulsion en mouvement, à l'étape en cours et à la validation en attente — règle vérifiée sur le CSS par `OperationalRail.test.tsx`. Pas de lueur (`--color-accent-glow` banni du rail). Le signal s'arrête après un blocage/erreur. Horizontal ≥ 768 px, vertical dessous ; statique et sans impulsion sous mouvement réduit. Aucun pourcentage |
 | `DossierJourneyRail` / `DossierJourneyLoader` | — | Parcours d'un dossier (Prospect → Léa → validation humaine → Hugo → Emma → validation humaine → Louis → rendez-vous → Sarah → mandat confirmé par un humain), lu de `getContactTimeline` via `dossier-journey.ts` (pur, testé). Sur le rejeu, seule l'exécution rejouée porte sa durée mesurée (aucune si encore en cours) |
-| `PendingMessagesList` | `PendingMessagesList.tsx` (client) | File « à valider » : confirmation persistante (`aria-live`) + rafraîchissement serveur |
-| `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Un brouillon : contact, canal, consentement, texte brut, valider / refuser / envoyer (simulation) |
+| `PendingMessagesList` | `PendingMessagesList.tsx` (client) | Bureau de validation en vue double (§ 3.1.1) : confirmation persistante (`aria-live`) + rafraîchissement serveur |
+| `PendingMessageCard` | `PendingMessageCard.tsx` (client) | Une lettre à décider : rail du message, lettre, barre de décision (§ 3.1.1) |
 | `MessageRejectionForm` | `MessageRejectionForm.tsx` (client) | Motif obligatoire (liste fermée, `fieldset`/`legend`) + note facultative bornée |
 | `DraftEditForm` | `DraftEditForm.tsx` (client) | Correction en place de l'objet et du corps ; le canal et le destinataire restent hors du formulaire, puis le brouillon repasse « à valider » |
 | `InboundLeadCard` | `InboundLeadCard.tsx` (client) | Un lead entrant : titre = prénom + initiale (`displayName`, texte brut ; « Nom non transmis » atténué sinon), puis source · commune · date ; éléments transmis, message du prospect en **texte brut**, « Lancer Léa », résultat et rejeu. Lead traité : bouton secondaire « Ouvrir la fiche » vers la fiche produite (distingue deux homonymes) |
@@ -822,6 +822,76 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
     disponible » ; date absente : aucune date — jamais celle de l'envoi ni de
     l'entrée. En attente : « En attente de validation humaine ». Petite pastille
     pleine (décidé) ou creuse (en attente), texte brut.
+
+### 3.1.1 Messages à valider — vue double, rail du message, lettre (Lot 2B-1)
+
+**Ce que l'écran raconte** : *aucun message ne part sans la décision d'un humain.* On le lit
+sans le texte : la lettre est arrêtée devant le point « Vous » (barre d'arrêt, anneau cobalt),
+elle le franchit quand on valide, elle recule derrière la barre quand on refuse, elle entre dans
+« Envoi » (badge « Simulation ») quand on envoie.
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `PendingMessagesList` | `PendingMessagesList.tsx` (client) | **Bureau de validation** (`validation/ValidationDesk.module.css`) : à gauche la file (`tablist` vertical), à droite le panneau perle où repose la lettre sélectionnée (`tabpanel`). **Toutes** les lettres sont dans le HTML (les autres en `hidden`) : changer de message est instantané, sans requête. Sélection initiale lue par la page dans `?message=` (aucune query changée) ; chaque onglet est un vrai lien `?message=id` (sans JavaScript, la page se recharge sur ce message). Confirmation persistante (`aria-live`) en tête du panneau ; un message refusé ou envoyé reste affiché dans son état final (`ResolvedMessage`) jusqu'au choix suivant |
+| `MessageQueueItem` | `validation/MessageQueueItem.tsx` (client) | Un onglet : tuile de l'auteur (`AgentAppIcon`), destinataire, canal · « Préparé par … », première ligne (objet ou début du SMS), statut (`PendingDots` + « À valider », ou ✓ « Validé · Pas encore envoyé »), « Premier contact » en pointillés, marque d'arrêt + consentement s'il manque. Sélection : fond perle du panneau + filet + **repère cobalt 2 px** (même signe que le menu). Clavier : ↑ ↓ (en boucle), Début, Fin, la sélection suit le focus ; Entrée / Espace ouvrent la lettre ; tabindex itinérant |
+| `PendingMessageCard` | `PendingMessageCard.tsx` (client) | La lettre et sa décision : `MessageDecisionRail`, phrase `consentBlocked` si le canal n'a pas de consentement valide, `MessageLetterView`, puis la **barre de décision collante** (`sticky bottom-3`, blanche translucide, `shadow-raised`) : Valider / Refuser / Modifier, ou Envoyer (simulation) / Modifier + « Validé : … Rien n'est parti. » (+ `sendBlocked`). Formulaires de refus et de correction **inchangés**, en place de la barre. Server actions, textes et motifs inchangés |
+| `MessageDecisionRail` | `validation/MessageDecisionRail.tsx` + `.module.css` | Rail court « Préparé par {agent} → Vous → Envoi (simulation) ». « Vous » = `AgentAppIcon kind="human"` (double contour), anneau cobalt **seulement** en attente de décision ; le consentement du canal est posé dessous (« Consentement du canal » + badge). Un **jeton lettre** (glyphe `mail` dans une pastille) est sur la ligne : devant « Vous » (barre d'arrêt devant le nœud) → après validation, devant « Envoi » (ligne remplie en encre, « Envoi » en anneau cobalt : un geste humain est attendu) → envoyé : absorbé par « Envoi », ✓ ; refusé : recule, pointillé, derrière la barre ; sans consentement valide : ligne vers « Envoi » en pointillés + barre d'arrêt. Chaque état est aussi écrit sous son nœud |
+| `messageRailModel` / `messageRailFor` | `validation/message-rail.ts`, `message-rail-view.ts` | Modèle pur et testé : étape = statut enregistré, ou issue **confirmée par le serveur** (`validated`, `rejected`, `sent`) jusqu'à la relecture de la file ; jamais d'optimisme avant la réponse |
+| `ResolvedMessage` | `validation/ResolvedMessage.tsx` (client) | Fin de la scène : rail dans son état final, lettre en retrait (opacité 0,5) avec un tampon « Refusé » ou « Envoyé (simulation) » + `SimulationBadge`, bouton « Message suivant ». Reçoit le focus quand les boutons disparaissent |
+| `queue-selection.ts` | `validation/queue-selection.ts` | Pur et testé : sélection initiale (`?message=`), cible clavier, message suivant |
+
+**Mouvement (trois, chacun avec une cause).** 1. Changer de message : la lettre arrive
+(`animate-rise-soft`, 4 px, 220 ms). 2. Une décision **confirmée par le serveur** : le jeton glisse
+(`transform`, `--duration-slow`), la ligne se remplit (`scaleX`), la barre d'arrêt s'efface
+(`--duration-base`). 3. Rien d'autre : pas d'animation décorative. Mouvement réduit : états finaux
+immédiats. Erreur ou refus du serveur : le rail ne bouge pas.
+
+**Mise en page.** Dès 1280 px (`xl`) : file 20 rem | panneau. En dessous : une seule vue à la
+fois (`data-view="list" | "message"`, posé aussi par le serveur depuis `?message=`), « ← Retour à
+la file » (lien réel), focus sur la lettre à l'ouverture et sur l'onglet au retour. Titre de la
+lettre (destinataire) en `h2` : la hiérarchie `h1 → h2` de cet écran est désormais correcte.
+
+**Garde-fous, une fois, au bon endroit.** `RuleNote` sous l'en-tête (« Premier contact : toujours
+validé par un humain » + explication + « Seuls l'objet et le texte… ») ; « Texte affiché tel quel… »
+sous la lettre ; ligne STOP **dans** le corps (jamais retirée) ; « Premier contact » et « Simulation »
+sur l'en-tête de la lettre ; « Validé : … Rien n'est parti. » dans la barre de décision.
+
+### 3.1.2 Relances Emma — le tamis (Lot 2B-1)
+
+**Ce que l'écran raconte** : *Emma ne relance que les dossiers où c'est permis, et montre pourquoi
+les autres sont bloqués.* Les dossiers entrent à gauche, chaque porte en arrête certains, ceux qui
+passent tout arrivent à la validation humaine.
+
+| Composant | Fichier | Rôle |
+|---|---|---|
+| `follow-up-sieve.ts` | `follow-ups/follow-up-sieve.ts` | Pur et testé. **Portes** = contrôles que la page reçoit déjà, dans l'ordre où le serveur calcule `blockedReason` : « Reprise par un conseiller » (`humanTakeover`), « Relance déjà en attente » (`hasPendingEmmaDraft`), « Consentement et coordonnée » (`channel`). La première porte fermée est donc toujours le motif du serveur. `groupCandidates`, `funnelOf`, `blockedCount` : décomptes **d'affichage** de la liste reçue. Coupe-circuit : non reçu par la page, non dessiné (le serveur le revérifie au clic) |
+| `SieveFunnel` | `follow-ups/SieveFunnel.tsx` + `.module.css` | Bande de synthèse = le tamis : total → une porte par contrôle (nœud creux) avec « N arrêtés » (lien vers le groupe) et **un point creux par dossier** → `AgentAppIcon kind="human"` + « N prêts » (points pleins). Épaisseur du trait = part réelle des dossiers encore dans le flux (2 → 9 px). Pied : légende « 1 point = 1 dossier » + `RuleNote` « Un brouillon, jamais un envoi » (une fois). Horizontal dès 768 px, vertical dessous. Statique |
+| `FollowUpSieve` | `follow-ups/FollowUpSieve.tsx` (client) | Une seule carte-liste : en-tête collant des portes (flou discret), groupe **Prêts** (note `runHint`, une fois), puis **Bloqués** avec un sous-groupe par motif (titre = texte de garde-fou, une fois ; « Valider le message » sur « Une relance attend déjà… »). Garde en mémoire le brouillon préparé pendant la visite |
+| `EmmaFollowUpCard` | `EmmaFollowUpCard.tsx` (client) | **Ligne** du tamis : nom, étape · coordonnées disponibles (compactes), `FollowUpGates`, action. Prêt : « Préparer la relance » (action inchangée) ; bloqué : aucune action morte, le motif est lu (`sr-only`, `emma-blocked-reason`) et titré par le groupe. Survol : fond `surface-muted`, la barre d'arrêt s'allonge (×1,25) |
+| `FollowUpGates` | `follow-ups/FollowUpGates.tsx` + `FollowUpRow.module.css` | Portes d'un dossier : encre là où il est passé, **marque d'arrêt** où le serveur l'arrête, pointillés après ; les portes suivantes gardent leur état réel en gris. Canal retenu écrit sous la porte du consentement. Fin : validation humaine, anneau cobalt **seulement** si un brouillon d'Emma y attend vraiment. Chaque porte a son état en toutes lettres pour les lecteurs d'écran |
+
+**Préparer la relance.** Loader pendant l'action **et** la relecture de la liste (une seule
+transition React : aucun état intermédiaire). Puis la ligne a rejoint « Une relance attend déjà
+une validation humaine » : la page la suit (défilement + focus sur le résultat), **un** signal
+cobalt court le long des portes jusqu'à la validation humaine (`sieve-signal`,
+`--duration-slow` × 2,5), l'anneau cobalt s'y pose, et le résultat donne le brouillon en lettre
+(`MessageLetter`) + « Valider le message » **direct** (`/agents-ia/a-valider?message={id}`) +
+« Voir le rejeu ». « Rien n'a été envoyé… » reste écrit. Mouvement réduit : pas de signal, états
+finaux. Mise en page des lignes : 3 colonnes dès 1280 px, nom sur sa ligne puis portes + action
+de 768 à 1279 px, empilé dessous.
+
+### 3.1.3 Signes partagés des écrans de travail (`features/agents-ia/components/flow/`)
+
+| Composant | Rôle |
+|---|---|
+| `StopMark` | **Marque d'arrêt** : barre verticale 2 × 16 px (`md`) ou 12 px (`sm`), encre (le flux s'arrête vraiment ici) ou `line-strong` (porte fermée non atteinte). Même signe que la landing et le rail. Toujours `aria-hidden`, toujours accompagnée du motif écrit |
+| `RuleNote` | Règle produit dite **une fois** par écran, au bon endroit : tuile humaine (double contour) + phrase en gras + explication. Plus calme qu'une `Alert` (ce n'est pas un événement). Textes jamais raccourcis |
+| `WorkGroup` | Groupe d'un écran de travail : `section` + titre (`h2` « lead » en `text-section`, ou `h3` « sub ») + décompte exact + note d'une ligne + action à droite + ancre. `headerClassName` pour la bande d'un groupe posé dans une carte-liste |
+| `MessageLetter` | Le message tel qu'il sera : **email** = feuille blanche (`shadow-raised`, rayon `xl`) « À » + canal + destinataire, objet sous un filet pointillé, corps `text-base` interligne 1,65 ; **SMS / WhatsApp** = fil perle avec **une bulle sortante** noire. Corps en texte brut, **complet** (ligne STOP incluse). `muted` + `stamp` pour un message traité |
+
+À réutiliser pour « Leads entrants » et « Suivi des rendez-vous » : `StopMark` (champ manquant,
+compte-rendu manquant), `WorkGroup` (couloirs / étapes), `RuleNote` (« Un lead n'est pas un
+consentement »), `MessageLetter` ou sa feuille pour le message brut du prospect.
 
 ### 3.2 Composants du module « Pipeline » (`features/pipeline/components/`)
 
@@ -1086,7 +1156,8 @@ Chaque écran gère quatre états :
 - Écran Agents IA : bandeau `lg:grid-cols-2` (coupe-circuit + activité), grille des
   cinq agents `lg:grid-cols-2 2xl:grid-cols-3`, journal pleine largeur.
 - Rejeu d'une exécution : colonne unique `max-w-4xl` (la lecture prime).
-- Files de travail (« Leads entrants », « Messages à valider ») : colonne unique
+- « Messages à valider » : `page-frame`, bureau en vue double dès 1280 px (§ 3.1.1). « Relances Emma » : `page-frame`, tamis + carte-liste (§ 3.1.2).
+- Files de travail (« Leads entrants ») : colonne unique
   `max-w-4xl`, une carte par élément, règle produit en `Alert tone="info"` en tête.
 - Pipeline (`/pipeline`) : `page-frame`. Carte des étapes, puis les six étapes sur **une
   ligne** qui défile horizontalement (déborde dans la gouttière du cadre), colonnes de 16rem
@@ -1146,7 +1217,7 @@ Chaque écran gère quatre états :
 - Le masque CSS n'a pas de repli visuel : sur un navigateur sans `mask-image`, le symbole
   n'est pas peint. Le nom écrit à côté dans `Logo` et le nom accessible restent, donc rien
   n'est perdu — mais un symbole seul y serait invisible.
-- **Niveaux de titre des files de travail** : « Leads entrants » et « Messages à
+- **Niveaux de titre des files de travail** (corrigé pour « Messages à valider » et « Relances Emma » au Lot 2B-1 : `h1 → h2`) : « Leads entrants » et « Messages à
   valider » enchaînent `h1` → `h3` (les cartes), sans `h2` intermédiaire, alors
   que le § 5 demande `h2` pour une carte. Le contournement n'est pas fait :
   corriger un seul des deux écrans les rendrait incohérents entre eux. À

@@ -38,8 +38,13 @@ async function openQueue(page: Page): Promise<void> {
   });
 }
 
-function firstPendingCard(page: Page) {
-  return page.locator('[data-testid="pending-message"][data-status="pending_validation"]').first();
+/** Dual view: the letter shown on the desk, once the first waiting draft is selected. */
+async function firstPendingCard(page: Page) {
+  const tab = page.locator('[role="tab"][data-status="pending_validation"]').first();
+  await expect(tab).toBeVisible({ timeout: COLD_START });
+  const panel = await tab.getAttribute("aria-controls");
+  await tab.click();
+  return page.locator(`#${panel} [data-testid="pending-message"]`);
 }
 
 test("attente passive : les points « en attente » accompagnent le statut « À valider »", async ({ page }) => {
@@ -49,7 +54,7 @@ test("attente passive : les points « en attente » accompagnent le statut « À
   await signIn(page, "agentA");
   await openQueue(page);
 
-  const card = firstPendingCard(page);
+  const card = await firstPendingCard(page);
   await expect(card).toBeVisible({ timeout: COLD_START });
   await expect(card.getByTestId("pending-dots")).toBeAttached();
   // Decorative only: the badge text carries the status.
@@ -66,7 +71,7 @@ test("cas d'erreur : une coupure réseau affiche l'erreur, puis « Réessayer »
   await signIn(page, "agentA");
   await openQueue(page);
 
-  const card = firstPendingCard(page);
+  const card = await firstPendingCard(page);
   await expect(card).toBeVisible({ timeout: COLD_START });
 
   let attempts = 0;
@@ -104,7 +109,7 @@ test("double clic : une seule requête part", async ({ page }) => {
   await signIn(page, "agentA");
   await openQueue(page);
 
-  const card = firstPendingCard(page);
+  const card = await firstPendingCard(page);
   await expect(card).toBeVisible({ timeout: COLD_START });
 
   let actions = 0;
@@ -168,7 +173,7 @@ test.describe("arrivée des cartes", () => {
   test("une fois arrivées, les cartes ne gardent aucune animation ni transformation", async ({ page }) => {
     await signIn(page, "agentA");
     await openQueue(page);
-    const card = page.getByTestId("pending-message").first();
+    const card = page.locator('[role="tabpanel"]:visible [data-testid="pending-message"]');
     await expect(card).toBeVisible({ timeout: COLD_START });
     // Poll until every arrival animation has finished (550 ms + capped stagger).
     await expect

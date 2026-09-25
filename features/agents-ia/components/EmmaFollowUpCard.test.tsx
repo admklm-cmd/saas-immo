@@ -45,61 +45,43 @@ describe("EmmaFollowUpCard", () => {
 
     expect(screen.getByTestId("run-emma").textContent).toBe(APP_TEXTS.emmaFollowUps.run);
     expect((screen.getByTestId("run-emma") as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByText(APP_TEXTS.emmaFollowUps.runHint)).toBeDefined();
-    expect(screen.getByText(APP_TEXTS.emmaFollowUps.emailAvailable)).toBeDefined();
+    // The hint is said once, by the « Prêts » group of the sieve, not per row.
+    expect(screen.queryByText(APP_TEXTS.emmaFollowUps.runHint)).toBeNull();
+    expect(screen.getByText(APP_TEXTS.emmaFollowUps.emailAvailable, { exact: false })).toBeDefined();
     expect(screen.getByText("Email")).toBeDefined();
+    // Every gate is open, and says so in words.
+    expect(screen.getAllByText(new RegExp(APP_TEXTS.emmaFollowUps.gatePassed)).length).toBe(3);
   });
 
-  it("disables the action and explains a human takeover", () => {
-    render(
-      <EmmaFollowUpCard
-        candidate={candidateOf({ humanTakeover: true, canPrepare: false, blockedReason: "human_takeover" })}
-      />,
+  it.each([
+    ["human_takeover", { humanTakeover: true }, APP_TEXTS.emmaFollowUps.humanTakeover, "takeover"],
+    ["pending_draft", { hasPendingEmmaDraft: true }, APP_TEXTS.emmaFollowUps.pendingDraft, "pendingDraft"],
+    ["consent_or_channel_missing", { channel: null }, APP_TEXTS.emmaFollowUps.consentOrChannelMissing, "consent"],
+  ] as const)("a file stopped for %s offers no launch and stops at the right gate", (reason, fields, text, gate) => {
+    const { container } = render(
+      <EmmaFollowUpCard candidate={candidateOf({ ...fields, canPrepare: false, blockedReason: reason })} />,
     );
 
-    const button = screen.getByTestId("run-emma") as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    const reason = screen.getByTestId("emma-blocked-reason");
-    expect(reason.textContent).toContain(APP_TEXTS.emmaFollowUps.humanTakeover);
-    expect(button.getAttribute("aria-describedby")).toBe(reason.id);
+    expect(screen.queryByTestId("run-emma")).toBeNull();
+    expect(screen.getByTestId("emma-blocked-reason").textContent).toContain(text);
+    // The flow stops at the first closed gate, with the stop mark.
+    const stop = container.querySelector("[data-stop]");
+    expect(stop?.getAttribute("data-gate")).toBe(gate);
+    expect(stop?.querySelector("[data-stop-mark]")).not.toBeNull();
+    expect(container.querySelectorAll("[data-stop]")).toHaveLength(1);
   });
 
-  it("disables the action and links to the validation queue when a draft is already pending", () => {
-    render(
+  it("puts the cobalt ring on the human checkpoint only when a draft really waits there", () => {
+    const { container, rerender } = render(<EmmaFollowUpCard candidate={candidateOf()} />);
+    const end = () => container.querySelector("[data-gate=\"end\"] [data-kind=\"human\"]");
+    expect(end()?.getAttribute("data-state")).toBe("idle");
+
+    rerender(
       <EmmaFollowUpCard
-        candidate={candidateOf({
-          hasPendingEmmaDraft: true,
-          canPrepare: false,
-          blockedReason: "pending_draft",
-        })}
+        candidate={candidateOf({ hasPendingEmmaDraft: true, canPrepare: false, blockedReason: "pending_draft" })}
       />,
     );
-
-    const button = screen.getByTestId("run-emma") as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    const reason = screen.getByTestId("emma-blocked-reason");
-    expect(reason.textContent).toContain(APP_TEXTS.emmaFollowUps.pendingDraft);
-    expect(screen.getByRole("link", { name: APP_TEXTS.emmaFollowUps.openQueue }).getAttribute("href")).toBe(
-      "/agents-ia/a-valider",
-    );
-  });
-
-  it("disables the action and explains a missing consent or channel", () => {
-    render(
-      <EmmaFollowUpCard
-        candidate={candidateOf({
-          channel: null,
-          canPrepare: false,
-          blockedReason: "consent_or_channel_missing",
-        })}
-      />,
-    );
-
-    const button = screen.getByTestId("run-emma") as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(screen.getByTestId("emma-blocked-reason").textContent).toContain(
-      APP_TEXTS.emmaFollowUps.consentOrChannelMissing,
-    );
+    expect(end()?.getAttribute("data-state")).toBe("active");
   });
 
   it("shows a guard-rail refusal as information, never as an error, without claiming a draft exists", async () => {
@@ -169,9 +151,11 @@ describe("EmmaFollowUpCard", () => {
 
     expect(screen.getByTestId("emma-result").textContent).toContain(APP_TEXTS.emmaFollowUps.nothingSent);
     expect(screen.getByTestId("emma-draft").textContent).toContain("Votre projet à La Ciotat");
+    // A direct link to the draft itself, in the validation queue.
     expect(screen.getByRole("link", { name: APP_TEXTS.emmaFollowUps.openQueue }).getAttribute("href")).toBe(
-      "/agents-ia/a-valider",
+      "/agents-ia/a-valider?message=22222222-2222-4222-8222-222222222222",
     );
+    expect(screen.getByTestId("emma-draft").textContent).toContain("Bonjour Camille");
     expect(screen.getByTestId("replay-stub")).toBeDefined();
     expect(refresh).toHaveBeenCalledOnce();
   });

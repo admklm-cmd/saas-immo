@@ -6,12 +6,15 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
+import { RuleNote } from "@/features/agents-ia/components/flow/RuleNote";
 import { PendingMessagesList } from "@/features/agents-ia/components/PendingMessagesList";
 import { getMessagesToValidate } from "@/features/agents-ia/queries";
 
 const TEXTS = APP_TEXTS.validationQueue;
 
 export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand.name}` };
+
+type SearchParams = Record<string, string | string[] | undefined>;
 
 /**
  * The queue where the product's hardest rule is applied: **a first contact is
@@ -20,12 +23,16 @@ export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand
  * Nothing here is sent by an agent, and nothing can be: no sending provider is
  * wired, the server re-reads the consent at send time and the database refuses
  * anything that is not flagged as a simulation.
+ *
+ * `?message=` only chooses which already-loaded message is shown first (dual
+ * view, docs/design-system.md §3.1.1): it changes no query.
  */
-export default async function MessagesToValidatePage() {
-  const { data: messages, error } = await getMessagesToValidate();
+export default async function MessagesToValidatePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const [{ data: messages, error }, params] = await Promise.all([getMessagesToValidate(), searchParams]);
+  const requested = typeof params.message === "string" ? params.message : null;
 
   return (
-    <div className="page-frame page-frame-reading">
+    <div className="page-frame">
       <PageHeader
         title={TEXTS.title}
         description={TEXTS.subtitle}
@@ -39,12 +46,12 @@ export default async function MessagesToValidatePage() {
         }
       />
 
-      <Alert tone="info" title={TEXTS.ruleTitle} className="mt-8" testId="validation-rule">
+      {/* Said once, where the decision is taken: the rule, and what correcting
+          a draft may and may not change. */}
+      <RuleNote title={TEXTS.ruleTitle} className="particle-veil mt-8" testId="validation-rule">
         {TEXTS.ruleBody}
-        {/* Said once, at the top: correcting a draft is allowed, and it always
-            sends the message back to the queue. */}
-        <span className="mt-2 block text-ink-subtle">{TEXTS.editHint}</span>
-      </Alert>
+        <span className="mt-1 block text-ink-subtle">{TEXTS.editHint}</span>
+      </RuleNote>
 
       <div className="mt-8">
         {error ? (
@@ -61,7 +68,7 @@ export default async function MessagesToValidatePage() {
             {error.message}
           </Alert>
         ) : (
-          <PendingMessagesList messages={messages} />
+          <PendingMessagesList messages={messages} initialSelectedId={requested} />
         )}
       </div>
     </div>

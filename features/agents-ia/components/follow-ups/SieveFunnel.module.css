@@ -1,0 +1,366 @@
+/*
+ * Summary band of « Relances Emma », drawn as a sieve — docs/design-system.md §3.1.2.
+ * Ink line = the files still in the flow; its thickness is their real share
+ * (--w, 0 → 1); a gate is a hollow node; the files stopped there hang under it
+ * (count + one hollow dot per file); the files that pass every gate reach the
+ * human checkpoint (double contour). Static: nothing here moves.
+ * Horizontal from 768 px, vertical below.
+ */
+
+.funnel {
+  padding: 1.5rem 1.25rem 1.25rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+.steps {
+  display: grid;
+}
+
+.step {
+  --node: 0.875rem;
+  --track: 2rem;
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: var(--track) minmax(0, 1fr);
+  column-gap: 0.875rem;
+  padding-bottom: 1.25rem;
+}
+
+.step[data-kind="end"] {
+  padding-bottom: 0;
+}
+
+.head {
+  grid-column: 2;
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.step[data-kind="start"] .head {
+  display: none;
+}
+
+.body {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  grid-column: 2;
+  margin-top: 0.25rem;
+}
+
+.step[data-kind="start"] .body {
+  margin-top: 0;
+}
+
+/* --- Track (vertical on a phone) ---------------------------------------------- */
+.track {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--track);
+}
+
+.seg {
+  position: absolute;
+  left: 50%;
+  width: calc(2px + var(--w, 0) * 7px);
+  translate: -50% 0;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+
+.seg[data-side="in"] {
+  top: 0;
+  height: 0.625rem;
+}
+
+.seg[data-side="out"] {
+  top: 0.625rem;
+  bottom: 0;
+}
+
+.step[data-kind="end"] .seg[data-side="in"] {
+  height: 0.5rem;
+}
+
+.entry,
+.gate {
+  position: absolute;
+  top: 0.625rem;
+  left: 50%;
+  translate: -50% -50%;
+  border-radius: 999px;
+}
+
+.entry {
+  width: 0.625rem;
+  height: 0.625rem;
+  background: var(--color-ink);
+}
+
+.gate {
+  width: var(--node);
+  height: var(--node);
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface);
+}
+
+.drop {
+  display: none;
+}
+
+.tile {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  translate: -50% 0;
+}
+
+.step[data-kind="end"] .head {
+  padding-top: 0.5rem;
+}
+
+/* --- Numbers ------------------------------------------------------------------ */
+.big {
+  color: var(--color-ink);
+  font-size: var(--text-title);
+  font-weight: 600;
+  letter-spacing: var(--text-title--letter-spacing);
+  line-height: 1;
+}
+
+.unit {
+  margin-left: 0.375rem;
+  color: var(--color-ink-muted);
+  font-size: var(--text-sm);
+}
+
+.count {
+  border-radius: var(--radius-xs);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-standard);
+}
+
+.count:hover {
+  text-decoration-color: var(--color-ink);
+}
+
+.none {
+  color: var(--color-ink-subtle);
+  font-size: var(--text-sm);
+}
+
+.figure {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.readyLink {
+  display: inline-flex;
+  align-items: baseline;
+  border-radius: var(--radius-xs);
+}
+
+.readyLink:hover .unit {
+  color: var(--color-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* One dot = one file. Hollow: stopped at a gate. Filled: passed every gate. */
+.dots {
+  display: inline-flex;
+  max-width: 8.5rem;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.dots[data-tone="stopped"] i {
+  border: 1.5px solid var(--color-ink-subtle);
+}
+
+.dots[data-tone="ready"] i {
+  background: var(--color-ink);
+}
+
+/* --- Caption: legend + the rule of the screen --------------------------------- */
+.caption {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-line);
+}
+
+.legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-ink-subtle);
+  font-size: var(--text-xs);
+}
+
+.rule {
+  min-width: 0;
+}
+
+/* --- From 768 px: the sieve runs from left to right --------------------------- */
+@media (width >= 48rem) {
+  .funnel {
+    padding: 2rem 2rem 1.5rem;
+  }
+
+  .steps {
+    grid-template-columns: minmax(6.5rem, 0.7fr) repeat(3, minmax(0, 1fr)) minmax(8rem, 0.9fr);
+  }
+
+  .step {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 2.75rem var(--track) auto;
+    padding-bottom: 0;
+  }
+
+  .head,
+  .body {
+    grid-column: 1;
+  }
+
+  .head {
+    align-self: end;
+    padding: 0 0.5rem 0.5rem;
+    color: var(--color-ink-muted);
+    font-size: var(--text-xs);
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .step[data-kind="start"] .head {
+    display: block;
+  }
+
+  .step[data-kind="end"] .head {
+    padding-top: 0;
+  }
+
+  .track {
+    position: relative;
+    top: auto;
+    bottom: auto;
+    width: auto;
+    height: var(--track);
+    grid-row: 2;
+  }
+
+  .seg {
+    top: 50%;
+    left: auto;
+    width: auto;
+    height: calc(2px + var(--w, 0) * 7px);
+    translate: 0 -50%;
+  }
+
+  .seg[data-side="in"] {
+    top: 50%;
+    right: 50%;
+    left: 0;
+    height: calc(2px + var(--w, 0) * 7px);
+  }
+
+  .seg[data-side="out"] {
+    top: 50%;
+    right: 0;
+    bottom: auto;
+    left: 50%;
+  }
+
+  .step[data-kind="start"] .seg[data-side="out"] {
+    left: 0.3125rem;
+  }
+
+  .step[data-kind="end"] .seg[data-side="in"] {
+    height: calc(2px + var(--w, 0) * 7px);
+  }
+
+  .entry {
+    top: 50%;
+    left: 0.3125rem;
+  }
+
+  .gate {
+    top: 50%;
+  }
+
+  .tile {
+    top: 50%;
+    translate: -50% -50%;
+  }
+
+  /* The files stopped at a gate drop out of the flow, under the node. */
+  .drop {
+    position: absolute;
+    top: calc(50% + var(--node) / 2);
+    bottom: -0.5rem;
+    left: 50%;
+    display: block;
+    border-left: 1.5px dashed var(--color-line-strong);
+  }
+
+  .body {
+    flex-direction: column;
+    justify-content: flex-start;
+    grid-row: 3;
+    margin-top: 0.75rem;
+    text-align: center;
+  }
+
+  .step[data-kind="start"] .body {
+    align-items: flex-start;
+    margin-top: 0.75rem;
+  }
+
+  .step[data-kind="start"] .head {
+    text-align: left;
+    padding-left: 0;
+  }
+
+  .dots {
+    justify-content: center;
+  }
+
+  .caption {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2.5rem;
+  }
+
+  .legend {
+    flex: none;
+    padding-top: 0.25rem;
+  }
+
+  .rule {
+    max-width: 42rem;
+  }
+}

@@ -668,6 +668,23 @@ export const APP_TEXTS = {
     editSuccess: "Message corrigé. Il reste à valider avant tout envoi.",
     editSuccessRevalidation:
       "Message corrigé : la validation précédente est annulée, il doit être validé de nouveau.",
+
+    // Dual view (queue + letter), docs/design-system.md §3.1.1.
+    queueLabel: "File des messages à valider",
+    queueHeading: "File d'attente",
+    to: "À",
+    railLabel: "Parcours du message",
+    railYou: "Vous",
+    railSend: "Envoi (simulation)",
+    railSendAfterValidation: "Après votre validation",
+    railSendWaiting: "Pas encore envoyé",
+    railSendBlocked: "Impossible sans consentement",
+    railSendDone: "Envoi simulé",
+    railSendNever: "Ne partira pas",
+    consentShort: "Consentement",
+    backToQueue: "Retour à la file",
+    nextMessage: "Message suivant",
+    resolvedLabel: "Message traité",
   },
 
   /**
@@ -1106,6 +1123,29 @@ export const APP_TEXTS = {
     openContact: "Ouvrir la fiche",
     openQueue: "Valider le message",
     viewReplay: "Voir le rejeu",
+
+    // The sieve (docs/design-system.md §3.1.2): the real checks, in the order
+    // the server applies them, drawn as gates.
+    sieveLabel: "Contrôles avant de lancer Emma",
+    unitFiles: (count: number) => (count > 1 ? "dossiers" : "dossier"),
+    unitReady: (count: number) => (count > 1 ? "prêts" : "prêt"),
+    gateTakeover: "Reprise par un conseiller",
+    gatePendingDraft: "Relance déjà en attente",
+    gateConsent: "Consentement et coordonnée",
+    gateEnd: "Validation humaine",
+    gatePassed: "contrôle passé",
+    gateStopped: "arrêt ici",
+    stoppedAt: (count: number) => (count > 1 ? `${count} arrêtés` : `${count} arrêté`),
+    readyCount: (count: number) => (count > 1 ? `${count} prêts` : `${count} prêt`),
+    dotLegend: "1 point = 1 dossier",
+    dotsCapped: (shown: number) => `${shown} points affichés`,
+    groupReady: "Prêts",
+    groupBlocked: "Bloqués",
+    groupCount: (count: number) => (count > 1 ? `${count} dossiers` : `${count} dossier`),
+    groupReadyEmpty: "Aucun dossier ne passe tous les contrôles pour l'instant.",
+    justPrepared: "Préparée à l'instant",
+    waitingHuman: "En attente de validation humaine",
+    rowControls: (name: string) => `Contrôles pour ${name}`,
   },
 
   /**

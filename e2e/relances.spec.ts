@@ -69,23 +69,25 @@ test("parcours principal : les dossiers bloqués expliquent pourquoi, un dossier
   const takeover = candidateCard(page, HUMAN_TAKEOVER_CONTACT);
   await expect(takeover).toBeVisible({ timeout: COLD_START });
   await expect(takeover.getByTestId("emma-blocked-reason")).toContainText(TEXTS.humanTakeover);
-  await expect(takeover.getByTestId("run-emma")).toBeDisabled();
+  // A stopped file offers no launch: the sieve shows where it stops.
+  await expect(takeover.getByTestId("run-emma")).toHaveCount(0);
+  await expect(page.getByTestId("sieve-group-takeover")).toContainText(TEXTS.humanTakeover);
+  await expect(page.getByTestId("sieve-group-takeover").getByTestId("emma-follow-up").filter({ hasText: HUMAN_TAKEOVER_CONTACT })).toHaveCount(1);
 
   // --- a draft is already waiting: no second one is offered, with a way out -
   const pendingDraft = candidateCard(page, PENDING_DRAFT_CONTACT);
   await expect(pendingDraft).toBeVisible({ timeout: COLD_START });
   await expect(pendingDraft.getByTestId("emma-blocked-reason")).toContainText(TEXTS.pendingDraft);
-  await expect(pendingDraft.getByTestId("run-emma")).toBeDisabled();
-  await expect(pendingDraft.getByRole("link", { name: TEXTS.openQueue })).toHaveAttribute(
-    "href",
-    "/agents-ia/a-valider",
-  );
+  await expect(pendingDraft.getByTestId("run-emma")).toHaveCount(0);
+  await expect(
+    page.getByTestId("sieve-group-pendingDraft").getByRole("link", { name: TEXTS.openQueue }),
+  ).toHaveAttribute("href", "/agents-ia/a-valider");
 
   // --- no usable channel: nothing to draft towards -------------------------
   const noChannel = candidateCard(page, CONSENT_MISSING_CONTACT);
   await expect(noChannel).toBeVisible({ timeout: COLD_START });
   await expect(noChannel.getByTestId("emma-blocked-reason")).toContainText(TEXTS.consentOrChannelMissing);
-  await expect(noChannel.getByTestId("run-emma")).toBeDisabled();
+  await expect(noChannel.getByTestId("run-emma")).toHaveCount(0);
 
   // --- a launchable file: the button works and the draft is created --------
   const ready = candidateCard(page, READY_CONTACT_NAME);
@@ -97,15 +99,23 @@ test("parcours principal : les dossiers bloqués expliquent pourquoi, un dossier
   await expect(ready.getByTestId("emma-result")).toContainText(TEXTS.nothingSent);
   await expect(ready.getByTestId("emma-draft")).toBeVisible();
   await expect(ready.getByTestId("emma-replay")).toBeVisible();
+  // The re-read list puts the file with the drafts waiting for a human, and the
+  // human checkpoint of its gates is now the one awaiting a decision.
+  await expect(
+    page.getByTestId("sieve-group-pendingDraft").getByTestId("emma-follow-up").filter({ hasText: READY_CONTACT_NAME }),
+  ).toHaveCount(1, { timeout: COLD_START });
+  await expect(ready.locator("[data-gate=\"end\"] [data-kind=\"human\"]")).toHaveAttribute("data-state", "active");
 
-  // --- it now waits for a human in the validation queue --------------------
-  await page.goto("/agents-ia/a-valider");
+  // --- the direct link opens THAT draft in the validation queue -------------
+  const toDraft = ready.getByRole("link", { name: TEXTS.openQueue });
+  await expect(toDraft).toHaveAttribute("href", /\/agents-ia\/a-valider\?message=/);
+  await toDraft.click();
   await expect(
     page.getByRole("heading", { level: 1, name: APP_TEXTS.validationQueue.title }),
   ).toBeVisible({ timeout: COLD_START });
-  await expect(
-    page.getByTestId("pending-message").filter({ hasText: READY_CONTACT_NAME }),
-  ).toBeVisible({ timeout: COLD_START });
+  const opened = page.getByTestId("pending-message").filter({ hasText: READY_CONTACT_NAME });
+  await expect(opened).toBeVisible({ timeout: COLD_START });
+  await expect(page.getByRole("tab", { selected: true })).toContainText(READY_CONTACT_NAME);
 });
 
 test("cas d'erreur : le coupe-circuit refuse Emma malgré un dossier affiché comme prêt", async ({ page }) => {
@@ -128,4 +138,47 @@ test("cas d'erreur : le coupe-circuit refuse Emma malgré un dossier affiché co
   });
   await expect(ready.getByTestId("emma-result")).toHaveCount(0);
   await expect(ready.getByTestId("run-emma")).toBeEnabled();
+});
+
+test("tamis : décomptes de la liste reçue, prêts puis bloqués par motif", async ({ page }) => {
+  await clearEmmaArtefacts(READY_CONTACT_ID);
+  await signIn(page, "agentA");
+  await page.goto("/agents-ia/relances");
+  await expect(page.getByRole("heading", { level: 1, name: TEXTS.title })).toBeVisible({ timeout: COLD_START });
+
+  const rows = page.getByTestId("emma-follow-up");
+  await expect(rows.first()).toBeVisible({ timeout: COLD_START });
+  const total = await rows.count();
+  const readyRows = page.getByTestId("sieve-group-ready").getByTestId("emma-follow-up");
+  const blockedRows = page.getByTestId("sieve-group-blocked").getByTestId("emma-follow-up");
+
+  // The band counts exactly what the list shows.
+  await expect(page.getByTestId("sieve-total")).toHaveText(String(total));
+  await expect(page.getByTestId("sieve-ready")).toContainText(String(await readyRows.count()));
+  expect((await readyRows.count()) + (await blockedRows.count())).toBe(total);
+  for (const gate of ["takeover", "pendingDraft", "consent"] as const) {
+    const inGroup = await page.getByTestId(`sieve-group-${gate}`).getByTestId("emma-follow-up").count();
+    await expect(page.getByTestId(`sieve-stopped-${gate}`)).toHaveText(TEXTS.stoppedAt(inGroup));
+  }
+  // Every ready file can be launched; no stopped file can.
+  await expect(readyRows.getByTestId("run-emma")).toHaveCount(await readyRows.count());
+  await expect(blockedRows.getByTestId("run-emma")).toHaveCount(0);
+  // The rule is said once.
+  await expect(page.getByTestId("emma-rule")).toHaveCount(1);
+});
+
+test.describe("téléphone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("tamis vertical, lignes empilées, action accessible", async ({ page }) => {
+    await signIn(page, "agentA");
+    await page.goto("/agents-ia/relances");
+    await expect(page.getByRole("heading", { level: 1, name: TEXTS.title })).toBeVisible({ timeout: COLD_START });
+    await expect(page.getByTestId("sieve-summary")).toBeVisible();
+    const ready = candidateCard(page, READY_CONTACT_NAME);
+    await expect(ready.getByTestId("run-emma")).toBeVisible({ timeout: COLD_START });
+    // Nothing overflows the phone width.
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
 });
