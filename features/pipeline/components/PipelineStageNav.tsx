@@ -74,11 +74,15 @@ export function PipelineStageNav({ stages, lost, scrollerId }: PipelineStageNavP
 
   return (
     <nav aria-label={TEXTS.stageNavLabel}>
-      <ol className="flex items-start gap-1.5 sm:gap-2">
+      {/* Six equal segments when there is room; from 1024 px a segment is never
+          narrower than its label (the longer ones take what they need, the
+          others share the rest), so no label is cut at 1024, 1280 or 1440 px.
+          Below, a label may wrap onto two lines — never an ellipsis. */}
+      <ol className="grid grid-cols-[repeat(6,minmax(0,1fr))_auto] items-start gap-1.5 sm:gap-2 lg:grid-cols-[repeat(6,minmax(max-content,1fr))_auto]">
         {stages.map((item) => {
           const active = inView.has(item.stage);
           return (
-            <li key={item.stage} className="min-w-0 flex-1">
+            <li key={item.stage} className="min-w-0">
               <a
                 href={`#${item.targetId}`}
                 onClick={(event) => jump(event, item.targetId)}
@@ -92,16 +96,17 @@ export function PipelineStageNav({ stages, lost, scrollerId }: PipelineStageNavP
                     active ? "bg-ink" : "bg-line-strong group-hover/seg:bg-ink-subtle",
                   )}
                 />
-                <span className="mt-2 flex min-w-0 items-baseline gap-1.5 text-xs">
+                {/* Inline: a wrapped label keeps its count right after its last word. */}
+                <span className="mt-2 block text-xs text-balance sm:pr-2 lg:pr-3 lg:whitespace-nowrap">
                   <span
                     className={cn(
-                      "truncate max-sm:sr-only",
+                      "max-sm:sr-only",
                       active ? "font-medium text-ink" : "text-ink-muted group-hover/seg:text-ink",
                     )}
                   >
                     {PIPELINE_STAGE_LABELS[item.stage]}
                   </span>
-                  <span aria-hidden="true" className="text-ink-subtle tabular-nums">
+                  <span aria-hidden="true" className="whitespace-nowrap text-ink-subtle tabular-nums sm:ml-1.5">
                     {item.count}
                   </span>
                   <span className="sr-only">, {TEXTS.columnCount(item.count)}</span>
@@ -110,15 +115,15 @@ export function PipelineStageNav({ stages, lost, scrollerId }: PipelineStageNavP
             </li>
           );
         })}
-        <li className="w-14 shrink-0 pl-1.5 sm:w-24 sm:pl-3">
+        <li className="w-14 pl-1.5 sm:w-24 sm:pl-3">
           <a href={`#${lost.targetId}`} className="group/seg ui-focus block rounded-xs pt-1.5 pb-1">
             <span
               aria-hidden="true"
               className="block h-0 border-t-2 border-dotted border-line-strong group-hover/seg:border-ink-subtle"
             />
-            <span className="mt-2 flex min-w-0 items-baseline gap-1.5 text-xs">
-              <span className="truncate text-ink-subtle max-sm:sr-only">{PIPELINE_STAGE_LABELS[lost.stage]}</span>
-              <span aria-hidden="true" className="text-ink-subtle tabular-nums">
+            <span className="mt-2 block text-xs whitespace-nowrap">
+              <span className="text-ink-subtle max-sm:sr-only">{PIPELINE_STAGE_LABELS[lost.stage]}</span>
+              <span aria-hidden="true" className="text-ink-subtle tabular-nums sm:ml-1.5">
                 {lost.count}
               </span>
               <span className="sr-only">, {TEXTS.columnCount(lost.count)}</span>

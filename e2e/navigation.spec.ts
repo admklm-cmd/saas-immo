@@ -143,3 +143,85 @@ test("mobile : le menu s'ouvre au clavier, garde tous les liens et se ferme avec
   await expect(page.locator("#content")).toHaveJSProperty("inert", false);
   expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("");
 });
+
+/**
+ * Escape closes the sheet wherever the focus is: it is listened to on the
+ * document while the sheet is open, not only on the menu — a click on an
+ * empty area, or the brand link of the top bar, can take the focus out of it.
+ */
+test("mobile : Échap ferme le menu même quand le focus est sorti du menu", async ({ page }) => {
+  test.setTimeout(180_000);
+  await signIn(page, "agentA");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/taches");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: COLD_START });
+
+  const toggle = page.getByTestId("mobile-nav-toggle");
+  const sheet = page.getByTestId("mobile-nav-sheet");
+
+  // Focus on the page body (as after a click on an empty area).
+  await toggle.click();
+  await expect(sheet).toBeVisible();
+  await expect(page.locator("#content")).toHaveJSProperty("inert", true);
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  expect(await page.evaluate(() => document.activeElement?.closest("details") ?? null)).toBeNull();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await expect(page.locator("#content")).toHaveJSProperty("inert", false);
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("");
+
+  // Focus on the brand link of the top bar, outside the menu.
+  await toggle.click();
+  await expect(sheet).toBeVisible();
+  await expect(page.locator("#content")).toHaveJSProperty("inert", true);
+  await page.locator("header").getByRole("link").first().focus();
+  expect(await page.evaluate(() => document.activeElement?.closest("details") ?? null)).toBeNull();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(toggle).toBeFocused();
+  await expect(page.locator("#content")).toHaveJSProperty("inert", false);
+});
+
+/**
+ * A sheet left open on a phone-sized window must not leave the desktop layout
+ * locked: from 1024 px it closes, the page is interactive again (not inert)
+ * and scrolls, and the desktop column is usable.
+ */
+test("menu ouvert à 390 px puis passage à 1440 px : fermé, page interactive, navigation bureau utilisable", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await signIn(page, "agentA");
+  await page.setViewportSize({ width: 390, height: 844 });
+  // A long page, so the scroll check is meaningful.
+  await page.goto("/contacts");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible({ timeout: COLD_START });
+
+  const toggle = page.getByTestId("mobile-nav-toggle");
+  await toggle.click();
+  await expect(page.getByTestId("mobile-nav-sheet")).toBeVisible();
+  await expect(page.locator("#content")).toHaveJSProperty("inert", true);
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("hidden");
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+
+  // The sheet is closed (not merely hidden with the top bar).
+  await expect.poll(() => page.evaluate(() => document.querySelector("header details")?.hasAttribute("open"))).toBe(false);
+  await expect(page.getByTestId("mobile-nav-sheet")).toBeHidden();
+  // The page is interactive again and scrolls.
+  await expect(page.locator("#content")).toHaveJSProperty("inert", false);
+  expect(await page.evaluate(() => document.documentElement.style.overflow)).toBe("");
+  expect(await page.evaluate(() => getComputedStyle(document.documentElement).overflowY)).not.toBe("hidden");
+  await page.mouse.wheel(0, 400);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+
+  // The desktop column is there and its links work.
+  const aside = page.locator("aside");
+  await expect(aside).toBeVisible();
+  const desktopNav = aside.getByRole("navigation", { name: NAV.primaryLabel });
+  await expect(desktopNav.locator('[aria-current="page"]')).toHaveAttribute("href", "/contacts");
+  await desktopNav.getByRole("link", { name: NAV.pipeline, exact: true }).click();
+  await expect(page).toHaveURL(/\/pipeline$/, { timeout: COLD_START });
+  await expect(desktopNav.locator('[aria-current="page"]')).toHaveAttribute("href", "/pipeline");
+});

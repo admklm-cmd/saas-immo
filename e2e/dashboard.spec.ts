@@ -266,3 +266,44 @@ test("cas d'erreur : sans session, le tableau de bord n'est pas affiché", async
   await expect(page).toHaveURL(/\/connexion$/, { timeout: COLD_START });
   await expect(page.getByRole("heading", { level: 1, name: TEXTS.title })).toHaveCount(0);
 });
+
+/**
+ * Composition of the frieze around the switch to the horizontal line
+ * (finishing pass, Lot 2A). From 768 to 1279 px the line is vertical, on the
+ * left of the card, with « Perdu » beside its end (never a half-empty card,
+ * never an overlap); from 1280 px it is horizontal and « Perdu » goes under it.
+ */
+for (const width of [1024, 1100, 1279, 1280]) {
+  test(`${width} px : la frise occupe la carte sans chevauchement, « Perdu » à sa place`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await signIn(page, "agentA");
+    await page.goto("/dashboard");
+    const frieze = page.getByTestId("dashboard-pipeline");
+    await expect(frieze).toBeVisible({ timeout: COLD_START });
+
+    const layout = await frieze.evaluate((section) => {
+      const rect = (element: Element) => element.getBoundingClientRect();
+      const line = rect(section.querySelector("ol")!);
+      const lost = rect(section.querySelector('[data-testid="dashboard-stage-perdu"]')!);
+      return {
+        overflow: section.scrollWidth - section.clientWidth,
+        lineLeft: line.left,
+        lineRight: line.right,
+        lineBottom: line.bottom,
+        lineWidth: line.width,
+        lost: { left: lost.left, top: lost.top, bottom: lost.bottom },
+        inner: section.clientWidth,
+      };
+    });
+    expect(layout.overflow).toBeLessThanOrEqual(0);
+    if (width < 1280) {
+      // Beside the vertical line, level with its end, without touching it.
+      expect(layout.lost.left).toBeGreaterThanOrEqual(layout.lineRight + 16);
+      expect(Math.abs(layout.lost.bottom - layout.lineBottom)).toBeLessThan(48);
+      // The line takes most of the card: no large blank on its right.
+      expect(layout.lineWidth).toBeGreaterThan(layout.inner * 0.45);
+    } else {
+      expect(layout.lost.top).toBeGreaterThan(layout.lineBottom);
+    }
+  });
+}

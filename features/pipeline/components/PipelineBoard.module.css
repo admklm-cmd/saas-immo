@@ -150,6 +150,24 @@
 
 /* --- « Changer d'étape » ------------------------------------------------------------ */
 
+/* Intent, on hover AND keyboard focus (same cause: « I am about to act on this
+   dossier »): the words « Changer d'étape » appear at once to the left of the
+   glyph, so they read as one phrase with its arrow, and the arrow steps 2.5 px
+   along the line — the move the control makes. Pressed: the button sinks
+   slightly. Open: the arrow turns towards the list it has unfolded. */
+
+.trigger {
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    scale var(--duration-fast) var(--ease-standard);
+}
+
+.trigger:active {
+  scale: 0.92;
+  background-color: var(--color-line);
+}
+
 .trigger [data-glyph-accent] {
   transition: translate var(--duration-base) var(--ease-standard);
 }
@@ -158,14 +176,17 @@
   transition: rotate var(--duration-base) var(--ease-standard);
 }
 
-/* Open: the arrow turns towards the list of stages it has unfolded. */
 .trigger[aria-expanded="true"] svg {
   rotate: 90deg;
 }
 
+.trigger[aria-expanded="false"]:focus-visible [data-glyph-accent] {
+  translate: 2.5px 0;
+}
+
 @media (hover: hover) and (pointer: fine) {
-  .trigger:hover [data-glyph-accent] {
-    translate: 1.5px 0;
+  .trigger[aria-expanded="false"]:hover [data-glyph-accent] {
+    translate: 2.5px 0;
   }
 }
 
@@ -176,7 +197,7 @@
 /* Name of the control, shown next to it on hover and keyboard focus. */
 .tip {
   opacity: 0;
-  translate: 0 3px;
+  translate: 4px 0;
   transition:
     opacity var(--duration-fast) var(--ease-standard),
     translate var(--duration-fast) var(--ease-standard);
@@ -200,9 +221,14 @@
     animation: none;
   }
 
+  .trigger,
   .trigger svg,
   .trigger [data-glyph-accent],
   .tip {
     transition: none;
+  }
+
+  .trigger:active {
+    scale: none;
   }
 }

@@ -185,7 +185,8 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
   return (
     <div ref={containerRef} data-sensitive="">
       {/* Discreet but always there: the glyph of a dossier sent along the line.
-          Its full name is read by screen readers and shown on hover / focus. */}
+          Its full name is read by screen readers; on hover / keyboard focus its
+          words appear to the left of the glyph and the arrow steps forward. */}
       <button
         ref={triggerRef}
         type="button"
@@ -196,7 +197,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
         className={cn(
           styles.trigger,
           "ui-focus absolute top-2 right-2 grid size-8 place-items-center rounded-full text-ink-subtle",
-          "transition-colors duration-150 ease-standard hover:bg-surface-sunken hover:text-ink",
+          "hover:bg-surface-sunken hover:text-ink focus-visible:text-ink",
           "aria-expanded:bg-surface-sunken aria-expanded:text-ink",
         )}
       >
@@ -208,7 +209,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
           aria-hidden="true"
           className={cn(
             styles.tip,
-            "pointer-events-none absolute right-0 bottom-full z-10 mb-1.5 rounded-md bg-inverse px-2 py-1 text-xs font-medium whitespace-nowrap text-ink-inverse shadow-raised",
+            "pointer-events-none absolute inset-y-0 right-full z-10 my-auto mr-1 h-fit rounded-md bg-inverse px-2 py-1 text-xs font-medium whitespace-nowrap text-ink-inverse shadow-raised",
           )}
         >
           {TEXTS.trigger}

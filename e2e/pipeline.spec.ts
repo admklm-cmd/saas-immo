@@ -425,3 +425,83 @@ test.describe("mouvement réduit", () => {
       .toBe(0);
   });
 });
+
+/**
+ * Finishing pass (Lot 2A): the map of the stages never cuts a label at the
+ * widths of a desk screen — 1024 px (with the navigation column), 1280 and
+ * 1440 px. Each label and its count stay on one line, whole, inside the map.
+ */
+for (const width of [1024, 1280, 1440]) {
+  test(`${width} px : la carte des étapes montre chaque libellé en entier, sur une ligne`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await signIn(page, "agentA");
+    await page.goto("/pipeline");
+    const map = page.getByRole("navigation", { name: TEXTS.stageNavLabel });
+    await expect(map).toBeVisible({ timeout: COLD_START });
+
+    const report = await map.evaluate((nav) => {
+      const list = nav.querySelector("ol")!;
+      const listBox = list.getBoundingClientRect();
+      return [...list.querySelectorAll("li")].map((item) => {
+        const label = item.querySelector("a > span:not([aria-hidden])")!;
+        const box = label.getBoundingClientRect();
+        const lineHeight = Number.parseFloat(getComputedStyle(label).lineHeight);
+        // The row and every visible piece of text in it (screen-reader-only text aside).
+        const pieces = [label, ...label.querySelectorAll<HTMLElement>("span:not(.sr-only)")];
+        return {
+          text: label.textContent,
+          lines: Math.round(box.height / lineHeight),
+          inside: box.left >= listBox.left - 0.5 && box.right <= listBox.right + 0.5,
+          clipped: pieces.some((piece) => piece.scrollWidth > piece.clientWidth + 1),
+          ellipsis: pieces.some((piece) => getComputedStyle(piece).textOverflow === "ellipsis"),
+        };
+      });
+    });
+    expect(report).toHaveLength(7);
+    for (const entry of report) {
+      expect(entry, entry.text ?? "").toMatchObject({ lines: 1, inside: true, clipped: false, ellipsis: false });
+    }
+    for (const stage of [...ACTIVE_STAGES, "perdu" as const]) {
+      await expect(map).toContainText(PIPELINE_STAGE_LABELS[stage]);
+    }
+  });
+}
+
+/**
+ * « Changer d'étape » says what it does as soon as it is pointed at or
+ * reached with the keyboard: its words appear next to the glyph (same state
+ * for hover and focus), while its accessible name stays « Changer d'étape
+ * pour {nom} ».
+ */
+test("« Changer d'étape » : les mots apparaissent au survol et au focus clavier, le nom accessible est inchangé", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, "agentA");
+  await page.goto("/pipeline");
+  const card = column(page, PIPELINE_STAGE_LABELS.nouveau).getByTestId("pipeline-contact").first();
+  await expect(card).toBeVisible({ timeout: COLD_START });
+  const trigger = card.getByTestId("stage-menu-trigger");
+  const name = (await card.getByRole("link").first().locator("p").first().textContent())!.trim();
+  await expect(trigger).toHaveAccessibleName(`${STAGE_TEXTS.trigger} ${STAGE_TEXTS.triggerFor(name)}`);
+
+  const tip = trigger.locator("span[aria-hidden]").filter({ hasText: STAGE_TEXTS.trigger });
+  const opacity = () => tip.evaluate((node) => Number(getComputedStyle(node).opacity));
+  expect(await opacity()).toBe(0);
+
+  // Keyboard: Tab from the card link reaches the button and shows its words.
+  await card.getByRole("link").first().focus();
+  await page.keyboard.press("Tab");
+  await expect(trigger).toBeFocused();
+  await expect.poll(opacity).toBe(1);
+  // The words sit inside the card, to the left of the glyph (never over the card above).
+  const [tipBox, triggerBox, cardBox] = await Promise.all([tip.boundingBox(), trigger.boundingBox(), card.boundingBox()]);
+  expect(tipBox!.x + tipBox!.width).toBeLessThanOrEqual(triggerBox!.x + 0.5);
+  expect(tipBox!.y).toBeGreaterThanOrEqual(cardBox!.y);
+
+  // Pointer: same words on hover.
+  await trigger.blur();
+  await expect.poll(opacity).toBe(0);
+  await trigger.hover();
+  await expect.poll(opacity).toBe(1);
+});

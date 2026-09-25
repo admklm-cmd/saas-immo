@@ -15,8 +15,10 @@ const TEXTS = APP_TEXTS.contacts;
 
 const HEAD = "px-4 py-3 text-overline font-semibold whitespace-nowrap text-ink-subtle uppercase first:pl-5 last:pr-5";
 const CELL = "px-4 py-3.5 align-top first:pl-5 last:pr-5";
-/** Source and last update have their own columns only from 1280 px. */
-const WIDE_ONLY = "hidden xl:table-cell";
+/** The last update has its own column from 1280 px… */
+const DATE_COLUMN = "hidden xl:table-cell";
+/** …the source from 1440 px (the reference width): from 1280 to 1439 px it stays under the contact details. */
+const SOURCE_COLUMN = "hidden wide:table-cell";
 
 /**
  * The agency's contacts, most recent first.
@@ -29,9 +31,12 @@ const WIDE_ONLY = "hidden xl:table-cell";
  *
  * The table never scrolls sideways: its layout is fixed (`table-fixed`), the
  * stage, source and date columns have the width of their content, the three
- * others share the rest. From 1280 px, six columns. From 768 to 1279 px
- * (a sidebar-wide screen of 1024 px included), four: the date moves under the
- * name and the source under the contact details. An email breaks after its
+ * others share the rest. From 1440 px, six columns. From 1280 to 1439 px,
+ * five: the source moves under the contact details and the contact column has
+ * a set width, so a name keeps its marks on its line and an email, a phone
+ * number or « Téléphone non renseigné » each stay on one line. From 768 to
+ * 1279 px (a sidebar-wide screen of 1024 px included), four: the date also
+ * moves, under the name. An email breaks after its
  * « @ » first, a place after its « — », a unit never leaves its figure.
  * Under 768 px the table becomes a list of cards (`ContactsMobileList`).
  */
@@ -54,7 +59,7 @@ export function ContactsTable({ contacts }: { contacts: readonly ContactListItem
           <caption className="sr-only">{TEXTS.subtitle}</caption>
           <thead>
             <tr className="border-b border-line bg-surface-muted">
-              <th scope="col" className={HEAD}>
+              <th scope="col" className={`${HEAD} xl:w-52 wide:w-auto`}>
                 {TEXTS.columnName}
               </th>
               <th scope="col" className={`${HEAD} w-46`}>
@@ -66,10 +71,10 @@ export function ContactsTable({ contacts }: { contacts: readonly ContactListItem
               <th scope="col" className={HEAD}>
                 {TEXTS.columnContactDetails}
               </th>
-              <th scope="col" className={`${HEAD} ${WIDE_ONLY} w-36`}>
+              <th scope="col" className={`${HEAD} ${SOURCE_COLUMN} w-36`}>
                 {TEXTS.columnSource}
               </th>
-              <th scope="col" className={`${HEAD} ${WIDE_ONLY} w-36 text-right`}>
+              <th scope="col" className={`${HEAD} ${DATE_COLUMN} w-36 text-right`}>
                 {TEXTS.columnUpdated}
               </th>
             </tr>
@@ -106,10 +111,10 @@ export function ContactsTable({ contacts }: { contacts: readonly ContactListItem
                   <td className={`${CELL} text-ink-muted`}>
                     <div>{contact.email ? <ContactEmail email={contact.email} /> : TEXTS.noEmail}</div>
                     <div className="mt-0.5 text-ink-subtle tabular-nums">{contact.phone ?? TEXTS.noPhone}</div>
-                    <div className="mt-1 text-xs text-ink-subtle xl:hidden">{CONTACT_SOURCE_LABELS[contact.source]}</div>
+                    <div className="mt-1 text-xs text-ink-subtle wide:hidden">{CONTACT_SOURCE_LABELS[contact.source]}</div>
                   </td>
-                  <td className={`${CELL} ${WIDE_ONLY} text-ink-muted`}>{CONTACT_SOURCE_LABELS[contact.source]}</td>
-                  <td className={`${CELL} ${WIDE_ONLY} text-right whitespace-nowrap text-ink-muted tabular-nums`}>
+                  <td className={`${CELL} ${SOURCE_COLUMN} text-ink-muted`}>{CONTACT_SOURCE_LABELS[contact.source]}</td>
+                  <td className={`${CELL} ${DATE_COLUMN} text-right whitespace-nowrap text-ink-muted tabular-nums`}>
                     <span className="inline-flex items-center gap-2">
                       {updated}
                       <Glyph

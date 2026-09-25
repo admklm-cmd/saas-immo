@@ -87,6 +87,12 @@
      (always next to a written message). 5.2:1 on white. */
   --color-danger: #c63838;
 
+  /* --- Breakpoints --------------------------------------------------------- */
+  /* Tailwind's defaults (sm 640, md 768, lg 1024, xl 1280, 2xl 1536) plus the
+     1440 px reference width of the product (`wide:`): a dense screen may keep a
+     lighter composition from 1280 to 1439 px (docs/design-system.md §7). */
+  --breakpoint-wide: 90rem;
+
   /* --- Radii -------------------------------------------------------------- */
   --radius-xs: 0.375rem;
   --radius-sm: 0.5rem;

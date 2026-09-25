@@ -715,8 +715,11 @@ titre, quelle que soit la largeur du contenu.
   pleine hauteur, `AppNav variant="sheet"` (cibles de 48 px, `text-base`), compte en bas.
   Avec JavaScript, la feuille se comporte comme une modale : le focus boucle entre
   « Fermer » et la feuille, `#content` est `inert` et la page ne défile plus ; Échap
-  referme et rend le focus au bouton ; suivre un lien, changer de page ou passer à
-  1024 px referme.
+  referme et rend le focus au bouton **où que soit le focus** (écouteur `keydown` posé sur
+  `document` dans le gestionnaire `toggle` à l'ouverture, retiré à la fermeture et au
+  démontage ; une tabulation partie de l'extérieur revient dans la feuille) ; suivre un
+  lien, changer de page ou passer à 1024 px referme (page de nouveau interactive et
+  défilable — vérifié en E2E 390 → 1440 px).
 - `devIndicators: false` dans `next.config.ts` : l'indicateur « N » de `next dev` masquait
   « Se déconnecter » (développement seulement).
 
@@ -829,11 +832,11 @@ pour que les deux écrans se lisent pareil : un point de la frise = une carte ic
 | Composant | Fichier | Rôle |
 |---|---|---|
 | `PipelineBoard` | `PipelineBoard.tsx` (+ `PipelineBoard.module.css`) | Répartit les contacts (`groupContactsByStage`), pose la carte des étapes, puis **une seule ligne** des six étapes actives dans une zone qui défile horizontalement, puis `perdu` à part, sous la ligne |
-| `PipelineStageNav` | `PipelineStageNav.tsx` (client) | Carte du parcours au-dessus de la ligne : un segment par étape (2 px, `line-strong`), libellé + compte exact (libellé en `sr-only` sous 640 px), « Perdu » en pointillés à part. Les segments des colonnes visibles passent en `ink` (`IntersectionObserver`, 60 % de la colonne) : c'est la position dans le parcours, surtout sur téléphone. Liens d'ancre : sans JavaScript, saut natif ; avec, la zone est amenée **instantanément** sur la colonne (pas de défilement animé) sans bouger la page, et le focus va au titre de la colonne |
+| `PipelineStageNav` | `PipelineStageNav.tsx` (client) | Carte du parcours au-dessus de la ligne : un segment par étape (2 px, `line-strong`), libellé + compte exact (libellé en `sr-only` sous 640 px), « Perdu » en pointillés à part. Grille `repeat(6, minmax(0,1fr))`, puis `minmax(max-content,1fr)` dès 1024 px : segments égaux quand la place le permet, jamais plus étroits que leur libellé (**aucun libellé tronqué à 1024, 1280, 1440 px**, E2E) ; en dessous, un libellé peut passer sur deux lignes, jamais d'ellipse ; le compte suit le dernier mot (en ligne). Les segments des colonnes visibles passent en `ink` (`IntersectionObserver`, 60 % de la colonne) : c'est la position dans le parcours, surtout sur téléphone. Liens d'ancre : sans JavaScript, saut natif ; avec, la zone est amenée **instantanément** sur la colonne (pas de défilement animé) sans bouger la page, et le focus va au titre de la colonne |
 | `PipelineColumn` | `PipelineColumn.tsx` | Une étape : `section`/`h2` (`tabIndex=-1` pour la carte des étapes). En-tête sur la ligne du parcours : nœud creux 10 px (`border-ink-subtle`), segment `bg-line-strong` 1 px jusqu'au nœud suivant (chaque colonne dessine le sien), libellé `text-base`, compte exact `text-heading` + « dossier(s) » (`data-testid="pipeline-column-count"`). « Étape n sur 6 » visible sous 640 px, `sr-only` au-dessus. « Mandat signé » termine la ligne : `AgentAppIcon glyph="mandate" kind="outcome"` + « Confirmé par un humain » posé sur la ligne. Colonne vide : cadre pointillé « Aucun dossier à cette étape. ». Colonnes en `subgrid` (en-tête / cartes) : toutes les cartes commencent à la même hauteur |
 | `PipelineLostLane` | `PipelineLostLane.tsx` | `perdu` hors de la ligne : cadre `border-dashed border-line-strong bg-surface-muted`, nœud pointillé, chiffre `text-ink-subtle`, note « Affichée à part… », cartes en grille qui passe à la ligne (jamais de défilement) |
 | `PipelineContactCard` | `PipelineContactCard.tsx` | Un dossier : `rounded-xl`, `shadow-subtle` → `shadow-raised` + filet `line-strong` au survol du lien. Deux cibles jamais imbriquées : le corps est un lien vers `/contacts/[id]` (nom ; « Maison · 142 m² » ; secteur, sinon ville ; états via `ContactStateMarks` : forme humaine + « Repris par un conseiller », glyphe tâches + « 1 tâche ouverte ») ; « Changer d'étape » est un petit bouton rond dans le coin haut droit |
-| `PipelineStageMenu` | `PipelineStageMenu.tsx` (client) | Bouton rond 32 px, glyphe `stageMove` (un nœud envoyé le long de la ligne), **toujours visible** (`ink-subtle`, `ink` au survol), nom accessible « Changer d'étape pour {nom} », et « Changer d'étape » en bulle noire au survol (pointeur fin) et au focus clavier. Ouvert : la flèche tourne de 90° vers la liste, qui se **déplie dans la carte** (`bg-surface-muted`, jamais coupée par la zone qui défile) : sept étapes, actuelle cochée (`aria-current`) et non sélectionnable, flèches / Début / Fin, Échap rend le focus. Déplacement direct avec spinner sur l'option ; erreur serveur affichée telle quelle, sélection conservée |
+| `PipelineStageMenu` | `PipelineStageMenu.tsx` (client) | Bouton rond 32 px, glyphe `stageMove` (un nœud envoyé le long de la ligne), **toujours visible** (`ink-subtle`, `ink` au survol), nom accessible « Changer d'étape pour {nom} ». Au survol (pointeur fin) **et** au focus clavier, même état : « Changer d'étape » en bulle noire **à gauche du glyphe**, dans la carte (lue avec la flèche comme une seule phrase, jamais par-dessus la carte du dessus), et la flèche avance de 2,5 px le long de la ligne ; appuyé : le bouton s'enfonce (×0,92, fond `line`). Tactile : ni bulle ni texte permanent, nom accessible inchangé. Ouvert : la flèche tourne de 90° vers la liste, qui se **déplie dans la carte** (`bg-surface-muted`, jamais coupée par la zone qui défile) : sept étapes, actuelle cochée (`aria-current`) et non sélectionnable, flèches / Début / Fin, Échap rend le focus. Déplacement direct avec spinner sur l'option ; erreur serveur affichée telle quelle, sélection conservée |
 | `MandateEnterDialog` | `MandateEnterDialog.tsx` (client) | Entrée en « Mandat signé » : rappel « décision humaine, jamais un agent IA », `Checkbox` obligatoire, bouton désactivé tant qu'elle n'est pas cochée — **inchangé** |
 | `MandateExitDialog` | `MandateExitDialog.tsx` (client) | Sortie de « Mandat signé » (directeur) : `Checkbox` + `Textarea` « Motif (obligatoire) » 3–500 caractères avec compteur — **inchangé** |
 | `PipelineStageChangeProvider` | `PipelineStageChangeProvider.tsx` (client) | Zone `role="status"` toujours présente (pastille noire translucide en bas d'écran, 6 s) ; rend le focus au bouton de la carte dans sa nouvelle colonne — **inchangé** |
@@ -884,7 +887,7 @@ par `getContacts()`. Aucun taux de conversion, aucune durée moyenne, aucune év
 
 | Composant | Fichier | Rôle |
 |---|---|---|
-| `ContactsTable` | `ContactsTable.tsx` | Dès 768 px : tableau `rounded-2xl` en `table-fixed`, **jamais de défilement horizontal** (vérifié en E2E à 1280 et 1440 px). Dès 1280 px, six colonnes : Contact · Étape (`w-46`, tient le badge le plus long) · Bien (`w-42`) · Coordonnées · Source (`w-36`) · Mise à jour (`w-36`) ; Contact et Coordonnées se partagent le reste. De 768 à 1279 px (dont 1024 px avec la colonne de navigation), quatre colonnes : la date passe sous le nom (« Mis à jour le … », `text-xs`), la source sous le téléphone. Les emails se coupent d’abord après « @ » (`ContactEmail`), les lieux après « — », jamais une unité ni un nom composé. Toute la ligne mène à la fiche : le nom est le vrai lien, sa zone (`after:absolute inset-0`) couvre la ligne ; survol : fond `surface-muted`, nom souligné `line-strong`, flèche qui avance de 2 px en fin de ligne. Légende `aria-hidden` des formes au-dessus, à droite |
+| `ContactsTable` | `ContactsTable.tsx` | Dès 768 px : tableau `rounded-2xl` en `table-fixed`, **jamais de défilement horizontal** (vérifié en E2E à 1280 et 1440 px). Dès 1440 px (`wide:`), six colonnes : Contact · Étape (`w-46`, tient le badge le plus long) · Bien (`w-42`) · Coordonnées · Source (`w-36`) · Mise à jour (`w-36`) ; Contact et Coordonnées se partagent le reste. De 1280 à 1439 px, cinq : la source passe sous le téléphone (`text-xs`) et Contact a une largeur fixe (`w-52`) — nom et marques d'état sur une ligne, email, téléphone et « Téléphone non renseigné » sur une ligne chacun (données fictives). De 768 à 1279 px (dont 1024 px avec la colonne de navigation), quatre colonnes : la date passe sous le nom (« Mis à jour le … », `text-xs`), la source sous le téléphone. Les emails se coupent d’abord après « @ » (`ContactEmail`), les lieux après « — », jamais une unité ni un nom composé. Toute la ligne mène à la fiche : le nom est le vrai lien, sa zone (`after:absolute inset-0`) couvre la ligne ; survol : fond `surface-muted`, nom souligné `line-strong`, flèche qui avance de 2 px en fin de ligne. Légende `aria-hidden` des formes au-dessus, à droite |
 | `ContactsMobileList` | `ContactsMobileList.tsx` | Sous 768 px : une carte par contact (nom + date, badge d'étape + états, bien, coordonnées, source), toute la carte est la cible. Jamais un tableau miniature |
 | `ContactEmail` | `ContactEmail.tsx` | Email qui peut passer à la ligne sans être coupé : coupure préférée après « @ » (`<wbr>`), `overflow-wrap:anywhere` en dernier recours |
 | `ContactStateMarks` | `ContactStateMarks.tsx` | Les deux états réels d'un dossier **par la forme** : reprise par un conseiller = petit cercle à double contour (famille `human`) ; tâches ouvertes = glyphe `tasks` + nombre. `labelled` (forme + mots : pipeline, fiche, téléphone) ou `compact` (forme + chiffre, mots en `sr-only` et en infobulle : tableau). Rien si aucun état |
@@ -970,7 +973,12 @@ une personne doit décider*. `buildFrieze(pipeline, todo)` ne fait que **réordo
 `getDashboardSummary` a compté (aucun taux, aucune tendance, aucun nouveau chiffre).
 
 - **Une ligne** (`bg-line-strong`, 1 px) dans l'ordre du parcours vendeur : horizontale dès
-  1280 px, verticale à gauche en dessous. Chaque pas dessine son propre segment
+  1280 px, verticale à gauche en dessous. **De 768 à 1279 px**, la carte est en deux colonnes
+  (`minmax(0,3fr) minmax(14rem,2fr)`) : la ligne verticale à gauche, et une colonne de marge
+  séparée par un filet `line` avec la légende en haut (au départ de la ligne) et « Perdu » en
+  bas (à hauteur de « Mandat signé ») — même proportion avec ou sans la colonne de navigation,
+  donc pas de saut à 1024 px ni de grand blanc à droite. Sous 768 px : une colonne ; dès
+  1280 px : « Perdu » puis la légende sous la ligne. Chaque pas dessine son propre segment
   (`FriezeRail`), la ligne est continue quelle que soit la largeur.
 - **Étape** (`FriezeStage`) : un nœud creux de 10 px sur la ligne, le libellé
   (`PIPELINE_STAGE_LABELS`), le compte exact (`text-hero` dès 1280 px) + « dossier(s) », et
@@ -1085,7 +1093,8 @@ Chaque écran gère quatre états :
   minimum ; une colonne par écran sous 640 px ; `perdu` en dessous, pleine largeur (§ 3.2).
 - Contacts (`/contacts`) : `page-frame`, tableau dès 768 px, cartes en dessous (§ 3.2.1).
 - Tableau de bord (`/dashboard`) : `page-frame`. Frise du pipeline pleine largeur (ligne
-  horizontale dès 1280 px ; verticale en dessous, plafonnée à `max-w-xl` de 1024 à 1279 px),
+  horizontale dès 1280 px ; verticale en dessous, avec légende et « Perdu » dans une colonne
+  de marge de 768 à 1279 px, § 3.5),
   puis « À faire maintenant » en un panneau à rangées (`TodoRow`,
   `lg:grid-cols-[18rem_minmax(0,1fr)]`), puis agents IA et prochains rendez-vous en
   `xl:grid-cols-2`. Blocs espacés de `gap-12` (`gap-14` dès 1024 px). Aucun `Reveal` : seule
@@ -1098,7 +1107,9 @@ Chaque écran gère quatre états :
 - Listes paginées (`/taches`, `/rendez-vous`) : colonne unique `max-w-4xl`, comme les files de travail ; lignes empilées sous 640 px (action sous le texte).
 - Navigation : barre haute + bouton « Menu » (feuille pleine hauteur) sous 1024 px, colonne
   fixe de 256 px au-dessus (§ 2.10).
-- Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280).
+- Points de rupture Tailwind par défaut (`sm` 640, `md` 768, `lg` 1024, `xl` 1280), plus
+  `wide` 1440 (`--breakpoint-wide: 90rem`, largeur de référence) : un écran dense garde une
+  composition plus légère de 1280 à 1439 px (tableau des contacts, § 3.2.1).
 
 ## 8. Limites connues (à traiter plus tard)
 
