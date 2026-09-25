@@ -61,12 +61,14 @@ Pour chaque parcours créé ou modifié, écris ou mets à jour un test Playwrig
 
 ## Workflow
 
-1. Lis `CLAUDE.md`, `docs/design-system.md` et les fichiers ciblés.
-2. Implémente.
+1. Lis `CLAUDE.md`, `docs/design-system.md`, le skill `.claude/skills/premium-product-motion/SKILL.md` (direction artistique et motion : obligatoire pour toute section, scène, écran ou animation) et les fichiers ciblés.
+2. Implémente. Tu es libre d’inventer la représentation, mais pas de dégrader la direction artistique. Pour une grosse section, suis le workflow du skill : concept → scène → implémentation → responsive → tests → capture → passe de finition → validation visuelle ; « les tests passent » ne suffit jamais à conclure.
 3. Lance `npx tsc --noEmit`, `npm run lint` et `npx playwright test` sur tes tests. Corrige.
 4. Relis ton diff.
 
 ## Rapport final (format obligatoire)
+
+Pour une grosse section, ajoute aussi la section « Rapport attendu » du skill `premium-product-motion` (ce que la scène raconte, comment elle le raconte, captures 1440 / 390 / reduced motion, 7 passes de finition).
 
 - **Résumé** : 2 à 4 phrases.
 - **Fichiers modifiés**
