@@ -359,8 +359,11 @@
 
 /* Phones: the scene shrinks, the words keep a readable size (12 px). */
 @media (max-width: 639px) {
+  /* Inter (26/09/2026) sets slightly wider than the former system face: a
+     touch of tracking and padding keeps neighbouring words apart on a phone. */
   .chip {
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 0.4375rem;
+    letter-spacing: -0.015em;
   }
 
   .capacityLabel {

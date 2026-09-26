@@ -128,6 +128,10 @@ export function EstimationForm() {
 
   return (
     <form
+      // POST, never the default GET: a submission landing before hydration must
+      // not put personal data in the URL, history or access logs (guarded by
+      // components/form-method.guard.test.ts).
+      method="post"
       noValidate
       data-sensitive=""
       onSubmit={(event) => void handleSubmit(event)}

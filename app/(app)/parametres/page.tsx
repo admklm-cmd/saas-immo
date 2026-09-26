@@ -32,7 +32,6 @@ export default async function SettingsPage() {
     <div className="page-frame page-frame-medium">
       <PageHeader
         title={TEXTS.title}
-        description={TEXTS.subtitle}
         meta={<Badge tone="outline">{TEXTS.readOnlyBadge}</Badge>}
       />
 
@@ -57,11 +56,12 @@ export default async function SettingsPage() {
           </Alert>
 
           <div className="mt-10 flex flex-col gap-12">
+            {/* The one control of the page comes first: the kill switch. */}
+            <AgentsSettingsSection agents={settings.agents} />
             <div className="grid gap-6 lg:grid-cols-2">
               <AgencyProfileCard agency={settings.agency} />
               <TeamCard members={settings.members} />
             </div>
-            <AgentsSettingsSection agents={settings.agents} />
             <IntegrationsCard integrations={settings.integrations} />
             <RetentionCard retention={settings.retention} />
           </div>

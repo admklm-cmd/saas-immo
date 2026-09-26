@@ -54,7 +54,7 @@ export function AppointmentRow({ appointment, now }: { appointment: AppointmentL
         aria-hidden="true"
         className="flex size-14 shrink-0 flex-col items-center justify-center rounded-lg border border-line bg-surface-muted"
       >
-        <span className="text-heading leading-none font-semibold text-ink tabular-nums">{parts?.day ?? "—"}</span>
+        <span className="text-heading leading-none font-semibold text-ink figure">{parts?.day ?? "—"}</span>
         <span className="mt-1 text-overline font-semibold text-ink-subtle uppercase">{parts?.month ?? ""}</span>
       </div>
 

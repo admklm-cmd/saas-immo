@@ -2,6 +2,7 @@ import { APP_TEXTS } from "@/components/texts";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Card } from "@/components/ui/Card";
+import { Disclosure } from "@/components/ui/Disclosure";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 
 import type { DashboardAgents } from "../types";
@@ -21,7 +22,6 @@ export function AgentsSummary({ agents }: { agents: DashboardAgents }) {
   return (
     <Card
       title={TEXTS.agentsTitle}
-      description={TEXTS.agentsSubtitle}
       actions={<SimulationBadge />}
       testId="dashboard-agents"
       className="h-full"
@@ -53,7 +53,24 @@ export function AgentsSummary({ agents }: { agents: DashboardAgents }) {
       {agents.runsToday.status === "unavailable" || agents.runsLast7Days.status === "unavailable" ? (
         <p className="mt-3 text-xs text-ink-muted">{TEXTS.unavailableHint}</p>
       ) : null}
-      <p className="mt-4 text-xs text-ink-muted">{TEXTS.runsBlockedHint}</p>
+      {/* The hint is the toggle: one line at rest, the guard rails one keypress
+          away (native <details>: Tab, Enter / Space, announced as expandable). */}
+      <Disclosure
+        summary={TEXTS.runsBlockedHint}
+        size="xs"
+        className="mt-4"
+        contentClassName="pt-2 pl-2"
+        testId="dashboard-blocked-guards"
+      >
+        <ul
+          aria-label={TEXTS.runsBlockedGuardsLabel}
+          className="list-disc space-y-0.5 pl-4 text-xs text-ink-muted marker:text-ink-subtle"
+        >
+          {TEXTS.runsBlockedGuards.map((guard) => (
+            <li key={guard}>{guard}</li>
+          ))}
+        </ul>
+      </Disclosure>
 
       <div className="mt-6">
         <ButtonLink href="/agents-ia" variant="secondary" size="sm">

@@ -11,7 +11,7 @@ const TEXTS = APP_TEXTS.settings;
  */
 export function RetentionCard({ retention }: { retention: SettingsRetention }) {
   return (
-    <Card title={TEXTS.retentionTitle} description={TEXTS.retentionSubtitle} testId="settings-retention">
+    <Card title={TEXTS.retentionTitle} testId="settings-retention">
       <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.retentionLabel}</p>
       {retention.status === "undefined" ? (
         <p

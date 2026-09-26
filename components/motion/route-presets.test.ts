@@ -81,11 +81,14 @@ describe("background layout", () => {
     }
   });
 
-  it("keeps the shape clear of the navigation column and the left-aligned titles on desktop", () => {
-    // The 256 px navigation is 18 % of a 1440 px viewport; titles start after it.
-    expect(BACKGROUND_LAYOUT.desktop.region.x).toBeGreaterThanOrEqual(0.5);
-    // On mobile the header area (top of the viewport) stays clear.
-    expect(BACKGROUND_LAYOUT.mobile.region.y).toBeGreaterThanOrEqual(0.3);
-    expect(BACKGROUND_LAYOUT.mobile.intensity).toBeLessThan(1);
+  // Spec changed on 26/09/2026 (docs/plans/2026-09-26-typography-particles.md):
+  // the shape no longer avoids the navigation and the titles — it spans the whole
+  // viewport on every class; readability comes from opaque cards and .particle-veil.
+  it("spans the whole viewport on every viewport class, quieter on mobile", () => {
+    for (const { region } of Object.values(BACKGROUND_LAYOUT)) {
+      expect(region).toEqual({ x: 0, y: 0, width: 1, height: 1 });
+    }
+    expect(BACKGROUND_LAYOUT.desktop.intensity).toBe(1);
+    expect(BACKGROUND_LAYOUT.mobile.intensity).toBeLessThan(BACKGROUND_LAYOUT.tablet.intensity);
   });
 });

@@ -182,16 +182,17 @@ describe("background mode (spec §9)", () => {
     expect(count).toBe(1_800);
   });
 
-  it("maps shape opacities into .08–.35 continuously, keeping 0 at 0", () => {
+  // Range raised by ~30 % on 26/09/2026 (.08–.35 -> .10–.46), with depth planes.
+  it("maps shape opacities into .10–.46 continuously, keeping 0 at 0", () => {
     expect(mapOpacity(0, BACKGROUND_OPACITY)).toBe(0);
-    expect(mapOpacity(0.12, BACKGROUND_OPACITY)).toBeCloseTo(0.08);
-    expect(mapOpacity(0.6, BACKGROUND_OPACITY)).toBeCloseTo(0.35);
-    expect(mapOpacity(2, BACKGROUND_OPACITY)).toBeCloseTo(0.35);
-    expect(mapOpacity(0.06, BACKGROUND_OPACITY)).toBeCloseTo(0.04);
+    expect(mapOpacity(0.12, BACKGROUND_OPACITY)).toBeCloseTo(0.1);
+    expect(mapOpacity(0.6, BACKGROUND_OPACITY)).toBeCloseTo(0.46);
+    expect(mapOpacity(2, BACKGROUND_OPACITY)).toBeCloseTo(0.46);
+    expect(mapOpacity(0.06, BACKGROUND_OPACITY)).toBeCloseTo(0.05);
     expect(mapOpacity(0.36, ZONE_OPACITY)).toBeCloseTo(0.36);
     for (let a = 0; a <= 0.6; a += 0.01) {
       expect(mapOpacity(a + 0.01, BACKGROUND_OPACITY)).toBeGreaterThanOrEqual(mapOpacity(a, BACKGROUND_OPACITY));
-      expect(mapOpacity(a, BACKGROUND_OPACITY)).toBeLessThanOrEqual(0.35);
+      expect(mapOpacity(a, BACKGROUND_OPACITY)).toBeLessThanOrEqual(0.46);
     }
   });
 

@@ -44,7 +44,7 @@ export function Card({
           {/* Actions sit on the title line at every width; the description runs
               full width underneath, so it can never push a badge onto its own row. */}
           <div className="flex items-start justify-between gap-3">
-            <Heading className="min-w-0 text-heading font-semibold">{title}</Heading>
+            <Heading className="min-w-0 font-display text-heading font-bold">{title}</Heading>
             {actions ? (
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{actions}</div>
             ) : null}

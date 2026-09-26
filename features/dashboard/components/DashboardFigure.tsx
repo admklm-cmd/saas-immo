@@ -42,7 +42,7 @@ export function DashboardFigure({
           <>
             <span
               className={cn(
-                "font-semibold tabular-nums",
+                "font-semibold figure",
                 size === "lg" ? "text-title" : "text-heading",
                 muted ? "text-ink-subtle" : "text-ink",
               )}

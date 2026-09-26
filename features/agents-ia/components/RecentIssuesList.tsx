@@ -41,7 +41,6 @@ export function RecentIssuesList({
         <h2 id="recent-issues" className="text-section font-bold text-ink">
           {TEXTS.lastErrors}
         </h2>
-        <p className="text-sm text-ink-muted">{TEXTS.issuesSubtitle}</p>
       </div>
 
       <div className="mt-5 rounded-xl border border-line bg-surface shadow-subtle">

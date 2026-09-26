@@ -57,7 +57,7 @@ export function AgentRunProcessPreview({ steps, runStatus }: AgentRunProcessPrev
         <span>{TEXTS.stepsCount(steps.length)}</span>
         <span aria-hidden="true">·</span>
         <span>
-          {REPLAY.totalMeasured} : <span className="tabular-nums text-ink">{formatDurationMs(measuredMs)}</span>
+          {REPLAY.totalMeasured} : <span className="figure text-ink">{formatDurationMs(measuredMs)}</span>
         </span>
         {inProgress ? null : (
           <>

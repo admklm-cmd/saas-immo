@@ -44,7 +44,7 @@ export function FriezeStage({ step, last = false }: { step: FriezeStageStep; las
           <p className="flex items-baseline gap-1.5 xl:justify-center">
             {value !== null ? (
               <>
-                <span className="text-heading font-semibold text-ink tabular-nums xl:text-hero">
+                <span className="text-heading font-semibold text-ink figure xl:text-hero">
                   {value}
                 </span>
                 <span className="text-xs text-ink-muted">

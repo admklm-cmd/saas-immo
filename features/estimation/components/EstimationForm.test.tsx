@@ -54,6 +54,13 @@ function fillRequiredFields() {
   fireEvent.change(screen.getByLabelText(label(TEXTS.postalCode)), { target: { value: "13600" } });
 }
 
+describe("EstimationForm — soumission avant hydratation", () => {
+  it("déclare method=post : une soumission native ne met jamais de données personnelles dans l'URL", () => {
+    const { container } = render(<EstimationForm />);
+    expect(container.querySelector("form")?.getAttribute("method")).toBe("post");
+  });
+});
+
 describe("EstimationForm — cases de consentement", () => {
   it("n'a aucune case de consentement cochée au montage", () => {
     render(<EstimationForm />);

@@ -32,7 +32,6 @@ export default async function PipelinePage() {
     <div className="page-frame">
       <PageHeader
         title={TEXTS.title}
-        description={TEXTS.subtitle}
         meta={contacts && contacts.length > 0 ? <Badge tone="outline">{CONTACTS_TEXTS.count(contacts.length)}</Badge> : null}
       />
 

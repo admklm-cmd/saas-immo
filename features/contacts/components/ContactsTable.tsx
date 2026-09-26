@@ -43,8 +43,12 @@ const SOURCE_COLUMN = "hidden wide:table-cell";
 export function ContactsTable({ contacts }: { contacts: readonly ContactListItem[] }) {
   return (
     <div className="animate-rise">
-      {/* Legend of the shapes next to the names (each shape also carries its words). */}
-      <div aria-hidden="true" className="mb-3 hidden items-center justify-end gap-x-5 text-xs text-ink-subtle md:flex">
+      {/* Legend of the shapes next to the names (each shape also carries its words).
+          On the canvas: tight veil sized to the legend, clear of the table 0.75rem below. */}
+      <div
+        aria-hidden="true"
+        className="particle-veil particle-veil-tight mb-3 ml-auto hidden w-fit items-center justify-end gap-x-5 text-xs text-ink-subtle md:flex"
+      >
         <ContactStateMarks contact={{ humanTakeover: true, openTasksCount: 0 }} />
         <span className="inline-flex items-center gap-1.5">
           <Glyph name="tasks" width={14} />
@@ -56,7 +60,7 @@ export function ContactsTable({ contacts }: { contacts: readonly ContactListItem
         className="hidden overflow-hidden rounded-2xl border border-line bg-surface shadow-subtle md:block"
       >
         <table className="w-full table-fixed border-collapse text-left text-sm">
-          <caption className="sr-only">{TEXTS.subtitle}</caption>
+          <caption className="sr-only">{TEXTS.listLabel}</caption>
           <thead>
             <tr className="border-b border-line bg-surface-muted">
               <th scope="col" className={`${HEAD} xl:w-52 wide:w-auto`}>

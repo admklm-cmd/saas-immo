@@ -103,7 +103,7 @@ export const APP_TEXTS = {
     groupAgents: "Agents IA",
     groupSettings: "Réglages",
     /** Entry of `/agents-ia` inside the « Agents IA » group. */
-    agentsOverview: "Vue d'ensemble",
+    agentsOverview: "Vue d’ensemble",
     menuOpen: "Menu",
     menuClose: "Fermer",
     signedInAs: "Connecté en tant que",
@@ -133,14 +133,14 @@ export const APP_TEXTS = {
     retry: "Réessayer",
     back: "Retour",
     simulation: "Simulation",
-    simulationHint: "Action simulée : rien n'a été envoyé à l'extérieur.",
+    simulationHint: "Action simulée : rien n’a été envoyé à l’extérieur.",
     // Label of a request that runs on the simulator (ThreeDotLoader in a button).
     simulationRunning: "Simulation en cours…",
     // Passive wait for a human decision (PendingDots) — never a processing state.
     pendingValidation: "En attente de validation",
     notFoundTitle: "Page introuvable",
-    notFoundBody: "Le lien est peut-être obsolète, ou la page n'existe pas.",
-    unexpected: "Une erreur technique est survenue. Aucune action n'a été effectuée.",
+    notFoundBody: "Le lien est peut-être obsolète, ou la page n’existe pas.",
+    unexpected: "Une erreur technique est survenue. Aucune action n’a été effectuée.",
   },
 
   /**
@@ -151,18 +151,16 @@ export const APP_TEXTS = {
   guardRail: {
     title: "Bloquée par un garde-fou",
     reason: "Motif",
-    notAnError: "Ce n'est pas une erreur : une règle de l'agence a refusé l'action, rien n'a été fait.",
-    stopped: "Arrêt décidé par un garde-fou : ce n'est pas une erreur.",
+    notAnError: "Ce n’est pas une erreur : une règle de l’agence a refusé l’action, rien n’a été fait.",
+    stopped: "Arrêt décidé par un garde-fou : ce n’est pas une erreur.",
   },
 
   contacts: {
     title: "Contacts vendeurs",
-    subtitle: "Tous les contacts de votre agence, du plus récent au plus ancien.",
     count: (total: number) => (total > 1 ? `${total} contacts` : `${total} contact`),
-    emptyTitle: "Aucun contact pour l'instant",
-    emptyBody:
-      "Les contacts arrivent par le formulaire d'estimation du site public, par import ou par saisie manuelle.",
-    errorTitle: "Impossible d'afficher les contacts",
+    emptyTitle: "Aucun contact pour l’instant",
+    emptyBody: "Ils arrivent par le formulaire d’estimation, un import ou une saisie.",
+    errorTitle: "Impossible d’afficher les contacts",
     columnName: "Contact",
     columnStage: "Étape",
     columnSource: "Source",
@@ -176,7 +174,7 @@ export const APP_TEXTS = {
     humanTakeover: "Repris par un conseiller",
     openTasks: (total: number) => (total > 1 ? `${total} tâches ouvertes` : `${total} tâche ouverte`),
     /** Mobile list of contacts (the table becomes one card per contact under 768 px). */
-    listLabel: "Contacts de l'agence",
+    listLabel: "Contacts de l’agence",
     /** Legend of the shapes of the table (decorative: each shape also carries its words). */
     legendOpenTasks: "Tâches ouvertes",
     /** Last update under the name, when the table folds its own column away (768–1279 px). */
@@ -187,7 +185,6 @@ export const APP_TEXTS = {
     pageTitle: "Fiche contact",
     backToList: "Contacts vendeurs",
     identityTitle: "Coordonnées",
-    identitySubtitle: "Informations transmises par le vendeur.",
     email: "Email",
     phone: "Téléphone",
     source: "Source",
@@ -200,8 +197,7 @@ export const APP_TEXTS = {
     unknown: "Non renseigné",
 
     propertyTitle: "Bien",
-    propertySubtitle: "Bien principal rattaché au contact.",
-    propertyEmpty: "Aucun bien identifié pour l'instant.",
+    propertyEmpty: "Aucun bien identifié pour l’instant.",
     propertyType: "Type",
     propertyAddress: "Adresse",
     propertyCity: "Ville",
@@ -211,15 +207,14 @@ export const APP_TEXTS = {
 
     consentsTitle: "Consentements",
     consentsSubtitle: "Un consentement par canal, vérifié côté serveur avant tout envoi.",
-    consentsEmpty: "Aucun consentement enregistré : aucun envoi n'est possible.",
+    consentsEmpty: "Aucun consentement enregistré : aucun envoi n’est possible.",
     consentRecordedAt: "Enregistré le",
     consentSource: "Source",
     consentVersion: "Version du texte",
 
     timelineTitle: "Historique",
-    timelineSubtitle: "Échanges, rendez-vous, tâches et exécutions des agents IA.",
     timelineEmpty: "Aucun événement pour ce contact.",
-    timelineError: "Impossible d'afficher l'historique.",
+    timelineError: "Impossible d’afficher l’historique.",
     timelineStageChange: (from: string, to: string) => `Étape : ${from} → ${to}`,
     timelineStageReason: "Motif",
     // Human review of a message: author and time exactly as stored server-side.
@@ -232,7 +227,7 @@ export const APP_TEXTS = {
     reviewPending: "En attente de validation humaine",
 
     notFoundTitle: "Contact introuvable.",
-    notFoundBody: "Ce contact n'existe pas ou n'appartient pas à votre agence.",
+    notFoundBody: "Ce contact n’existe pas ou n’appartient pas à votre agence.",
   },
 
   /**
@@ -245,13 +240,12 @@ export const APP_TEXTS = {
    */
   pipeline: {
     title: "Pipeline",
-    subtitle: "Vue par étape, du premier contact au mandat signé.",
-    errorTitle: "Impossible d'afficher le pipeline",
+    errorTitle: "Impossible d’afficher le pipeline",
     columnCount: (total: number) => (total > 1 ? `${total} dossiers` : `${total} dossier`),
     /** Unit written after the big figure of a column (figure + unit read as `columnCount`). */
     columnUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
     columnEmpty: "Aucun dossier à cette étape.",
-    lostSubtitle: "Affichée à part : cette étape n'est plus travaillée activement.",
+    lostSubtitle: "Hors parcours actif.",
     /** Position of a column in the seller's journey (readable on a phone, one column per screen). */
     stageIndex: (position: number, total: number) => `Étape ${position} sur ${total}`,
     /** Name of the horizontally scrolling board. Must never contain a stage label. */
@@ -261,14 +255,14 @@ export const APP_TEXTS = {
 
     /** Human stage change from a pipeline card (server action `changeContactStage`). */
     stageChange: {
-      trigger: "Changer d'étape",
+      trigger: "Changer d’étape",
       /** Screen-reader suffix, so every trigger has a distinct accessible name. */
       triggerFor: (name: string) => `pour ${name}`,
       menuTitle: "Déplacer vers",
       currentStage: "Actuelle",
       pending: "Déplacement en cours…",
       success: (name: string, stage: string) => `${name} : dossier déplacé vers « ${stage} ».`,
-      errorTitle: "L'étape n'a pas été modifiée",
+      errorTitle: "L’étape n’a pas été modifiée",
       exitDirectorOnly: "Seul un directeur peut sortir un dossier de « Mandat signé ».",
       requiresConfirmation: "Confirmation demandée",
       cancel: "Annuler",
@@ -277,21 +271,21 @@ export const APP_TEXTS = {
       enterSummary: (name: string, from: string) =>
         `Le dossier de ${name} passera de « ${from} » à « Mandat signé ».`,
       enterHumanRule:
-        "Un mandat signé est toujours confirmé par un membre de l'agence, jamais par un agent IA. Votre confirmation est enregistrée dans l'historique du dossier.",
-      enterCheckbox: "Je confirme qu'un mandat a été signé avec ce vendeur",
+        "Un mandat signé est toujours confirmé par un membre de l’agence, jamais par un agent IA. Votre confirmation est enregistrée dans l’historique du dossier.",
+      enterCheckbox: "Je confirme qu’un mandat a été signé avec ce vendeur",
       enterSubmit: "Confirmer le mandat signé",
       enterBlocked: "Cochez la case de confirmation pour continuer.",
 
       exitTitle: "Sortir du mandat signé",
       exitSummary: (name: string, to: string) => `Le dossier de ${name} passera de « Mandat signé » à « ${to} ».`,
       exitRule:
-        "Décision réservée à un directeur. La signature reste dans l'historique du dossier : cette sortie y est ajoutée avec votre motif.",
+        "Décision réservée à un directeur. La signature reste dans l’historique du dossier : cette sortie y est ajoutée avec votre motif.",
       exitCheckbox: "Je confirme vouloir sortir ce dossier de « Mandat signé »",
       reasonLabel: "Motif (obligatoire)",
-      reasonHint: "Entre 3 et 500 caractères. Enregistré tel quel dans l'historique du dossier.",
+      reasonHint: "Entre 3 et 500 caractères. Enregistré tel quel dans l’historique du dossier.",
       reasonCounter: (count: number, max: number) => `${count} / ${max} caractères`,
       exitSubmit: "Sortir du mandat signé",
-      exitBlocked: "Cochez la confirmation et saisissez un motif d'au moins 3 caractères pour continuer.",
+      exitBlocked: "Cochez la confirmation et saisissez un motif d’au moins 3 caractères pour continuer.",
     },
   },
 
@@ -311,8 +305,6 @@ export const APP_TEXTS = {
    */
   tasks: {
     title: "Tâches",
-    subtitle:
-      "Le travail qui attend un membre de l'agence, souvent ouvert par un agent IA qui a refusé d'inventer une information manquante.",
     filtersLabel: "Filtrer les tâches",
     filters: {
       all: "Toutes",
@@ -322,11 +314,11 @@ export const APP_TEXTS = {
     unit: (total: number) => (total > 1 ? "tâches ouvertes" : "tâche ouverte"),
     scopes: {
       all: "toutes dates",
-      overdue: "échéance dépassée à l'instant de la lecture",
+      overdue: "échéance dépassée à l’instant de la lecture",
       mine: "qui vous sont assignées, toutes dates",
     } satisfies Record<TaskScope, string>,
     listLabel: "Tâches ouvertes",
-    errorTitle: "Impossible d'afficher les tâches",
+    errorTitle: "Impossible d’afficher les tâches",
     resetFilters: "Revenir à toutes les tâches",
     emptyTitles: {
       all: "Aucune tâche ouverte",
@@ -334,16 +326,16 @@ export const APP_TEXTS = {
       mine: "Aucune tâche ne vous est assignée",
     } satisfies Record<TaskScope, string>,
     emptyBodies: {
-      all: "Quand un agent IA ne peut pas compléter un dossier sans inventer, il ouvre une tâche : elle apparaîtra ici.",
+      all: "Un agent IA ouvre une tâche quand une information manque.",
       overdue: "Toutes les tâches ouvertes sont dans les temps.",
-      mine: "Les tâches assignées à d'autres membres restent visibles dans « Toutes ».",
+      mine: "Les tâches assignées à d’autres membres restent visibles dans « Toutes ».",
     } satisfies Record<TaskScope, string>,
     emptyAction: "Voir les contacts",
     emptyActionOtherScope: "Voir toutes les tâches",
     pastEndTitle: "Cette page est vide",
     pastEndBody: "La liste a changé depuis votre dernière lecture.",
     pastEndAction: "Revenir à la première page",
-    agencyTask: "Tâche d'agence",
+    agencyTask: "Tâche d’agence",
     contactPrefix: "Contact :",
     dueAt: (when: string) => `Échéance : ${when}`,
     noDueDate: "Sans échéance",
@@ -354,7 +346,7 @@ export const APP_TEXTS = {
     completing: "Enregistrement…",
     completed: (title: string) => `Tâche « ${title} » marquée comme faite.`,
     alreadyDoneTitle: "Rien à faire",
-    completeErrorTitle: "La tâche n'a pas été modifiée",
+    completeErrorTitle: "La tâche n’a pas été modifiée",
   },
 
   /**
@@ -364,8 +356,10 @@ export const APP_TEXTS = {
    * appointment of the prototype is simulated: no calendar is connected.
    */
   appointments: {
-    title: "Rendez-vous d'estimation",
-    subtitle: "Les rendez-vous d'estimation de l'agence, dans l'heure de Paris. Aucun agenda réel n'est connecté.",
+    title: "Rendez-vous d’estimation",
+    subtitle: "Heure de Paris. Aucun agenda réel n’est connecté.",
+    /** Header action: confirming and closing happen in the follow-through screen. */
+    primaryAction: "Ouvrir le suivi",
     viewsLabel: "Période des rendez-vous",
     views: {
       upcoming: "À venir",
@@ -381,15 +375,15 @@ export const APP_TEXTS = {
       upcoming: "Rendez-vous à venir",
       past: "Rendez-vous passés",
     } satisfies Record<AppointmentView, string>,
-    errorTitle: "Impossible d'afficher les rendez-vous",
+    errorTitle: "Impossible d’afficher les rendez-vous",
     resetFilters: "Revenir aux rendez-vous à venir",
     emptyTitles: {
       upcoming: "Aucun rendez-vous à venir",
       past: "Aucun rendez-vous passé",
     } satisfies Record<AppointmentView, string>,
     emptyBodies: {
-      upcoming: "Louis propose un créneau depuis la fiche d'un contact qualifié ; un conseiller le confirme ensuite.",
-      past: "Les rendez-vous dont l'heure est passée apparaîtront ici, quel que soit leur statut.",
+      upcoming: "Louis propose un créneau depuis la fiche d’un contact qualifié ; un conseiller le confirme ensuite.",
+      past: "Les rendez-vous dont l’heure est passée apparaîtront ici, quel que soit leur statut.",
     } satisfies Record<AppointmentView, string>,
     emptyAction: "Voir les contacts",
     pastEndTitle: "Cette page est vide",
@@ -406,15 +400,15 @@ export const APP_TEXTS = {
   agents: {
     panelTitle: "Agents IA",
     panelSubtitle:
-      "Les agents travaillent sur simulateur : aucune action externe n'est réellement exécutée.",
+      "Les agents travaillent sur simulateur : aucune action externe n’est réellement exécutée.",
     runHugo: "Lancer Hugo",
-    runHugoHint: "Qualification : type de bien, secteur, motivation et délai du projet.",
+    runHugoHint: "Qualifie : bien, secteur, motivation, délai.",
     runLouis: "Lancer Louis",
-    runLouisHint: "Rendez-vous : propose un créneau d'estimation et rédige le message.",
+    runLouisHint: "Propose un créneau d’estimation.",
     runEmma: "Lancer Emma",
     runEmmaHint: "Relance : prépare un message adapté au dossier, envoyé vers la validation humaine.",
     running: "Simulation en cours…",
-    errorTitle: "Erreur technique : l'agent n'a pas pu s'exécuter",
+    errorTitle: "Erreur technique : l’agent n’a pas pu s’exécuter",
     hugoSuccessTitle: "Hugo a terminé la qualification",
     louisSuccessTitle: "Louis a préparé une proposition de rendez-vous",
     emmaSuccessTitle: "Emma a préparé une relance",
@@ -424,8 +418,8 @@ export const APP_TEXTS = {
     taskCreated: "Tâche créée pour un conseiller",
     proposedSlot: "Créneau proposé",
     draftMessage: "Message proposé",
-    pendingValidation: "Ce message reste à valider par un membre de l'agence avant tout envoi.",
-    refreshHint: "L'historique ci-dessous a été mis à jour.",
+    pendingValidation: "Ce message reste à valider par un membre de l’agence avant tout envoi.",
+    refreshHint: "L’historique ci-dessous a été mis à jour.",
   },
 
   /**
@@ -436,15 +430,15 @@ export const APP_TEXTS = {
    * invents a rhythm, and says so when it slows the replay down.
    */
   replay: {
-    title: "L'agent au travail",
+    title: "L’agent au travail",
     subtitle:
-      "Étapes réellement enregistrées pendant l'exécution, rejouées avec les durées mesurées par le serveur.",
-    empty: "Aucune étape n'a été enregistrée pour cette exécution.",
+      "Étapes réellement enregistrées pendant l’exécution, rejouées avec les durées mesurées par le serveur.",
+    empty: "Aucune étape n’a été enregistrée pour cette exécution.",
     authorCode: "Code",
     authorAi: "Fournisseur IA",
     authorLegend:
-      "Une seule étape sort du code de l'agence : l'appel au fournisseur IA. La décision est prise par le code — chez Louis, elle précède même l'appel.",
-    decisionMarker: "Choix arrêté par le code de l'agence, jamais par le modèle.",
+      "Une seule étape sort du code de l’agence : l’appel au fournisseur IA. La décision est prise par le code — chez Louis, elle précède même l’appel.",
+    decisionMarker: "Choix arrêté par le code de l’agence, jamais par le modèle.",
     totalMeasured: "Durée totale mesurée",
     speedFactor: (factor: number) => `Rejeu ralenti ×${factor}`,
     speedFactorHint:
@@ -469,7 +463,7 @@ export const APP_TEXTS = {
     inProgressState: "En cours",
     recordedSoFar: "Étapes enregistrées à ce stade",
     inProgressNote:
-      "Exécution encore en cours : seules les étapes déjà enregistrées sont affichées, aucune étape suivante n'est supposée.",
+      "Exécution encore en cours : seules les étapes déjà enregistrées sont affichées, aucune étape suivante n’est supposée.",
   },
 
   /**
@@ -483,25 +477,21 @@ export const APP_TEXTS = {
     unavailableTitle: "Processus indisponible",
     stepsCount: (count: number) =>
       count > 1 ? `${count} étapes enregistrées` : `${count} étape enregistrée`,
-    stoppedAt: (phase: string) => `Arrêt à l'étape « ${phase} »`,
+    stoppedAt: (phase: string) => `Arrêt à l’étape « ${phase} »`,
     completed: "Toutes les étapes enregistrées sont terminées.",
     stepSr: (position: number, total: number, phase: string, status: string) =>
       `Étape ${position} sur ${total} : ${phase} — ${status}`,
-    listLabel: "Étapes de l'exécution",
+    listLabel: "Étapes de l’exécution",
   },
 
   /** Screen « Agents IA » — the five agents, their real activity, the kill switch. */
   agentsIa: {
     title: "Agents IA",
-    subtitle:
-      "Léa, Hugo, Emma, Louis et Sarah : mission, activité réellement enregistrée, erreurs et coupe-circuit.",
     simulatorNote:
       "Les cinq agents tournent sur simulateur : aucun appel payant, aucune communication réelle.",
-    overviewErrorTitle: "Impossible d'afficher l'activité des agents",
-    agentsSectionTitle: "Les cinq agents, dans l'ordre du cycle de vente",
-    agentsSectionSubtitle:
-      "Chaque agent a un périmètre borné : ce qu'il fait, et ce qu'il ne décide pas.",
-    agencyTitle: "Activité de l'agence",
+    overviewErrorTitle: "Impossible d’afficher l’activité des agents",
+    agentsSectionTitle: "Les cinq agents",
+    agencyTitle: "Activité de l’agence",
     agencySubtitle: "Chiffres comptés exactement dans le journal des exécutions, jamais estimés.",
     runsAgainstLimit: "Exécutions décomptées",
     runsAgainstLimitHint: "Les tentatives refusées ne consomment aucun quota.",
@@ -525,17 +515,16 @@ export const APP_TEXTS = {
     noError: "Aucune erreur ni blocage enregistré pour cet agent.",
     viewReplay: "Voir le rejeu",
     inboundLead: "Lead entrant",
-    inboundLeadHint: "Léa travaille avant toute fiche : cette exécution n'est rattachée à aucun contact.",
+    inboundLeadHint: "Léa travaille avant toute fiche : cette exécution n’est rattachée à aucun contact.",
     openContact: "Voir la fiche",
     // Page structure: decision first, then the runs concerned, then details.
     decisionTitle: "À décider",
     pendingCta: "Ouvrir la file à valider",
-    pendingNone: "Aucun brouillon n'attend de validation.",
+    pendingNone: "Aucun brouillon n’attend de validation.",
     figuresHelp: "Comment ces chiffres sont comptés",
-    issuesSubtitle: "Les plus récents de chaque agent, du plus récent au plus ancien.",
     issuesHelp: "Erreur technique ou garde-fou ?",
     issuesHelpBody:
-      "Une erreur technique est une défaillance à examiner. Un blocage par un garde-fou est une règle de l'agence qui a refusé l'action : rien n'a été fait, ce n'est pas une erreur.",
+      "Une erreur technique est une défaillance à examiner. Un blocage par un garde-fou est une règle de l’agence qui a refusé l’action : rien n’a été fait, ce n’est pas une erreur.",
     issuesEmpty: "Aucune erreur ni blocage récent pour les cinq agents.",
     agentIssues: (count: number) =>
       count > 1 ? `${count} erreurs ou blocages récents` : `${count} erreur ou blocage récent`,
@@ -549,9 +538,9 @@ export const APP_TEXTS = {
     running: "Agents IA actifs",
     paused: "Coupe-circuit actif",
     descriptionRunning:
-      "Les agents IA de l'agence peuvent s'exécuter. Un clic les suspend tous immédiatement.",
+      "Les agents IA de l’agence peuvent s’exécuter. Un clic les suspend tous immédiatement.",
     descriptionPaused:
-      "Les agents IA de l'agence sont suspendus : aucune exécution n'est possible, chaque tentative est refusée et journalisée.",
+      "Les agents IA de l’agence sont suspendus : aucune exécution n’est possible, chaque tentative est refusée et journalisée.",
     pause: "Suspendre tous les agents IA",
     resume: "Réactiver les agents IA",
     confirmPauseTitle: "Suspendre les cinq agents IA ?",
@@ -559,24 +548,23 @@ export const APP_TEXTS = {
       "Plus aucune exécution ne sera possible tant que le coupe-circuit reste actif. Les tentatives en cours de préparation seront refusées et journalisées.",
     confirmResumeTitle: "Réactiver les cinq agents IA ?",
     confirmResumeBody:
-      "Les agents pourront de nouveau s'exécuter, toujours sur simulateur et toujours dans la limite quotidienne de l'agence.",
+      "Les agents pourront de nouveau s’exécuter, toujours sur simulateur et toujours dans la limite quotidienne de l’agence.",
     confirm: "Confirmer",
     cancel: "Annuler",
     pending: "Application en cours…",
     pausedSuccess: "Les agents IA sont suspendus.",
     resumedSuccess: "Les agents IA sont réactivés.",
-    errorTitle: "Le coupe-circuit n'a pas pu être modifié",
+    errorTitle: "Le coupe-circuit n’a pas pu être modifié",
   },
 
   /** Execution journal of the agency: filters, table, pagination. */
   runHistory: {
     title: "Historique des exécutions",
-    subtitle: "Toutes les exécutions de l'agence, de la plus récente à la plus ancienne.",
-    errorTitle: "Impossible d'afficher l'historique",
+    errorTitle: "Impossible d’afficher l’historique",
     emptyTitle: "Aucune exécution ne correspond",
     emptyBody: "Modifiez les filtres, ou lancez un agent depuis une fiche contact.",
-    caption: "Exécutions des agents IA de l'agence",
-    filtersLabel: "Filtrer l'historique",
+    caption: "Exécutions des agents IA de l’agence",
+    filtersLabel: "Filtrer l’historique",
     filterAgent: "Agent",
     filterStatus: "Résultat",
     filterAll: "Tous",
@@ -607,17 +595,16 @@ export const APP_TEXTS = {
    */
   validationQueue: {
     title: "Messages à valider",
-    subtitle:
-      "Aucun message préparé par un agent IA ne part sans la décision d'un membre de l'agence.",
     ruleTitle: "Premier contact : toujours validé par un humain",
     ruleBody:
-      "Un agent IA prépare, un humain décide. Aucun fournisseur d'envoi n'est branché sur ce prototype : un envoi validé ici reste une simulation.",
+      "Un agent IA prépare, un humain décide. Aucun fournisseur d’envoi n’est branché sur ce prototype : un envoi validé ici reste une simulation.",
+    /** Guard rail, one short line under the rule block. */
+    ruleHumanDecision: "Aucun message préparé par un agent IA ne part sans la décision d’un membre de l’agence.",
     count: (total: number) =>
       total > 1 ? `${total} messages en attente` : `${total} message en attente`,
-    errorTitle: "Impossible d'afficher la file de validation",
+    errorTitle: "Impossible d’afficher la file de validation",
     emptyTitle: "Aucun message en attente",
-    emptyBody:
-      "Les brouillons préparés par Emma ou Louis apparaissent ici, avec leur contact, leur canal et l'état du consentement.",
+    emptyBody: "Les brouillons d’Emma et de Louis arrivent ici, avec leur canal et leur consentement.",
     emptyAction: "Voir les contacts",
 
     firstContact: "Premier contact",
@@ -628,11 +615,11 @@ export const APP_TEXTS = {
     consent: "Consentement du canal",
     consentNone: "Aucun consentement enregistré",
     consentBlocked:
-      "Sans consentement valide sur ce canal, le serveur refuse l'envoi : le message ne peut pas partir.",
+      "Sans consentement valide sur ce canal, le serveur refuse l’envoi : le message ne peut pas partir.",
     subject: "Objet",
     body: "Message proposé",
     untrusted: "Texte affiché tel quel, jamais interprété comme une consigne.",
-    approvedNotSent: "Validé : le message attend un envoi explicite. Rien n'est parti.",
+    approvedNotSent: "Validé : le message attend un envoi explicite. Rien n’est parti.",
 
     validate: "Valider",
     refuse: "Refuser",
@@ -643,24 +630,24 @@ export const APP_TEXTS = {
     sending: "Simulation en cours…",
     sendBlocked: "Envoi impossible : consentement du canal manquant ou retiré.",
 
-    successValidated: "Message validé. Rien n'a été envoyé.",
+    successValidated: "Message validé. Rien n’a été envoyé.",
     successRejected: (reason: string) => `Message refusé (${reason}) : il ne partira pas.`,
-    successSent: "Envoi simulé effectué : aucune communication réelle n'a quitté le produit.",
-    actionErrorTitle: "L'action n'a pas abouti",
+    successSent: "Envoi simulé effectué : aucune communication réelle n’a quitté le produit.",
+    actionErrorTitle: "L’action n’a pas abouti",
 
     rejectTitle: "Pourquoi refuser ce message ?",
     rejectHint:
-      "Le motif est obligatoire : c'est lui qui permettra de corriger les agents IA plus tard.",
+      "Le motif est obligatoire : c’est lui qui permettra de corriger les agents IA plus tard.",
     rejectReasonLegend: "Motif du refus",
     rejectNote: "Note (facultative)",
     rejectNoteHint: (max: number) =>
-      `${max} caractères maximum. Écrite par un membre de l'agence, jamais par un agent IA.`,
+      `${max} caractères maximum. Écrite par un membre de l’agence, jamais par un agent IA.`,
     rejectConfirm: "Confirmer le refus",
     cancel: "Annuler",
 
     editTitle: "Corriger le message avant validation",
     editHint:
-      "Seuls l'objet et le texte peuvent être corrigés : ni le canal, ni le destinataire. Un message corrigé repasse « à valider ».",
+      "Seuls l’objet et le texte peuvent être corrigés : ni le canal, ni le destinataire. Un message corrigé repasse « à valider ».",
     editSubject: "Objet",
     editBody: "Message",
     editBodyHint: (max: number) => `${max} caractères maximum.`,
@@ -671,7 +658,7 @@ export const APP_TEXTS = {
 
     // Dual view (queue + letter), docs/design-system.md §3.1.1.
     queueLabel: "File des messages à valider",
-    queueHeading: "File d'attente",
+    queueHeading: "File d’attente",
     to: "À",
     railLabel: "Parcours du message",
     railYou: "Vous",
@@ -694,13 +681,12 @@ export const APP_TEXTS = {
    */
   leadsInbox: {
     title: "Leads entrants",
-    subtitle:
-      "Les demandes reçues, avant toute fiche contact. Léa vérifie la source, dédoublonne et crée la fiche.",
-    ruleTitle: "Un lead n'est pas un consentement",
+    subtitle: "Léa vérifie la source, dédoublonne, crée la fiche.",
+    ruleTitle: "Un lead n’est pas un consentement",
     ruleBody:
-      "Recevoir une demande n'autorise aucun envoi : tant qu'un consentement prouvable n'a pas été recueilli et enregistré, aucun email, SMS ni appel n'est possible. Léa ouvre une tâche pour le recueillir.",
+      "Recevoir une demande n’autorise aucun envoi : tant qu’un consentement prouvable n’a pas été recueilli et enregistré, aucun email, SMS ni appel n’est possible. Léa ouvre une tâche pour le recueillir.",
     count: (total: number) => (total > 1 ? `${total} leads` : `${total} lead`),
-    errorTitle: "Impossible d'afficher les leads entrants",
+    errorTitle: "Impossible d’afficher les leads entrants",
     emptyTitle: "Aucun lead entrant",
     emptyBody:
       "Les demandes du site public et des logiciels immobiliers arrivent ici, avant toute création de fiche.",
@@ -708,7 +694,7 @@ export const APP_TEXTS = {
     source: "Source",
     receivedAt: "Reçu le",
     fields: "Éléments transmis",
-    noFields: "Aucun élément d'identité exploitable",
+    noFields: "Aucun élément d’identité exploitable",
     rawText: "Message du prospect",
     rawTextNone: "Aucun message joint à ce lead.",
     untrusted: "Texte du prospect : traité comme donnée, jamais comme instruction.",
@@ -722,7 +708,7 @@ export const APP_TEXTS = {
     running: "Simulation en cours…",
     alreadyProcessed: "Ce lead a déjà été traité : aucune seconde fiche ne sera créée.",
     successTitle: "Léa a terminé",
-    errorActionTitle: "Erreur technique : Léa n'a pas pu traiter ce lead",
+    errorActionTitle: "Erreur technique : Léa n’a pas pu traiter ce lead",
     viewReplay: "Voir le rejeu",
     duplicateMatched: (fields: string) => `Doublon détecté sur : ${fields}`,
     missingFields: "Éléments manquants signalés",
@@ -737,14 +723,13 @@ export const APP_TEXTS = {
    */
   followThrough: {
     title: "Suivi des rendez-vous",
-    subtitle:
-      "Confirmez le créneau, consignez le rendez-vous réalisé, puis confiez son suivi à Sarah.",
+    subtitle: "Confirmer, consigner, puis confier à Sarah.",
     ruleTitle: "Le compte-rendu est écrit par un humain",
     ruleBody:
-      "Un conseiller confirme le rendez-vous et rédige son compte-rendu. Sarah peut ensuite l'exploiter, sans jamais inventer d'information ni déclarer un mandat signé.",
+      "Un conseiller confirme le rendez-vous et rédige son compte-rendu. Sarah peut ensuite l’exploiter, sans jamais inventer d’information ni déclarer un mandat signé.",
     count: (total: number) =>
       total > 1 ? `${total} rendez-vous à suivre` : `${total} rendez-vous à suivre`,
-    errorTitle: "Impossible d'afficher les rendez-vous à suivre",
+    errorTitle: "Impossible d’afficher les rendez-vous à suivre",
     emptyTitle: "Aucun rendez-vous à suivre",
     emptyBody:
       "Les propositions de Louis et les rendez-vous confirmés ou réalisés apparaissent ici.",
@@ -764,12 +749,12 @@ export const APP_TEXTS = {
     complete: "Enregistrer le compte-rendu",
     completing: "Enregistrement…",
     completeSuccess: "Rendez-vous réalisé et compte-rendu enregistré. Sarah peut maintenant intervenir.",
-    workflowErrorTitle: "Le rendez-vous n'a pas pu être mis à jour",
+    workflowErrorTitle: "Le rendez-vous n’a pas pu être mis à jour",
     run: "Lancer Sarah",
     runHint: "Exploite le compte-rendu et ouvre les actions de suivi. Ne déclare jamais un mandat signé.",
     running: "Simulation en cours…",
     successTitle: "Sarah a terminé le suivi",
-    errorActionTitle: "Erreur technique : Sarah n'a pas pu suivre ce rendez-vous",
+    errorActionTitle: "Erreur technique : Sarah n’a pas pu suivre ce rendez-vous",
     blockedNoReport: "Compte-rendu manquant : le suivi ne peut pas être lancé.",
     reportUntrusted:
       "Texte du conseiller affiché tel quel : Sarah le traite comme une donnée, jamais comme une instruction.",
@@ -786,20 +771,20 @@ export const APP_TEXTS = {
     no: "Non",
     unknown: "Non renseigné",
     taskCount: (total: number) =>
-      total > 1 ? `${total} tâches ouvertes pour l'équipe` : `${total} tâche ouverte pour l'équipe`,
-    stageChanged: "Le contact passe à l'étape suivante.",
-    stageUnchanged: "L'étape du contact reste inchangée.",
+      total > 1 ? `${total} tâches ouvertes pour l’équipe` : `${total} tâche ouverte pour l’équipe`,
+    stageChanged: "Le contact passe à l’étape suivante.",
+    stageUnchanged: "L’étape du contact reste inchangée.",
     viewReplay: "Voir le rejeu",
     openContact: "Voir la fiche",
   },
 
   /** One past execution, replayed from the journal. */
   runDetail: {
-    pageTitle: "Exécution d'agent",
+    pageTitle: "Exécution d’agent",
     back: "Agents IA",
-    errorTitle: "Impossible d'afficher cette exécution",
+    errorTitle: "Impossible d’afficher cette exécution",
     headTitle: (agent: string) => `Exécution de ${agent}`,
-    headCardTitle: "Détails de l'exécution",
+    headCardTitle: "Détails de l’exécution",
     startedAt: "Démarrée le",
     finishedAt: "Terminée le",
     stillRunning: "Exécution encore en cours",
@@ -807,14 +792,14 @@ export const APP_TEXTS = {
     model: "Modèle",
     tokens: "Jetons (entrée / sortie)",
     decision: "Décision journalisée",
-    errorCode: "Code d'erreur technique",
+    errorCode: "Code d’erreur technique",
     blockedCode: "Garde-fou appliqué",
     outcome: "Résultat",
     contact: "Contact",
     unknown: "Non renseigné",
     outcomeTitle: "Résultat",
     measuredDuration: "Durée mesurée",
-    runId: "Identifiant de l'exécution",
+    runId: "Identifiant de l’exécution",
     technicalHint: "Dates, fournisseur, modèle, jetons et codes journalisés.",
   },
 
@@ -828,22 +813,21 @@ export const APP_TEXTS = {
    */
   dossierJourney: {
     title: "Parcours du dossier",
-    subtitle:
-      "Étapes réellement enregistrées pour ce dossier. Une étape sans trace reste en attente : rien n'est supposé.",
+    subtitle: "Étapes enregistrées. Sans trace, une étape reste en attente.",
     listLabel: (contact: string) => `Parcours du dossier de ${contact}`,
     selectedTitle: "Dernier dossier traité",
     selectedSubtitle: (agent: string, contact: string) =>
       `Dernière exécution enregistrée rattachée à un contact : ${agent}, pour ${contact}.`,
-    emptyTitle: "Aucun dossier traité pour l'instant",
+    emptyTitle: "Aucun dossier traité pour l’instant",
     emptyBody:
-      "Le parcours apparaîtra ici dès qu'un agent aura travaillé sur un dossier. Lancez Hugo, Emma ou Louis depuis une fiche contact.",
+      "Le parcours apparaîtra ici dès qu’un agent aura travaillé sur un dossier. Lancez Hugo, Emma ou Louis depuis une fiche contact.",
     emptyCta: "Ouvrir les contacts",
     unavailableTitle: "Parcours indisponible",
-    loading: "Lecture de l'historique du dossier…",
+    loading: "Lecture de l’historique du dossier…",
     inboundLead:
-      "Léa traite un lead entrant avant toute fiche contact : cette exécution n'appartient encore à aucun dossier.",
+      "Léa traite un lead entrant avant toute fiche contact : cette exécution n’appartient encore à aucun dossier.",
     openContact: "Voir la fiche",
-    durationHint: "Seule l'exécution rejouée ici porte une durée : celle mesurée par le serveur.",
+    durationHint: "Seule l’exécution rejouée ici porte une durée : celle mesurée par le serveur.",
     stages: {
       prospect: { name: "Prospect", action: "Dossier ouvert" },
       lea: { name: "Léa", action: "Source vérifiée, fiche créée" },
@@ -851,9 +835,9 @@ export const APP_TEXTS = {
       hugo: { name: "Hugo", action: "Qualification" },
       emma: { name: "Emma", action: "Relance préparée" },
       follow_up_review: { name: "Validation humaine", action: "Relance" },
-      louis: { name: "Louis", action: "Créneau d'estimation" },
+      louis: { name: "Louis", action: "Créneau d’estimation" },
       appointment: { name: "Rendez-vous", action: "Estimation" },
-      sarah: { name: "Sarah", action: "Suivi jusqu'au mandat" },
+      sarah: { name: "Sarah", action: "Suivi jusqu’au mandat" },
       mandate: { name: "Mandat", action: "Confirmé par un humain" },
     },
     status: {
@@ -861,8 +845,8 @@ export const APP_TEXTS = {
       untraced: "Aucune trace pour ce dossier",
       prospectDone: "Fiche créée",
       leaDone: "Trace enregistrée",
-      reviewApproved: "Validé par l'agence",
-      reviewRejected: "Refusé par l'agence",
+      reviewApproved: "Validé par l’agence",
+      reviewRejected: "Refusé par l’agence",
       reviewPending: "Validation humaine nécessaire",
       appointmentProposed: "Proposé, à confirmer",
       mandateDone: "Confirmé par un humain",
@@ -874,7 +858,8 @@ export const APP_TEXTS = {
     title: "Situation immédiate",
     listLabel: "Situation immédiate des agents IA",
     activeAgents: "Agents actifs",
-    activeAgentsValue: (active: number, total: number) => `${active} sur ${total}`,
+    /** Written after the figure of active agents, in the body font (« 5 sur 5 »). */
+    activeAgentsOf: (total: number) => `sur ${total}`,
     pendingValidation: "Validations attendues",
     blocked: "Blocages par un garde-fou",
     failed: "Erreurs techniques",
@@ -891,35 +876,35 @@ export const APP_TEXTS = {
    */
   dashboard: {
     title: "Tableau de bord",
-    subtitle: "Ce qui attend votre équipe, calculé uniquement à partir des données réellement enregistrées.",
+    /** The one header action: the human decision the product is built around. */
+    primaryAction: "Valider les messages",
     generatedAt: (when: string) => `Chiffres lus le ${when} (heure de Paris)`,
-    errorTitle: "Impossible d'afficher le tableau de bord",
+    errorTitle: "Impossible d’afficher le tableau de bord",
 
     /** Scope of a figure, always displayed next to it. */
     scopes: {
       pending_all_time: "en attente, toutes dates",
       open_all_time: "ouvertes, toutes dates",
       current: "état actuel",
-      today: "aujourd'hui",
+      today: "aujourd’hui",
       last_7_days: "sur 7 jours",
       upcoming: "à venir",
     } satisfies Record<DashboardScopeKey, string>,
     scopePrefix: "Périmètre :",
     unavailable: "Indisponible",
-    unavailableHint: "Ce chiffre n'a pas pu être calculé. Les autres restent exacts ; rechargez la page pour réessayer.",
+    unavailableHint: "Ce chiffre n’a pas pu être calculé. Les autres restent exacts ; rechargez la page pour réessayer.",
     sample: (shown: number, total: number) => `Les ${shown} premiers sur ${total}`,
     sampleFeminine: (shown: number, total: number) => `Les ${shown} premières sur ${total}`,
     viewAll: "Tout voir",
     openContact: "Ouvrir la fiche",
 
     todoTitle: "À faire maintenant",
-    todoSubtitle: "Les dossiers qui attendent une décision humaine, du plus ancien au plus récent.",
 
     messagesTitle: "Messages à valider",
     messagesUnit: (total: number) => (total > 1 ? "messages pas encore envoyés" : "message pas encore envoyé"),
     // One line on desktop, and still honest: the figure counts BOTH states.
-    messagesHint: "À valider, ou validés en attente d'envoi.",
-    messagesEmpty: "Aucun message n'attend de décision.",
+    messagesHint: "À valider, ou validés en attente d’envoi.",
+    messagesEmpty: "Aucun message n’attend de décision.",
     messagesLink: "Ouvrir la file de validation",
     preparedBy: (agent: string) => `Préparé par ${agent}`,
     writtenByHuman: "Rédigé par un conseiller",
@@ -944,22 +929,20 @@ export const APP_TEXTS = {
 
     tasksTitle: "Tâches ouvertes",
     tasksUnit: (total: number) => (total > 1 ? "tâches ouvertes" : "tâche ouverte"),
-    tasksHint: "Même liste que l'écran « Tâches ».",
     tasksEmpty: "Aucune tâche ouverte.",
     tasksLink: "Ouvrir les tâches",
-    agencyTask: "Tâche d'agence, sans contact",
+    agencyTask: "Tâche d’agence, sans contact",
     dueAt: (when: string) => `Échéance : ${when}`,
     noDueDate: "Sans échéance",
     openedBy: (agent: string) => `Ouverte par ${agent}`,
 
     pipelineUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
     pipelineLink: "Ouvrir le pipeline",
-    pipelineLostNote: "Étape qui n'est plus travaillée activement.",
+    pipelineLostNote: "Hors parcours actif.",
 
     /** Pipeline frieze: the demonstration of the screen (docs/design-system.md §3.5). */
-    friezeTitle: "Où en sont les dossiers",
-    friezeSubtitle: "Chaque dossier à son étape, et les décisions humaines en chemin",
-    friezeListLabel: "Étapes du pipeline, dans l'ordre du parcours vendeur",
+    friezeTitle: "Dossiers en cours",
+    friezeListLabel: "Étapes du pipeline, dans l’ordre du parcours vendeur",
     friezeLegendDot: "1 point = 1 dossier",
     friezeLegendHuman: "Décision humaine attendue",
     friezeCapped: (drawn: number) => `${drawn} points affichés`,
@@ -982,23 +965,29 @@ export const APP_TEXTS = {
     },
 
     agentsTitle: "Agents IA",
-    agentsSubtitle: "Coupe-circuit et exécutions réellement enregistrées, sur simulateur.",
     agentsLink: "Gérer les agents IA et le coupe-circuit",
     killSwitchLabel: "Coupe-circuit",
     killSwitchOn: "Actif : tous les agents IA sont suspendus",
-    killSwitchOff: "Inactif : les agents IA peuvent s'exécuter",
+    killSwitchOff: "Inactif : les agents IA peuvent s’exécuter",
     runsTotal: "Exécutions",
     runsFailed: "Erreurs techniques",
     runsBlocked: "Bloquées par un garde-fou",
-    runsBlockedHint:
-      "Un blocage n'est pas une erreur : un garde-fou (coupe-circuit, limite quotidienne, reprise par un conseiller, consentement absent, mandat déjà signé…) a refusé l'exécution.",
+    runsBlockedHint: "Un blocage n’est pas une erreur : un garde-fou a refusé l’exécution.",
+    /** Folded list under the hint (native disclosure): which guard rails can block a run. */
+    runsBlockedGuardsLabel: "Garde-fous qui peuvent bloquer une exécution",
+    runsBlockedGuards: [
+      "Coupe-circuit",
+      "Limite quotidienne",
+      "Reprise par un conseiller",
+      "Consentement absent",
+      "Mandat déjà signé",
+    ],
     runsWindowTitle: (scope: string) => `Exécutions ${scope}`,
 
     upcomingTitle: "Prochains rendez-vous",
-    upcomingSubtitle: "Rendez-vous d'estimation proposés ou confirmés, du plus proche au plus lointain.",
     // "rendez-vous" is invariable: same unit in the singular and the plural.
     upcomingUnit: () => "rendez-vous à venir",
-    upcomingEmpty: "Aucun rendez-vous d'estimation à venir.",
+    upcomingEmpty: "Aucun rendez-vous d’estimation à venir.",
     upcomingLink: "Ouvrir les rendez-vous",
     appointmentStatusPrefix: "Statut du rendez-vous :",
   },
@@ -1010,23 +999,20 @@ export const APP_TEXTS = {
    */
   settings: {
     title: "Paramètres",
-    subtitle: "Profil de l'agence, équipe, agents IA, intégrations et conservation des données.",
     readOnlyBadge: "Lecture seule",
     readOnlyTitle: "Cette page est en lecture seule",
-    readOnlyBody: `Ces réglages sont définis avec ${BRAND.name} lors de la mise en place de votre agence : pour en modifier un, adressez-vous à l'équipe ${BRAND.name}. Seul le coupe-circuit des agents IA s'utilise directement ici.`,
-    errorTitle: "Impossible d'afficher les paramètres",
+    readOnlyBody: `Réglages définis avec l’équipe ${BRAND.name}. Seul le coupe-circuit des agents IA s’utilise ici.`,
+    errorTitle: "Impossible d’afficher les paramètres",
     unavailable: "Indisponible",
-    unavailableHint: "Cette section n'a pas pu être lue. Les autres sections restent à jour.",
+    unavailableHint: "Cette section n’a pas pu être lue. Les autres sections restent à jour.",
     notProvided: "Non renseigné",
 
     agencyTitle: "Agence",
-    agencySubtitle: "L'agence telle qu'elle est enregistrée.",
     agencyName: "Nom",
     agencyCity: "Ville",
     agencySector: "Secteur",
 
     teamTitle: "Équipe",
-    teamSubtitle: "Les membres qui ont accès à l'espace de l'agence.",
     teamCount: (total: number) => (total > 1 ? `${total} membres` : `${total} membre`),
     teamEmpty: "Aucun membre à afficher.",
     you: "(vous)",
@@ -1035,17 +1021,15 @@ export const APP_TEXTS = {
     memberSince: (date: string) => `Membre depuis le ${date}`,
 
     agentsTitle: "Agents IA",
-    agentsSubtitle: "Le coupe-circuit s'utilise ici, selon votre rôle. La limite quotidienne se consulte.",
     dailyLimitTitle: "Limite quotidienne",
-    dailyLimitSubtitle: "Exécutions maximales des agents IA par journée, heure de Paris.",
+    dailyLimitSubtitle: "Par journée, heure de Paris.",
     dailyLimitUnit: (limit: number) => (limit > 1 ? "exécutions par jour" : "exécution par jour"),
-    dailyLimitHint:
-      "Une fois la limite atteinte, les exécutions suivantes sont refusées par un garde-fou et journalisées, jusqu'au lendemain.",
+    dailyLimitHint: "Au-delà, chaque exécution est refusée et journalisée jusqu’au lendemain.",
     agentsLink: "Ouvrir les agents IA",
 
     integrationsTitle: "Intégrations",
     integrationsSubtitle:
-      "Aucune intégration n'est connectée. Dans ce prototype, tout échange avec l'extérieur est simulé.",
+      "Aucune intégration n’est connectée. Dans ce prototype, tout échange avec l’extérieur est simulé.",
     integrationCategories: {
       real_estate_software: "Logiciels immobiliers",
       messaging: "Messagerie",
@@ -1053,13 +1037,12 @@ export const APP_TEXTS = {
     } satisfies Record<SettingsIntegrationCategory, string>,
     notConnected: "Non connectée",
     integrationSimulates: {
-      outbound_messages: "Messages préparés et « envoyés » en simulation : rien ne part vers l'extérieur.",
-      appointments: "Rendez-vous réservés en simulation : aucun agenda n'est modifié.",
+      outbound_messages: "Messages préparés et « envoyés » en simulation : rien ne part vers l’extérieur.",
+      appointments: "Rendez-vous réservés en simulation : aucun agenda n’est modifié.",
       none: "Aucun échange, même simulé : ni import ni export.",
     },
 
     retentionTitle: "Conservation des données",
-    retentionSubtitle: "Durée pendant laquelle les données des contacts sont conservées.",
     retentionLabel: "Durée de conservation",
     retentionUndefined: "Non définie — à valider avant mise en production",
   },
@@ -1094,12 +1077,12 @@ export const APP_TEXTS = {
     count: (total: number) => (total > 1 ? `${total} dossiers éligibles` : `${total} dossier éligible`),
     ruleTitle: "Un brouillon, jamais un envoi",
     ruleBody:
-      "Emma ne choisit ni le destinataire ni le canal et n'envoie rien. Chaque proposition rejoint la file de validation humaine.",
+      "Emma ne choisit ni le destinataire ni le canal et n’envoie rien. Chaque proposition rejoint la file de validation humaine.",
     emptyTitle: "Aucun dossier à relancer",
     emptyBody:
       "Les dossiers signés, perdus ou repris par un conseiller sont exclus automatiquement.",
     emptyAction: "Voir les contacts",
-    errorTitle: "Impossible d'afficher les dossiers à relancer",
+    errorTitle: "Impossible d’afficher les dossiers à relancer",
     cardStage: "Étape actuelle",
     cardContact: "Coordonnées disponibles",
     emailAvailable: "Email renseigné",
@@ -1114,12 +1097,12 @@ export const APP_TEXTS = {
     runHint:
       "Le serveur revérifie le consentement, les doublons et le coupe-circuit avant de lancer Emma.",
     successTitle: "Emma a préparé une relance",
-    errorActionTitle: "Erreur technique : Emma n'a préparé aucun brouillon",
+    errorActionTitle: "Erreur technique : Emma n’a préparé aucun brouillon",
     draftSubject: "Objet",
     draftBody: "Message proposé",
     channel: "Canal vérifié",
     confidence: "Confiance du modèle",
-    nothingSent: "Rien n'a été envoyé. Ce brouillon attend une décision humaine.",
+    nothingSent: "Rien n’a été envoyé. Ce brouillon attend une décision humaine.",
     openContact: "Ouvrir la fiche",
     openQueue: "Valider le message",
     viewReplay: "Voir le rejeu",
@@ -1142,8 +1125,8 @@ export const APP_TEXTS = {
     groupReady: "Prêts",
     groupBlocked: "Bloqués",
     groupCount: (count: number) => (count > 1 ? `${count} dossiers` : `${count} dossier`),
-    groupReadyEmpty: "Aucun dossier ne passe tous les contrôles pour l'instant.",
-    justPrepared: "Préparée à l'instant",
+    groupReadyEmpty: "Aucun dossier ne passe tous les contrôles pour l’instant.",
+    justPrepared: "Préparée à l’instant",
     waitingHuman: "En attente de validation humaine",
     rowControls: (name: string) => `Contrôles pour ${name}`,
   },

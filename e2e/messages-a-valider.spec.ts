@@ -58,6 +58,7 @@ test("parcours principal : valider un brouillon, puis déclencher un envoi simul
 
   // The rule the screen exists for is stated on the screen itself.
   await expect(page.getByTestId("validation-rule")).toContainText(TEXTS.ruleTitle);
+  await expect(page.getByTestId("validation-rule-human")).toHaveText(TEXTS.ruleHumanDecision);
   await expect(page.getByText(APP_TEXTS.states.simulation).first()).toBeVisible();
 
   const target = await openFirstPending(page);

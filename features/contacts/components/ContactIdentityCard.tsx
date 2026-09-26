@@ -16,7 +16,7 @@ function orUnknown(value: string | null) {
 
 export function ContactIdentityCard({ contact }: { contact: ContactDetail }) {
   return (
-    <Card title={TEXTS.identityTitle} description={TEXTS.identitySubtitle}>
+    <Card title={TEXTS.identityTitle}>
       <DataList
         items={[
           { label: TEXTS.email, value: orUnknown(contact.email) },

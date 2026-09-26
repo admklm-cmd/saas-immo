@@ -20,7 +20,6 @@ export default async function ContactsPage() {
     <div className="page-frame">
       <PageHeader
         title={TEXTS.title}
-        description={TEXTS.subtitle}
         meta={contacts && contacts.length > 0 ? <Badge tone="outline">{TEXTS.count(contacts.length)}</Badge> : null}
       />
 

@@ -15,12 +15,22 @@
  */
 @theme {
   /* --- Typography ------------------------------------------------------- */
-  /* Native system stack: renders as SF Pro on macOS/iOS and Segoe UI Variable
-     on Windows. No network fetch, no layout shift, no FOUT. */
+  /* Four roles, three families (docs/design-system.md §2.2), self-hosted by
+     next/font at build time (app/layout.tsx sets --font-inter, --font-geist,
+     --font-geist-mono on <html>): no request to Google from the browser.
+     - body and UI (--font-sans): Inter 400–500;
+     - titles (--font-display): Geist 700–800, tight tracking;
+     - figures (--font-mono): Geist Mono, tabular numerals (.figure);
+     - labels: Inter, small caps, tracked, muted (.label).
+     The system stack stays as the fallback of each family. */
   --font-sans:
-    ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
+    var(--font-inter), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI",
     system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+  --font-display:
+    var(--font-geist), var(--font-inter), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
 
   --text-display: 3.25rem;
   --text-display--line-height: 1.04;
@@ -40,7 +50,7 @@
   --text-section--letter-spacing: -0.022em;
   --text-overline: 0.6875rem;
   --text-overline--line-height: 1.2;
-  --text-overline--letter-spacing: 0.09em;
+  --text-overline--letter-spacing: 0.1em;
 
   /* --- Surfaces --------------------------------------------------------- */
   --color-canvas: #ffffff;
@@ -195,6 +205,15 @@
     text-rendering: optimizeLegibility;
   }
 
+  /* Titles are Geist (role « title », docs/design-system.md §2.2). Weight and
+     size stay on each heading: page title 800, card title 700. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
   /* Keyboard focus is always visible and never removed (WCAG 2.4.7). */
   :focus-visible {
     outline: 2px solid var(--color-focus);
@@ -226,6 +245,26 @@
     .page-frame {
       padding: calc(var(--spacing) * 12) calc(var(--spacing) * 10) calc(var(--spacing) * 20);
     }
+  }
+
+  /* Role « figure »: KPIs, counts, amounts, dates in stats — Geist Mono,
+     tabular numerals, so columns of figures line up and never jitter. */
+  .figure {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+
+  /* Role « label »: overline above a figure or a group — Inter, capitals,
+     tracked; pair it with text-ink-subtle (or text-ink-inverse-muted on black).
+     Never a title, never a figure. */
+  .label {
+    font-family: var(--font-sans);
+    font-size: var(--text-overline);
+    line-height: var(--text-overline--line-height);
+    letter-spacing: var(--text-overline--letter-spacing);
+    font-weight: 500;
+    text-transform: uppercase;
   }
 
   .page-frame-reading > * {
@@ -282,34 +321,6 @@
 }
 
 /*
- * White veil of the full-page particle background (docs/design-system.md §2.5.8).
- * The canvas (`RouteParticles`) is masked where text sits outside the cards:
- * the navigation and the left-aligned titles, descriptions and filters. The
- * mask is painted by the compositor: no extra layer, nothing redrawn per frame.
- * The shape itself is placed away from the text by the engine `region`
- * (components/motion/background-layout.ts); the mask only fades what is left.
- */
-.app-particles {
-  --particles-veil: linear-gradient(to right, transparent 0%, transparent 36%, #000 66%);
-  -webkit-mask-image: var(--particles-veil);
-  mask-image: var(--particles-veil);
-}
-
-/* Tablet: navigation on top, text from the left edge. */
-@media (max-width: 1023px) {
-  .app-particles {
-    --particles-veil: linear-gradient(to right, transparent 0%, transparent 22%, #000 62%);
-  }
-}
-
-/* Mobile: text spans the width, the header area stays clear. */
-@media (max-width: 767px) {
-  .app-particles {
-    --particles-veil: linear-gradient(to bottom, transparent 0%, transparent 26%, #000 62%);
-  }
-}
-
-/*
  * Local white veil under a block of text posed outside the cards (page header,
  * section heading, list total). The canvas is fixed and the page scrolls, so
  * any such text can pass over the shape: this soft-edged, nearly opaque patch
@@ -339,6 +350,19 @@
     linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
     linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
   mask-composite: intersect;
+}
+
+/*
+ * Tight veil, for text that sits close to something the veil must not cover:
+ * a neighbouring pipeline column and its connector line (0.75rem gap), tiles
+ * 0.75rem below a section heading. Same soft edge and same 90 % white, with a
+ * 0.5rem × 0.375rem overflow, so the patch never reaches an element spaced
+ * 0.5rem or more away. The text box itself is always fully veiled: the fade
+ * lives entirely in the overflow. Use together with `.particle-veil`.
+ */
+.particle-veil-tight::before {
+  --veil-x: 0.5rem;
+  --veil-y: 0.375rem;
 }
 
 /* Motion is decoration: honour the OS setting (WCAG 2.3.3). */

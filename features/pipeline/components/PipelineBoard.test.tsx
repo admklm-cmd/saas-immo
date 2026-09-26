@@ -157,6 +157,38 @@ describe("PipelineBoard — one line, left to right", () => {
     expect(within(mandate).getByText(APP_TEXTS.dashboard.friezeMandateNote)).toBeDefined();
   });
 
+  it("puts every word of a column header, and every label of the stage map, under a TIGHT veil", () => {
+    render(<PipelineBoard contacts={[]} />);
+    const tight = (element: Element | null) =>
+      element?.closest(".particle-veil")?.classList.contains("particle-veil-tight") ?? false;
+
+    // The six active columns (« Perdu » is its own opaque lane: nothing to veil).
+    const active = screen
+      .getAllByRole("region")
+      .filter((region) => region.hasAttribute("data-pipeline-column") && region.dataset.pipelineColumn !== "perdu");
+    expect(active).toHaveLength(6);
+    for (const column of active) {
+      const heading = within(column).getByRole("heading", { level: 2 });
+      expect(tight(heading), heading.textContent ?? "").toBe(true);
+      expect(tight(within(column).getByTestId("pipeline-column-count"))).toBe(true);
+      // The veil is sized to the words, never to the whole column.
+      expect(heading.closest(".particle-veil")?.classList.contains("w-fit")).toBe(true);
+    }
+    const mandate = screen.getByRole("region", { name: "Mandat signé" });
+    expect(tight(within(mandate).getByText(APP_TEXTS.dashboard.friezeMandateNote))).toBe(true);
+
+    const map = screen.getByRole("navigation", { name: TEXTS.stageNavLabel });
+    for (const link of within(map).getAllByRole("link")) {
+      const veil = link.querySelector(".particle-veil");
+      expect(veil?.classList.contains("particle-veil-tight"), link.textContent ?? "").toBe(true);
+      // The veil holds the visible words and count (the sr-only suffix follows it),
+      // never the decorative bar.
+      expect(veil?.textContent).toBeTruthy();
+      expect(link.textContent?.startsWith(veil?.textContent ?? "∅")).toBe(true);
+      expect(veil?.querySelector(".sr-only")).toBeNull();
+    }
+  });
+
   it("gives every card a discreet « Changer d'étape » control, named after the contact", () => {
     render(<PipelineBoard contacts={[contactOf({ id: "1", stage: "chaud", displayName: "Olivier Sanchez" })]} />);
 

@@ -12,17 +12,18 @@ export type PageHeaderProps = {
   actions?: ReactNode;
   className?: string;
   /**
-   * `hero`: bold title (Agents IA screens). `default` everywhere else. Both use
-   * the editorial scale of the signed-in frame (docs/design-system.md §2.10):
-   * `text-title` on a phone, `text-hero` from 640 px.
+   * Kept for compatibility: since 26/09/2026 every page title uses the same
+   * role (Geist 800, `text-title` on a phone, `text-hero` from 640 px —
+   * docs/design-system.md §2.2 and §2.10).
    */
   size?: "default" | "hero";
 };
 
 /**
- * Header of every signed-in page (and of the public input pages): one `h1`,
- * one short sentence, then the badges. Same left edge and same rhythm on every
- * screen, thanks to the common page frame (`.page-frame`).
+ * Header of every signed-in page (and of the public input pages): one `h1`
+ * of 1 to 4 words, at most one line of description, then the badges; the one
+ * action that matters sits on the right. Same left edge and same rhythm on
+ * every screen, thanks to the common page frame (`.page-frame`).
  */
 export function PageHeader({
   eyebrow,
@@ -31,23 +32,15 @@ export function PageHeader({
   meta,
   actions,
   className,
-  size = "default",
 }: PageHeaderProps) {
   return (
     <header className={cn("animate-rise", className)}>
       {eyebrow ? <div className="particle-veil mb-4 w-fit max-w-full text-sm text-ink-muted">{eyebrow}</div> : null}
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
         <div className="particle-veil min-w-0">
-          <h1
-            className={cn(
-              "text-title text-balance text-ink sm:text-hero",
-              size === "hero" ? "font-bold" : "font-semibold",
-            )}
-          >
-            {title}
-          </h1>
+          <h1 className="font-display text-title font-extrabold text-balance text-ink sm:text-hero">{title}</h1>
           {description ? (
-            <p className="mt-3 max-w-2xl text-base text-pretty text-ink-muted">{description}</p>
+            <p className="mt-2.5 max-w-2xl text-base text-pretty text-ink-muted">{description}</p>
           ) : null}
           {meta ? <div className="mt-4 flex flex-wrap items-center gap-2">{meta}</div> : null}
         </div>

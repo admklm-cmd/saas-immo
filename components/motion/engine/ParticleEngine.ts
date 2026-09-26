@@ -13,9 +13,10 @@ import {
   resolveParticleCount,
   type Region,
 } from "./layout";
+import { computePlaneOffsets, createDepthPlanes, PARALLAX_MAX_PX } from "./depth";
 import { DEFAULT_TRANSITION_MS, Morph } from "./morph";
 import { createSeeds } from "./prng";
-import { projectShape } from "./project";
+import { projectShape, type ProjectionDepth } from "./project";
 import { BACKGROUND_OPACITY, PointRenderer, ZONE_OPACITY, type DrawParams } from "./renderer";
 
 export type ParticleDensity = number | "auto";
@@ -23,7 +24,8 @@ export type ParticleDensity = number | "auto";
 /**
  * "zone": a bounded decorative area (preview, header); count follows the zone size.
  * "background": one fixed canvas behind the whole page (spec §9); count follows the
- * viewport width (6 000 / 4 000 / 1 800), opacities .08–.35, adaptive density.
+ * viewport width (6 000 / 4 000 / 1 800), opacities .10–.46 on three depth planes
+ * (engine/depth.ts), adaptive density.
  */
 export type ParticleMode = "zone" | "background";
 
@@ -72,6 +74,8 @@ export class ParticleEngine {
   private display = new Float32Array(MAX_PARTICLES * POINT_STRIDE);
   private readonly morph = new Morph(MAX_PARTICLES);
   private readonly renderer = new PointRenderer(MAX_PARTICLES);
+  /** Background mode only: depth plane of each particle and parallax offset of each plane. */
+  private readonly depth: ProjectionDepth | null;
   private readonly fit = createFit();
   private readonly drawParams: DrawParams;
   private readonly reducedQuery: MediaQueryList;
@@ -134,7 +138,11 @@ export class ParticleEngine {
       opacity: this.mode === "background" ? BACKGROUND_OPACITY : ZONE_OPACITY,
       fadeEnd: 0,
       fade: 0,
+      planes: null,
     };
+    this.depth =
+      this.mode === "background" ? { planes: createDepthPlanes(MAX_PARTICLES), offsets: new Float32Array(6) } : null;
+    this.drawParams.planes = this.depth?.planes ?? null;
     this.reducedQuery = window.matchMedia(REDUCED_MOTION);
     this.mobileQuery = window.matchMedia(MOBILE);
     this.resizeObserver = new ResizeObserver(this.handleResize);
@@ -265,7 +273,8 @@ export class ParticleEngine {
 
     const definition = SHAPES[this.currentPreset];
     const time = reduced ? definition.staticTime : (this.frozenTime ?? this.clock);
-    projectShape(definition, this.count, time, this.seeds, this.fit, this.target);
+    if (this.depth) computePlaneOffsets(time, this.width, this.height, this.depth.offsets);
+    projectShape(definition, this.count, time, this.seeds, this.fit, this.target, this.depth);
     if (this.spawnEnd > this.spawnStart) {
       this.morph.fadeInAt(this.target, this.spawnStart, Math.min(this.spawnEnd, this.count));
       this.spawnStart = this.spawnEnd = 0;
@@ -337,7 +346,9 @@ export class ParticleEngine {
 
   private updateFit(): void {
     const definition = SHAPES[this.currentPreset];
-    computeRegionFit(definition.bounds, definition.maxStretch, this.width, this.height, PADDING, this.region, this.fit);
+    // Background: the near plane drifts up to PARALLAX_MAX_PX, so the fit keeps that much more room.
+    const padding = this.depth ? PADDING + PARALLAX_MAX_PX : PADDING;
+    computeRegionFit(definition.bounds, definition.maxStretch, this.width, this.height, padding, this.region, this.fit);
   }
 
   private resolveBudget(): number {

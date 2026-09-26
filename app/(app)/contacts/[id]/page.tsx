@@ -78,7 +78,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           <ContactIdentityCard contact={contact} />
           <ContactPropertyCard property={contact.property} />
 
-          <Card title={TEXTS.timelineTitle} description={TEXTS.timelineSubtitle}>
+          <Card title={TEXTS.timelineTitle}>
             {timelineResult.error ? (
               <Alert tone="error" title={TEXTS.timelineError}>
                 {timelineResult.error.message}

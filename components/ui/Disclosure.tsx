@@ -15,6 +15,8 @@ export type DisclosureProps = {
   defaultOpen?: boolean;
   /** `card`: bordered white surface; `inline`: a quiet line inside a card or a row. */
   variant?: "card" | "inline";
+  /** Text size of an `inline` toggle: `sm` (default) or `xs`, for a hint line under figures. */
+  size?: "sm" | "xs";
   className?: string;
   /** Classes of the folded content. */
   contentClassName?: string;
@@ -43,6 +45,7 @@ export function Disclosure({
   children,
   defaultOpen = false,
   variant = "inline",
+  size = "sm",
   className,
   contentClassName,
   headingLevel,
@@ -64,8 +67,9 @@ export function Disclosure({
     >
       <summary
         className={cn(
-          "flex cursor-pointer list-none items-center gap-3 [&::-webkit-details-marker]:hidden",
-          card ? "rounded-xl px-6 py-5 hover:bg-surface-muted" : "w-fit rounded-xs text-sm text-ink-muted hover:text-ink",
+          "flex cursor-pointer list-none items-center [&::-webkit-details-marker]:hidden",
+          !card && size === "xs" ? "gap-2" : "gap-3",
+          card ? "rounded-xl px-6 py-5 hover:bg-surface-muted" : cn("w-fit rounded-xs text-ink-muted hover:text-ink", size === "xs" ? "text-xs" : "text-sm"),
           "transition-colors duration-150 ease-standard",
         )}
       >
@@ -74,13 +78,13 @@ export function Disclosure({
           className={cn(
             "grid shrink-0 place-items-center rounded-full border border-line-strong bg-surface text-ink",
             "transition-[rotate] duration-(--duration-press) ease-standard group-open/disclosure:rotate-90",
-            card ? "size-7" : "size-5",
+            card ? "size-7" : size === "xs" ? "size-4" : "size-5",
           )}
         >
-          <ChevronRightIcon width={card ? 16 : 12} height={card ? 16 : 12} />
+          <ChevronRightIcon width={card ? 16 : size === "xs" ? 10 : 12} height={card ? 16 : size === "xs" ? 10 : 12} />
         </span>
         <span className="min-w-0 flex-1">
-          <Label className={cn("block", card ? "text-section font-bold text-ink" : "font-medium")}>
+          <Label className={cn("block", card ? "text-section font-bold text-ink" : size === "xs" ? "font-normal" : "font-medium")}>
             {summary}
           </Label>
           {hint ? <span className="mt-0.5 block text-xs text-ink-muted">{hint}</span> : null}

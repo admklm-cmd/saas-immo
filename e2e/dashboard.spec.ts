@@ -249,6 +249,26 @@ test("tout le contenu du tableau de bord est dans le HTML envoyé par le serveur
   expect(html).not.toContain("data-reveal");
 });
 
+test("garde-fous : le rappel sur les blocages se déplie au clavier et liste chaque garde-fou", async ({ page }) => {
+  await signIn(page, "agentA");
+  await openDashboardFromLogo(page);
+
+  const disclosure = card(page, "agents").getByTestId("dashboard-blocked-guards");
+  const toggle = disclosure.locator("summary");
+  await expect(toggle).toHaveText(TEXTS.runsBlockedHint);
+  const list = disclosure.getByRole("list", { name: TEXTS.runsBlockedGuardsLabel });
+  // Folded at rest: one line, nothing added to the glance.
+  await expect(list).toBeHidden();
+
+  // Keyboard only: focus, Enter opens, the five guard rails are read out.
+  await toggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("listitem")).toHaveText([...TEXTS.runsBlockedGuards]);
+  await page.keyboard.press("Space");
+  await expect(list).toBeHidden();
+});
+
 test("isolation : l'agence B ne voit jamais les dossiers de l'agence A", async ({ page }) => {
   await signIn(page, "userB");
   await openDashboardFromLogo(page);

@@ -73,7 +73,7 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
   témoignage n'est inventé.
 - La grande typographie utilise une échelle fluide propre au marketing. Elle complète
-  `text-display`, dimensionné pour les autres pages, et conserve la pile système.
+  `text-display`, dimensionné pour les autres pages ; depuis le 26/09/2026 les titres y sont aussi en Geist (règle de base `h1–h4`, § 2.2), sans réécriture du contenu.
 - Les sections utilisent `Reveal`, `rise-soft` et `stagger`. Le contenu reste visible
   sans JavaScript et immédiatement disponible avec `prefers-reduced-motion`.
 - Sur mobile, toutes les compositions reviennent à une colonne, les actions peuvent
@@ -211,20 +211,48 @@ transparence.
 
 ### 2.2 Typographie
 
-Pile système native (`--font-sans`) : San Francisco sur macOS/iOS, Segoe UI Variable
-sur Windows. **Choix assumé** : aucun téléchargement de police, donc aucun FOUT,
-aucun décalage de mise en page et aucune dépendance réseau au build — ce qui compte
-plus, pour ce prototype livré sur VPS, qu'une police de marque.
+**Décision du 26/09/2026 — l'ancien choix « pas de police de marque » est abandonné.**
+La pile système donnait un espace connecté plat : une seule famille, des graisses
+voisines, des titres qui ne se détachaient pas. Le produit doit se comprendre en
+regardant l'écran avant de le lire : il faut quatre rôles typographiques qui ne se
+confondent jamais. Les polices sont chargées par `next/font/google` (`app/layout.tsx`) :
+fichiers téléchargés **au build** et servis depuis notre origine (aucune requête du
+navigateur vers Google, CSP `font-src 'self'` inchangée), `display: swap`, repli
+métrique automatique contre le décalage de mise en page. Aucune dépendance npm ajoutée.
+Contrepartie assumée : le build a besoin du réseau (sans lui il échoue, il ne retombe
+pas en silence sur la pile système, qui reste seulement le repli d'affichage).
+
+| Rôle | Famille | Graisse | Où | Token / classe |
+|---|---|---|---|---|
+| **Titre** | Geist | 800 (page), 700 (carte, section) | `h1` de `PageHeader`, titres de `Card`, `h2` de section | `--font-display` ; règle de base `h1–h4` |
+| **Corps** | Inter | 400–500 | Texte courant, boutons, champs | `--font-sans` (défaut du `body`) |
+| **Chiffre** | Geist Mono, chiffres tabulaires | 600 | KPI, totaux, compteurs, dates de statistiques | `--font-mono` + classe `.figure` |
+| **Étiquette** | Inter, capitales espacées | 500–600 | Sur-titres, `dt`, en-têtes de tableau | `text-overline` (`0.1em`) ou `.label`, toujours `text-ink-subtle` |
+
+Variables posées sur `<html>` par next/font : `--font-inter`, `--font-geist`,
+`--font-geist-mono` ; les tokens `@theme` les lisent, pile système en repli.
+Un chiffre accompagné de mots (« 5 sur 5 ») : le chiffre en `.figure`, les mots en corps.
+
+**Écriture des titres (26/09/2026)** : un titre porte l'idée seul, en 1 à 4 mots ; la
+description d'un `PageHeader` tient sur une ligne ou disparaît si elle répète le titre.
+Une explication devient d'abord une information visuelle (chiffre, badge, pastille,
+frise), puis seulement le texte devenu redondant est retiré. Jamais retirés : mentions
+« Simulation », consentement, désinscription, validation humaine du premier contact,
+mandat confirmé par un humain, coupe-circuit et son libellé, états d'erreur.
+**Une action principale par écran**, dans l'en-tête ou le premier bloc, visible sans
+défiler à 1440 × 900 (testé : `e2e/premier-regard.spec.ts`).
 
 | Token | Taille | Interlignage | Usage |
 |---|---|---|---|
 | `text-display` | 52 px | 1.04 | Titre de page d'accueil publique |
-| `text-title` | 32 px | 1.15 | `h1` des écrans applicatifs |
+| `text-hero` | 42 px, `-0.035em` | 1.05 | `h1` des écrans applicatifs dès 640 px (Geist 800) |
+| `text-title` | 32 px | 1.15 | `h1` sur téléphone ; grands chiffres (`.figure`) |
+| `text-section` | 24 px | 1.2 | `h2` de section hors carte (Geist 700) |
 | `text-heading` | 21 px | 1.25 | Titre de carte (`h2`/`h3`) |
 | `text-base` | 16 px | — | Corps |
 | `text-sm` | 14 px | — | Texte d'interface courant |
 | `text-xs` | 12 px | — | Légendes, badges |
-| `text-overline` | 11 px, `0.09em` | 1.2 | Sur-titres en capitales (`dt`, en-têtes de tableau) |
+| `text-overline` | 11 px, `0.1em` | 1.2 | Sur-titres en capitales (`dt`, en-têtes de tableau) |
 
 ### 2.3 Rayons
 
@@ -442,22 +470,35 @@ crée pas d'entrée d'historique (comportement Next.js) : « précédent » revi
 dernière page réellement affichée, et la forme suit.
 
 **Budget** (confirmé le 23/09/2026) : 6 000 particules ≥ 1 280 px, 4 000 de 768 à 1 279 px,
-1 800 sous 768 px (`devicePixelRatio` plafonné à 1,5). Opacités .08 à .35. Densité
-adaptative : −25 % par palier si une image coûte plus de 8 ms en moyenne sur 2 s.
+1 800 sous 768 px (`devicePixelRatio` plafonné à 1,5). Opacités **.10 à .46** depuis le
+26/09/2026 (avant : .08 à .35, +30 %). Densité adaptative : −25 % par palier si une image
+coûte plus de 8 ms en moyenne sur 2 s (mesuré à 1440 × 900 : 1,1 à 1,7 ms par image).
+
+**Profondeur** (26/09/2026, `components/motion/engine/depth.ts`, mode fond seulement ;
+les aperçus en zone sont inchangés) : chaque particule appartient une fois pour toutes à
+un plan, tiré d'un générateur à graine fixe indépendant des graines de forme.
+
+| Plan | Part | Taille | Opacité | Dérive |
+|---|---|---|---|---|
+| Lointain | 40 % | × 0,75 | × 0,65 | × 0,3 |
+| Intermédiaire | 35 % | × 1 | × 0,85 | × 0,6 |
+| Proche | 25 % | × 1,5 | × 1 (atteint .46) | × 1 |
+
+Parallaxe : les trois plans suivent la même dérive lente (sinus, une oscillation ≈ 1 min),
+12 px d'amplitude pour le plan proche, proportionnelle à la dérive pour les autres ; la
+marge de cadrage augmente d'autant (aucun point coupé, testé). Encre totale (opacité ×
+surface) : **≈ +30 %** par rapport au rendu plat .08–.35 (test : entre +20 et +45 %).
+Aucune allocation par image. Mouvement réduit : temps figé, donc dérive figée.
 
 **Placement** (`components/motion/background-layout.ts`, zone normalisée du canvas) :
 
-| Fenêtre | Zone de la forme | Intensité | Pourquoi |
-|---|---|---|---|
-| Bureau (≥ 1 024 px) | `x .54 → .98`, `y .01 → .43` | 1 | Bande d'en-tête à droite du titre : la partie de la page que les cartes ne couvrent pas au chargement ; la navigation (256 px à gauche) et les titres alignés à gauche restent dégagés |
-| Tablette (768 à 1 023 px) | `x .40 → .98`, `y .10 → .46` | .9 | Même principe, sous la barre de navigation horizontale |
-| Mobile (< 768 px) | `x .02 → .98`, `y .34 → .98` | .7 | Le texte occupe toute la largeur : forme discrète, derrière, sous la zone d'en-tête |
+Depuis le 26/09/2026, la forme couvre **toute la fenêtre** sur les trois classes (région
+`0 → 1` en x et en y) ; seule l'intensité varie : bureau 1, tablette .9, mobile .75. Le
+masque latéral `.app-particles` est **supprimé** : le fond se voit aussi à gauche, sous
+la navigation translucide.
 
-**Lisibilité — deux voiles, jamais de transparence sur les cartes.**
-1. `.app-particles` (sur le canvas) : masque dégradé peint par le compositeur, sans
-   calque ni dessin supplémentaire. Bureau : transparent jusqu'à 36 % de la largeur,
-   plein à 66 % ; tablette : 22 % → 62 % ; mobile : vertical, transparent sur le haut
-   (26 %), plein à 62 %.
+**Lisibilité — cartes opaques et voile local, jamais de transparence sur les cartes.**
+1. Les cartes restent blanches et opaques : la forme ne passe jamais sous un texte de carte.
 2. `.particle-veil` (sur un bloc de texte) : pastille blanche à 90 %, bords fondus
    (3 rem × 1,25 rem), sous **chaque bloc de texte posé hors carte**. Le canvas est fixe
    et la page défile : n'importe quel texte hors carte peut passer sur la forme. Sur le
@@ -467,10 +508,34 @@ adaptative : −25 % par palier si une image coûte plus de 8 ms en moyenne sur 
    bord, l'en-tête « Les cinq agents » d'Agents IA, l'en-tête « Agents IA » des
    paramètres, la légende « perdu » du pipeline. **Tout nouveau texte hors carte doit
    la recevoir.** Dans une carte, elle serait blanc sur blanc : sans effet.
+3. `.particle-veil-tight` (26/09/2026, **en plus** de `.particle-veil`) : même blanc à
+   90 %, même bord fondu, mais un débord de **0,5 rem × 0,375 rem** seulement, pour un
+   texte posé à moins de 0,75 rem d'un élément que le voile ne doit pas couvrir.
+   Rappel d'ordre de peinture : un voile peint **après** un voisin le recouvre ; il ne
+   recouvre jamais ses propres enfants. Le bloc voilé est dimensionné aux mots
+   (`w-fit`, ou un `inline-block` intérieur quand le bloc porte un espacement), jamais
+   à la colonne. Appliqué par : les en-têtes des colonnes du pipeline (« Étape n sur
+   6 », nom, nombre, « dossiers ») et « Confirmé par un humain » — la colonne voisine
+   et sa ligne de liaison restent intactes, testé dans `e2e/voiles-lisibilite.spec.ts`
+   —, les libellés de la carte des étapes, le titre « Situation immédiate » et la note
+   de période d'Agents IA (tuiles 0,75 rem dessous), la légende des formes de
+   `/contacts`.
+4. Contrôle automatique : `e2e/voiles-lisibilite.spec.ts` échoue si un texte visible de
+   `<main>` n'est ni sur une surface opaque ni sous un voile (1 440 et 390 px, onze
+   écrans).
+5. En-tête mobile et colonne de navigation (`.panel-blur`, 78 %) : « Prototype » est en
+   `ink-muted` (le flou des particules descendait `ink-subtle` à 4,56:1 à 390 px).
 
 Contraste mesuré le 23/09/2026 sur captures (texte masqué, pixel **le plus sombre**
 sous chaque ligne de texte hors carte, 3 instants × 3 positions de défilement, 1 440 /
 1 280 / 1 024 / 768 / 390 px, 11 écrans) : minimum **5,24:1** (AA : 4,5:1).
+
+Re-mesuré le 26/09/2026 avec les opacités .10–.46 (même méthode, 3 instants animés ×
+4 positions de défilement, 1 440 × 900 et 390 × 844, `/pipeline` — aussi défilé jusqu'à
+« Mandat signé » —, `/agents-ia`, `/contacts`, `/parametres`, `/dashboard`) : minimum
+**5,41:1** au pixel le plus sombre, aucun texte sous 4,5:1. Avant le voile serré :
+« dossiers » 3,46:1, « Confirmé par un humain » 4,23:1, note de période 4,70:1,
+« Prototype » (390 px) 4,56:1.
 
 **Mouvement réduit.** Une image statique représentative par page (instant `staticTime`
 de chaque forme), changement de forme instantané, aucune boucle `requestAnimationFrame`
@@ -516,7 +581,9 @@ L'anneau de focus cobalt reste toujours visible.
   aux barres fixes (navigation de l'espace connecté, en-tête du site public).
 - `.app-canvas` : fond blanc, dégradé perle, halo blanc (`components/ui/micro-interactions.css`),
   posé sur l'enveloppe du layout connecté.
-- `.app-particles` / `.particle-veil` : voiles de lisibilité du fond de particules (§ 2.5.8).
+- `.particle-veil` : voile de lisibilité sous un texte posé sur le fond de particules (§ 2.5.8). `.app-particles` a été supprimé le 26/09/2026.
+- `.particle-veil-tight` : variante serrée (débord 0,5 × 0,375 rem), toujours avec `.particle-veil`, près d'un voisin à ne pas couvrir (§ 2.5.8).
+- `.figure` (Geist Mono, chiffres tabulaires) et `.label` (étiquette Inter en capitales) : rôles typographiques du § 2.2.
 - `.brand-symbol` : peint le symbole de marque avec `currentColor` à travers l'alpha du
   fichier maître, utilisé comme masque CSS (voir § 2.7).
 
@@ -691,10 +758,10 @@ titre, quelle que soit la largeur du contenu.
   (enfants plafonnés à `max-w-4xl`) ou `page-frame-medium` (`max-w-5xl`) : le contenu
   reste **aligné à gauche** sur le même bord, jamais recentré. Tableau de bord, pipeline et
   contacts : `page-frame` seul. Ne plus écrire `mx-auto max-w-* px-6 py-10…` dans une page.
-- **En-tête** : `PageHeader` (`components/ui/PageHeader.tsx`) — `h1` en `text-title`
-  (téléphone) puis `text-hero` dès 640 px, une phrase `text-base text-ink-muted`
-  (`max-w-2xl`), badges (`meta`, ex. `SimulationBadge`) **sous** la phrase, actions à
-  droite. `size="hero"` ne change que la graisse (écrans Agents IA).
+- **En-tête** : `PageHeader` (`components/ui/PageHeader.tsx`) — `h1` Geist 800 en
+  `text-title` (téléphone) puis `text-hero` dès 640 px, au plus une ligne
+  `text-base text-ink-muted`, badges (`meta`, ex. `SimulationBadge`) **sous** la phrase,
+  l'action principale à droite. `size` n'a plus d'effet (même rôle partout, 26/09/2026).
 - **Navigation** (`components/app/`) : `nav-items.ts` est la source unique (`NAV_GROUPS`,
   `NAV_ITEMS`, `isNavItemActive`). Trois groupes : **Pilotage** (Tableau de bord, Contacts
   vendeurs, Pipeline, Tâches, Rendez-vous), **Agents IA** (Vue d'ensemble, Leads entrants,
@@ -748,6 +815,7 @@ titre, quelle que soit la largeur du contenu.
 | `Textarea` | `Textarea.tsx` | Champ multiligne : libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), `maxLength` |
 | `Pagination` | `Pagination.tsx` | `nav[aria-label="Pagination"]` : « 26–50 sur 131 » (total exact) + Précédent / Suivant en liens d'URL. Direction inexistante : bouton atténué (`opacity-40`), `aria-hidden`, pour que les boutons ne sautent pas d'une page à l'autre ; une seule page : le décompte seul, aucun bouton |
 | `LinkTabs` | `LinkTabs.tsx` | Filtre segmenté en **liens** (pas de `tablist` : chaque choix charge une autre liste et vit dans l'URL). Piste `bg-surface-muted` arrondie, choix courant en pilule `bg-inverse` + graisse `semibold` + `aria-current="page"` (jamais la couleur seule) ; défile horizontalement si l'écran est étroit |
+| `Disclosure` | `Disclosure.tsx` | `<details>` / `<summary>` natif, fermé par défaut (Tab, Entrée / Espace, annoncé « réduit / développé »). `card` ou `inline` ; en `inline`, `size="xs"` pour un rappel sous des chiffres (texte xs, chevron 16 px) — ex. « Un blocage n'est pas une erreur… » du tableau de bord, qui déplie la liste des garde-fous. Jamais d'info au seul survol |
 | `ListTotal` | `ListTotal.tsx` | Total exact d'une liste paginée, **toujours** suivi de son périmètre — même motif « chiffre + périmètre » que le tableau de bord (§ 3.5), pour qu'un chiffre lu sur le tableau de bord se reconnaisse sur l'écran où il mène |
 
 `Button` accepte `ref` (prop simple en React 19), pour les cas où le focus doit
@@ -1145,7 +1213,8 @@ Chaque écran gère quatre états :
   `features/contacts/types.ts` et `lib/agents/messages.ts` : **ne jamais les recopier**.
 - Messages d'erreur : ce qui s'est passé + ce que l'utilisateur peut faire. Jamais de
   détail technique.
-- Apostrophe typographique `'` dans les textes.
+- Apostrophe typographique `’` dans les textes de l'espace connecté (convertis le
+  26/09/2026 ; messages renvoyés par le serveur et textes publics gardent encore `'`).
 
 ## 7. Grille et points de rupture
 
@@ -1208,8 +1277,9 @@ Chaque écran gère quatre états :
   lançable depuis `AgentActionsPanel` de la fiche contact, à côté de Hugo et Louis.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
-- Pas de police de marque (choix assumé, voir 2.2). Le verrouillage compose donc « Ascend »
-  et « Strategy » dans la pile système, pas dans un caractère dessiné pour la marque.
+- Polices Geist / Inter / Geist Mono depuis le 26/09/2026 (§ 2.2) ; le verrouillage du
+  logo reste composé en Inter, pas dans un caractère dessiné pour la marque. Le build a
+  besoin d'accéder à Google Fonts (next/font) : hors ligne il échoue au lieu de dégrader.
 - Le symbole est **matriciel**, pas vectoriel : le fichier fourni était un PNG sans canal
   alpha et aucun outil de traçage n'est installé. Le redessiner à la main aurait approximé
   la jambe incurvée et la contre-forme. Conséquence acceptée : au-delà d'environ 300 px de
@@ -1231,10 +1301,15 @@ Chaque écran gère quatre états :
   entre-temps) s'affiche encore dans le style d'erreur (`AnimatedErrorState`, **sans**
   « Réessayer ») et non en `GuardRailNotice`. Le motif écrit est exact ; l'harmonisation
   avec les autres cartes reste à faire.
-- **Fond de particules** (§ 2.5.8) : sur mobile, la forme est volontairement discrète et
-  presque entièrement couverte par les cartes ; sur bureau, elle vit surtout dans la bande
-  d'en-tête et disparaît derrière les cartes au défilement. Le voile `.particle-veil` doit
-  être posé à la main sur tout nouveau bloc de texte hors carte (pas de détection
-  automatique). Les mesures de coût par image (`data-frame-ms`) sont celles de Chromium sans
+- **Fond de particules** (§ 2.5.8) : sur toute la fenêtre depuis le 26/09/2026, mais les
+  cartes opaques en couvrent l'essentiel ; il se voit surtout dans les marges, les
+  interstices et sous la navigation. Le contraste AA des textes hors carte repose sur
+  `.particle-veil` (re-mesuré le 26/09 : minimum 5,41:1). Le voile doit être posé à la
+  main sur tout nouveau bloc de texte hors carte ; un oubli est détecté par
+  `e2e/voiles-lisibilite.spec.ts`, sur les onze écrans et les données fictives
+  seulement (un état vide ou d'erreur non couvert par les fixtures peut encore
+  échapper). Sur le perle (bas droit de la fenêtre), le voile blanc à 90 % reste
+  perceptible comme une pastille très claire (+5 à +7 niveaux sur 255), surtout le
+  voile serré dont le fondu est court. Les mesures de coût par image (`data-frame-ms`) sont celles de Chromium sans
   interface sur la machine de développement : elles ne comptent que le travail JavaScript de
   l'image, pas la composition du masque par le GPU.

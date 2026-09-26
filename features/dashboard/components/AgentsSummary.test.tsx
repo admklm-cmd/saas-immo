@@ -28,6 +28,26 @@ describe("AgentsSummary", () => {
     expect(screen.getByText(TEXTS.runsBlockedHint)).toBeDefined();
   });
 
+  it("déplie la liste des garde-fous depuis le rappel, fermée par défaut (disclosure native)", () => {
+    render(<AgentsSummary agents={makeSummary().agents} />);
+
+    const disclosure = screen.getByTestId("dashboard-blocked-guards");
+    expect(disclosure.tagName).toBe("DETAILS");
+    expect(disclosure.hasAttribute("open")).toBe(false);
+    // The hint itself is the toggle: no extra line at rest.
+    expect(disclosure.querySelector("summary")?.textContent).toBe(TEXTS.runsBlockedHint);
+
+    const list = disclosure.querySelector("ul");
+    expect(list?.getAttribute("aria-label")).toBe(TEXTS.runsBlockedGuardsLabel);
+    expect([...(list?.querySelectorAll("li") ?? [])].map((item) => item.textContent)).toEqual([
+      "Coupe-circuit",
+      "Limite quotidienne",
+      "Reprise par un conseiller",
+      "Consentement absent",
+      "Mandat déjà signé",
+    ]);
+  });
+
   it("garde l'état du coupe-circuit visible quand les exécutions sont indisponibles", () => {
     const agents = makeSummary().agents;
     agents.killSwitch = { status: "ok", scope: SCOPES.current, value: { aiPaused: true, canResume: false } };
@@ -73,9 +93,8 @@ describe("AgentsSummary", () => {
     const heading = screen.getByRole("heading", { level: 2, name: TEXTS.agentsTitle });
     const titleRow = heading.parentElement;
     expect(titleRow?.textContent).toContain(APP_TEXTS.states.simulation);
-    // Never under the description: the description sits after the title row.
-    const description = screen.getByText(TEXTS.agentsSubtitle);
-    expect(titleRow?.contains(description)).toBe(false);
-    expect(titleRow?.closest("header")?.contains(description)).toBe(true);
+    // 26/09/2026: the explanatory description was removed (the badge and the
+    // figures say it); the header holds the title row only.
+    expect(titleRow?.closest("header")?.querySelectorAll("p")).toHaveLength(0);
   });
 });

@@ -68,7 +68,11 @@ export function SignInForm({ redirectTo }: { redirectTo: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate data-sensitive="" className="flex flex-col gap-5">
+    // method="post": if the form is submitted before hydration (slow network,
+    // cold dev server), the browser's native submission must never put the
+    // email and password in the URL (history, server logs). Once hydrated,
+    // `handleSubmit` prevents the native submission.
+    <form method="post" onSubmit={handleSubmit} noValidate data-sensitive="" className="flex flex-col gap-5">
       {error ? <Alert tone="error" title={TEXTS.errorTitle}>{error}</Alert> : null}
 
       <Field

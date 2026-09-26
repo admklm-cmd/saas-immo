@@ -35,7 +35,6 @@ export default async function MessagesToValidatePage({ searchParams }: { searchP
     <div className="page-frame">
       <PageHeader
         title={TEXTS.title}
-        description={TEXTS.subtitle}
         meta={
           <>
             <SimulationBadge />
@@ -49,8 +48,11 @@ export default async function MessagesToValidatePage({ searchParams }: { searchP
       {/* Said once, where the decision is taken: the rule, and what correcting
           a draft may and may not change. */}
       <RuleNote title={TEXTS.ruleTitle} className="particle-veil mt-8" testId="validation-rule">
-        {TEXTS.ruleBody}
-        <span className="mt-1 block text-ink-subtle">{TEXTS.editHint}</span>
+        <p>{TEXTS.ruleBody}</p>
+        {/* The guard rail itself, one short line: nothing leaves without a person. */}
+        <p data-testid="validation-rule-human" className="mt-1.5 text-xs font-medium text-ink-muted">
+          {TEXTS.ruleHumanDecision}
+        </p>
       </RuleNote>
 
       <div className="mt-8">

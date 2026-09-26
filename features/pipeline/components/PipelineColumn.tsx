@@ -62,7 +62,9 @@ export function PipelineColumn({
             <>
               <AgentAppIcon glyph="mandate" kind="outcome" size="sm" className="-ml-1" />
               {/* The seal at the end of the line: who confirms a mandate. */}
-              <p className="ml-2.5 text-xs font-medium text-ink-muted">{APP_TEXTS.dashboard.friezeMandateNote}</p>
+              <p className="particle-veil particle-veil-tight ml-2.5 text-xs font-medium text-ink-muted">
+                {APP_TEXTS.dashboard.friezeMandateNote}
+              </p>
             </>
           ) : (
             <span
@@ -75,15 +77,20 @@ export function PipelineColumn({
           )}
         </div>
 
-        <p className="mt-3 text-xs text-ink-subtle sm:sr-only">{TEXTS.stageIndex(position, total)}</p>
-        <h2 id={headingId} tabIndex={-1} className="mt-1 text-base font-semibold text-ink sm:mt-3">
-          {PIPELINE_STAGE_LABELS[stage]}
-        </h2>
+        {/* Text on the canvas: a TIGHT veil, sized to the words (w-fit) and
+            spaced from the line row above (mt-3), so it never covers the
+            neighbouring column nor the connector line (docs/design-system.md §2.5.8). */}
+        <div className="particle-veil particle-veil-tight mt-3 w-fit max-w-full min-w-0">
+          <p className="text-xs text-ink-subtle sm:sr-only">{TEXTS.stageIndex(position, total)}</p>
+          <h2 id={headingId} tabIndex={-1} className="mt-1 text-base font-bold text-ink sm:mt-0">
+            {PIPELINE_STAGE_LABELS[stage]}
+          </h2>
 
-        <p data-testid="pipeline-column-count" className="mt-1 flex items-baseline gap-1.5">
-          <span className="text-heading font-semibold text-ink tabular-nums">{count}</span>{" "}
-          <span className="text-xs text-ink-muted">{TEXTS.columnUnit(count)}</span>
-        </p>
+          <p data-testid="pipeline-column-count" className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-heading font-semibold text-ink figure">{count}</span>{" "}
+            <span className="text-xs text-ink-muted">{TEXTS.columnUnit(count)}</span>
+          </p>
+        </div>
       </header>
 
       {count === 0 ? (

@@ -158,7 +158,7 @@ export function AgentRunReplay({ steps, autoPlay = true, inProgress = false, tes
         </Badge>
         <span className="text-xs text-ink-muted">
           {TEXTS.totalMeasured} :{" "}
-          <span className="tabular-nums text-ink">{formatDurationMs(measuredMs)}</span>
+          <span className="figure text-ink">{formatDurationMs(measuredMs)}</span>
         </span>
         <div className="ml-auto flex items-center gap-2">
           {animating ? (

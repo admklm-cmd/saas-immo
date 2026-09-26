@@ -56,7 +56,16 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
 
   return (
     <div className="page-frame page-frame-reading">
-      <PageHeader title={TEXTS.title} description={TEXTS.subtitle} meta={<SimulationBadge />} />
+      <PageHeader
+        title={TEXTS.title}
+        description={TEXTS.subtitle}
+        meta={<SimulationBadge />}
+        actions={
+          <ButtonLink href="/agents-ia/suivi-rendez-vous" variant="primary" arrow="forward" data-testid="appointments-primary-action">
+            {TEXTS.primaryAction}
+          </ButtonLink>
+        }
+      />
 
       <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         {page ? (

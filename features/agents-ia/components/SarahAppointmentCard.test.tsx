@@ -87,6 +87,8 @@ describe("SarahAppointmentCard", () => {
     expect(confirmAppointment).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111");
     expect(screen.getByText("Confirmé")).toBeDefined();
     expect(screen.getByTestId("appointment-completion-form")).toBeDefined();
+    // A submission before hydration must never put the report in the URL.
+    expect(screen.getByTestId("appointment-completion-form").getAttribute("method")).toBe("post");
     expect(screen.getByTestId("appointment-workflow-success").textContent).toContain(TEXTS.confirmSuccess);
     expect(screen.queryByTestId("run-sarah")).toBeNull();
     expect(refresh).toHaveBeenCalledOnce();

@@ -37,11 +37,11 @@ export function PipelineLostLane({ contacts, canExitSignedMandate = false }: Pip
           aria-hidden="true"
           className={cn(styles.node, "block size-2.5 rounded-full border-[1.5px] border-dashed border-ink-subtle")}
         />
-        <h2 id={headingId} tabIndex={-1} className="text-base font-semibold text-ink-subtle">
+        <h2 id={headingId} tabIndex={-1} className="text-base font-bold text-ink-subtle">
           {PIPELINE_STAGE_LABELS[LOST]}
         </h2>
         <p data-testid="pipeline-column-count" className="flex items-baseline gap-1.5">
-          <span className="text-heading font-semibold text-ink-subtle tabular-nums">{count}</span>{" "}
+          <span className="text-heading font-semibold text-ink-subtle figure">{count}</span>{" "}
           <span className="text-xs text-ink-muted">{TEXTS.columnUnit(count)}</span>
         </p>
         <p className="text-xs text-ink-subtle sm:ml-auto">{TEXTS.lostSubtitle}</p>

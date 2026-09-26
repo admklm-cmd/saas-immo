@@ -120,6 +120,56 @@ for (const width of [1024, 390] as const) {
   });
 }
 
+test("le fond couvre toute la fenêtre, sans masque latéral, avec de la matière à gauche comme à droite", async ({
+  page,
+}) => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1024, height: 844 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    if (viewport.width === 1440) await signIn(page, "agentA");
+    await openPage(page, "/dashboard");
+    const canvas = page.locator(BACKGROUND);
+    await expect(canvas).toHaveAttribute("data-motion", "reduced");
+
+    // Full viewport, and the old left-side veil (`.app-particles` mask) is gone.
+    const geometry = await canvas.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      return {
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+        mask: style.maskImage || style.getPropertyValue("-webkit-mask-image"),
+      };
+    });
+    expect(geometry.width, `${viewport.width}: width`).toBe(viewport.width);
+    expect(geometry.height, `${viewport.width}: height`).toBe(viewport.height);
+    expect(geometry.mask === "" || geometry.mask === "none", `${viewport.width}: no mask`).toBe(true);
+
+    // The static frame (reduced motion) has ink in the left, middle and right thirds.
+    const inkPerThird = await canvas.evaluate((node) => {
+      const canvasNode = node as HTMLCanvasElement;
+      const context = canvasNode.getContext("2d");
+      if (!context) return [0, 0, 0];
+      const { width, height } = canvasNode;
+      const data = context.getImageData(0, 0, width, height).data;
+      const thirds = [0, 0, 0];
+      for (let y = 0; y < height; y += 4) {
+        for (let x = 0; x < width; x += 4) {
+          const alpha = data[(y * width + x) * 4 + 3] ?? 0;
+          if (alpha > 0) thirds[Math.min(2, Math.floor((x / width) * 3))]! += 1;
+        }
+      }
+      return thirds;
+    });
+    for (const [index, ink] of inkPerThird.entries()) {
+      expect(ink, `${viewport.width}: ink in third ${index + 1}`).toBeGreaterThan(0);
+    }
+  }
+});
+
 test("aucun canvas de particules sur le site public", async ({ page }) => {
   for (const href of ["/", "/estimation", "/connexion", "/inscription"]) {
     await page.goto(href);

@@ -34,7 +34,7 @@ export function RunCountsList({ id, runs }: { id: string; runs: DashboardIndicat
             className="flex items-baseline justify-between gap-3 text-sm"
           >
             <dt className="text-ink-muted">{row.label}</dt>
-            <dd className="font-semibold text-ink tabular-nums">
+            <dd className="font-semibold text-ink figure">
               {row.value === undefined ? TEXTS.unavailable : row.value}
               <span className="sr-only"> ({scope})</span>
             </dd>

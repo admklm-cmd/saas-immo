@@ -96,19 +96,25 @@ export function PipelineStageNav({ stages, lost, scrollerId }: PipelineStageNavP
                     active ? "bg-ink" : "bg-line-strong group-hover/seg:bg-ink-subtle",
                   )}
                 />
-                {/* Inline: a wrapped label keeps its count right after its last word. */}
+                {/* Inline: a wrapped label keeps its count right after its last word.
+                    Tight veil on the words only (not on the spacing padding): it
+                    never reaches the bar above (mt-2) nor the next label (§2.5.8). */}
                 <span className="mt-2 block text-xs text-balance sm:pr-2 lg:pr-3 lg:whitespace-nowrap">
-                  <span
-                    className={cn(
-                      "max-sm:sr-only",
-                      active ? "font-medium text-ink" : "text-ink-muted group-hover/seg:text-ink",
-                    )}
-                  >
-                    {PIPELINE_STAGE_LABELS[item.stage]}
+                  <span className="particle-veil particle-veil-tight inline-block max-w-full">
+                    <span
+                      className={cn(
+                        "max-sm:sr-only",
+                        active ? "font-medium text-ink" : "text-ink-muted group-hover/seg:text-ink",
+                      )}
+                    >
+                      {PIPELINE_STAGE_LABELS[item.stage]}
+                    </span>
+                    <span aria-hidden="true" className="whitespace-nowrap text-ink-subtle tabular-nums sm:ml-1.5">
+                      {item.count}
+                    </span>
                   </span>
-                  <span aria-hidden="true" className="whitespace-nowrap text-ink-subtle tabular-nums sm:ml-1.5">
-                    {item.count}
-                  </span>
+                  {/* Outside the veil: an absolutely positioned sr-only text would
+                      overflow the (positioned) veil box. */}
                   <span className="sr-only">, {TEXTS.columnCount(item.count)}</span>
                 </span>
               </a>
@@ -122,9 +128,11 @@ export function PipelineStageNav({ stages, lost, scrollerId }: PipelineStageNavP
               className="block h-0 border-t-2 border-dotted border-line-strong group-hover/seg:border-ink-subtle"
             />
             <span className="mt-2 block text-xs whitespace-nowrap">
-              <span className="text-ink-subtle max-sm:sr-only">{PIPELINE_STAGE_LABELS[lost.stage]}</span>
-              <span aria-hidden="true" className="text-ink-subtle tabular-nums sm:ml-1.5">
-                {lost.count}
+              <span className="particle-veil particle-veil-tight inline-block">
+                <span className="text-ink-subtle max-sm:sr-only">{PIPELINE_STAGE_LABELS[lost.stage]}</span>
+                <span aria-hidden="true" className="text-ink-subtle tabular-nums sm:ml-1.5">
+                  {lost.count}
+                </span>
               </span>
               <span className="sr-only">, {TEXTS.columnCount(lost.count)}</span>
             </span>

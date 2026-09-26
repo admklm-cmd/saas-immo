@@ -16,7 +16,6 @@ export function UpcomingAppointments({ list }: { list: DashboardUpcomingAppointm
       id="upcoming"
       headingLevel={2}
       title={TEXTS.upcomingTitle}
-      hint={TEXTS.upcomingSubtitle}
       list={list}
       unit={TEXTS.upcomingUnit}
       emptyText={TEXTS.upcomingEmpty}

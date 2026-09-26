@@ -47,16 +47,12 @@ export function PipelineFrieze({ pipeline, todo }: { pipeline: DashboardPipeline
     >
       <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
         <div className="min-w-0">
-          <h2 id="dashboard-frieze-title" className="text-section font-semibold text-ink">
+          <h2 id="dashboard-frieze-title" className="text-section font-bold text-ink">
             {TEXTS.friezeTitle}
           </h2>
           <p className="mt-1.5 text-sm text-ink-muted">
-            {TEXTS.friezeSubtitle}
-            <span data-testid="dashboard-scope" className="whitespace-nowrap text-ink-subtle">
-              <span aria-hidden="true" className="px-1.5">
-                ·
-              </span>
-              <span className="sr-only">. {TEXTS.scopePrefix} </span>
+            <span data-testid="dashboard-scope" className="label whitespace-nowrap text-ink-subtle">
+              <span className="sr-only">{TEXTS.scopePrefix} </span>
               {TEXTS.scopes.current}
             </span>
           </p>
@@ -93,7 +89,7 @@ export function PipelineFrieze({ pipeline, todo }: { pipeline: DashboardPipeline
                 <p className="flex items-baseline gap-1.5">
                   {lostValue !== null ? (
                     <>
-                      <span className="text-heading font-semibold text-ink-subtle tabular-nums">{lostValue}</span>
+                      <span className="text-heading font-semibold text-ink-subtle figure">{lostValue}</span>
                       <span className="text-xs text-ink-muted">{TEXTS.pipelineUnit(lostValue)}</span>
                     </>
                   ) : (

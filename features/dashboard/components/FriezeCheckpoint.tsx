@@ -47,7 +47,7 @@ export function FriezeCheckpoint({ step, first = false }: { step: FriezeCheckpoi
         >
           {value !== null ? (
             <>
-              <span className={cn("text-base font-semibold tabular-nums xl:text-heading", waiting ? "text-ink" : "text-ink-subtle")}>
+              <span className={cn("text-base font-semibold figure xl:text-heading", waiting ? "text-ink" : "text-ink-subtle")}>
                 {value}
               </span>
               <span className="text-xs text-balance underline decoration-line-strong underline-offset-4 transition-colors duration-150 ease-standard group-hover/checkpoint:decoration-ink">

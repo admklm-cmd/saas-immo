@@ -16,7 +16,6 @@ export function TeamCard({ members }: { members: SettingsSection<SettingsMember[
   return (
     <Card
       title={TEXTS.teamTitle}
-      description={TEXTS.teamSubtitle}
       actions={members.status === "ok" ? <Badge tone="outline">{TEXTS.teamCount(members.value.length)}</Badge> : null}
       testId="settings-team"
       className="h-full"

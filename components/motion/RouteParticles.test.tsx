@@ -89,7 +89,8 @@ describe("RouteParticles", () => {
     expect(canvases).toHaveLength(1);
     const canvas = canvases[0]!;
     expect(canvas.getAttribute("aria-hidden")).toBe("true");
-    expect(canvas.className).toContain("app-particles");
+    // Full background since 26/09/2026: no side mask any more (the old `.app-particles` veil is gone).
+    expect(canvas.className).not.toContain("app-particles");
     // No text, no label: it never pretends that an agent is working.
     expect(canvas.textContent).toBe("");
     expect(canvas.getAttribute("aria-label")).toBeNull();
@@ -142,7 +143,7 @@ describe("RouteParticles", () => {
     expect(engine.transitions.length).toBe(before);
   });
 
-  it("places the shape per viewport class and follows a change of breakpoint", () => {
+  it("spans the whole viewport on every class and follows a change of breakpoint (intensity only)", () => {
     const listeners: (() => void)[] = [];
     vi.stubGlobal(
       "matchMedia",
@@ -157,12 +158,13 @@ describe("RouteParticles", () => {
     );
     render(<RouteParticles />);
     const engine = live()[0]!;
-    expect(engine.options.region).toEqual(BACKGROUND_LAYOUT.desktop.region);
+    expect(engine.options.region).toEqual({ x: 0, y: 0, width: 1, height: 1 });
 
     desktop = false;
     mobile = true;
     act(() => listeners.forEach((listener) => listener()));
-    expect(engine.regions.at(-1)).toEqual(BACKGROUND_LAYOUT.mobile.region);
+    // Same full region on every class: the shape is never moved elsewhere.
+    for (const region of engine.regions) expect(region).toEqual({ x: 0, y: 0, width: 1, height: 1 });
     expect(engine.intensities.at(-1)).toBe(BACKGROUND_LAYOUT.mobile.intensity);
     expect(live()).toEqual([engine]);
   });

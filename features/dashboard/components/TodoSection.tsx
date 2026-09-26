@@ -19,10 +19,9 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
   return (
     <section aria-labelledby="dashboard-todo-title" data-testid="dashboard-todo">
       <div className="particle-veil w-fit max-w-full">
-        <h2 id="dashboard-todo-title" className="text-section font-semibold text-ink">
+        <h2 id="dashboard-todo-title" className="text-section font-bold text-ink">
           {TEXTS.todoTitle}
         </h2>
-        <p className="mt-1.5 text-sm text-ink-muted">{TEXTS.todoSubtitle}</p>
       </div>
 
       <div className="stagger mt-5 divide-y divide-line rounded-2xl border border-line bg-surface shadow-subtle">
@@ -76,7 +75,6 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
           id="tasks"
           glyph="tasks"
           title={TEXTS.tasksTitle}
-          hint={TEXTS.tasksHint}
           list={todo.openTasks}
           unit={TEXTS.tasksUnit}
           emptyText={TEXTS.tasksEmpty}

@@ -66,9 +66,7 @@ export default async function AgentsIaPage({ searchParams }: { searchParams: Pro
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-14">
       <PageHeader
-        size="hero"
         title={TEXTS.title}
-        description={TEXTS.subtitle}
         meta={
           <>
             {/* One badge for the whole page: every agent runs on the simulator. */}
@@ -136,7 +134,6 @@ export default async function AgentsIaPage({ searchParams }: { searchParams: Pro
               <h2 id="agents-section" className="text-section font-bold text-ink">
                 {TEXTS.agentsSectionTitle}
               </h2>
-              <p className="mt-1 text-sm text-ink-muted">{TEXTS.agentsSectionSubtitle}</p>
             </div>
             <div className="stagger mt-5 grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
               {dashboard.agents.map((agent) => (

@@ -267,11 +267,12 @@ describe("ParticleEngine — background mode (spec §9)", () => {
     expect(desktop.width).toBe(1_440 * 2);
   });
 
-  it("never draws above the .35 opacity ceiling", () => {
+  // Ceiling raised from .35 to .46 on 26/09/2026 (+30 % visibility, near plane).
+  it("never draws above the .46 opacity ceiling", () => {
     const engine = new ParticleEngine(createCanvas(1_440, 900), { preset: "sphere", mode: "background", intensity: 3 });
     flushFrame(16);
-    expect(maxAlpha).toBeGreaterThan(0.25);
-    expect(maxAlpha).toBeLessThanOrEqual(0.35);
+    expect(maxAlpha).toBeGreaterThan(0.35);
+    expect(maxAlpha).toBeLessThanOrEqual(0.46);
     engine.destroy();
   });
 

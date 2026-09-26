@@ -97,6 +97,18 @@ describe("summarizeSituation (level 1)", () => {
     expect(screen.getByRole("link", { name: /Validations attendues/ }).getAttribute("href")).toBe("/agents-ia/a-valider");
     expect(screen.getByText(/comptés aujourd'hui/)).toBeDefined();
   });
+
+  it("veils its heading and its period note with the TIGHT veil (text on the canvas, tiles just below)", () => {
+    render(<SituationStrip dashboard={dashboard([agent({})], 2)} />);
+    const heading = screen.getByRole("heading", { level: 2 });
+    const note = screen.getByText(/comptés aujourd'hui/);
+    for (const element of [heading, note]) {
+      expect(element.classList.contains("particle-veil")).toBe(true);
+      expect(element.classList.contains("particle-veil-tight")).toBe(true);
+    }
+    // The tiles are opaque surfaces: no veil on them.
+    expect(screen.getByTestId("situation-active").closest(".particle-veil")).toBeNull();
+  });
 });
 
 describe("latestDossierRun (level 2)", () => {
@@ -115,7 +127,7 @@ describe("latestDossierRun (level 2)", () => {
   it("returns nothing when no run belongs to a contact: the empty state is shown", () => {
     expect(latestDossierRun([agent({ lastRun: null })])).toBeNull();
     render(<SelectedDossierCard agents={[agent({ lastRun: null })]} />);
-    expect(screen.getByText("Aucun dossier traité pour l'instant")).toBeDefined();
+    expect(screen.getByText("Aucun dossier traité pour l’instant")).toBeDefined();
     expect(screen.getByRole("link", { name: "Ouvrir les contacts" }).getAttribute("href")).toBe("/contacts");
   });
 });

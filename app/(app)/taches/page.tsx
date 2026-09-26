@@ -53,7 +53,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="page-frame page-frame-reading">
-      <PageHeader title={TEXTS.title} description={TEXTS.subtitle} />
+      <PageHeader title={TEXTS.title} />
 
       <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         {page ? (

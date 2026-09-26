@@ -312,6 +312,24 @@ function scroller(page: Page): Locator {
   return page.getByRole("region", { name: TEXTS.boardLabel });
 }
 
+/**
+ * Waits until no animation (running or pending its first frame) targets an
+ * element of <main>: geometry read afterwards is the layout at rest.
+ */
+async function waitForMainAtRest(page: Page): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.getAnimations().filter((animation) => {
+            const target = (animation.effect as KeyframeEffect | null)?.target as Element | null;
+            return (animation.playState === "running" || animation.pending) && Boolean(target?.closest("main"));
+          }).length,
+      ),
+    )
+    .toBe(0);
+}
+
 test("une ligne : sur ordinateur, les six étapes sont côte à côte, de gauche à droite, « Perdu » à part", async ({
   page,
 }) => {
@@ -319,15 +337,24 @@ test("une ligne : sur ordinateur, les six étapes sont côte à côte, de gauche
   await signIn(page, "agentA");
   await openPipelineFromNav(page);
   await expect(column(page, PIPELINE_STAGE_LABELS.nouveau)).toBeVisible({ timeout: COLD_START });
+  // The board enters with `animate-rise` (8 px). Even cut to 0.01 ms by reduced
+  // motion, its `both` fill holds the `from` frame until the next rendered
+  // frame: measured right after a client navigation, the board may still sit
+  // 8 px low. Measure the layout at rest, not the entrance.
+  await waitForMainAtRest(page);
 
-  const boxes: { x: number; y: number }[] = [];
-  for (const stage of ACTIVE_STAGES) {
-    const box = await page.getByTestId(`pipeline-column-${stage}`).boundingBox();
-    expect(box, stage).not.toBeNull();
-    boxes.push(box!);
-  }
+  // All six tops read in ONE evaluation, i.e. in the same frame.
+  const boxes = await page.evaluate((stages) => {
+    return stages.map((stage) => {
+      const node = document.querySelector(`[data-testid="pipeline-column-${stage}"]`);
+      if (!node) return null;
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x, y: rect.y };
+    });
+  }, ACTIVE_STAGES);
+  boxes.forEach((box, index) => expect(box, ACTIVE_STAGES[index]).not.toBeNull());
   // Same top for all six, strictly increasing left: one row, in the order of the journey.
-  for (const box of boxes) expect(Math.abs(box.y - boxes[0]!.y)).toBeLessThan(1);
+  for (const box of boxes) expect(Math.abs(box!.y - boxes[0]!.y)).toBeLessThan(1);
   for (let index = 1; index < boxes.length; index += 1) expect(boxes[index]!.x).toBeGreaterThan(boxes[index - 1]!.x);
 
   // « Perdu » sits under the line, outside the scroller.
@@ -452,7 +479,14 @@ for (const width of [1024, 1280, 1440]) {
           text: label.textContent,
           lines: Math.round(box.height / lineHeight),
           inside: box.left >= listBox.left - 0.5 && box.right <= listBox.right + 0.5,
-          clipped: pieces.some((piece) => piece.scrollWidth > piece.clientWidth + 1),
+          // A `.particle-veil` piece scrolls wider by its own soft edge (the
+          // ::before overflow, e.g. 8 px for the tight veil): that is not text.
+          clipped: pieces.some((piece) => {
+            const veilEdge = piece.classList.contains("particle-veil")
+              ? Math.max(0, -Number.parseFloat(getComputedStyle(piece, "::before").right) || 0)
+              : 0;
+            return piece.scrollWidth > piece.clientWidth + 1 + veilEdge;
+          }),
           ellipsis: pieces.some((piece) => getComputedStyle(piece).textOverflow === "ellipsis"),
         };
       });

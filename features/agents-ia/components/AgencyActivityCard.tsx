@@ -27,7 +27,7 @@ export function AgencyActivityCard({ dashboard }: { dashboard: AgentsDashboard }
       <div className="flex flex-wrap items-end justify-between gap-4" data-testid="pending-validation">
         <div>
           <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.pendingValidation}</p>
-          <p className="mt-1 text-hero font-bold tabular-nums text-ink">{pending}</p>
+          <p className="mt-1 text-hero font-bold figure text-ink">{pending}</p>
           {pending === 0 ? <p className="text-sm text-ink-muted">{TEXTS.pendingNone}</p> : null}
         </div>
         <ButtonLink href="/agents-ia/a-valider" variant={pending > 0 ? "primary" : "secondary"} arrow="forward">
@@ -44,7 +44,7 @@ export function AgencyActivityCard({ dashboard }: { dashboard: AgentsDashboard }
         </div>
         <div>
           <dt className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.dailyLimit}</dt>
-          <dd className="mt-1 text-sm font-medium tabular-nums text-ink">{dashboard.dailyRunLimit}</dd>
+          <dd className="mt-1 text-sm font-medium figure text-ink">{dashboard.dailyRunLimit}</dd>
         </div>
         <div>
           <dt className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.attempts}</dt>

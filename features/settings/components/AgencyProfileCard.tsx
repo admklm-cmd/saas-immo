@@ -18,7 +18,6 @@ export function AgencyProfileCard({ agency }: { agency: SettingsSection<Settings
   return (
     <Card
       title={TEXTS.agencyTitle}
-      description={TEXTS.agencySubtitle}
       testId="settings-agency"
       className="h-full"
     >

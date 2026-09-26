@@ -37,7 +37,7 @@ export function summarizeSituation(dashboard: AgentsDashboard): Situation {
   );
 }
 
-type Figure = { key: string; label: string; value: string; href?: string; attention: boolean };
+type Figure = { key: string; label: string; value: string; suffix?: string; href?: string; attention: boolean };
 
 /**
  * Level 1 of « Agents IA »: four exact counts, read at a glance. A figure that
@@ -50,7 +50,8 @@ export function SituationStrip({ dashboard }: { dashboard: AgentsDashboard }) {
     {
       key: "active",
       label: TEXTS.activeAgents,
-      value: TEXTS.activeAgentsValue(situation.activeAgents, situation.totalAgents),
+      value: String(situation.activeAgents),
+      suffix: TEXTS.activeAgentsOf(situation.totalAgents),
       attention: situation.activeAgents < situation.totalAgents,
     },
     {
@@ -66,7 +67,12 @@ export function SituationStrip({ dashboard }: { dashboard: AgentsDashboard }) {
 
   return (
     <section aria-labelledby="situation-title" data-testid="situation">
-      <h2 id="situation-title" className="text-overline font-semibold text-ink-subtle uppercase">
+      {/* Text on the canvas: tight veils (§2.5.8), so the tiles 0.75rem below
+          and 0.5rem above stay untouched. */}
+      <h2
+        id="situation-title"
+        className="particle-veil particle-veil-tight w-fit max-w-full text-overline font-semibold text-ink-subtle uppercase"
+      >
         {TEXTS.title}
       </h2>
       <ul aria-label={TEXTS.listLabel} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -76,11 +82,15 @@ export function SituationStrip({ dashboard }: { dashboard: AgentsDashboard }) {
               <span className="block text-xs font-medium text-ink-muted">{figure.label}</span>
               <span
                 className={cn(
-                  "mt-1 block text-section font-bold tabular-nums",
+                  "mt-1 block text-section font-bold figure",
                   figure.key === "pending" && figure.attention ? "text-accent-strong" : "text-ink",
                 )}
               >
                 {figure.value}
+                {figure.suffix ? " " : null}
+                {figure.suffix ? (
+                  <span className="font-sans text-sm font-medium tracking-normal text-ink-muted">{figure.suffix}</span>
+                ) : null}
               </span>
             </>
           );
@@ -101,7 +111,7 @@ export function SituationStrip({ dashboard }: { dashboard: AgentsDashboard }) {
           );
         })}
       </ul>
-      <p className="mt-2 text-xs text-ink-subtle">{TEXTS.windowNote(dashboard.windows.today.label)}</p>
+      <p className="particle-veil particle-veil-tight mt-2 w-fit max-w-full text-xs text-ink-subtle">{TEXTS.windowNote(dashboard.windows.today.label)}</p>
     </section>
   );
 }

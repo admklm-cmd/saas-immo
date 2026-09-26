@@ -22,7 +22,7 @@ export function ListTotal({ total, unit, scope, className, testId }: ListTotalPr
   return (
     <div data-testid={testId} className={cn("particle-veil w-fit max-w-full min-w-0", className)}>
       <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="text-title font-semibold text-ink tabular-nums" data-testid={testId ? `${testId}-value` : undefined}>
+        <span className="figure text-title font-semibold text-ink" data-testid={testId ? `${testId}-value` : undefined}>
           {total}
         </span>
         <span className="text-sm text-ink-muted">{unit(total)}</span>

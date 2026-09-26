@@ -62,7 +62,7 @@ describe("TodoSection", () => {
     // The short hint still names BOTH states the figure counts.
     expect(card.textContent).toContain(TEXTS.messagesHint);
     expect(TEXTS.messagesHint).toMatch(/À valider/);
-    expect(TEXTS.messagesHint).toMatch(/validés en attente d'envoi/);
+    expect(TEXTS.messagesHint).toMatch(/validés en attente d’envoi/);
     expect(card.textContent).toContain(TEXTS.approvedNotSent);
   });
 

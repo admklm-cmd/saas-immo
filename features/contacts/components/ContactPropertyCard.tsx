@@ -16,7 +16,7 @@ function orUnknown(value: string | null) {
 
 export function ContactPropertyCard({ property }: { property: ContactProperty | null }) {
   return (
-    <Card title={TEXTS.propertyTitle} description={TEXTS.propertySubtitle}>
+    <Card title={TEXTS.propertyTitle}>
       {property ? (
         <DataList
           items={[

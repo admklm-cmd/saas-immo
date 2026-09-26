@@ -33,18 +33,26 @@ export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand
  */
 export default async function DashboardPage() {
   const { data: summary, error } = await getDashboardSummary();
+  // Exact count of the header action, only when it was really computed (never a guessed 0).
+  const messages = summary?.todo.messagesToValidate;
+  const pendingMessages = messages?.status === "ok" && messages.value.total > 0 ? messages.value.total : null;
 
   return (
     <div className="page-frame">
       <PageHeader
         title={TEXTS.title}
-        description={TEXTS.subtitle}
         meta={
           summary ? (
             <Badge tone="outline">
               <time dateTime={summary.generatedAt}>{TEXTS.generatedAt(formatDateTime(summary.generatedAt))}</time>
             </Badge>
           ) : null
+        }
+        actions={
+          <ButtonLink href="/agents-ia/a-valider" variant="primary" arrow="forward" data-testid="dashboard-primary-action">
+            {TEXTS.primaryAction}
+            {pendingMessages ? <span className="figure ml-1 opacity-70">{pendingMessages}</span> : null}
+          </ButtonLink>
         }
       />
 

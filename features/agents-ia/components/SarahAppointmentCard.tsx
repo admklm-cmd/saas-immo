@@ -218,7 +218,7 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 id={titleId} className="text-heading font-semibold text-ink">
+          <h2 id={titleId} className="text-heading font-bold text-ink">
             {appointment.contactName}
           </h2>
           <p className="mt-1 text-sm text-ink-muted">
@@ -261,6 +261,8 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
 
       {appointmentState.canBeCompleted ? (
         <form
+          // POST, never the default GET (guarded by components/form-method.guard.test.ts).
+          method="post"
           className="mt-5 rounded-lg border border-line-strong bg-surface-muted p-4"
           data-testid="appointment-completion-form"
           data-sensitive=""

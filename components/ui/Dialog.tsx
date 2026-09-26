@@ -109,7 +109,7 @@ export function Dialog({
       {open ? (
         <div className="flex flex-col gap-5 p-6 sm:p-8">
           <div>
-            <h2 id={titleId} className="text-heading font-semibold tracking-tight text-ink">
+            <h2 id={titleId} className="text-heading font-bold tracking-tight text-ink">
               {title}
             </h2>
             {description ? (

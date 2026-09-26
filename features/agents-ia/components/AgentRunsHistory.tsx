@@ -61,7 +61,7 @@ export function AgentRunsHistory({
       hint={TEXTS.summaryHint}
       aside={
         page ? (
-          <span className="text-sm font-medium tabular-nums text-ink-muted">{TEXTS.summaryCount(page.total)}</span>
+          <span className="text-sm font-medium figure text-ink-muted">{TEXTS.summaryCount(page.total)}</span>
         ) : null
       }
       defaultOpen={defaultOpen}
@@ -69,7 +69,6 @@ export function AgentRunsHistory({
       className="scroll-mt-6"
     >
       <div className="flex flex-col gap-5">
-        <p className="text-sm text-ink-muted">{TEXTS.subtitle}</p>
         <AgentRunsFilters selected={selected} />
 
         {errorMessage ? (
@@ -95,7 +94,7 @@ export function AgentRunsHistory({
           <>
             <AgentRunsList runs={page.runs} renderProcess={renderProcess} />
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs tabular-nums text-ink-muted">{TEXTS.range(from, to, page.total)}</p>
+              <p className="text-xs figure text-ink-muted">{TEXTS.range(from, to, page.total)}</p>
               <div className="flex items-center gap-2">
                 {page.offset > 0 ? (
                   <ButtonLink

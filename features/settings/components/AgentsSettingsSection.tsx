@@ -21,10 +21,9 @@ export function AgentsSettingsSection({ agents }: { agents: SettingsAgents }) {
     <section aria-labelledby="settings-agents-title" data-testid="settings-agents">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="particle-veil min-w-0">
-          <h2 id="settings-agents-title" className="text-heading font-semibold text-ink">
+          <h2 id="settings-agents-title" className="text-heading font-bold text-ink">
             {TEXTS.agentsTitle}
           </h2>
-          <p className="mt-1 text-sm text-ink-muted">{TEXTS.agentsSubtitle}</p>
         </div>
         <ButtonLink href="/agents-ia" variant="secondary" size="sm">
           {TEXTS.agentsLink}
@@ -53,7 +52,7 @@ export function AgentsSettingsSection({ agents }: { agents: SettingsAgents }) {
           {dailyRunLimit.status === "ok" ? (
             <div data-status="ok">
               <p className="flex flex-wrap items-baseline gap-x-2">
-                <span className="text-title font-semibold text-ink tabular-nums" data-testid="settings-daily-limit-value">
+                <span className="figure text-title font-semibold text-ink" data-testid="settings-daily-limit-value">
                   {dailyRunLimit.value}
                 </span>
                 <span className="text-sm text-ink-muted">{TEXTS.dailyLimitUnit(dailyRunLimit.value)}</span>

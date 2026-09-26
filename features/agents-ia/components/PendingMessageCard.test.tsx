@@ -91,7 +91,7 @@ describe("PendingMessageCard", () => {
 
     expect(validateMessage).toHaveBeenCalledWith("message-1");
     expect(onDecided).toHaveBeenCalledWith(TEXTS.successValidated);
-    expect(TEXTS.successValidated).toContain("Rien n'a été envoyé");
+    expect(TEXTS.successValidated).toContain("Rien n’a été envoyé");
   });
 
   it("requires a motive to refuse, and sends the note only when written", async () => {

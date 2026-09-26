@@ -46,11 +46,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {APP_TEXTS.nav.skipToContent}
       </a>
 
-      {/* Compact top bar (< 1024 px): brand, then the « Menu » sheet. */}
+      {/* Compact top bar (< 1024 px): brand, then the « Menu » sheet. « Prototype »
+          is ink-muted, not ink-subtle: the particles blurred behind the 78 % panel
+          took ink-subtle down to 4.56:1 at 390 px (§2.5.8). */}
       <header className="panel-blur sticky top-0 z-40 flex h-16 items-center justify-between gap-4 border-b border-line px-4 sm:px-6 lg:hidden">
         <Link href="/dashboard" className="inline-flex items-center gap-3 rounded-xs">
           <Logo />
-          <span className="text-xs text-ink-subtle">{APP_TEXTS.brand.prototype}</span>
+          <span className="text-xs text-ink-muted">{APP_TEXTS.brand.prototype}</span>
         </Link>
         <MobileNav email={data.user.email} />
       </header>
@@ -60,7 +62,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="flex h-full flex-col gap-8 overflow-y-auto px-4 pt-6 pb-5">
           <Link href="/dashboard" className="inline-flex items-center gap-3 self-start rounded-xs px-2">
             <Logo />
-            <span className="text-xs text-ink-subtle">{APP_TEXTS.brand.prototype}</span>
+            <span className="text-xs text-ink-muted">{APP_TEXTS.brand.prototype}</span>
           </Link>
 
           <AppNav />

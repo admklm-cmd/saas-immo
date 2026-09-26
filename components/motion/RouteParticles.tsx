@@ -25,7 +25,9 @@ function getServerSnapshot(): ViewportClass {
 }
 
 /**
- * Full-page decorative background of the signed-in space (spec §9).
+ * Full-page decorative background of the signed-in space (spec §9): the shape
+ * spans the whole viewport, on three depth planes, without any mask (revised
+ * on 26/09/2026). Text posed on the canvas carries `.particle-veil`.
  *
  * Rendered once by app/(app)/layout.tsx, which persists across navigations:
  * a single canvas and a single engine for the whole session. The shape follows
@@ -45,7 +47,6 @@ export function RouteParticles() {
       mode="background"
       region={layout.region}
       intensity={layout.intensity}
-      className="app-particles"
     />
   );
 }

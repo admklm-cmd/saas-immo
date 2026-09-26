@@ -77,7 +77,7 @@ export function RunOutcomeSummary({ run, measuredMs }: RunOutcomeSummaryProps) {
         </div>
         <div>
           <dt className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.measuredDuration}</dt>
-          <dd className="mt-1 tabular-nums text-ink">{formatDurationMs(measuredMs)}</dd>
+          <dd className="mt-1 figure text-ink">{formatDurationMs(measuredMs)}</dd>
         </div>
       </dl>
     </section>
