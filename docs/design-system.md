@@ -349,6 +349,8 @@ maximale, la durée, un écran concerné.
    et `SimulationBadge` (rappel permanent qu'une action est simulée). Les particules
    décoratives (`components/motion/`, § 2.5.8) suivent leurs propres règles
    (`docs/plans/2026-09-23-particles-spec.md`). Rien d'autre.
+   Les icônes (§ 2.8) ne bouclent jamais : histoire jouée une fois, et la grande variante
+   respire deux fois puis se pose (< 5 s).
 5. **Jamais le mouvement comme seul porteur d'information.** C'est le corollaire de
    la règle noir et blanc (§ 1) : ce qu'une animation raconte doit aussi être écrit
    en toutes lettres, ou annoncé dans une zone `aria-live`.
@@ -668,43 +670,70 @@ reconnaissable, mais c'est la limite basse assumée du dessin.
 Le passage au vectoriel ne doit toucher **aucun écran** : il se limite à `BRAND.symbol`
 (`components/brand.ts`) et à l'URL de `.brand-symbol` (`app/globals.css`).
 
-### 2.8 Famille d'icônes et tuiles d'app (`features/agents-ia/components/icons/`)
+### 2.8 Famille d'icônes AiaA (`components/icons/`) et tuiles d'étape
 
-Famille dessinée à la main, sans dépendance, pour les **agents et les étapes d'un
-dossier** (et les symboles utilitaires des scènes de la landing). Les icônes Radix
-restent pour les icônes utilitaires de l'application (phases d'une exécution, actions).
+Une seule famille, dessinée à la main, sans dépendance (Radix retiré le 27/09/2026),
+d'après les planches `docs/references/icons/planche-1-noir-cobalt.png` (style) et
+`planche-2-tuiles-verre.png` (traitement de la tuile, grande variante seulement).
+Plan : `docs/plans/2026-09-27-animated-icons.md`. Contrôle : `/dev/icons` (404 en production).
 
-- **Grille** : `viewBox 0 0 24 24`, zone utile 3–21 ; **un seul trait** 1,75 (≈ 1 px à
-  14 px) ; extrémités et jonctions arrondies ; `fill="none"`, `stroke="currentColor"` ;
-  toujours `aria-hidden`. Lisible de 14 à 72 px. Données dans `glyphs.ts` (tracés
-  seuls), rendu par `Glyph` ; `glyphIcon(name)` en fait un composant d'icône.
-- **Symboles** : `lea` (un contact entre dans le bac), `hugo` (loupe + validation),
-  `emma` (bulle, lignes écrites), `louis` (page de calendrier, un créneau),
-  `sarah` (dossier qui avance), `human` (personne + décision), `mandate` (document +
-  signature), `prospect`, `appointment` (lieu de la visite) ; utilitaires `check`,
-  flèches, `lock`, `clock`, `document`, `merge`, `question`, `mail` ; pipeline : `stageMove`
-  (un nœud envoyé le long de la ligne, bouton « Changer d'étape »).
-- **Deux calques** : le corps (immobile) et l'**accent** (la partie qui dit le métier, la
-  seule qui bouge). Mouvements nommés : `drop`, `nudge`, `pop`, `draw` (tracé). Ils
-  ne jouent qu'au survol d'un parent interactif ou à l'activation ; jamais sous mouvement
-  réduit.
-- **Tuile `AgentAppIcon`** — la **forme** dit qui agit, jamais la couleur :
-  `agent` carré arrondi (rayon 30 % du côté), tuile sombre, symbole clair ;
-  `human` cercle à double contour ; `outcome` cercle plein à double contour (le mandat,
-  scellé par une personne) ; `neutral` carré clair (prospect, rendez-vous).
-  Tailles `sm` 28 / `md` 40 / `lg` 56 / `xl` 72 px (symbole 14 / 18 / 24 / 30).
-  Surfaces `light` et `dark`. États `idle`, `active` (soulevée de 2 px, fin anneau
-  cobalt, le symbole joue son mouvement une fois), `inactive` (en creux, symbole gris,
-  contour pointillé pour les formes rondes). Survol du parent : soulevée de 1 px,
-  l'accent bouge.
-- **Espace connecté** : `AGENT_ICONS` / `JOURNEY_ICONS` (`agent-icons.ts`) pointent vers
-  la famille. Rail `OperationalRail` : `RailNode.tone` donne la forme (agent terminé =
-  tuile sombre, agent en échec = cadre noir en creux, validations en cercle, mandat
-  confirmé = cercle plein) ; les états et la règle cobalt du rail sont inchangés, les
-  phases d'une exécution n'ont pas de `tone`. `AgentOverviewCard` : tuile `md` devant le
-  prénom, `inactive` quand l'agent est en pause.
-- **Contrôle** : `/dev/icons` (404 en production) ; `glyphs.test.tsx` vérifie la grille,
-  le trait, les attributs et qu'aucune étape du carrousel ni du rail n'est sans symbole.
+- **Composant** : `<Icon name size="sm|lg" px animate dimmed />` (`Icon.tsx`), serveur-compatible,
+  toujours décoratif (`aria-hidden`, `focusable="false"`) : les mots à côté portent le sens.
+  `iconComponent(name)` en fait un composant pour les cartes d'icônes (rail, phases d'exécution).
+  Dessins dans `definitions/` (planche en deux fichiers, agents, utilitaires), registre `icons.ts`.
+- **Grille** : un seul `viewBox 0 0 24 24` (exportable tel quel en 1024 × 1024), zone utile 1,5–22,5.
+- **Style** : formes **pleines et organiques** en encre (`currentColor` : noir sur clair, blanc sur
+  sombre), traits épais arrondis quand la forme est un trait (anneau, crochets, curseurs), **jamais
+  de contour autour d'une forme pleine**, **jamais de découpe peinte en couleur de page** (les trous
+  sont de vrais trous, `evenodd`, ou un espace entre deux formes) : l'icône s'inverse proprement.
+- **Trois calques** (`data-part`) : `ink` (corps) · `glass` (élément secondaire translucide, cobalt
+  pâle : 2ᵉ bulle, 2ᵉ contact, sphère du deal, halo de la cible, barre en cours) · **`accent`, un
+  seul par icône** (point, flèche, coche, perle). Le test unitaire vérifie un seul calque accent,
+  aucune couleur en dur, aucun style en ligne.
+- **Couleur de l'accent** : petite variante = `--color-accent` (cobalt) ; grande variante =
+  dégradé très discret `--color-icon-indigo` #6366F1 → `--color-icon-violet` #A78BFA, **sur l'accent
+  seul**. **Rouge** (`--color-danger`) : uniquement l'icône `alert` (pastille), toujours à côté d'un
+  texte — la couleur ne porte jamais le sens seule. Signes utilitaires (flèches, chevrons, fermer,
+  menu, coche, erreur) : tout en `currentColor`, immobiles.
+- **Petite variante** (`sm`, 12–24 px ; navigation, boutons, listes, badges) : immobile au repos.
+  Son **histoire** joue **une fois** au survol ou au focus clavier du contrôle parent (`a`, `button`,
+  `summary`, `label`, onglet, `[data-icon-trigger]`) ou quand `animate` devient vrai (changement d'état,
+  ex. tuile d'étape `active`). Jamais de boucle.
+- **Grande variante** (`lg`, 48–96 px ; tuile de verre givré blanc translucide, flou 12 px, ombre
+  `shadow-raised`, rayon 28 %) : **en-tête** des 7 écrans principaux (tableau de bord, contacts,
+  pipeline, agents IA, rendez-vous, tâches, paramètres ; masquée sous 640 px), **cartes des agents**
+  (grisée et immobile quand l'agent est en pause), **états vides**. **Nulle part ailleurs.** L'histoire
+  joue à l'arrivée (× 1,6 plus lente), puis l'accent **respire deux fois et se pose** : fini en
+  < 5 s (WCAG 2.2.2), sans contrôle nécessaire. Choix retenu plutôt que « boucle tant que visible »
+  : pur CSS, aucun JavaScript, aucune boucle infinie (règle § 2.5.4 n° 4 respectée).
+- **Histoires** (`icon-stories.css`, données seulement : `--story`, `--from-x/y/r/s/o`, `--delay`,
+  propriétés enregistrées non héritées) : points des messages clignotent l'un après l'autre, coche
+  des tâches et de la validation humaine tracée, perle qui tombe dans l'entonnoir du pipeline, ondes
+  du téléphone, flèche de croissance qui monte, loupe qui balaie, curseurs des filtres qui glissent,
+  engrenage qui tourne d'un cran (45°, il retombe sur lui-même), liens des intégrations qui se
+  connectent, cloche qui se balance (notifications) / pastille rouge qui apparaît (alerte), aiguille
+  des rappels qui avance, cœur de la cible qui pulse, nœud de l'agent IA qui arrive le long de son
+  lien, crochets de la simulation qui se referment, perle qui parcourt le scénario d'automatisation,
+  point du calendrier qui saute à la date, email qui tombe sur l'enveloppe, sphère du deal qui glisse,
+  barres d'analytics qui montent, contact secondaire qui apparaît, cadre des leads qui fait la mise au
+  point, case du tableau de bord qui pulse une fois. Agents : perle qui tombe dans le bac (Léa), loupe
+  qui balaie le bien (Hugo), flèche de relance qui revient (Emma), aiguille du créneau posée (Louis),
+  dossier envoyé plus loin (Sarah). **Transform et opacité seulement**, durées `--duration-icon`
+  (420 ms), `--icon-step` (90 ms), `--duration-icon-breathe` (1 800 ms).
+- **Image fixe = état final signifiant** : sans animation, chaque icône est complète et lisible.
+- **Mouvement réduit** : `animation: none` sur toute icône (`icons.css`), en plus de la règle globale.
+- **Tuiles d'étape `AgentAppIcon`** (`features/agents-ia/components/icons/`) : inchangées dans leur
+  langage — la **forme** dit qui agit (agent carré sombre, humain cercle à double contour, issue cercle
+  plein, neutre carré clair) — mais le symbole est désormais une petite icône de la famille (15 / 22 /
+  30 / 38 px pour `sm` / `md` / `lg` / `xl`). `active` = anneau cobalt + histoire jouée une fois ;
+  `inactive` = symbole gris et immobile.
+- **Noms** : les 24 de la planche (`dashboard`, `contacts`, `leads`, `pipeline`, `deal`, `aiAgent`,
+  `automation`, `messages`, `calendar`, `tasks`, `reminders`, `email`, `phone`, `humanValidation`,
+  `simulation`, `analytics`, `growth`, `priority`, `alert`, `search`, `filters`, `settings`,
+  `integrations`, `notifications`), les agents (`lea`, `hugo`, `emma`, `louis`, `sarah`), les étapes
+  (`prospect`, `appointment`, `mandate`) et les signes (`check`, `arrowRight/Left/Down`, `chevronRight`,
+  `menu`, `close`, `error`, `lock`, `clock`, `document`, `merge`, `question`, `stageMove`, `checkCircle`,
+  `code`, `archive`). Anciens noms : `mail` → `email`, `human` → `humanValidation`, `network` → `aiAgent`.
 
 ### 2.9 Motif « module OS » et navigation physique
 
@@ -829,7 +858,7 @@ utilisé par au moins deux écrans, ou s'il porte une règle produit (badge simu
 | Composant | Fichier | Rôle |
 |---|---|---|
 | `AgentRunReplay` | `AgentRunReplay.tsx` (client) | Rejeu animé d'une exécution : barre d'outils (facteur de ralenti, durée mesurée, « Tout afficher » / « Rejouer »), flux visuel pointillé, liste détaillée et zone `aria-live` |
-| `AgentRunProcessTrack` | `AgentRunProcessTrack.tsx` | Vue compacte du journal : icônes Radix, nano-sphères en attente, signal et progression pilotés par les mêmes durées mesurées que le rejeu |
+| `AgentRunProcessTrack` | `AgentRunProcessTrack.tsx` | Vue compacte du journal : icônes de la famille (§ 2.8), nano-sphères en attente, signal et progression pilotés par les mêmes durées mesurées que le rejeu |
 | `AgentRunStepRow` | `AgentRunStepRow.tsx` | Une étape : phase, auteur (`Code` / `Fournisseur IA`), statut, durée mesurée, détail technique replié |
 | `AgentRunHead` | `AgentRunHead.tsx` | Carte d'identité d'une exécution (dates, contact ou « Lead entrant », fournisseur, jetons, décision) |
 | `AgentOverviewCard` | `AgentOverviewCard.tsx` | Un agent : prénom, mission, statut, compteurs par fenêtre (« Erreur technique : n » inversé, « Bloquée par un garde-fou : n » contour), dernière exécution, « Erreurs et blocages récents » distingués ligne par ligne (`RunStatusBadge` + « Motif : » pour un blocage) |

@@ -1,0 +1,379 @@
+/*
+ * The story of each icon — docs/design-system.md §2.8 (imported by app/globals.css).
+ *
+ * A story is only DATA: which element moves (`--story` = the keyframes of
+ * icons.css or of this file), from where (`--from-*`) and when (`--delay`).
+ * WHEN a story plays (hover, focus, state change, arrival of a large tile) is
+ * decided once, in icons.css. Every story ends on the still drawing: the
+ * static frame is the meaningful one. Lengths are user units of the 24 grid.
+ */
+
+/* --- Board, first half ----------------------------------------------------------- */
+/* Dashboard: the pane that matters pulses once. */
+svg[data-icon="dashboard"] [data-part="accent"] {
+  --story: icon-pulse;
+  --from-s: 1.2;
+}
+
+/* Contacts: the second person joins. */
+svg[data-icon="contacts"] [data-part="glass"],
+svg[data-icon="contacts"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: -3px;
+  --from-o: 0;
+}
+svg[data-icon="contacts"] [data-part="accent"] {
+  --delay: var(--icon-step);
+}
+
+/* Leads: the viewfinder focuses on the person, then the signal lights. */
+svg[data-icon="leads"] [data-m="frame"] {
+  --story: icon-enter;
+  --from-s: 1.14;
+  --from-o: 0.3;
+}
+svg[data-icon="leads"] [data-part="accent"] {
+  --story: icon-pop;
+  --delay: calc(var(--icon-step) * 2);
+}
+
+/* Pipeline: the bead (the dossier) drops through the funnel. */
+svg[data-icon="pipeline"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: -9px;
+  --from-o: 0;
+}
+
+/* Deal: the glass party slides over, the arrow says « up ». */
+svg[data-icon="deal"] [data-m="sphere"] {
+  --story: icon-enter;
+  --from-x: -3.5px;
+}
+svg[data-icon="deal"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: -2px;
+  --from-y: 2px;
+  --from-o: 0;
+  --delay: var(--icon-step);
+}
+
+/* AI agent: the active node comes along its link and settles. */
+svg[data-icon="aiAgent"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: -4px;
+  --from-s: 0.6;
+  --from-o: 0;
+}
+
+/* Automation: the bead travels the scenario, then leaves by the arrow. */
+svg[data-icon="automation"] [data-m="bead"] {
+  --story: icon-travel;
+}
+svg[data-icon="automation"] [data-m="exit"] {
+  --story: icon-enter;
+  --from-x: -3px;
+  --from-o: 0;
+  --delay: calc(var(--icon-step) * 3);
+}
+
+/* Messages: a reply is being written, dot after dot. */
+svg[data-icon] [data-m^="seq-"] {
+  --story: icon-enter;
+  --from-o: 0.15;
+}
+svg[data-icon] [data-m="seq-2"] {
+  --delay: calc(var(--icon-step) * 1.5);
+}
+svg[data-icon] [data-m="seq-3"] {
+  --delay: calc(var(--icon-step) * 3);
+}
+
+/* Calendar: the dot hops to the chosen date. */
+svg[data-icon="calendar"] [data-part="accent"] {
+  --story: icon-hop;
+}
+
+/* Tasks and human validation: the disc lands, the check is drawn. */
+svg[data-icon] [data-m="disc"] {
+  --story: icon-pop;
+}
+svg[data-icon] [data-m="check"],
+svg[data-icon] [data-m="signature"] {
+  --story: icon-draw;
+  --delay: calc(var(--icon-step) * 2);
+  transform-origin: left center;
+}
+
+/* Reminders and clock: the hand ticks forward. */
+svg[data-icon="reminders"] [data-m="hand"] {
+  --story: icon-enter;
+  --from-r: -40deg;
+  transform-box: view-box;
+  transform-origin: 11.6px 12.7px;
+}
+svg[data-icon="clock"] [data-m="hand"] {
+  --story: icon-enter;
+  --from-r: -45deg;
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+}
+
+/* Email: the new message drops onto the corner. */
+svg[data-icon="email"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: -6px;
+  --from-o: 0;
+}
+
+/* --- Board, second half ---------------------------------------------------------- */
+/* Phone: the waves ring from the handset. */
+svg[data-icon="phone"] [data-m^="seq-"] {
+  --from-s: 0.7;
+  --from-o: 0;
+  transform-origin: left bottom;
+}
+
+/* Simulation: the brackets close in on the model. */
+svg[data-icon="simulation"] [data-m^="corner-"] {
+  --story: icon-enter;
+  --from-o: 0.2;
+}
+svg[data-icon="simulation"] [data-m="corner-tl"] {
+  --from-x: -2.5px;
+  --from-y: -2.5px;
+}
+svg[data-icon="simulation"] [data-m="corner-tr"] {
+  --from-x: 2.5px;
+  --from-y: -2.5px;
+}
+svg[data-icon="simulation"] [data-m="corner-br"] {
+  --from-x: 2.5px;
+  --from-y: 2.5px;
+}
+svg[data-icon="simulation"] [data-m="corner-bl"] {
+  --from-x: -2.5px;
+  --from-y: 2.5px;
+}
+svg[data-icon="simulation"] [data-part="accent"] {
+  --story: icon-pop;
+  --delay: calc(var(--icon-step) * 2);
+}
+
+/* Analytics: the bars rise one after the other, the measure lands on top. */
+svg[data-icon="analytics"] [data-m^="bar-"] {
+  --story: icon-bar;
+  transform-origin: center bottom;
+}
+svg[data-icon="analytics"] [data-m="bar-2"] {
+  --delay: var(--icon-step);
+}
+svg[data-icon="analytics"] [data-m="bar-3"] {
+  --delay: calc(var(--icon-step) * 2);
+}
+svg[data-icon="analytics"] [data-m="bar-4"] {
+  --delay: calc(var(--icon-step) * 3);
+}
+svg[data-icon="analytics"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: 3px;
+  --from-o: 0;
+  --delay: calc(var(--icon-step) * 4);
+}
+
+/* Growth: the arrow climbs. */
+svg[data-icon="growth"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: -2.5px;
+  --from-y: 3px;
+  --from-o: 0;
+}
+
+/* Priority: the target locks, its core pulses. */
+svg[data-icon="priority"] [data-m="halo"] {
+  --story: icon-enter;
+  --from-s: 0.6;
+  --from-o: 0;
+}
+svg[data-icon="priority"] [data-part="accent"] {
+  --story: icon-pulse;
+  --delay: var(--icon-step);
+}
+
+/* Alert: the red dot pops (next to written words, always). */
+svg[data-icon="alert"] [data-part="accent"] {
+  --story: icon-pop;
+}
+
+/* Search: the magnifier sweeps once. Hugo's lens does the same on the property. */
+svg[data-icon="search"] [data-part],
+svg[data-icon="hugo"] [data-m="lens"] {
+  --story: icon-sweep;
+}
+
+/* Filters: the knobs slide to their setting. */
+svg[data-icon="filters"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: 5px;
+}
+svg[data-icon="filters"] [data-m="knob-2"] {
+  --story: icon-enter;
+  --from-x: -4px;
+  --delay: var(--icon-step);
+}
+svg[data-icon="filters"] [data-m="knob-3"] {
+  --story: icon-enter;
+  --from-x: -5px;
+  --delay: calc(var(--icon-step) * 2);
+}
+
+/* Settings: the gear turns one notch (45°: it lands on itself). */
+svg[data-icon="settings"] [data-m="gear"] {
+  --story: icon-enter;
+  --from-r: -45deg;
+}
+
+/* Integrations: the links connect, then the new tool lights. */
+svg[data-icon="integrations"] [data-m^="seq-"] {
+  --from-o: 0;
+}
+svg[data-icon="integrations"] [data-part="accent"] {
+  --story: icon-pop;
+  --delay: calc(var(--icon-step) * 3);
+}
+
+/* Notifications: the bell swings once, its waves ring. */
+svg[data-icon="notifications"] [data-m="bell"] {
+  --story: icon-swing;
+  transform-origin: center top;
+}
+svg[data-icon="notifications"] [data-m^="seq-"] {
+  --from-s: 0.7;
+  --from-o: 0;
+  --delay: calc(var(--icon-step) * 2);
+}
+
+/* --- Agents and stages of a dossier --------------------------------------------- */
+/* Léa: a new contact drops into the tray. Appointment: the pin lands. */
+svg[data-icon="lea"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: -7px;
+  --from-o: 0;
+}
+svg[data-icon="appointment"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: -5px;
+  --from-o: 0;
+}
+
+/* Emma: the follow-up comes back around. */
+svg[data-icon="emma"] [data-m="loop"] {
+  --story: icon-enter;
+  --from-r: -140deg;
+  --from-o: 0.3;
+}
+
+/* Louis: the slot is proposed, its clock hand set. */
+svg[data-icon="louis"] [data-m="hand"] {
+  --story: icon-enter;
+  --from-r: -90deg;
+  --delay: calc(var(--icon-step) * 2);
+  transform-box: view-box;
+  transform-origin: 18.3px 17.6px;
+}
+
+/* Sarah and stage move: the dossier is sent forward. */
+svg[data-icon="sarah"] [data-m="arrow"] {
+  --story: icon-enter;
+  --from-x: -4px;
+  --from-o: 0;
+}
+svg[data-icon="stageMove"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: -8px;
+  --from-o: 0;
+}
+
+/* Prospect, question, document: the accent appears. */
+svg[data-icon="prospect"] [data-part="accent"],
+svg[data-icon="question"] [data-part="accent"],
+svg[data-icon="document"] [data-part="accent"] {
+  --story: icon-pop;
+}
+
+/* --- Utility signs with an accent -------------------------------------------------- */
+svg[data-icon="lock"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: -2.5px;
+}
+svg[data-icon="merge"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-x: -3px;
+  --from-o: 0;
+}
+svg[data-icon="code"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-r: -25deg;
+  --from-o: 0;
+}
+svg[data-icon="archive"] [data-part="accent"] {
+  --story: icon-enter;
+  --from-y: -4px;
+  --from-o: 0;
+}
+
+/* --- Keyframes of this file --------------------------------------------------------- */
+@keyframes icon-travel {
+  from {
+    opacity: 0;
+    transform: translate(-6.6px, -7.2px);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(3.8px, -7.2px);
+  }
+  55% {
+    transform: translate(7.4px, -3.6px);
+  }
+  75% {
+    transform: translate(3.8px, 0);
+  }
+}
+
+@keyframes icon-hop {
+  from {
+    transform: translate(-3px, -3.7px);
+  }
+  50% {
+    transform: translate(-1.5px, -5.4px);
+  }
+}
+
+@keyframes icon-sweep {
+  30% {
+    transform: translate(-1.6px, 1.2px);
+  }
+  70% {
+    transform: translate(1.4px, -1px);
+  }
+}
+
+@keyframes icon-swing {
+  20% {
+    transform: rotate(14deg);
+  }
+  45% {
+    transform: rotate(-10deg);
+  }
+  70% {
+    transform: rotate(5deg);
+  }
+  85% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes icon-bar {
+  from {
+    transform: scaleY(0.25);
+  }
+}

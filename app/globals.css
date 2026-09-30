@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "../components/ui/micro-interactions.css";
 @import "../components/ui/interactions.css";
+@import "../components/icons/icons.css";
+@import "../components/icons/icon-stories.css";
 
 /*
  * Ascend Strategy design tokens — see docs/design-system.md (frontend-ux agent).
@@ -97,6 +99,12 @@
      (always next to a written message). 5.2:1 on white. */
   --color-danger: #c63838;
 
+  /* --- Icon family (docs/design-system.md §2.8) ------------------------------ */
+  /* Gradient of the accent of a LARGE icon only (frosted tile): indigo → violet,
+     never on text, never on a small icon (small icons use --color-accent). */
+  --color-icon-indigo: #6366f1;
+  --color-icon-violet: #a78bfa;
+
   /* --- Breakpoints --------------------------------------------------------- */
   /* Tailwind's defaults (sm 640, md 768, lg 1024, xl 1280, 2xl 1536) plus the
      1440 px reference width of the product (`wide:`): a dense screen may keep a
@@ -127,6 +135,12 @@
   /* Interactive controls (plan 2026-09-24, Lot 1.1: 180-260 ms): arrow swap,
      letter roll, capsule of the tabs, magnetic return. */
   --duration-interactive: 240ms;
+  /* Icon family (docs/design-system.md §2.8): one story of an icon (played once),
+     the step between two elements of the same story (message dots, bars), and
+     the breath of the accent of a large icon (two cycles, then rest). */
+  --duration-icon: 420ms;
+  --icon-step: 90ms;
+  --duration-icon-breathe: 1800ms;
   /* Delay between two letters of a primary button label (<= 12 ms). */
   --letter-step: 10ms;
   /* Rail « réseau opérationnel »: one recorded node lights up after the other. */

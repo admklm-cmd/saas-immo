@@ -1,0 +1,208 @@
+/*
+ * Icon family of Ascend — docs/design-system.md §2.8 (imported by app/globals.css).
+ *
+ * Global on purpose, scoped by attributes (`svg[data-icon]`, `[data-icon-tile]`):
+ * the stories name their keyframes through custom properties, which CSS
+ * modules would rename behind our back.
+ *
+ * Paint:  ink = currentColor (inverts with the surface) · glass = pale cobalt,
+ *         translucent · accent = cobalt (small) / indigo → violet (large tile)
+ *         · danger = red, alert only · ink tone = everything in currentColor.
+ * Motion: the story of an icon plays ONCE. Small icon: on hover or keyboard
+ *         focus of its parent control, or when `data-animate` appears. Large
+ *         icon: on arrival, then its accent breathes twice and rests (< 5 s,
+ *         WCAG 2.2.2). Nothing ever loops without end. Reduced motion: none.
+ */
+
+/* The story variables are set per element and must never leak to children. */
+@property --story {
+  syntax: "*";
+  inherits: false;
+}
+@property --from-x {
+  syntax: "*";
+  inherits: false;
+}
+@property --from-y {
+  syntax: "*";
+  inherits: false;
+}
+@property --from-r {
+  syntax: "*";
+  inherits: false;
+}
+@property --from-s {
+  syntax: "*";
+  inherits: false;
+}
+@property --from-o {
+  syntax: "*";
+  inherits: false;
+}
+@property --delay {
+  syntax: "*";
+  inherits: false;
+}
+
+/* Display and tile sit in the components layer: a utility (`hidden`, `sm:inline-grid`) wins. */
+@layer components {
+  svg[data-icon] {
+    display: inline-block;
+    flex: none;
+    overflow: visible;
+    vertical-align: middle;
+  }
+}
+
+/* --- Paint ----------------------------------------------------------------------- */
+svg[data-icon] [data-part="glass"] {
+  color: color-mix(in srgb, var(--icon-glass, var(--color-accent-line)) 82%, transparent);
+}
+
+svg[data-icon] [data-part="accent"] {
+  color: var(--icon-accent, var(--color-accent));
+}
+
+svg[data-icon][data-tone="danger"] [data-part="accent"] {
+  color: var(--color-danger);
+}
+
+svg[data-icon][data-tone="ink"] [data-part="accent"],
+svg[data-icon][data-dimmed] [data-part="accent"],
+svg[data-icon][data-dimmed] [data-part="glass"] {
+  color: inherit;
+}
+
+svg[data-icon][data-dimmed] [data-part="glass"] {
+  opacity: 0.35;
+}
+
+/* A mark drawn ON the accent disc (check, clock hands): the page colour. */
+svg[data-icon] [data-on-accent] {
+  stroke: var(--color-surface);
+}
+
+/* Large tile: the accent alone takes the indigo → violet gradient. */
+svg[data-icon] [data-stop="start"] {
+  stop-color: var(--color-icon-indigo);
+}
+
+svg[data-icon] [data-stop="end"] {
+  stop-color: var(--color-icon-violet);
+}
+
+svg[data-icon-size="lg"][data-tone="accent"]:not([data-dimmed]) [data-part="accent"] [fill="currentColor"] {
+  fill: var(--icon-paint);
+}
+
+svg[data-icon-size="lg"][data-tone="accent"]:not([data-dimmed])
+  [data-part="accent"]
+  [stroke="currentColor"]:not([data-on-accent]) {
+  stroke: var(--icon-paint);
+}
+
+@layer components {
+  /* --- Large variant: the frosted-glass tile ---------------------------------------- */
+  [data-icon-tile] {
+    display: inline-grid;
+    flex: none;
+    width: var(--icon-tile);
+    height: var(--icon-tile);
+    place-items: center;
+    border-radius: calc(var(--icon-tile) * 0.28);
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--color-surface) 94%, transparent),
+      color-mix(in srgb, var(--color-pearl-soft) 76%, transparent)
+    );
+    backdrop-filter: saturate(160%) blur(12px);
+    box-shadow:
+      inset 0 1px 0 var(--color-surface),
+      inset 0 0 0 1px color-mix(in srgb, var(--color-line) 80%, transparent),
+      var(--shadow-raised);
+    color: var(--color-ink);
+  }
+
+  [data-icon-tile] > svg[data-icon] {
+    width: 56%;
+    height: 56%;
+  }
+
+  [data-icon-tile][data-dimmed] {
+    background: var(--color-surface-sunken);
+    box-shadow: inset 0 0 0 1px var(--color-line-strong);
+    color: var(--color-ink-subtle);
+  }
+}
+
+/* --- Motion ------------------------------------------------------------------------ */
+svg[data-icon] :is([data-part], [data-m]) {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Small: the story, once, when the parent control is hovered or focused… */
+:is(a, button, summary, label, [role="tab"], [role="option"], [data-icon-trigger]):is(:hover, :focus-visible)
+  svg[data-icon-size="sm"][data-animated]
+  :is([data-part], [data-m]),
+/* …or when the state changes (`animate`). */
+svg[data-icon-size="sm"][data-animate] :is([data-part], [data-m]) {
+  animation: var(--story, none) var(--duration-icon) var(--ease-standard) var(--delay, 0ms) 1 both;
+}
+
+/* Large: the story on arrival, at a calmer pace… */
+svg[data-icon-size="lg"][data-animated] :is([data-part], [data-m]) {
+  animation: var(--story, none) calc(var(--duration-icon) * 1.6) var(--ease-standard) var(--delay, 0ms) 1 both;
+}
+
+/* …then the accent breathes twice and rests: < 5 s in all (WCAG 2.2.2). */
+svg[data-icon-size="lg"][data-animated] [data-part="accent"] {
+  animation:
+    var(--story, none) calc(var(--duration-icon) * 1.6) var(--ease-standard) var(--delay, 0ms) 1 both,
+    icon-breathe var(--duration-icon-breathe) var(--ease-standard) calc(var(--duration-icon) * 2.4) 2 forwards;
+}
+
+@keyframes icon-enter {
+  from {
+    opacity: var(--from-o, 1);
+    transform: translate(var(--from-x, 0), var(--from-y, 0)) rotate(var(--from-r, 0deg)) scale(var(--from-s, 1));
+  }
+}
+
+@keyframes icon-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+}
+
+@keyframes icon-pulse {
+  45% {
+    transform: scale(var(--from-s, 1.18));
+  }
+}
+
+@keyframes icon-breathe {
+  50% {
+    transform: scale(1.07);
+  }
+}
+
+@keyframes icon-draw {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+}
+
+/* Reduced motion: the still, meaningful frame. Nothing moves, ever. */
+@media (prefers-reduced-motion: reduce) {
+  svg[data-icon] *,
+  svg[data-icon] :is([data-part], [data-m]) {
+    animation: none !important;
+  }
+}
