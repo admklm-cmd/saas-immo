@@ -1,4 +1,4 @@
-# AiaA — SaaS B2B pour agences immobilières — contexte projet
+# Ascend Strategy — SaaS B2B pour agences immobilières — contexte projet
 
 ## Le produit
 
@@ -68,14 +68,14 @@ On construit actuellement un **prototype fonctionnel**, pas encore un produit ve
 
 ## IA du produit vs IA de développement — ne pas confondre
 
-- **L'abonnement Claude Code** (utilisé pour développer avec les agents `orchestrateur`, `frontend-ux`, `automatisation-ia`, `cybersecurite`) sert uniquement à **coder**. Il ne fournit aucune API pour faire fonctionner Léa, Hugo, Emma, Louis ou Sarah une fois le produit en marche.
+- **L'abonnement Claude Code** (utilisé pour développer avec les agents `orchestrateur`, `web-designer`, `frontend-ux`, `automatisation-ia`, `cybersecurite`) sert uniquement à **coder**. Il ne fournit aucune API pour faire fonctionner Léa, Hugo, Emma, Louis ou Sarah une fois le produit en marche.
 - **Les agents IA du produit** (Léa, Hugo, Emma, Louis, Sarah) auront besoin de leur **propre clé API**, avec son propre budget, séparée de l'abonnement Claude Code. Ne jamais supposer que l'abonnement de développement couvre ces appels.
 - **Fournisseur IA interchangeable** : la logique des agents IA du produit doit passer par une interface commune (`lib/claude/`), pas d'appel figé à un seul fournisseur — pour pouvoir changer de fournisseur plus tard sans tout réécrire.
 - **Simulateur d'abord** : tant qu'aucun budget n'est fixé pour l'API IA du produit, les agents Léa/Hugo/Emma/Louis/Sarah tournent sur un **simulateur** (réponses simulées, pas d'appel réel facturé). Ne jamais déclencher un service payant sans budget explicitement défini par l'utilisateur.
 
 ## Méthode de travail (inspirée de BMAD)
 
-On applique l'esprit de la méthode BMAD (Breakthrough Method for Agile AI-Driven Development) — documents avant code, tâches atomiques, pas d'improvisation — sans installer son framework complet ni ses propres agents : nos 4 agents suffisent.
+On applique l'esprit de la méthode BMAD (Breakthrough Method for Agile AI-Driven Development) — documents avant code, tâches atomiques, pas d'improvisation — sans installer son framework complet ni ses propres agents : nos 5 agents suffisent.
 
 - **Le plan écrit fait foi.** Avant de coder, l'orchestrateur écrit un plan précis qui sert de référence pendant toute la tâche.
 - **Découpage en tâches atomiques**, avec périmètre et critère de réussite précis pour chacune — jamais « fais le CRM », toujours une tâche vérifiable.
