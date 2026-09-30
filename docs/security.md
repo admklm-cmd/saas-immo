@@ -512,8 +512,11 @@ Lecture seule : aucune donnée de l'écran n'est modifiable, sauf le **coupe-cir
 
 ### 2.7 Dépendances
 
-`npm audit` et `npm audit --omit=dev` : **0 vulnérabilité** (23/09/2026, audit du tableau de bord ;
-précédemment 22/09/2026). Dépendances peu nombreuses, toutes largement utilisées
+30/09/2026 : vulnérabilité critique **GHSA-vcvr-r3jv-pc5j** (exécution de code à distance dans
+`next/og` `ImageResponse`) détectée sur `next` 16.3.5 ; non exploitable ici (`next/og` et
+`ImageResponse` ne sont pas utilisés), corrigée par le passage de `next` et `eslint-config-next`
+à **16.3.8**. Après correction : `npm audit` et `npm audit --omit=dev` : **0 vulnérabilité**
+(30/09/2026). Dépendances peu nombreuses, toutes largement utilisées
 et directement justifiées par la stack (`next`, `react`, `@supabase/*`, `zod`, `@date-fns/tz`,
 `server-only`). Aucun SDK de fournisseur d'IA payant n'est installé.
 **Toutes les dépendances sont épinglées à une version exacte** (`package.json` et `package-lock.json`) :
