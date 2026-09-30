@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { formatDate } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
+import { ArrowLink } from "@/components/ui/ArrowLink";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -57,9 +57,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
     <div className="page-frame">
       <PageHeader
         eyebrow={
-          <Link href="/contacts" className="rounded-xs hover:text-ink hover:underline">
-            ← {TEXTS.backToList}
-          </Link>
+          <ArrowLink href="/contacts" direction="back" tone="muted">
+            {TEXTS.backToList}
+          </ArrowLink>
         }
         title={contact.displayName}
         meta={

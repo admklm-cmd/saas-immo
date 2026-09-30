@@ -30,9 +30,11 @@ describe("UpcomingAppointments", () => {
     expect(within(card).getAllByText(APP_TEXTS.states.simulation)).toHaveLength(5);
 
     expect(within(card).getByRole("link", { name: /Contact 0/ }).getAttribute("href")).toBe("/contacts/c-0");
-    expect(within(card).getByRole("link", { name: new RegExp(TEXTS.viewAll) }).getAttribute("href")).toBe(
-      "/rendez-vous",
-    );
+    const viewAll = within(card).getByRole("link", { name: new RegExp(TEXTS.viewAll) });
+    expect(viewAll.getAttribute("href")).toBe("/rendez-vous");
+    // The arrow is the icon of the family, decorative — never a typed « → ».
+    expect(viewAll.textContent).not.toContain("→");
+    expect(within(viewAll).getByTestId("button-arrow").getAttribute("aria-hidden")).toBe("true");
   });
 
   it("affiche « Indisponible » si le calcul a échoué", () => {

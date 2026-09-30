@@ -46,6 +46,9 @@ describe("AppointmentRow", () => {
     );
     expect(row.textContent).toContain(`${TEXTS.statusPrefix} Confirmé`);
     expect(within(row).getByText(APP_TEXTS.states.simulation)).toBeDefined();
+    // The check mark is the icon of the family, decorative — never a typed « ✓ ».
+    expect(row.textContent).not.toContain("✓");
+    expect(row.querySelector('svg[data-icon="check"]')?.closest('[aria-hidden="true"]')).not.toBeNull();
   });
 
   it("n'affiche pas le badge Simulation sur un rendez-vous réel", () => {
@@ -69,6 +72,12 @@ describe("AppointmentRow", () => {
     expect(link.textContent).toContain(TEXTS.confirmInFollowThrough);
     // Distinct accessible name per row.
     expect(link.textContent).toContain("Frederic Masson");
+    // The arrow is the icon of the family, decorative and still — never a typed « → ».
+    expect(link.textContent).not.toContain("→");
+    const arrow = within(link).getByTestId("button-arrow");
+    expect(arrow.getAttribute("aria-hidden")).toBe("true");
+    expect(arrow.getAttribute("data-still")).toBe("true");
+    expect(arrow.querySelector('svg[data-icon="arrowRight"]')).not.toBeNull();
   });
 
   it("propose « Clôturer dans le suivi » quand le rendez-vous confirmé a eu lieu", () => {

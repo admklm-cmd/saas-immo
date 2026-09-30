@@ -2,6 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { Icon } from "@/components/icons/Icon";
+
 /** How long the success pill stays on screen. The card itself has moved: the pill only confirms it. */
 const ANNOUNCEMENT_MS = 6000;
 
@@ -70,7 +72,7 @@ export function PipelineStageChangeProvider({ children }: { children: ReactNode 
               aria-hidden="true"
               className="flex size-5 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs"
             >
-              ✓
+              <Icon name="check" px="0.75rem" />
             </span>
             {message}
           </p>

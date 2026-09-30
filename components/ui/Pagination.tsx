@@ -1,6 +1,6 @@
 import { APP_TEXTS } from "@/components/texts";
 
-import { buttonStyles } from "./Button";
+import { ButtonArrowGlyph, buttonStyles } from "./Button";
 import { ButtonLink } from "./ButtonLink";
 import { cn } from "./cn";
 
@@ -50,24 +50,24 @@ export function Pagination({ offset, limit, count, total, hasMore, hrefFor, clas
       <div className="flex items-center gap-2">
         {hasPrevious ? (
           <ButtonLink href={hrefFor(Math.max(0, offset - limit))} variant="secondary" size="sm" rel="prev">
-            <span aria-hidden="true">←</span>
+            <ButtonArrowGlyph direction="back" still />
             {TEXTS.previous}
           </ButtonLink>
         ) : (
           <span aria-hidden="true" data-disabled="true" className={disabled}>
-            <span aria-hidden="true">←</span>
+            <ButtonArrowGlyph direction="back" still />
             {TEXTS.previous}
           </span>
         )}
         {hasMore ? (
           <ButtonLink href={hrefFor(offset + limit)} variant="secondary" size="sm" rel="next">
             {TEXTS.next}
-            <span aria-hidden="true">→</span>
+            <ButtonArrowGlyph direction="forward" still />
           </ButtonLink>
         ) : (
           <span aria-hidden="true" data-disabled="true" className={disabled}>
             {TEXTS.next}
-            <span aria-hidden="true">→</span>
+            <ButtonArrowGlyph direction="forward" still />
           </span>
         )}
       </div>

@@ -56,6 +56,14 @@ test("téléphone 390 px : une liste de cartes lisible, jamais un tableau qui d�
   await expect(card.getByText(TEXTS.openTasks(1))).toBeVisible();
   await card.getByRole("link", { name: "Camille Berthier" }).click();
   await expect(page.getByRole("heading", { level: 1, name: "Camille Berthier" })).toBeVisible({ timeout: COLD_START });
+
+  // Back to the list: the arrow is the icon of the family, silent for a screen
+  // reader — the accessible name is the words only, never « ← ».
+  const back = page.getByRole("link", { name: APP_TEXTS.contact.backToList, exact: true });
+  await expect(back).toBeVisible();
+  await expect(back.locator('[data-testid="button-arrow"][aria-hidden="true"] svg[data-icon="arrowLeft"]').first()).toBeAttached();
+  await back.click();
+  await expect(page).toHaveURL(/\/contacts$/, { timeout: COLD_START });
 });
 
 test("cas d'erreur : une fiche inconnue affiche « Contact introuvable » et le retour à la liste", async ({ page }) => {

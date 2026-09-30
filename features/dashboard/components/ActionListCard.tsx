@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Icon } from "@/components/icons/Icon";
 import { APP_TEXTS } from "@/components/texts";
+import { ButtonArrowGlyph } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 
 import type { DashboardActionList } from "../types";
@@ -98,7 +100,7 @@ export function ActionListCard<TItem>({
               aria-hidden="true"
               className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-line-strong text-xs text-ink-muted"
             >
-              ✓
+              <Icon name="check" px="0.75rem" />
             </span>
             {emptyText}
           </p>
@@ -135,7 +137,7 @@ export function ActionListCard<TItem>({
           ) : (
             link.label
           )}
-          <span aria-hidden="true">→</span>
+          <ButtonArrowGlyph direction="forward" still />
         </Link>
       </div>
     </section>

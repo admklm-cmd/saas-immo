@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Icon } from "@/components/icons/Icon";
+
 import { cn } from "./cn";
 import { ErrorDots } from "./ErrorDots";
 
@@ -12,8 +14,8 @@ const TONES: Record<AlertTone, string> = {
   info: "border-line bg-surface-muted text-ink",
 };
 
-const GLYPHS: Record<Exclude<AlertTone, "error">, string> = {
-  success: "✓",
+const GLYPHS: Record<Exclude<AlertTone, "error">, ReactNode> = {
+  success: <Icon name="check" px="0.875rem" />,
   info: "i",
 };
 

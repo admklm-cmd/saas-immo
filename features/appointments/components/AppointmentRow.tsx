@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { formatDayParts, formatSlotWithYear } from "@/components/format";
+import { Icon } from "@/components/icons/Icon";
 import { APP_TEXTS } from "@/components/texts";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { ButtonArrowGlyph } from "@/components/ui/Button";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { APPOINTMENT_STATUS_LABELS } from "@/features/contacts/types";
 
@@ -70,7 +72,7 @@ export function AppointmentRow({ appointment, now }: { appointment: AppointmentL
             </Link>
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-            <Badge tone={STATUS_TONES[appointment.status]} icon={appointment.status === "confirmed" ? "✓" : undefined}>
+            <Badge tone={STATUS_TONES[appointment.status]} icon={appointment.status === "confirmed" ? <Icon name="check" px="1em" /> : undefined}>
               <span className="sr-only">{TEXTS.statusPrefix} </span>
               {APPOINTMENT_STATUS_LABELS[appointment.status]}
             </Badge>
@@ -87,7 +89,7 @@ export function AppointmentRow({ appointment, now }: { appointment: AppointmentL
           >
             {action}
             <span className="sr-only"> {TEXTS.actionFor(appointment.contactName)}</span>
-            <span aria-hidden="true">→</span>
+            <ButtonArrowGlyph direction="forward" still />
           </Link>
         ) : null}
       </div>

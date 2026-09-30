@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { APP_TEXTS } from "@/components/texts";
@@ -19,6 +19,17 @@ describe("Pagination", () => {
     expect(screen.getByText("26–50 sur 131")).toBeDefined();
     expect(screen.getByRole("link", { name: new RegExp(TEXTS.previous) }).getAttribute("href")).toBe("/taches");
     expect(screen.getByRole("link", { name: new RegExp(TEXTS.next) }).getAttribute("href")).toBe("/taches?offset=50");
+  });
+
+  it("dessine ses flèches avec les icônes de la famille, décoratives, sans caractère tapé", () => {
+    render(<Pagination offset={25} limit={25} count={25} total={131} hasMore hrefFor={hrefFor} />);
+
+    const previous = screen.getByRole("link", { name: TEXTS.previous });
+    const next = screen.getByRole("link", { name: TEXTS.next });
+    expect(`${previous.textContent}${next.textContent}`).not.toMatch(/[←→]/);
+    expect(within(previous).getByTestId("button-arrow").getAttribute("aria-hidden")).toBe("true");
+    expect(previous.querySelector('svg[data-icon="arrowLeft"]')).not.toBeNull();
+    expect(next.querySelector('svg[data-icon="arrowRight"]')).not.toBeNull();
   });
 
   it("n'offre aucun lien « Précédent » sur la première page ni « Suivant » sur la dernière", () => {

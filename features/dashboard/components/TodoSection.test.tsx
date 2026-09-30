@@ -38,6 +38,9 @@ describe("TodoSection", () => {
     const open = within(card).getByRole("link", { name: new RegExp(TEXTS.messagesLink) });
     expect(open.getAttribute("href")).toBe("/agents-ia/a-valider");
     expect(hrefs(card)).toContain("/contacts/c-0");
+    // One arrow drawing on the screen: the icon of the family, decorative — never a typed « → ».
+    expect(open.textContent).not.toContain("→");
+    expect(within(open).getByTestId("button-arrow").getAttribute("aria-hidden")).toBe("true");
   });
 
   it("sans suite, n'annonce pas d'échantillon et garde un lien explicite vers la file", () => {
