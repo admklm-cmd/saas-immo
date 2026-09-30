@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { Icon } from "@/components/icons/Icon";
+import type { IconName } from "@/components/icons/icons";
+
 import { cn } from "./cn";
 
 export type EmptyStateProps = {
@@ -7,10 +10,12 @@ export type EmptyStateProps = {
   description?: ReactNode;
   /** Suggested next action, when there is one. */
   action?: ReactNode;
+  /** Large icon of what is missing (docs/design-system.md §2.8). Defaults to a list. */
+  icon?: IconName;
   className?: string;
 };
 
-export function EmptyState({ title, description, action, className }: EmptyStateProps) {
+export function EmptyState({ title, description, action, icon = "tasks", className }: EmptyStateProps) {
   return (
     <div
       className={cn(
@@ -18,14 +23,7 @@ export function EmptyState({ title, description, action, className }: EmptyState
         className,
       )}
     >
-      <span
-        aria-hidden="true"
-        className="mb-4 flex size-11 items-center justify-center rounded-full border border-line-strong bg-surface text-ink-subtle"
-      >
-        <svg viewBox="0 0 24 24" className="size-5 stroke-current" fill="none" strokeWidth="1.5">
-          <path d="M4 7h16M4 12h10M4 17h7" strokeLinecap="round" />
-        </svg>
-      </span>
+      <Icon name={icon} size="lg" px={56} className="mb-5" testId="empty-state-icon" />
       <p className="text-heading font-semibold text-ink">{title}</p>
       {description ? <p className="mt-2 max-w-md text-sm text-ink-muted">{description}</p> : null}
       {action ? <div className="mt-6">{action}</div> : null}

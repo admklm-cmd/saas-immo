@@ -10,6 +10,7 @@ export default function ContactNotFound() {
   return (
     <div className="mx-auto w-full max-w-2xl px-6 py-20">
       <EmptyState
+        icon="search"
         title={APP_TEXTS.contact.notFoundTitle}
         description={APP_TEXTS.contact.notFoundBody}
         action={

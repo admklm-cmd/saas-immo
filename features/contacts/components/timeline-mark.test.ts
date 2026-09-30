@@ -29,7 +29,7 @@ describe("timelineMark — the symbol says what, the shape says who", () => {
 
   it("a message, a task, an appointment keep their symbol and take the actor's shape", () => {
     expect(timelineMark(entry({ kind: "message", actor: { type: "ai_agent", agent: "louis", userId: null } }))).toEqual({
-      glyph: "mail",
+      glyph: "email",
       kind: "agent",
     });
     expect(timelineMark(entry({ kind: "task", actor: { type: "user", agent: null, userId: "u" } }))).toEqual({

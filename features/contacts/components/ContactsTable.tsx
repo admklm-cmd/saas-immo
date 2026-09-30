@@ -3,7 +3,7 @@ import Link from "next/link";
 import { formatDate } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { PipelineStageBadge } from "@/components/ui/PipelineStageBadge";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 import { CONTACT_SOURCE_LABELS, type ContactListItem } from "@/features/contacts/types";
 
 import { ContactEmail } from "./ContactEmail";
@@ -51,7 +51,7 @@ export function ContactsTable({ contacts }: { contacts: readonly ContactListItem
       >
         <ContactStateMarks contact={{ humanTakeover: true, openTasksCount: 0 }} />
         <span className="inline-flex items-center gap-1.5">
-          <Glyph name="tasks" width={14} />
+          <Icon name="tasks" px={14} />
           {TEXTS.legendOpenTasks}
         </span>
       </div>
@@ -121,9 +121,9 @@ export function ContactsTable({ contacts }: { contacts: readonly ContactListItem
                   <td className={`${CELL} ${DATE_COLUMN} text-right whitespace-nowrap text-ink-muted tabular-nums`}>
                     <span className="inline-flex items-center gap-2">
                       {updated}
-                      <Glyph
+                      <Icon
                         name="arrowRight"
-                        width={14}
+                        px={14}
                         className="text-ink-subtle opacity-0 transition-[opacity,translate] duration-150 ease-standard group-hover/row:translate-x-0.5 group-hover/row:opacity-100"
                       />
                     </span>

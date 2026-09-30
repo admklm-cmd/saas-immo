@@ -1,5 +1,5 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { SceneFrame } from "./SceneFrame";
 import { SceneRow } from "./SceneRow";
@@ -19,9 +19,9 @@ export function LeaScene() {
             </li>
           ))}
         </ul>
-        <Glyph name="arrowRight" width={18} className="mx-auto rotate-90 text-ink-subtle sm:rotate-0" />
+        <Icon name="arrowRight" px={18} className="mx-auto rotate-90 text-ink-subtle sm:rotate-0" />
         <p className="flex items-center gap-3 rounded-lg bg-inverse px-4 py-3.5 text-sm font-semibold text-ink-inverse">
-          <Glyph name="document" width={18} className="shrink-0" />
+          <Icon name="document" px={18} className="shrink-0" />
           {SCENE.output}
         </p>
       </div>

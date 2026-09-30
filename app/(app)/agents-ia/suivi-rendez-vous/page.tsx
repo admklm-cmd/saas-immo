@@ -52,6 +52,7 @@ export default async function FollowThroughPage() {
           </Alert>
         ) : appointments.length === 0 ? (
           <EmptyState
+            icon="sarah"
             title={TEXTS.emptyTitle}
             description={TEXTS.emptyBody}
             action={

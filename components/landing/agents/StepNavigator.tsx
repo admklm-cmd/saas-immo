@@ -1,6 +1,6 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { cn } from "@/components/ui/cn";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { stepNumber } from "./agent-steps";
 import styles from "./agents.module.css";
@@ -35,7 +35,7 @@ export function StepNavigator({ position, count, onPrevious, onNext }: StepNavig
         data-direction="previous"
         className={cn("ui-focus", styles.navButton)}
       >
-        <Glyph name="arrowLeft" width={16} />
+        <Icon name="arrowLeft" px={16} />
       </button>
       <span className={styles.navCount} data-testid="agents-position">
         <span className="sr-only">{TEXTS.stepPrefix} </span>
@@ -53,7 +53,7 @@ export function StepNavigator({ position, count, onPrevious, onNext }: StepNavig
         data-direction="next"
         className={cn("ui-focus", styles.navButton)}
       >
-        <Glyph name="arrowRight" width={16} />
+        <Icon name="arrowRight" px={16} />
       </button>
     </div>
   );

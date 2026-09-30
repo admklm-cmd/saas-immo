@@ -65,7 +65,7 @@ export function FollowUpGates({ contactName, gates, reached, channelLabel, waiti
         <span className={styles.half} data-side="in" data-lit={allOpen || undefined} aria-hidden="true" />
         <span className={styles.node} aria-hidden="true">
           <AgentAppIcon
-            glyph="human"
+            glyph="humanValidation"
             kind="human"
             size="sm"
             state={waitingHuman ? "active" : allOpen ? "idle" : "inactive"}

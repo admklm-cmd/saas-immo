@@ -1,6 +1,6 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { SceneFrame } from "./SceneFrame";
 import { SceneRow } from "./SceneRow";
@@ -16,7 +16,7 @@ export function ReviewScene() {
     <SceneFrame stepKey="review" title={SCENE.title}>
       <div className="rounded-xl bg-surface-muted p-4 sm:p-5">
         <div className="flex items-center gap-3.5">
-          <AgentAppIcon glyph="human" kind="human" size="md" />
+          <AgentAppIcon glyph="humanValidation" kind="human" size="md" />
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-ink">{SCENE.reviewer}</span>
             <span className="block text-xs text-ink-muted">{SCENE.message}</span>
@@ -30,7 +30,7 @@ export function ReviewScene() {
             {SCENE.actions.reject}
           </span>
           <span className="flex items-center gap-1.5 rounded-full bg-inverse px-3.5 py-1.5 text-xs font-semibold text-ink-inverse">
-            <Glyph name="check" width={13} />
+            <Icon name="check" px={13} />
             {SCENE.actions.approve}
           </span>
         </div>

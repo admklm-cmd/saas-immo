@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowRightIcon } from "@radix-ui/react-icons";
+import { Icon } from "@/components/icons/Icon";
 import type { CSSProperties, ComponentPropsWithRef, ReactNode } from "react";
 
 import { cn } from "./cn";
@@ -61,7 +61,7 @@ const SIZES: Record<ButtonSize, string> = {
  * the label says where the control goes. Still when the control is inert.
  */
 export function ButtonArrowGlyph({ direction, still = false }: { direction: ButtonArrow; still?: boolean }) {
-  const Icon = direction === "back" ? ArrowLeftIcon : ArrowRightIcon;
+  const name = direction === "back" ? "arrowLeft" : "arrowRight";
   return (
     <span
       aria-hidden="true"
@@ -71,10 +71,10 @@ export function ButtonArrowGlyph({ direction, still = false }: { direction: Butt
       className={cn("ui-arrow", still && "[&>span:last-child]:hidden")}
     >
       <span>
-        <Icon width="1em" height="1em" />
+        <Icon name={name} px="1em" />
       </span>
       <span>
-        <Icon width="1em" height="1em" />
+        <Icon name={name} px="1em" />
       </span>
     </span>
   );

@@ -1,5 +1,5 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { SceneFrame } from "./SceneFrame";
 import { SceneRow } from "./SceneRow";
@@ -29,7 +29,7 @@ export function HugoScene() {
             >
               <dt className="text-overline font-semibold text-ink-subtle uppercase">{field.label}</dt>
               <dd className="mt-1 flex items-center gap-2 text-sm font-semibold text-ink">
-                <Glyph name="question" width={16} className="shrink-0" />
+                <Icon name="question" px={16} className="shrink-0" />
                 {SCENE.missing}
               </dd>
             </div>

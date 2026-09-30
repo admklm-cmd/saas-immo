@@ -1,11 +1,11 @@
 import type { AppIconKind } from "@/features/agents-ia/components/icons/AgentAppIcon";
-import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 import type { TimelineEntry } from "@/features/contacts/types";
 
 /** Activity type written by the human stage change (`change_contact_stage`). */
 export const STAGE_CHANGE_TYPE = "contact_stage_changed";
 
-export type TimelineMark = { glyph: GlyphName; kind: AppIconKind };
+export type TimelineMark = { glyph: IconName; kind: AppIconKind };
 
 /**
  * The tile drawn on the rail of the history, in the glyph family
@@ -25,9 +25,9 @@ export function timelineMark(entry: TimelineEntry): TimelineMark {
 
   switch (entry.kind) {
     case "ai_run":
-      return { glyph: entry.actor.agent ?? "network", kind: "agent" };
+      return { glyph: entry.actor.agent ?? "aiAgent", kind: "agent" };
     case "message":
-      return { glyph: "mail", kind };
+      return { glyph: "email", kind };
     case "task":
       return { glyph: "tasks", kind };
     case "appointment":

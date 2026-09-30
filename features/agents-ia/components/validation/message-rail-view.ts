@@ -3,7 +3,7 @@ import { MESSAGE_STATUS_LABELS } from "@/features/contacts/types";
 
 import type { PendingMessageView } from "../../types";
 import { AGENT_GLYPHS } from "../agent-icons";
-import type { GlyphName } from "../icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 import {
   messageRailModel,
   messageRailStage,
@@ -16,7 +16,7 @@ const TEXTS = APP_TEXTS.validationQueue;
 
 export type MessageRailView = {
   model: MessageRailModel;
-  author: { name: string; glyph: GlyphName; kind: "agent" | "human" };
+  author: { name: string; glyph: IconName; kind: "agent" | "human" };
   /** Written status of « Vous » — the recorded status label of the message. */
   humanStatus: string;
   /** Written status of the send. */
@@ -55,7 +55,7 @@ export function messageRailFor(message: PendingMessageView, outcome?: MessageOut
         glyph: AGENT_GLYPHS[message.createdByAgent],
         kind: "agent" as const,
       }
-    : { name: TEXTS.writtenByHuman, glyph: "human" as const, kind: "human" as const };
+    : { name: TEXTS.writtenByHuman, glyph: "humanValidation" as const, kind: "human" as const };
 
   return {
     model,

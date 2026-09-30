@@ -3,14 +3,14 @@ import type { ReactNode } from "react";
 import { cn } from "@/components/ui/cn";
 
 import { AgentAppIcon } from "../icons/AgentAppIcon";
-import type { GlyphName } from "../icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 
 export type RuleNoteProps = {
   /** The rule, in one sentence (« Premier contact : toujours validé par un humain »). */
   title: ReactNode;
   children?: ReactNode;
   /** Who the rule protects the decision of: a person (default) or the agency's system. */
-  glyph?: GlyphName;
+  glyph?: IconName;
   kind?: "human" | "neutral";
   className?: string;
   testId?: string;
@@ -24,7 +24,7 @@ export type RuleNoteProps = {
  * screen. The human shape (double contour) says who holds the decision; the
  * words are unchanged, never shortened (they are guard rails).
  */
-export function RuleNote({ title, children, glyph = "human", kind = "human", className, testId }: RuleNoteProps) {
+export function RuleNote({ title, children, glyph = "humanValidation", kind = "human", className, testId }: RuleNoteProps) {
   return (
     <div data-testid={testId} className={cn("flex items-start gap-3.5", className)}>
       <AgentAppIcon glyph={glyph} kind={kind} size="sm" className="mt-0.5 shrink-0" />

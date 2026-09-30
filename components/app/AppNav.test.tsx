@@ -51,7 +51,7 @@ describe("navigation groupée", () => {
     const links = container.querySelectorAll("a");
     for (const link of Array.from(links)) {
       const svg = link.querySelector("svg");
-      expect(svg?.getAttribute("data-glyph"), link.textContent ?? "").toBeTruthy();
+      expect(svg?.getAttribute("data-icon"), link.textContent ?? "").toBeTruthy();
       expect(svg?.getAttribute("aria-hidden")).toBe("true");
       expect(svg?.getAttribute("viewBox")).toBe("0 0 24 24");
     }

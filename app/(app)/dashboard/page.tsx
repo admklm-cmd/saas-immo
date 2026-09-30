@@ -40,6 +40,7 @@ export default async function DashboardPage() {
   return (
     <div className="page-frame">
       <PageHeader
+        icon="dashboard"
         title={TEXTS.title}
         meta={
           summary ? (

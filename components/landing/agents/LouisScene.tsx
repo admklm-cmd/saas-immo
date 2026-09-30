@@ -1,5 +1,5 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
-import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 
 import { SceneFrame } from "./SceneFrame";
 import { SceneRow, type SceneRowTone } from "./SceneRow";
@@ -14,7 +14,7 @@ const SLOT_TONES: Readonly<Record<SlotState, SceneRowTone>> = {
   free: "plain",
 };
 
-const SLOT_GLYPHS: Readonly<Record<SlotState, GlyphName>> = { taken: "lock", proposed: "clock", free: "clock" };
+const SLOT_GLYPHS: Readonly<Record<SlotState, IconName>> = { taken: "lock", proposed: "clock", free: "clock" };
 
 /** Louis: a free slot proposed, the booked one never offered again, the file prepared. */
 export function LouisScene() {

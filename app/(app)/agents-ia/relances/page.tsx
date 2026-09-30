@@ -65,6 +65,7 @@ export default async function EmmaFollowUpsPage() {
               {TEXTS.ruleBody}
             </RuleNote>
             <EmptyState
+              icon="emma"
               title={TEXTS.emptyTitle}
               description={TEXTS.emptyBody}
               action={

@@ -1,6 +1,6 @@
 import { APP_TEXTS } from "@/components/texts";
 import { cn } from "@/components/ui/cn";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 import type { ContactListItem } from "@/features/contacts/types";
 
 const TEXTS = APP_TEXTS.contacts;
@@ -43,7 +43,7 @@ export function ContactStateMarks({ contact, variant = "labelled", className }: 
             aria-hidden="true"
             className="inline-grid size-4.5 shrink-0 place-items-center rounded-full bg-surface text-ink shadow-[inset_0_0_0_1.25px_var(--color-ink)] outline-1 outline-offset-[1.5px] outline-ink-subtle outline-solid"
           >
-            <Glyph name="human" width={10} />
+            <Icon name="humanValidation" px={10} />
           </span>
           <span className={compact ? "sr-only" : undefined}>{TEXTS.humanTakeover}</span>
         </span>
@@ -54,7 +54,7 @@ export function ContactStateMarks({ contact, variant = "labelled", className }: 
           title={compact ? TEXTS.openTasks(tasks) : undefined}
           className="inline-flex items-center gap-1 whitespace-nowrap text-ink-muted"
         >
-          <Glyph name="tasks" width={14} className="shrink-0" />
+          <Icon name="tasks" px={14} className="shrink-0" />
           {compact ? (
             <>
               <span aria-hidden="true" className="font-medium tabular-nums">

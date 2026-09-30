@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { APP_TEXTS } from "@/components/texts";
 import { cn } from "@/components/ui/cn";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { isNavItemActive, NAV_GROUPS } from "./nav-items";
 
@@ -72,9 +72,9 @@ export function AppNav({ variant = "sidebar" }: AppNavProps) {
                             active ? "scale-y-100 opacity-100" : "scale-y-50 opacity-0",
                           )}
                         />
-                        <Glyph
+                        <Icon
                           name={item.glyph}
-                          width={sheet ? 20 : 18}
+                          px={sheet ? 20 : 18}
                           className={cn(
                             "shrink-0 transition-colors duration-150 ease-standard",
                             active ? "text-ink" : "text-ink-subtle group-hover/nav:text-ink",

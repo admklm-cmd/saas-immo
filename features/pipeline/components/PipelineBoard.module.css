@@ -152,8 +152,8 @@
 
 /* Intent, on hover AND keyboard focus (same cause: « I am about to act on this
    dossier »): the words « Changer d'étape » appear at once to the left of the
-   glyph, so they read as one phrase with its arrow, and the arrow steps 2.5 px
-   along the line — the move the control makes. Pressed: the button sinks
+   icon, so they read as one phrase with it, and the node is sent along the line
+   (its story, components/icons) — the move the control makes. Pressed: the button sinks
    slightly. Open: the arrow turns towards the list it has unfolded. */
 
 .trigger {
@@ -168,26 +168,12 @@
   background-color: var(--color-line);
 }
 
-.trigger [data-glyph-accent] {
-  transition: translate var(--duration-base) var(--ease-standard);
-}
-
 .trigger svg {
   transition: rotate var(--duration-base) var(--ease-standard);
 }
 
 .trigger[aria-expanded="true"] svg {
   rotate: 90deg;
-}
-
-.trigger[aria-expanded="false"]:focus-visible [data-glyph-accent] {
-  translate: 2.5px 0;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .trigger[aria-expanded="false"]:hover [data-glyph-accent] {
-    translate: 2.5px 0;
-  }
 }
 
 .trigger[aria-expanded="true"] .tip {
@@ -223,7 +209,6 @@
 
   .trigger,
   .trigger svg,
-  .trigger [data-glyph-accent],
   .tip {
     transition: none;
   }

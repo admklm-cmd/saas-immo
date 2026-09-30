@@ -2,25 +2,19 @@
 
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
-import {
-  CheckCircledIcon,
-  CodeIcon,
-  FileTextIcon,
-  LockClosedIcon,
-  MagicWandIcon,
-} from "@radix-ui/react-icons";
 
+import { iconComponent } from "@/components/icons/Icon";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/components/ui/cn";
 
 import styles from "./AgentProcessMotionPrototype.module.css";
 
 const STEPS = [
-  { title: "Garde-fous", action: "sécurise", Icon: LockClosedIcon },
-  { title: "Données", action: "charge", Icon: FileTextIcon },
-  { title: "Contexte", action: "structure", Icon: CodeIcon },
-  { title: "Modèle IA", action: "analyse", Icon: MagicWandIcon },
-  { title: "Validation", action: "contrôle", Icon: CheckCircledIcon },
+  { title: "Garde-fous", action: "sécurise", Icon: iconComponent("lock") },
+  { title: "Données", action: "charge", Icon: iconComponent("document") },
+  { title: "Contexte", action: "structure", Icon: iconComponent("code") },
+  { title: "Modèle IA", action: "analyse", Icon: iconComponent("aiAgent") },
+  { title: "Validation", action: "contrôle", Icon: iconComponent("checkCircle") },
 ] as const;
 
 const STEP_DURATION_MS = 2_000;

@@ -1,6 +1,5 @@
 "use client";
 
-import { CheckIcon } from "@radix-ui/react-icons";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
@@ -9,7 +8,7 @@ import { AnimatedErrorState } from "@/components/ui/AnimatedErrorState";
 import { cn } from "@/components/ui/cn";
 import { isRetryableErrorCode } from "@/components/ui/retryable";
 import { ThreeDotLoader } from "@/components/ui/ThreeDotLoader";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 import { PIPELINE_STAGE_LABELS, type PipelineStage } from "@/features/contacts/types";
 import { changeContactStage } from "@/features/pipeline/actions";
 import { PIPELINE_STAGES } from "@/features/pipeline/types";
@@ -204,7 +203,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
         <span className="sr-only">
           {TEXTS.trigger} {TEXTS.triggerFor(contactName)}
         </span>
-        <Glyph name="stageMove" width={16} />
+        <Icon name="stageMove" px={16} />
         <span
           aria-hidden="true"
           className={cn(
@@ -266,7 +265,7 @@ export function PipelineStageMenu({ contactId, contactName, stage, canExitSigned
                       {pending && isSelected ? (
                         <ThreeDotLoader size="sm" />
                       ) : isCurrent ? (
-                        <CheckIcon className="size-4" />
+                        <Icon name="check" px={16} />
                       ) : null}
                     </span>
                     <span className="flex-1">{PIPELINE_STAGE_LABELS[option]}</span>

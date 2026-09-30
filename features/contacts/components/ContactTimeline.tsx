@@ -142,7 +142,7 @@ function runOutcomeOf(entry: TimelineEntry): "blocked" | "failed" | null {
  */
 export function ContactTimeline({ entries }: { entries: readonly TimelineEntry[] }) {
   if (entries.length === 0) {
-    return <EmptyState title={TEXTS.timelineEmpty} />;
+    return <EmptyState icon="messages" title={TEXTS.timelineEmpty} />;
   }
 
   return (

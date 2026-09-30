@@ -1,5 +1,5 @@
 /*
- * App icon container of the Ascend glyph family — docs/design-system.md §2.8.
+ * Tile of the Ascend icon family (components/icons) — docs/design-system.md §2.8.
  *
  * The SHAPE says who acts, the colour never does:
  *   * agent   — rounded square (radius 30 % of the side), dark tile, light
@@ -148,117 +148,22 @@
     var(--shadow-raised);
 }
 
-/* --- Motion of the symbol ----------------------------------------------------- */
-.tile [data-glyph-accent] {
-  transform-box: fill-box;
-  transform-origin: center;
-  transition: transform var(--duration-interactive) var(--ease-standard);
-}
-
+/* --- Motion ------------------------------------------------------------------------ */
+/* The symbol plays its own story (components/icons/icons.css): once on hover or
+   focus of the parent control, once when the tile becomes active. The tile
+   itself only lifts. */
 :is(a, button):hover .tile:not([data-state="inactive"], [data-state="active"]) {
   transform: translateY(-1px);
 }
 
-:is(a, button):hover .tile [data-motion="drop"] [data-glyph-accent] {
-  transform: translateY(1.5px);
-}
-
-:is(a, button):hover .tile [data-motion="nudge"] [data-glyph-accent] {
-  transform: translateX(1.5px);
-}
-
-:is(a, button):hover .tile [data-motion="pop"] [data-glyph-accent] {
-  transform: scale(1.14);
-}
-
-:is(a, button):hover .tile [data-motion="draw"] [data-glyph-accent] path {
-  animation: glyph-draw var(--glyph-draw, 420ms) var(--ease-standard) both;
-}
-
-/* Activation: the symbol plays its motion once. */
-.tile[data-state="active"] [data-motion="drop"] [data-glyph-accent] {
-  animation: glyph-drop 480ms var(--ease-standard) both;
-}
-
-.tile[data-state="active"] [data-motion="nudge"] [data-glyph-accent] {
-  animation: glyph-nudge 480ms var(--ease-standard) both;
-}
-
-.tile[data-state="active"] [data-motion="pop"] [data-glyph-accent] {
-  animation: glyph-pop 480ms var(--ease-standard) both;
-}
-
-.tile[data-state="active"] [data-motion="draw"] [data-glyph-accent] path {
-  animation: glyph-draw 560ms var(--ease-standard) 80ms both;
-}
-
-@keyframes glyph-drop {
-  from {
-    opacity: 0.2;
-    transform: translateY(-3px);
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(0.75px);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes glyph-nudge {
-  from {
-    opacity: 0.2;
-    transform: translateX(-3px);
-  }
-  60% {
-    opacity: 1;
-    transform: translateX(0.75px);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes glyph-pop {
-  from {
-    opacity: 0.2;
-    transform: scale(0.6);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.12);
-  }
-  to {
-    transform: none;
-  }
-}
-
-@keyframes glyph-draw {
-  from {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dasharray: 1;
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Reduced motion: final state, the symbol never moves. */
+/* Reduced motion: the tile never moves either. */
 @media (prefers-reduced-motion: reduce) {
-  .tile,
-  .tile [data-glyph-accent] {
+  .tile {
     transition: none;
   }
 
-  .tile [data-glyph-accent],
-  .tile [data-glyph-accent] path {
-    animation: none !important;
-    transform: none !important;
-  }
-
-  :is(a, button):hover .tile:not([data-state="inactive"], [data-state="active"]) {
+  :is(a, button):hover .tile:not([data-state="inactive"], [data-state="active"]),
+  .tile[data-state="active"][data-kind][data-surface] {
     transform: none;
   }
 }

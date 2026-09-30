@@ -66,6 +66,7 @@ export default async function AgentsIaPage({ searchParams }: { searchParams: Pro
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-14">
       <PageHeader
+        icon="aiAgent"
         title={TEXTS.title}
         meta={
           <>

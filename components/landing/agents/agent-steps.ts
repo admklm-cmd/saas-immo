@@ -1,7 +1,7 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { AGENT_GLYPHS, JOURNEY_GLYPHS } from "@/features/agents-ia/components/agent-icons";
 import type { AppIconKind } from "@/features/agents-ia/components/icons/AgentAppIcon";
-import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 
 /** The seven steps of the landing carousel (Léa → … → mandat), from the texts. */
 export const AGENT_STEPS = LANDING_TEXTS.agents.steps;
@@ -13,7 +13,7 @@ export type AgentStepKey = AgentStep["key"];
  * Same glyphs as the connected space (`agent-icons.ts`): the landing and the
  * product speak the same visual language.
  */
-export const STEP_GLYPHS: Readonly<Record<AgentStepKey, GlyphName>> = {
+export const STEP_GLYPHS: Readonly<Record<AgentStepKey, IconName>> = {
   lea: AGENT_GLYPHS.lea,
   hugo: AGENT_GLYPHS.hugo,
   emma: AGENT_GLYPHS.emma,

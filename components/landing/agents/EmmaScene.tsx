@@ -1,5 +1,5 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { SceneFrame } from "./SceneFrame";
 
@@ -15,11 +15,11 @@ export function EmmaScene() {
       <div className="rounded-xl bg-surface-muted px-4 py-3.5 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-2 text-xs font-semibold text-ink">
-            <Glyph name="mail" width={15} />
+            <Icon name="email" px={15} />
             {SCENE.channel}
           </span>
           <span className="flex items-center gap-1.5 text-xs text-ink-muted">
-            <Glyph name="lock" width={13} />
+            <Icon name="lock" px={13} />
             {SCENE.consent}
           </span>
         </div>

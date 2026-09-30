@@ -2,10 +2,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { PersonIcon } from "@radix-ui/react-icons";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { iconComponent } from "@/components/icons/Icon";
 import { APP_TEXTS } from "@/components/texts";
 
 import { buildDossierJourney } from "./dossier-journey";
@@ -15,6 +15,8 @@ import { isReached, OperationalRail, staggerOrder, stopsSignal, type RailNode, t
 afterEach(() => {
   cleanup();
 });
+
+const PersonIcon = iconComponent("prospect");
 
 function node(state: RailState, overrides: Partial<RailNode> = {}): RailNode {
   return { key: state, icon: PersonIcon, name: `Nœud ${state}`, state, statusLabel: `Statut ${state}`, ...overrides };

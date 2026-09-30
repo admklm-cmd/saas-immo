@@ -1,5 +1,5 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { SceneFrame } from "./SceneFrame";
 
@@ -14,7 +14,7 @@ export function SarahScene() {
         <p className="text-overline font-semibold text-ink-subtle uppercase">{SCENE.reportLabel}</p>
         <p className="mt-1.5 text-sm leading-relaxed text-ink">{SCENE.report}</p>
       </blockquote>
-      <Glyph name="arrowDown" width={18} className="mx-auto text-ink-subtle" />
+      <Icon name="arrowDown" px={18} className="mx-auto text-ink-subtle" />
       <div className="rounded-xl bg-surface-muted px-4 py-3.5">
         <p className="text-overline font-semibold text-ink-subtle uppercase">{SCENE.actionsLabel}</p>
         <ul className="mt-3 grid gap-2.5">
@@ -24,7 +24,7 @@ export function SarahScene() {
                 aria-hidden="true"
                 className="mt-px grid size-5 shrink-0 place-items-center rounded-full bg-inverse text-ink-inverse"
               >
-                <Glyph name="check" width={11} />
+                <Icon name="check" px={11} />
               </span>
               {action}
             </li>

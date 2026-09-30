@@ -1,4 +1,4 @@
-import { CrossCircledIcon, LockClosedIcon } from "@radix-ui/react-icons";
+import { Icon } from "@/components/icons/Icon";
 
 import { RUN_OUTCOME_LABELS } from "@/components/texts";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
@@ -22,9 +22,9 @@ const TONES: Record<AgentRunStatus, BadgeTone> = {
 export function RunStatusBadge({ status }: { status: AgentRunStatus }) {
   const icon =
     status === "blocked" ? (
-      <LockClosedIcon className="size-3" />
+      <Icon name="lock" px={12} />
     ) : status === "failed" ? (
-      <CrossCircledIcon className="size-3" />
+      <Icon name="error" px={12} />
     ) : undefined;
 
   return (

@@ -1,4 +1,4 @@
-import { ChevronRightIcon } from "@radix-ui/react-icons";
+import { Icon } from "@/components/icons/Icon";
 import type { ReactNode } from "react";
 
 import { cn } from "./cn";
@@ -81,7 +81,7 @@ export function Disclosure({
             card ? "size-7" : size === "xs" ? "size-4" : "size-5",
           )}
         >
-          <ChevronRightIcon width={card ? 16 : size === "xs" ? 10 : 12} height={card ? 16 : size === "xs" ? 10 : 12} />
+          <Icon name="chevronRight" px={card ? 16 : size === "xs" ? 10 : 12} />
         </span>
         <span className="min-w-0 flex-1">
           <Label className={cn("block", card ? "text-section font-bold text-ink" : size === "xs" ? "font-normal" : "font-medium")}>

@@ -109,7 +109,7 @@ export function SieveFunnel({ total, ready, steps, rule }: SieveFunnelProps) {
           <span className={styles.track} aria-hidden="true">
             <span className={styles.seg} data-side="in" style={{ "--w": weight(ready, total) } as CSSProperties} />
             <span className={styles.tile}>
-              <AgentAppIcon glyph="human" kind="human" size="sm" />
+              <AgentAppIcon glyph="humanValidation" kind="human" size="sm" />
             </span>
           </span>
           <span className={styles.body}>

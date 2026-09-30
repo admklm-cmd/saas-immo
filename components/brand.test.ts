@@ -1,6 +1,8 @@
 import { expect, it } from "vitest";
 
 import { BRAND } from "./brand";
+import { ICON_GALLERY_TEXTS } from "@/app/dev/icons/gallery-texts";
+
 import { APP_TEXTS } from "./texts";
 
 it("is the single source the interface copy reads from", () => {
@@ -14,11 +16,12 @@ it("keeps the word mark and the full name in sync", () => {
 
 /**
  * Guard against a rename leaving a stale spelling behind: no former product
- * name may survive in the centralised copy. Extend the list on every rename.
+ * name may survive in the centralised copy — the interface texts and the
+ * texts of the development galleries. Extend the list on every rename.
  */
 it("carries no former product name in the interface copy", () => {
   const FORMER_NAMES = ["AiaA"];
-  const copy = JSON.stringify(APP_TEXTS);
+  const copy = JSON.stringify([APP_TEXTS, ICON_GALLERY_TEXTS]);
 
   for (const formerName of FORMER_NAMES) {
     expect(copy).not.toContain(formerName);

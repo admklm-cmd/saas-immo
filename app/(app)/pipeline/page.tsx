@@ -31,6 +31,7 @@ export default async function PipelinePage() {
   return (
     <div className="page-frame">
       <PageHeader
+        icon="pipeline"
         title={TEXTS.title}
         meta={contacts && contacts.length > 0 ? <Badge tone="outline">{CONTACTS_TEXTS.count(contacts.length)}</Badge> : null}
       />
@@ -50,6 +51,7 @@ export default async function PipelinePage() {
           </Alert>
         ) : contacts.length === 0 ? (
           <EmptyState
+            icon="pipeline"
             title={CONTACTS_TEXTS.emptyTitle}
             description={CONTACTS_TEXTS.emptyBody}
             action={

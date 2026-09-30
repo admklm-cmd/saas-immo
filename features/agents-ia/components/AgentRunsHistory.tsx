@@ -87,7 +87,7 @@ export function AgentRunsHistory({
         ) : null}
 
         {page && page.runs.length === 0 ? (
-          <EmptyState title={TEXTS.emptyTitle} description={TEXTS.emptyBody} />
+          <EmptyState icon="aiAgent" title={TEXTS.emptyTitle} description={TEXTS.emptyBody} />
         ) : null}
 
         {page && page.runs.length > 0 ? (

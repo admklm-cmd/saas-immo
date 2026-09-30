@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/components/ui/cn";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
-import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
+import { Icon } from "@/components/icons/Icon";
+import type { IconName } from "@/components/icons/icons";
 
 /**
  * Tone of a row, always doubled by its words — carried by the small mark only,
@@ -16,7 +16,7 @@ import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
 export type SceneRowTone = "done" | "flag" | "active" | "muted" | "plain";
 
 export type SceneRowProps = {
-  glyph: GlyphName;
+  glyph: IconName;
   label: ReactNode;
   detail?: ReactNode;
   tone?: SceneRowTone;
@@ -45,7 +45,7 @@ export function SceneRow({ glyph, label, detail, tone = "plain", testId }: Scene
           tone === "plain" && "bg-surface-sunken text-ink",
         )}
       >
-        <Glyph name={glyph} width={14} />
+        <Icon name={glyph} px={14} />
       </span>
       <span className="min-w-0 pt-1">
         <span

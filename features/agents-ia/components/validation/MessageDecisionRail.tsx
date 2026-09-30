@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { cn } from "@/components/ui/cn";
 
 import { AgentAppIcon, type AppIconState } from "../icons/AgentAppIcon";
-import { Glyph } from "../icons/Glyph";
-import type { GlyphName } from "../icons/glyphs";
+import { Icon } from "@/components/icons/Icon";
+import type { IconName } from "@/components/icons/icons";
 import type { MessageRailModel } from "./message-rail";
 import styles from "./MessageDecisionRail.module.css";
 
@@ -12,7 +12,7 @@ export type MessageDecisionRailProps = {
   model: MessageRailModel;
   /** Accessible name of the rail. */
   label: string;
-  author: { name: string; glyph: GlyphName; kind: "agent" | "human"; status: ReactNode };
+  author: { name: string; glyph: IconName; kind: "agent" | "human"; status: ReactNode };
   human: { name: string; status: ReactNode; consent: ReactNode };
   send: { name: string; status: ReactNode };
   className?: string;
@@ -35,7 +35,7 @@ const SEND_TILE: Readonly<Record<MessageRailModel["send"], AppIconState>> = {
 function DoneMark() {
   return (
     <span className={styles.mark} aria-hidden="true">
-      <Glyph name="check" width={10} />
+      <Icon name="check" px={10} />
     </span>
   );
 }
@@ -73,7 +73,7 @@ export function MessageDecisionRail({ model, label, author, human, send, classNa
         <span className={styles.stop} data-at="send" />
         <span className={styles.lane}>
           <span className={styles.token}>
-            <Glyph name="mail" width={12} />
+            <Icon name="email" px={12} />
           </span>
         </span>
       </div>
@@ -89,7 +89,7 @@ export function MessageDecisionRail({ model, label, author, human, send, classNa
 
         <li className={styles.node} data-node="human">
           <span className={styles.tile}>
-            <AgentAppIcon glyph="human" kind="human" size="md" state={HUMAN_TILE[model.human]} />
+            <AgentAppIcon glyph="humanValidation" kind="human" size="md" state={HUMAN_TILE[model.human]} />
             {model.human === "done" ? <DoneMark /> : null}
           </span>
           <span className={styles.name}>{human.name}</span>
@@ -99,7 +99,7 @@ export function MessageDecisionRail({ model, label, author, human, send, classNa
 
         <li className={styles.node} data-node="send" data-reached={model.send === "done" || undefined}>
           <span className={styles.tile}>
-            <AgentAppIcon glyph="mail" kind="neutral" size="md" state={SEND_TILE[model.send]} />
+            <AgentAppIcon glyph="email" kind="neutral" size="md" state={SEND_TILE[model.send]} />
             {model.send === "done" ? <DoneMark /> : null}
           </span>
           <span className={styles.name}>{send.name}</span>

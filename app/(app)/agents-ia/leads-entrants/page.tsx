@@ -57,6 +57,7 @@ export default async function InboundLeadsPage() {
           </Alert>
         ) : leads.length === 0 ? (
           <EmptyState
+            icon="leads"
             title={TEXTS.emptyTitle}
             description={TEXTS.emptyBody}
             action={

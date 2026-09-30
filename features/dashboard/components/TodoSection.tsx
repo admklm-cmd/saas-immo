@@ -27,7 +27,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
       <div className="stagger mt-5 divide-y divide-line rounded-2xl border border-line bg-surface shadow-subtle">
         <TodoRow
           id="messages"
-          glyph="human"
+          glyph="humanValidation"
           title={TEXTS.messagesTitle}
           hint={TEXTS.messagesHint}
           list={todo.messagesToValidate}

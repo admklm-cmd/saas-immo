@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { Icon } from "@/components/icons/Icon";
+import type { IconName } from "@/components/icons/icons";
+
 import { cn } from "./cn";
 
 export type PageHeaderProps = {
@@ -10,6 +13,11 @@ export type PageHeaderProps = {
   /** Badges shown under the description. */
   meta?: ReactNode;
   actions?: ReactNode;
+  /**
+   * Large icon of the screen, in its frosted tile, next to the title (main
+   * screens of the signed-in space only — docs/design-system.md §2.8).
+   */
+  icon?: IconName;
   className?: string;
   /**
    * Kept for compatibility: since 26/09/2026 every page title uses the same
@@ -25,24 +33,22 @@ export type PageHeaderProps = {
  * action that matters sits on the right. Same left edge and same rhythm on
  * every screen, thanks to the common page frame (`.page-frame`).
  */
-export function PageHeader({
-  eyebrow,
-  title,
-  description,
-  meta,
-  actions,
-  className,
-}: PageHeaderProps) {
+export function PageHeader({ eyebrow, title, description, meta, actions, icon, className }: PageHeaderProps) {
   return (
     <header className={cn("animate-rise", className)}>
       {eyebrow ? <div className="particle-veil mb-4 w-fit max-w-full text-sm text-ink-muted">{eyebrow}</div> : null}
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
-        <div className="particle-veil min-w-0">
-          <h1 className="font-display text-title font-extrabold text-balance text-ink sm:text-hero">{title}</h1>
-          {description ? (
-            <p className="mt-2.5 max-w-2xl text-base text-pretty text-ink-muted">{description}</p>
+        <div className="flex min-w-0 items-start gap-4 sm:gap-5">
+          {icon ? (
+            <Icon name={icon} size="lg" px={56} className="mt-0.5 hidden sm:inline-grid" testId="page-header-icon" />
           ) : null}
-          {meta ? <div className="mt-4 flex flex-wrap items-center gap-2">{meta}</div> : null}
+          <div className="particle-veil min-w-0">
+            <h1 className="font-display text-title font-extrabold text-balance text-ink sm:text-hero">{title}</h1>
+            {description ? (
+              <p className="mt-2.5 max-w-2xl text-base text-pretty text-ink-muted">{description}</p>
+            ) : null}
+            {meta ? <div className="mt-4 flex flex-wrap items-center gap-2">{meta}</div> : null}
+          </div>
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>

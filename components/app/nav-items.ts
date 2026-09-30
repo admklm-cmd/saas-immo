@@ -1,9 +1,9 @@
 import { APP_TEXTS } from "@/components/texts";
-import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 
 const TEXTS = APP_TEXTS.nav;
 
-export type NavItem = { href: string; label: string; glyph: GlyphName };
+export type NavItem = { href: string; label: string; glyph: IconName };
 
 export type NavGroup = {
   id: "pilotage" | "agents" | "settings";
@@ -17,8 +17,8 @@ export type NavGroup = {
  * Primary navigation of the signed-in space, in three groups
  * (docs/design-system.md §2.10). Same routes as before the grouping: no link lost.
  *
- * Glyphs come from the house family (`features/agents-ia/components/icons`):
- * an agent's own symbol for the screen where that agent's work is handled.
+ * Icons come from the Ascend family (`components/icons`): the board
+ * icon of each screen, an agent's own icon where only that agent's work is handled.
  */
 export const NAV_GROUPS: readonly NavGroup[] = [
   {
@@ -27,10 +27,10 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     showLabel: true,
     items: [
       { href: "/dashboard", label: TEXTS.dashboard, glyph: "dashboard" },
-      { href: "/contacts", label: TEXTS.contacts, glyph: "prospect" },
+      { href: "/contacts", label: TEXTS.contacts, glyph: "contacts" },
       { href: "/pipeline", label: TEXTS.pipeline, glyph: "pipeline" },
       { href: "/taches", label: TEXTS.tasks, glyph: "tasks" },
-      { href: "/rendez-vous", label: TEXTS.appointments, glyph: "appointment" },
+      { href: "/rendez-vous", label: TEXTS.appointments, glyph: "calendar" },
     ],
   },
   {
@@ -40,9 +40,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     // Order of the real work: a lead arrives (Léa), a first message waits for a
     // human, Emma prepares the follow-ups, Sarah follows the appointments.
     items: [
-      { href: "/agents-ia", label: TEXTS.agentsOverview, glyph: "network" },
-      { href: "/agents-ia/leads-entrants", label: TEXTS.agentsLeads, glyph: "lea" },
-      { href: "/agents-ia/a-valider", label: TEXTS.agentsToValidate, glyph: "human" },
+      { href: "/agents-ia", label: TEXTS.agentsOverview, glyph: "aiAgent" },
+      { href: "/agents-ia/leads-entrants", label: TEXTS.agentsLeads, glyph: "leads" },
+      { href: "/agents-ia/a-valider", label: TEXTS.agentsToValidate, glyph: "humanValidation" },
       { href: "/agents-ia/relances", label: TEXTS.agentsFollowUps, glyph: "emma" },
       { href: "/agents-ia/suivi-rendez-vous", label: TEXTS.agentsFollowThrough, glyph: "sarah" },
     ],

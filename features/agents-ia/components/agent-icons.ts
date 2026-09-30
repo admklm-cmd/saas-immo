@@ -1,19 +1,22 @@
 import type { ComponentType } from "react";
 
+import { iconComponent } from "@/components/icons/Icon";
+import type { IconName } from "@/components/icons/icons";
 import type { AiAgentName } from "@/features/contacts/types";
 
-import { glyphIcon } from "./icons/Glyph";
-import type { GlyphName } from "./icons/glyphs";
-
-type IconComponent = ComponentType<{ className?: string; width?: number | string; height?: number | string }>;
+type IconComponent = ComponentType<{
+  className?: string;
+  width?: number | string;
+  height?: number | string;
+}>;
 
 /**
- * Glyph of each agent, from the custom Ascend family (`icons/glyphs.ts`: one
- * 24 grid, one stroke weight, round caps) — never an emoji. Each says the job,
- * not a personality: Léa takes a contact in, Hugo examines and qualifies, Emma
- * writes, Louis proposes a slot, Sarah moves the dossier forward.
+ * Icon of each agent, from the Ascend family (`components/icons`: one 24 grid,
+ * filled ink shapes, one cobalt accent) — never an emoji. Each says the job,
+ * not a personality: Léa takes a contact in, Hugo examines the property,
+ * Emma follows up, Louis proposes a slot, Sarah moves the dossier forward.
  */
-export const AGENT_GLYPHS: Readonly<Record<AiAgentName, GlyphName>> = {
+export const AGENT_GLYPHS: Readonly<Record<AiAgentName, IconName>> = {
   lea: "lea",
   hugo: "hugo",
   emma: "emma",
@@ -21,26 +24,26 @@ export const AGENT_GLYPHS: Readonly<Record<AiAgentName, GlyphName>> = {
   sarah: "sarah",
 };
 
-/** Glyphs of the non-agent stages of a dossier, same family. */
+/** Icons of the non-agent stages of a dossier, same family. */
 export const JOURNEY_GLYPHS = {
   prospect: "prospect",
-  human: "human",
+  human: "humanValidation",
   appointment: "appointment",
   mandate: "mandate",
-} as const satisfies Record<string, GlyphName>;
+} as const satisfies Record<string, IconName>;
 
-/** The same glyphs as icon components (rail nodes and other icon maps). */
+/** The same icons as icon components (rail nodes and other icon maps). */
 export const AGENT_ICONS: Readonly<Record<AiAgentName, IconComponent>> = {
-  lea: glyphIcon(AGENT_GLYPHS.lea),
-  hugo: glyphIcon(AGENT_GLYPHS.hugo),
-  emma: glyphIcon(AGENT_GLYPHS.emma),
-  louis: glyphIcon(AGENT_GLYPHS.louis),
-  sarah: glyphIcon(AGENT_GLYPHS.sarah),
+  lea: iconComponent(AGENT_GLYPHS.lea),
+  hugo: iconComponent(AGENT_GLYPHS.hugo),
+  emma: iconComponent(AGENT_GLYPHS.emma),
+  louis: iconComponent(AGENT_GLYPHS.louis),
+  sarah: iconComponent(AGENT_GLYPHS.sarah),
 };
 
 export const JOURNEY_ICONS = {
-  prospect: glyphIcon(JOURNEY_GLYPHS.prospect),
-  human: glyphIcon(JOURNEY_GLYPHS.human),
-  appointment: glyphIcon(JOURNEY_GLYPHS.appointment),
-  mandate: glyphIcon(JOURNEY_GLYPHS.mandate),
+  prospect: iconComponent(JOURNEY_GLYPHS.prospect),
+  human: iconComponent(JOURNEY_GLYPHS.human),
+  appointment: iconComponent(JOURNEY_GLYPHS.appointment),
+  mandate: iconComponent(JOURNEY_GLYPHS.mandate),
 } as const satisfies Record<string, IconComponent>;

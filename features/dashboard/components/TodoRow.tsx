@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { Icon } from "@/components/icons/Icon";
 import { APP_TEXTS } from "@/components/texts";
+import { ButtonArrowGlyph } from "@/components/ui/Button";
 import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
-import type { GlyphName } from "@/features/agents-ia/components/icons/glyphs";
+import type { IconName } from "@/components/icons/icons";
 
 import type { DashboardActionList } from "../types";
 import { DashboardFigure } from "./DashboardFigure";
@@ -19,7 +21,7 @@ export type TodoRowProps<TItem> = {
   id: string;
   title: string;
   /** Glyph of the work, inside the human-decision shape. */
-  glyph: GlyphName;
+  glyph: IconName;
   /** Optional precision under the figure (what exactly is counted). */
   hint?: string;
   list: DashboardActionList<TItem>;
@@ -91,7 +93,7 @@ export function TodoRow<TItem>({
               aria-hidden="true"
               className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-line-strong text-xs text-ink-muted"
             >
-              ✓
+              <Icon name="check" px="0.75rem" />
             </span>
             {emptyText}
           </p>
@@ -121,7 +123,7 @@ export function TodoRow<TItem>({
           className="inline-flex items-center gap-1.5 rounded-xs text-sm font-medium text-ink underline-offset-4 transition-colors duration-150 ease-standard whitespace-nowrap hover:text-ink-muted hover:underline"
         >
           {link.label}
-          <span aria-hidden="true">→</span>
+          <ButtonArrowGlyph direction="forward" still />
         </Link>
       </div>
     </section>

@@ -11,7 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 
 import type { PendingMessageView } from "../types";
-import { Glyph } from "./icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 import { PendingMessageCard } from "./PendingMessageCard";
 import type { MessageOutcome } from "./validation/message-rail";
 import { MessageQueueItem } from "./validation/MessageQueueItem";
@@ -184,6 +184,7 @@ export function PendingMessagesList({ messages, initialSelectedId = null }: Pend
       <div className="flex flex-col gap-6">
         {summary}
         <EmptyState
+          icon="humanValidation"
           title={TEXTS.emptyTitle}
           description={TEXTS.emptyBody}
           action={
@@ -203,7 +204,7 @@ export function PendingMessagesList({ messages, initialSelectedId = null }: Pend
       data-testid="back-to-queue"
       className="ui-focus mb-5 inline-flex w-fit items-center gap-1.5 rounded-xs text-sm font-medium text-ink-muted hover:text-ink xl:hidden"
     >
-      <Glyph name="arrowLeft" width={16} />
+      <Icon name="arrowLeft" px={16} />
       {TEXTS.backToQueue}
     </a>
   );

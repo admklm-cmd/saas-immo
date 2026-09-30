@@ -93,7 +93,7 @@ describe("message rail — reflects the recorded status only", () => {
 
   it("draws a human author as a person, never as an agent", () => {
     const view = messageRailFor(message({ createdByAgent: null, createdByAgentLabel: null }));
-    expect(view.author).toEqual({ name: TEXTS.writtenByHuman, glyph: "human", kind: "human" });
+    expect(view.author).toEqual({ name: TEXTS.writtenByHuman, glyph: "humanValidation", kind: "human" });
   });
 });
 

@@ -7,6 +7,7 @@ export default function NotFound() {
   return (
     <main id="content" className="mx-auto flex w-full max-w-2xl flex-1 items-center px-6 py-24">
       <EmptyState
+        icon="search"
         className="w-full"
         title={APP_TEXTS.states.notFoundTitle}
         description={APP_TEXTS.states.notFoundBody}

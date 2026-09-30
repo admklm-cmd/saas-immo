@@ -2,7 +2,7 @@ import type { Ref } from "react";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { STEP_GLYPHS, stepNumber, stepVariant, VARIANT_ICON_KIND, type AgentStep } from "./agent-steps";
 import styles from "./agents.module.css";
@@ -44,7 +44,7 @@ export function StepDetails({ step, position, count, iconRef }: StepDetailsProps
         <div>
           <dt className={styles.factLabel}>{TEXTS.boundaryLabel}</dt>
           <dd className={styles.boundary}>
-            <Glyph name="lock" width={14} />
+            <Icon name="lock" px={14} />
             {step.boundary}
           </dd>
         </div>

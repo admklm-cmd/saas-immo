@@ -19,6 +19,7 @@ export default async function ContactsPage() {
   return (
     <div className="page-frame">
       <PageHeader
+        icon="contacts"
         title={TEXTS.title}
         meta={contacts && contacts.length > 0 ? <Badge tone="outline">{TEXTS.count(contacts.length)}</Badge> : null}
       />
@@ -38,6 +39,7 @@ export default async function ContactsPage() {
           </Alert>
         ) : contacts.length === 0 ? (
           <EmptyState
+            icon="contacts"
             title={TEXTS.emptyTitle}
             description={TEXTS.emptyBody}
             action={

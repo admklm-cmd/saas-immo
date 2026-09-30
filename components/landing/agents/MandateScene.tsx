@@ -19,7 +19,7 @@ export function MandateScene() {
           <SceneRow glyph="sarah" tone="plain" label={SCENE.proposal} />
         </li>
         <li>
-          <SceneRow glyph="human" tone="flag" label={SCENE.pending} />
+          <SceneRow glyph="humanValidation" tone="flag" label={SCENE.pending} />
         </li>
         <li
           data-testid="mandate-confirmed"

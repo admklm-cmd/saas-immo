@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { formatDateTime } from "@/components/format";
+import { Icon } from "@/components/icons/Icon";
 import { APP_TEXTS } from "@/components/texts";
 import { ArrowLink } from "@/components/ui/ArrowLink";
 import { Badge } from "@/components/ui/Badge";
@@ -12,7 +13,6 @@ import { AGENT_RUN_STATUS_LABELS } from "@/lib/agents/messages";
 import type { AgentActivity, AgentOverview } from "../types";
 import { ActivityFigure } from "./ActivityFigure";
 import { AGENT_GLYPHS } from "./agent-icons";
-import { AgentAppIcon } from "./icons/AgentAppIcon";
 import { RunProcessDisclosure, type RenderRunProcess } from "./RunProcessDisclosure";
 import { RunStatusBadge } from "./RunStatusBadge";
 
@@ -78,13 +78,8 @@ export function AgentOverviewCard({ agent, todayLabel, last7DaysLabel, renderPro
     <Card
       title={
         <span className="flex items-center gap-3">
-          {/* Same app tile as the rail and the public carousel; grey when the agent is paused. */}
-          <AgentAppIcon
-            glyph={AGENT_GLYPHS[agent.agent]}
-            size="md"
-            state={agent.isActive ? "idle" : "inactive"}
-            testId="agent-app-icon"
-          />
+          {/* Large icon of the agent in its frosted tile; grey and still when the agent is paused. */}
+          <Icon name={AGENT_GLYPHS[agent.agent]} size="lg" px={52} dimmed={!agent.isActive} testId="agent-app-icon" />
           {agent.label}
         </span>
       }

@@ -57,6 +57,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
   return (
     <div className="page-frame page-frame-reading">
       <PageHeader
+        icon="calendar"
         title={TEXTS.title}
         description={TEXTS.subtitle}
         meta={<SimulationBadge />}
@@ -121,6 +122,7 @@ function AppointmentsContent({ page }: { page: AppointmentsPage }) {
   if (page.total > 0) {
     return (
       <EmptyState
+        icon="calendar"
         title={TEXTS.pastEndTitle}
         description={TEXTS.pastEndBody}
         action={
@@ -134,6 +136,7 @@ function AppointmentsContent({ page }: { page: AppointmentsPage }) {
 
   return (
     <EmptyState
+      icon="calendar"
       title={TEXTS.emptyTitles[page.view]}
       description={TEXTS.emptyBodies[page.view]}
       action={

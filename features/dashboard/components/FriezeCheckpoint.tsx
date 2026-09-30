@@ -30,7 +30,7 @@ export function FriezeCheckpoint({ step, first = false }: { step: FriezeCheckpoi
     >
       <FriezeRail first={first}>
         <AgentAppIcon
-          glyph="human"
+          glyph="humanValidation"
           kind="human"
           size="sm"
           state={value === null ? "inactive" : waiting ? "active" : "idle"}

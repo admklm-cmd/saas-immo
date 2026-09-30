@@ -9,7 +9,7 @@ import { PendingDots } from "@/components/ui/PendingDots";
 import type { PendingMessageView } from "../../types";
 import { StopMark } from "../flow/StopMark";
 import { AgentAppIcon } from "../icons/AgentAppIcon";
-import { Glyph } from "../icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 import { messageRailFor } from "./message-rail-view";
 import styles from "./ValidationDesk.module.css";
 
@@ -81,7 +81,7 @@ export function MessageQueueItem({
           ) : (
             <span className="inline-flex items-center gap-1.5 font-medium text-ink">
               <span aria-hidden="true" className={styles.check}>
-                <Glyph name="check" width={9} />
+                <Icon name="check" px={9} />
               </span>
               {message.statusLabel} · {TEXTS.railSendWaiting}
             </span>

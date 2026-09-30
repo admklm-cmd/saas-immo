@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, type MouseEvent, type RefObject } from "react";
 
 import { APP_TEXTS } from "@/components/texts";
-import { Glyph } from "@/features/agents-ia/components/icons/Glyph";
+import { Icon } from "@/components/icons/Icon";
 
 import { AppNav } from "./AppNav";
 import { SignOutButton } from "./SignOutButton";
@@ -83,8 +83,8 @@ export function MobileNav({ email }: { email: string | undefined }) {
         className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium text-ink shadow-subtle transition-colors duration-150 ease-standard select-none hover:bg-surface-sunken [&::-webkit-details-marker]:hidden"
         data-testid="mobile-nav-toggle"
       >
-        <Glyph name="menu" width={18} className="group-open/menu:hidden" />
-        <Glyph name="close" width={18} className="hidden group-open/menu:block" />
+        <Icon name="menu" px={18} className="group-open/menu:hidden" />
+        <Icon name="close" px={18} className="hidden group-open/menu:block" />
         <span className="group-open/menu:hidden">{TEXTS.menuOpen}</span>
         <span className="hidden group-open/menu:inline">{TEXTS.menuClose}</span>
       </summary>

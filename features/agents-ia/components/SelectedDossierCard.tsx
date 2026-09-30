@@ -38,6 +38,7 @@ export function SelectedDossierCard({ agents }: { agents: readonly AgentOverview
           {TEXTS.selectedTitle}
         </h2>
         <EmptyState
+          icon="sarah"
           title={TEXTS.emptyTitle}
           description={TEXTS.emptyBody}
           action={
