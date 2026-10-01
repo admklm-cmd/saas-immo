@@ -1,7 +1,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "./cn";
-import { findAccent, isAnimatable, splitAccent, tokensOf } from "./editorial-title";
+import { accentOverhangEm, findAccent, isAnimatable, splitAccent, tokensOf } from "./editorial-title";
 import styles from "./EditorialTitle.module.css";
 
 export type EditorialTitleProps = {
@@ -22,9 +22,24 @@ export type EditorialTitleProps = {
    * enclosing `Reveal` (`[data-reveal="entering"]`); `none`: static.
    */
   reveal: "load" | "in-view" | "none";
+  /**
+   * Effect of the accented word, landing only (docs/design-system.md §2.11.2):
+   * `underline` (hero), `focus` (problem), `focus-underline` (final panel).
+   * Default `none`: the CRM and /estimation keep their rendering.
+   */
+  accentEffect?: AccentEffect;
   /** Layout only (margins, max width). */
   className?: string;
 };
+
+export type AccentEffect = "none" | "underline" | "focus" | "focus-underline";
+
+const EFFECT_CLASS = {
+  none: undefined,
+  underline: styles.effectUnderline,
+  focus: styles.effectFocus,
+  "focus-underline": styles.effectFocusUnderline,
+} as const;
 
 const SIZE_CLASS = {
   poster: styles.poster,
@@ -43,8 +58,9 @@ const REVEAL_CLASS = {
  * author lines, one accented word in Instrument Serif italic, and a line by
  * line reveal in pure CSS — the accented word appears first, sharp; the other
  * words pass from blurred to sharp, line after line. The final state is the
- * default (readable without JavaScript, under reduced motion, under the site
- * pause). The accessible name is the sentence, read once from a visually
+ * default (readable without JavaScript and under reduced motion). The
+ * landing may add one effect on the accented word (`accentEffect`, §2.11.2),
+ * played once, in CSS, ending on that same final state. The accessible name is the sentence, read once from a visually
  * hidden copy; the visual lines are `aria-hidden`.
  */
 export function EditorialTitle({
@@ -55,11 +71,15 @@ export function EditorialTitle({
   subtleBefore = 0,
   size,
   reveal,
+  accentEffect = "none",
   className,
 }: EditorialTitleProps) {
   const mode = isAnimatable(lines) ? reveal : "none";
   const animated = mode !== "none";
   const target = findAccent(lines, accent);
+  const effect: AccentEffect = target ? accentEffect : "none";
+  const hasMark = effect === "underline" || effect === "focus-underline";
+  const hasFrame = effect === "focus" || effect === "focus-underline";
 
   function word(text: string, line: number, key?: string): ReactNode {
     return (
@@ -80,8 +100,15 @@ export function EditorialTitle({
     return (
       <span className={styles.nowrap}>
         {before ? word(before, line, "before") : null}
-        <span className={cn("title-accent", animated && styles.sharpWord)} data-accent="">
+        <span
+          className={cn("title-accent", animated && styles.sharpWord, effect !== "none" && styles.accentHost)}
+          data-accent=""
+          style={hasFrame ? ({ "--accent-overhang": `${accentOverhangEm(accented)}em` } as CSSProperties) : undefined}
+        >
           {accented}
+          {/* Empty ornaments: they add no text and never change the line box. */}
+          {hasFrame ? <span className={styles.frame} data-accent-frame="" /> : null}
+          {hasMark ? <span className={styles.mark} data-accent-mark="" /> : null}
         </span>
         {after ? word(after, line, "after") : null}
       </span>
@@ -96,9 +123,11 @@ export function EditorialTitle({
         styles.title,
         SIZE_CLASS[size],
         REVEAL_CLASS[mode],
+        EFFECT_CLASS[effect],
         className,
       )}
       data-title-reveal={mode}
+      data-accent-effect={effect === "none" ? undefined : effect}
     >
       <span className="sr-only">{lines.join(" ")}</span>
       <span aria-hidden="true" data-testid="editorial-title-visual">

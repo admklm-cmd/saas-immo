@@ -2,16 +2,38 @@ import { describe, expect, it } from "vitest";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 
-import { finalFrame, journeySequence, stepState, type JourneyStepKind } from "./journey-timeline";
+import {
+  finalFrame,
+  isFinalFrame,
+  JOURNEY_TOTAL_MS,
+  journeySequence,
+  stepState,
+  type JourneyStepKind,
+} from "./journey-timeline";
 
 const KINDS: JourneyStepKind[] = LANDING_TEXTS.journey.steps.map((step) => step.kind);
+const HUMAN_STEPS = KINDS.filter((kind) => kind === "human").length;
 
-describe("journeySequence", () => {
+describe("journeySequence (played once, docs/design-system.md §2.11.5)", () => {
   const frames = journeySequence(KINDS);
 
-  it("starts with nothing started and ends with every step done", () => {
+  it("lasts 4 700 ms in total", () => {
+    const total = frames.reduce((sum, frame) => sum + frame.duration, 0);
+    expect(total).toBe(4700);
+    expect(total).toBe(JOURNEY_TOTAL_MS);
+  });
+
+  it("starts with nothing started and ends on the final frame, with no reset frame after it", () => {
     expect(frames[0]?.cursor).toBe(-1);
-    expect(frames.at(-1)).toMatchObject({ cursor: KINDS.length, awaiting: false });
+    const last = frames.at(-1);
+    expect(last).toMatchObject({ cursor: finalFrame(KINDS).cursor, awaiting: false });
+    expect(last && isFinalFrame(last, KINDS)).toBe(true);
+    // Only the last frame is final: nothing is played after it.
+    expect(frames.filter((frame) => isFinalFrame(frame, KINDS))).toHaveLength(1);
+  });
+
+  it("holds one frame per step, plus one wait per human step, plus the start", () => {
+    expect(frames).toHaveLength(1 + KINDS.length + HUMAN_STEPS);
   });
 
   it("stops in front of every human step before going on", () => {

@@ -217,12 +217,32 @@ export function labelPoint(event: ProblemEvent): { x: number; y: number } {
 /** The curve draws itself slowly. */
 export const CURVE_DELAY_MS = 300;
 export const CURVE_DURATION_MS = 2800;
-/** Events arrive after the curve passed them, and keep accumulating. */
-const EVENTS_SPREAD_MS = 3000;
+/**
+ * Events arrive after the curve passed them, and keep accumulating. 2 600 ms
+ * (3 000 before the landing-motion lot): the last event lands by 4.9 s, so the
+ * whole sequence ends in under 5 s (WCAG 2.2.2, docs/design-system.md §2.11.5).
+ */
+const EVENTS_SPREAD_MS = 2600;
 export const EVENT_DURATION_MS = 520;
 /** The friction zone, the expected progression and the capacity measure close the story. */
 export const FRICTION_DELAY_MS = CURVE_DELAY_MS + CURVE_DURATION_MS + 400;
-export const CAPACITY_DELAY_MS = FRICTION_DELAY_MS + 900;
+export const CAPACITY_DELAY_MS = FRICTION_DELAY_MS + 700;
+/** Durations of the closing animations (BlockerChart.module.css), ms. */
+export const FRICTION_DURATION_MS = 1400;
+export const CAPACITY_DURATION_MS = 700;
+/** Settling of the curve: its duration + 900 ms (BlockerChart.module.css). */
+export const CURVE_SETTLE_MS = CURVE_DURATION_MS + 900;
+
+/** When the last animation of the chart ends, ms after the Reveal entering (≤ 4 900, tested). */
+export function sequenceEndMs(): number {
+  const lastEvent = Math.max(...PROBLEM_EVENTS.map((event) => eventDelayMs(event) + EVENT_DURATION_MS));
+  return Math.max(
+    lastEvent,
+    FRICTION_DELAY_MS + FRICTION_DURATION_MS,
+    CAPACITY_DELAY_MS + CAPACITY_DURATION_MS,
+    CURVE_DELAY_MS + CURVE_SETTLE_MS,
+  );
+}
 
 export function eventDelayMs(event: ProblemEvent): number {
   const first = PROBLEM_EVENTS[0]?.t ?? 0;

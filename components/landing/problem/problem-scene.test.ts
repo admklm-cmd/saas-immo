@@ -4,6 +4,7 @@ import { LANDING_TEXTS } from "@/components/landing-texts";
 
 import {
   absorbedAt,
+  CAPACITY_DELAY_MS,
   CAUSE_EVENTS,
   causeDelayMs,
   causeOfEvent,
@@ -11,10 +12,12 @@ import {
   eventDelayMs,
   eventPoint,
   expectedY,
+  FRICTION_DELAY_MS,
   FRICTION_START,
   isEarlyEvent,
   LABEL_LANE_Y,
   mandates,
+  sequenceEndMs,
   PROBLEM_CAUSES,
   PROBLEM_EVENT_KINDS,
   PROBLEM_EVENTS,
@@ -114,5 +117,10 @@ describe("problem scene: the shape tells the story", () => {
       expect(first).toBeDefined();
       if (first) expect(causeDelayMs(cause)).toBe(eventDelayMs(first));
     }
+  });
+
+  it("ends the whole sequence by 4.9 s (no movement lasts 5 s, WCAG 2.2.2)", () => {
+    expect(sequenceEndMs()).toBeLessThanOrEqual(4_900);
+    expect(CAPACITY_DELAY_MS).toBe(FRICTION_DELAY_MS + 700);
   });
 });

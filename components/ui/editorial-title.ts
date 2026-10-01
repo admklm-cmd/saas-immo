@@ -71,3 +71,14 @@ export function splitTextAccent(text: string, accent: string | undefined): [stri
   }
   return null;
 }
+
+/**
+ * How far the ink of the accented word (Instrument Serif italic) reaches past
+ * its box on the right, in em of the word: the italic « f » leans out
+ * (« administratif » 0.149 em measured in Chromium), most endings barely do
+ * (« fictive » 0.024 em, « main » 0). Used to centre the focus frame on the
+ * ink, not on the box (docs/design-system.md §2.11.2).
+ */
+export function accentOverhangEm(word: string): number {
+  return word.endsWith("f") ? 0.15 : 0.02;
+}

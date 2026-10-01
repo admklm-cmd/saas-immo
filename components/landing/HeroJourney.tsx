@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 import { cn } from "@/components/ui/cn";
 
 import { finalFrame, journeySequence, stepState, type JourneyFrame, type JourneyStepState } from "./journey-timeline";
-import { isLandingPaused, onLandingMotion } from "./landing-motion";
 
 const TEXTS = LANDING_TEXTS.journey;
 const STEPS = TEXTS.steps;
 const KINDS = STEPS.map((step) => step.kind);
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+/** Share of the illustration that must be on screen before it plays. */
+const VISIBLE_SHARE = 0.5;
+
+type Playback = "ready" | "playing" | "played";
 
 /** Written state of a step: the words carry the meaning, never the colour alone. */
 function stateLabel(state: JourneyStepState, human: boolean, isLast: boolean): string {
@@ -29,57 +32,80 @@ function stateLabel(state: JourneyStepState, human: boolean, isLast: boolean): s
  * human. Labelled « Exemple fictif — simulation » with the Simulation badge;
  * it reads no real data and claims no activity.
  *
- * The server HTML is the final state (every step done): readable without
- * JavaScript, and what reduced motion or the page pause keep on screen.
+ * Played ONCE (docs/design-system.md §2.11.5): when it is first at least half
+ * on screen, 4.7 s, then it stays on the final state. The server HTML is that
+ * final state (every step done): readable without JavaScript, kept under
+ * reduced motion, and reached at once when the tab is hidden mid-way.
  */
 export function HeroJourney() {
+  const figureRef = useRef<HTMLElement>(null);
   const [frame, setFrame] = useState<JourneyFrame>(() => finalFrame(KINDS));
+  const [playback, setPlayback] = useState<Playback>("ready");
 
   useEffect(() => {
-    const frames = journeySequence(KINDS);
+    const figure = figureRef.current;
     const reduced = window.matchMedia?.(REDUCED_MOTION);
-    let timer: number | undefined;
-    let index = 0;
+    if (!figure || reduced?.matches || !("IntersectionObserver" in window)) return;
 
-    const stop = () => {
+    const frames = journeySequence(KINDS);
+    let timer: number | undefined;
+    let started = false;
+    let finished = false;
+
+    const finish = () => {
       if (timer !== undefined) window.clearTimeout(timer);
       timer = undefined;
+      if (finished) return;
+      finished = true;
+      setFrame(finalFrame(KINDS));
+      setPlayback("played");
     };
-    const play = () => {
-      stop();
+    const play = (index: number) => {
       const current = frames[index];
-      if (!current) return;
-      setFrame(current);
-      timer = window.setTimeout(() => {
-        index = (index + 1) % frames.length;
-        play();
-      }, current.duration);
-    };
-    const sync = () => {
-      if (reduced?.matches || isLandingPaused() || document.visibilityState === "hidden") {
-        stop();
-        if (reduced?.matches) setFrame(finalFrame(KINDS));
+      if (!current) {
+        finish();
         return;
       }
-      if (timer === undefined) play();
+      setFrame(current);
+      timer = window.setTimeout(() => play(index + 1), current.duration);
     };
 
-    sync();
-    reduced?.addEventListener?.("change", sync);
-    document.addEventListener("visibilitychange", sync);
-    const unsubscribe = onLandingMotion(sync);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (started || !entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= VISIBLE_SHARE)) return;
+        started = true;
+        observer.disconnect();
+        if (document.visibilityState === "hidden") {
+          finish();
+          return;
+        }
+        setPlayback("playing");
+        play(0);
+      },
+      { threshold: VISIBLE_SHARE },
+    );
+    observer.observe(figure);
+
+    // Hidden tab or motion turned off mid-way: jump to the final state, never replay.
+    const interrupt = () => {
+      if (timer !== undefined && (document.visibilityState === "hidden" || reduced?.matches)) finish();
+    };
+    document.addEventListener("visibilitychange", interrupt);
+    reduced?.addEventListener?.("change", interrupt);
     return () => {
-      stop();
-      reduced?.removeEventListener?.("change", sync);
-      document.removeEventListener("visibilitychange", sync);
-      unsubscribe();
+      observer.disconnect();
+      if (timer !== undefined) window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", interrupt);
+      reduced?.removeEventListener?.("change", interrupt);
     };
   }, []);
 
   return (
     <figure
+      ref={figureRef}
       aria-labelledby="hero-journey-title"
       data-testid="hero-journey"
+      data-playback={playback}
       className="rounded-xl border border-line bg-surface/90 p-5 shadow-raised backdrop-blur-sm sm:p-6"
     >
       <figcaption className="flex flex-wrap items-center justify-between gap-3">

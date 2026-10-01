@@ -121,9 +121,63 @@ async function accentLineHeights(page: Page, scope: string): Promise<{ with: num
   }, scope);
 }
 
-/** Every animated piece of every editorial title, at this very instant. */
+/**
+ * Restarts every CSS animation under `selector`, pauses them and seeks them
+ * to `ms` after their common start (delays included): a deterministic sample
+ * of the accent effects (docs/design-system.md §2.11.2).
+ */
+async function freezeAt(page: Page, selector: string, ms: number): Promise<number> {
+  return page.evaluate(
+    ({ selector, ms }) => {
+      const root = document.querySelector<HTMLElement>(selector) as HTMLElement;
+      const nodes = [root, ...Array.from(root.querySelectorAll<HTMLElement>("*"))];
+      nodes.forEach((node) => node.style.setProperty("animation", "none"));
+      void root.offsetWidth;
+      nodes.forEach((node) => {
+        node.style.removeProperty("animation");
+        if (node.getAttribute("style") === "") node.removeAttribute("style");
+      });
+      const animations = root.getAnimations({ subtree: true });
+      for (const animation of animations) {
+        animation.pause();
+        animation.currentTime = ms;
+      }
+      return animations.length;
+    },
+    { selector, ms },
+  );
+}
+
+/** Words, accent, frame and mark of one title, at this very instant. */
+async function accentEffectState(page: Page, selector: string) {
+  return page.evaluate((scope) => {
+    const root = document.querySelector<HTMLElement>(scope) as HTMLElement;
+    const accent = root.querySelector<HTMLElement>("[data-accent]") as HTMLElement;
+    const frame = root.querySelector<HTMLElement>("[data-accent-frame]");
+    const mark = root.querySelector<HTMLElement>("[data-accent-mark]");
+    const words = Array.from(root.querySelectorAll<HTMLElement>("[data-title-line] span[style*='--line']")).filter(
+      (node) => !node.hasAttribute("data-accent") && node.closest("[data-accent]") === null,
+    );
+    const markStyle = mark ? getComputedStyle(mark) : null;
+    return {
+      words: words.map((node) => getComputedStyle(node).filter),
+      accentFilter: getComputedStyle(accent).filter,
+      accentOpacity: getComputedStyle(accent).opacity,
+      frameOpacity: frame ? getComputedStyle(frame).opacity : "absent",
+      frameDisplay: frame ? getComputedStyle(frame).display : "absent",
+      frameArms: frame ? getComputedStyle(frame).backgroundSize : "",
+      mark: mark !== null,
+      markClip: markStyle?.clipPath ?? "absent",
+      markVisible: markStyle ? markStyle.display !== "none" && markStyle.opacity === "1" && (mark?.getBoundingClientRect().width ?? 0) > 0 : false,
+    };
+  }, selector);
+}
+
+/** Every animated piece of every editorial title, at this very instant (ornaments aside: checked above). */
 async function titleStates(page: Page, scope = "") {
-  return page.locator(`${scope} [data-testid='editorial-title-visual'] span`.trim()).evaluateAll((nodes) =>
+  return page
+    .locator(`${scope} [data-testid='editorial-title-visual'] span:not([data-accent-frame]):not([data-accent-mark])`.trim())
+    .evaluateAll((nodes) =>
     nodes.map((node) => {
       const style = getComputedStyle(node);
       return { text: node.textContent ?? "", opacity: style.opacity, transform: style.transform, filter: style.filter };
@@ -251,7 +305,7 @@ test.describe("site public", () => {
       await page.goto("/", { waitUntil: "domcontentloaded", timeout: COLD_START });
       // Sections: their Reveal never leaves « visible » without JavaScript.
       const sections = await page
-        .locator("h2 [data-testid='editorial-title-visual'] span")
+        .locator("h2 [data-testid='editorial-title-visual'] span:not([data-accent-frame]):not([data-accent-mark])")
         .evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).opacity));
       expect(sections.length).toBeGreaterThan(0);
       expect(sections.every((opacity) => opacity === "1")).toBe(true);
@@ -286,13 +340,110 @@ test.describe("site public", () => {
       await expect(page.getByRole("link", { name: LANDING_TEXTS.actions.estimation }).first()).toBeEnabled();
     });
 
-    test("pause du site : le titre est affiché directement", async ({ page }) => {
-      await page.goto("/", { waitUntil: "domcontentloaded", timeout: COLD_START });
-      await page.evaluate(() => {
-        document.documentElement.dataset.landingMotion = "paused";
-      });
-      expectAllFinal(await titleStates(page), "/ (paused)");
+    test("effet « trait » du hero : masqué à 0,4 s, en cours à 1,0 s, complet à 1,6 s (§2.11.2 A)", async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: HEIGHT });
+      await open(page, "/");
+      await expect(page.locator("#hero-title")).toHaveAttribute("data-accent-effect", "underline");
+      const at = async (ms: number) => {
+        await freezeAt(page, "#hero-title", ms);
+        return accentEffectState(page, "#hero-title");
+      };
+      expect((await at(400)).markClip).toMatch(/^inset\(0px 100%/);
+      const middle = (await at(1_000)).markClip;
+      const share = Number(/^inset\(0px ([\d.]+)%/.exec(middle)?.[1]);
+      expect(share, middle).toBeGreaterThan(0);
+      expect(share, middle).toBeLessThan(100);
+      // 760 + 640 = 1 400 ms: complete, nothing left.
+      for (const ms of [1_450, 1_600]) {
+        const state = await at(ms);
+        expect(state.markClip, `${ms} ms`).toBe("none");
+        expect(state.markVisible).toBe(true);
+      }
+      expect((await at(1_600)).words.every((filter) => filter === "none")).toBe(true);
     });
+
+    for (const width of [1440, 390] as const) {
+      test(`mise au point « problème » et « finale » : flou tenu puis tout net (${width} px, §2.11.2 B et C)`, async ({ page }) => {
+        await page.setViewportSize({ width, height: HEIGHT });
+        await open(page, "/");
+        const blur = width < 640 ? "blur(3px)" : "blur(5px)";
+        const arm = width >= 1024 ? "16px 3px" : "12px 2px";
+        for (const [selector, effect] of [
+          ["#problem-title", "focus"],
+          ["#final-title", "focus-underline"],
+        ] as const) {
+          const title = page.locator(selector);
+          await expect(title).toHaveAttribute("data-accent-effect", effect);
+          await title.scrollIntoViewIfNeeded();
+          await expect(page.locator(`.reveal[data-reveal='entering'] ${selector}`)).toHaveCount(1);
+
+          await freezeAt(page, selector, 800);
+          const during = await accentEffectState(page, selector);
+          expect(during.words.length, selector).toBeGreaterThan(0);
+          for (const filter of during.words) expect(filter, `${selector} word at 0.8 s`).toBe(blur);
+          expect(during.accentFilter, `${selector} accent at 0.8 s`).toBe("none");
+          expect(during.accentOpacity).toBe("1");
+          expect(during.frameOpacity, `${selector} frame at 0.8 s`).toBe("1");
+          expect(during.frameArms.startsWith(arm), during.frameArms).toBe(true);
+          if (effect === "focus-underline") expect(during.markClip).toMatch(/^inset\(0px 100%/);
+
+          await freezeAt(page, selector, 2_600);
+          const after = await accentEffectState(page, selector);
+          for (const filter of after.words) expect(filter, `${selector} word at 2.6 s`).toBe("none");
+          expect(after.frameOpacity, `${selector} frame at 2.6 s`).toBe("0");
+          if (effect === "focus-underline") {
+            expect(after.markClip).toBe("none");
+            expect(after.markVisible).toBe(true);
+          } else {
+            expect(after.mark).toBe(false);
+          }
+        }
+      });
+    }
+  });
+
+  test("effets du mot accentué, mouvement réduit : état final à l'instant 0 (trait présent, aucun cadre, aucun flou)", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: COLD_START });
+    await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
+    for (const [selector, mark] of [
+      ["#hero-title", true],
+      ["#problem-title", false],
+      ["#final-title", true],
+    ] as const) {
+      const state = await accentEffectState(page, selector);
+      expect(state.mark, selector).toBe(mark);
+      if (mark) {
+        expect(state.markClip, selector).toBe("none");
+        expect(state.markVisible, selector).toBe(true);
+      }
+      expect(state.frameDisplay, selector).not.toBe("block");
+      for (const filter of state.words) expect(filter, selector).toBe("none");
+    }
+    // /estimation keeps its title without effect.
+    await open(page, "/estimation");
+    await expect(page.locator("h1")).not.toHaveAttribute("data-accent-effect");
+    await expect(page.locator("[data-accent-frame], [data-accent-mark]")).toHaveCount(0);
+  });
+
+  test("les ornements ne changent pas la hauteur de ligne (écart ≤ 0,5 px, 1440 et 390)", async ({ page }) => {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: HEIGHT });
+      await open(page, "/");
+      for (const selector of ["#hero-title", "#problem-title", "#final-title"]) {
+        const heights = await page.evaluate((scope) => {
+          const accent = document.querySelector<HTMLElement>(`${scope} [data-accent]`) as HTMLElement;
+          const line = accent.closest("[data-title-line]") as HTMLElement;
+          const ornaments = Array.from(accent.querySelectorAll<HTMLElement>("[data-accent-frame], [data-accent-mark]"));
+          const measured = line.getBoundingClientRect().height;
+          ornaments.forEach((node) => (node.style.display = "none"));
+          const plain = line.getBoundingClientRect().height;
+          ornaments.forEach((node) => (node.style.display = ""));
+          return { with: measured, without: plain, count: ornaments.length };
+        }, selector);
+        expect(heights.count, selector).toBeGreaterThan(0);
+        expect(Math.abs(heights.with - heights.without), `${selector} @ ${width}`).toBeLessThanOrEqual(0.5);
+      }
+    }
   });
 });
 

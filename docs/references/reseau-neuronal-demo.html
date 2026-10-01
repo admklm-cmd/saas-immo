@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Une visualisation interactive du réseau d’agents Ascend Strategy.">
+  <title>Réseau d’agents — Ascend Strategy</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23f9fafc'/%3E%3Cpath d='M7 24 16 7 25 24M11 19h10' fill='none' stroke='%23111111' stroke-width='3'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: light; --ink:#232a38; --muted:#656f82; --accent:#111111; --line:rgba(71,89,126,.15); }
+    * { box-sizing:border-box; }
+    html,body { width:100%; height:100%; margin:0; overflow:hidden; }
+    body { background:#ffffff; color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+    button,input { font:inherit; }
+    button { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    button:focus-visible,input:focus-visible { outline:2px solid var(--accent); outline-offset:5px; }
+    #network { position:fixed; inset:0; width:100%; height:100%; touch-action:pan-y; }
+    .atmosphere { position:fixed; inset:0; pointer-events:none; background:radial-gradient(ellipse at 48% 48%,transparent 25%,rgba(255,255,255,.12) 75%),linear-gradient(180deg,rgba(255,255,255,.9),transparent 19%,transparent 72%,rgba(255,255,255,.97)); }
+    .topbar { position:fixed; z-index:1; inset:32px 38px auto; display:flex; justify-content:space-between; align-items:center; gap:20px; pointer-events:none; }
+    .brand { display:flex; align-items:center; gap:11px; }
+    .brand svg { width:27px; height:32px; }
+    .brand-name { font-size:19px; font-weight:650; letter-spacing:-.9px; }
+    .brand-name span { font-size:10px; display:block; text-transform:uppercase; letter-spacing:2.55px; font-weight:500; margin-top:3px; color:var(--muted); }
+    .live { display:flex; align-items:center; gap:9px; font-size:11px; color:var(--muted); letter-spacing:.015em; }
+    .live-dot { width:6px; height:6px; background:var(--accent); border-radius:50%; box-shadow:0 0 0 4px rgba(0,0,0,.07); }
+    body.paused .live-dot { background:#8992a3; box-shadow:none; }
+    .bottom { position:fixed; z-index:1; left:38px; right:38px; bottom:30px; display:flex; align-items:flex-end; justify-content:space-between; gap:28px; pointer-events:none; }
+    .caption { max-width:370px; }
+    .eyebrow { color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:1.7px; margin:0 0 12px; display:flex; align-items:center; gap:10px; }
+    .eyebrow::before { content:""; width:20px; height:1px; background:var(--accent); }
+    h1 { font-size:clamp(25px,3.5vw,38px); line-height:1.1; letter-spacing:-1.6px; font-weight:500; margin:0 0 10px; }
+    .caption p { margin:0; max-width:310px; font-size:12px; line-height:1.7; color:var(--muted); }
+    .controls { pointer-events:auto; border:1px solid rgba(94,110,143,.18); border-radius:14px; padding:13px 15px; background:rgba(255,255,255,.79); backdrop-filter:blur(18px); box-shadow:0 4px 24px rgba(53,69,104,.035),inset 0 1px 0 #fff; display:flex; gap:16px; align-items:center; }
+    .density { display:grid; grid-template-columns:1fr auto; gap:8px 16px; width:150px; }
+    .density label,.density output { font-size:10px; color:var(--muted); }
+    .density output { font-variant-numeric:tabular-nums; }
+    input[type=range] { grid-column:1/-1; width:100%; height:3px; margin:5px 0; accent-color:var(--accent); cursor:pointer; }
+    .divider { width:1px; height:32px; background:var(--line); }
+    .icon-button { display:grid; place-items:center; width:34px; height:34px; border:1px solid transparent; border-radius:8px; color:#54617b; background:transparent; transition:background .18s,color .18s,transform .18s; }
+    .icon-button:hover { background:#ededed; color:var(--accent); }
+    .icon-button:active { transform:scale(.95); }
+    .icon-button svg { width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+    .buttons { display:flex; gap:3px; }
+    .play-icon { display:none; }
+    body.paused .pause-icon { display:none; }
+    body.paused .play-icon { display:block; }
+    .hint { position:fixed; top:50%; left:36px; writing-mode:vertical-rl; transform:rotate(180deg); color:#7c879b; font-size:9px; letter-spacing:1.6px; text-transform:uppercase; pointer-events:none; }
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; border:0; }
+    @media(max-width:650px) {
+      .topbar { inset:22px 22px auto; }
+      .brand-name { font-size:17px; }
+      .live { font-size:10px; }
+      .bottom { left:22px; right:22px; bottom:22px; align-items:stretch; flex-direction:column; gap:20px; }
+      .caption p { max-width:280px; }
+      .controls { align-self:flex-start; padding:9px 12px; gap:12px; }
+      .density { width:145px; }
+      .atmosphere { background:linear-gradient(180deg,rgba(255,255,255,.9),transparent 18%,transparent 48%,rgba(255,255,255,.92) 78%,#ffffff); }
+      .hint { display:none; }
+      .eyebrow { margin-bottom:10px; }
+    }
+    @media(max-height:480px) { .caption p,.eyebrow,.hint { display:none; } .bottom { bottom:16px; flex-direction:row; align-items:flex-end; } .topbar { top:16px; } h1 { font-size:25px; margin:0; } }
+    @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; } }
+  </style>
+</head>
+<body>
+  <canvas id="network" role="img" aria-label="Réseau neuronal en trois dimensions, avec des connexions et des nœuds noirs. Des impulsions électriques bleues parcourent les fibres et illuminent le cœur des neurones.">Visualisation d’un réseau d’agents interconnectés.</canvas>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 28 32" fill="none" aria-hidden="true"><path d="M3 26 14 5l11 21M8 18h12" stroke="currentColor" stroke-width="1.6"/><path d="m14 13 7 13H7l7-13Z" fill="#111111" fill-opacity=".08"/></svg>
+      <div class="brand-name">ascend<span>strategy</span></div>
+    </div>
+    <div class="live"><span class="live-dot" aria-hidden="true"></span><span id="status" role="status">Simulation active</span></div>
+  </header>
+  <div class="hint" aria-hidden="true">Une intelligence connectée</div>
+  <main class="bottom">
+    <div class="caption">
+      <div class="eyebrow">Architecture neuronale · 3D</div>
+      <h1>Réseau d’agents.</h1>
+      <p>Des fibres noires en profondeur. Des impulsions électriques bleues au cœur du réseau.</p>
+    </div>
+    <div class="controls" aria-label="Contrôles de la visualisation">
+      <div class="density"><label for="density">Densité du réseau</label><output for="density" id="density-value">65 %</output><input id="density" type="range" min="25" max="100" step="5" value="65" aria-label="Densité du réseau"></div>
+      <div class="divider" aria-hidden="true"></div>
+      <div class="buttons">
+        <button class="icon-button" id="pause" type="button" title="Mettre en pause" aria-label="Mettre en pause" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4v12M13 4v12"/></svg><svg class="play-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 9 6-9 6V4Z"/></svg></button>
+        <button class="icon-button" id="reset" type="button" title="Régénérer le réseau" aria-label="Régénérer le réseau"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 8a7 7 0 1 0-.8 6M16.5 3.5V8H12"/></svg></button>
+      </div>
+    </div>
+  </main>
+  <noscript><p style="position:fixed;top:100px;left:24px;right:24px">Activez JavaScript pour afficher le réseau interactif.</p></noscript>
+  <script>
+(() => {
+  'use strict';
+  const canvas = document.getElementById('network');
+  const ctx = canvas.getContext('2d');
+  const status = document.getElementById('status');
+  if (!ctx) { status.textContent = 'Canvas indisponible'; return; }
+  const density = document.getElementById('density');
+  const output = document.getElementById('density-value');
+  const pauseButton = document.getElementById('pause');
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let W, H, nodes = [], links = [], time = 0, frame = 0, last = 0;
+  let paused = motion.matches, resizeTimer, densityTimer, nextBeat = 0;
+  let fibers = [], camera = {}, signals = [];
+  const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+  const random = (a,b) => a+Math.random()*(b-a);
+
+
+  function buildNetwork() {
+    nodes=[];links=[];fibers=[];signals=[];nextBeat=time+random(1200,3000);
+    const count=Math.round((W<650?20:34)*Number(density.value)/65);
+    // Cellular tissue, not a sphere: irregular neurons in several depth planes.
+    for(let i=0;i<count;i++) {
+      let x,y,z;
+      for(let attempt=0;attempt<20;attempt++) {
+        x=random(-1.95,1.95);y=random(-1.25,1.25);z=random(-.5,1.5);
+        if(nodes.every(n=>Math.hypot(n.x-x,n.y-y,(n.z-z)*.4)>.3))break;
+      }
+      const n={x,y,z,r:random(.011,.023),edges:[],beat:-10000,energy:0,shape:[]};
+      const rotation=random(0,Math.PI*2);
+      for(let j=0;j<14;j++) {
+        const angle=rotation+j/14*Math.PI*2, radius=n.r*random(.55,1.7);
+        n.shape.push({x:x+Math.cos(angle)*radius,y:y+Math.sin(angle)*radius*.75,z});
+      }
+      nodes.push(n);
+    }
+    function branch(owner,origin,heading,length,width,level) {
+      const points=[origin];let x=origin.x,y=origin.y,z=origin.z,angle=heading;
+      const steps=Math.max(8,Math.round(length*65));
+      const lean=random(-.045,.045),phase=random(0,6);
+      for(let s=1;s<=steps;s++) {
+        angle+=random(-.28,.28)+lean+Math.sin(s*.65+phase)*.095;
+        x+=Math.cos(angle)*length/steps;y+=Math.sin(angle)*length/steps;
+        z+=random(-.016,.016);
+        points.push({x,y,z});
+      }
+      fibers.push({owner,points,width,endWidth:width*.25,alpha:random(.65,1),depth:origin.z});
+      if(level>0) {
+        const fork=Math.floor(steps*random(.45,.72)),p=points[fork],before=points[fork-1];
+        const tangent=Math.atan2(p.y-before.y,p.x-before.x);
+        branch(owner,p,tangent+(Math.random()>.5?1:-1)*random(.55,1.25),length*random(.4,.65),width*.5,level-1);
+        branch(owner,points[steps],angle+random(-.5,.5),length*random(.48,.72),width*.48,level-1);
+      }
+    }
+    nodes.forEach(n=>{
+      const arms=Math.round(random(7,11)),offset=random(0,6);
+      for(let j=0;j<arms;j++) branch(n,n,offset+j/arms*Math.PI*2+random(-.25,.25),random(.25,.56),random(.8,1.65),2);
+      // One longer axon gives each neuron a directional silhouette.
+      branch(n,n,random(0,Math.PI*2),random(.7,1.2),1.5,2);
+    });
+    const seen=new Set();
+    nodes.forEach((a,i)=>{
+      const closest=nodes.map((b,j)=>({b,j,d:Math.hypot(a.x-b.x,a.y-b.y,(a.z-b.z)*.7)}))
+        .filter(v=>v.j!==i).sort((a,b)=>a.d-b.d).slice(0,3);
+      closest.forEach(({b,j,d})=>{
+        const key=Math.min(i,j)+':'+Math.max(i,j);if(seen.has(key))return;seen.add(key);
+        a.edges.push({index:j,distance:d});b.edges.push({index:i,distance:d});
+        let points=[a,b];
+        // Midpoint displacement creates permanent, irregular nerve paths.
+        for(let pass=0;pass<5;pass++) {
+          const refined=[points[0]];
+          for(let k=1;k<points.length;k++) {
+            const p=points[k-1],q=points[k],size=Math.hypot(p.x-q.x,p.y-q.y)*.17;
+            refined.push({x:(p.x+q.x)/2+random(-size,size),y:(p.y+q.y)/2+random(-size,size),z:(p.z+q.z)/2+random(-size*.5,size*.5)},q);
+          }points=refined;
+        }
+        fibers.push({owner:a,other:b,points,width:random(.8,1.9),endWidth:.65,alpha:.9,depth:(a.z+b.z)/2});
+      });
+    });
+    fibers.forEach(f=>{
+      f.distances=[0];
+      for(let i=1;i<f.points.length;i++) {
+        const a=f.points[i-1],b=f.points[i];
+        f.distances.push(f.distances[i-1]+Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z));
+      }
+      f.length=f.distances[f.distances.length-1];
+      const root=f.points[0];
+      f.offset=Math.hypot(root.x-f.owner.x,root.y-f.owner.y,root.z-f.owner.z);
+    });
+    const junctions=new Map();
+    nodes.forEach(n=>{n.outgoing=[];n.refractory=-1;});
+    fibers.forEach(f=>{
+      f.children=[];
+      if(!f.other) for(let i=1;i<f.points.length;i++) junctions.set(f.points[i],{fiber:f,distance:f.distances[i]});
+    });
+    fibers.forEach(f=>{
+      if(f.other) {
+        f.owner.outgoing.push({fiber:f,reverse:false});
+        f.other.outgoing.push({fiber:f,reverse:true});
+      } else if(f.points[0]===f.owner) f.owner.outgoing.push({fiber:f,reverse:false});
+      else {
+        const parent=junctions.get(f.points[0]);
+        if(parent) parent.fiber.children.push({fiber:f,distance:parent.distance});
+      }
+    });
+    fibers.sort((a,b)=>b.depth-a.depth);
+    triggerBeat();render();
+  }
+
+
+  function launch(fiber,reverse,start,speed,strength,hops) {
+    if(signals.length>=75)return;
+    signals.push({fiber,reverse,start,speed,strength,hops,split:new Set(),arrived:false,trail:random(.012,.019)});
+  }
+  function excite(n,at,incoming=null,strength=1,hops=0) {
+    if(at<n.refractory||hops>5||strength<.2)return;
+    n.beat=at;n.refractory=at+random(1600,3200);
+    const candidates=n.outgoing.filter(o=>o.fiber!==incoming);
+    // Shuffle once at activation, then send only a few anatomically connected signals.
+    for(let i=candidates.length-1;i>0;i--) {const j=Math.floor(Math.random()*(i+1));[candidates[i],candidates[j]]=[candidates[j],candidates[i]];}
+    const paths=candidates.filter(o=>o.fiber.other).slice(0,Math.random()<.3?2:1);
+    paths.push(...candidates.filter(o=>!o.fiber.other).slice(0,Math.floor(random(2,5))));
+    const speed=random(.00030,.00046);
+    paths.forEach(o=>launch(o.fiber,o.reverse,at+random(45,170),speed,strength,hops));
+  }
+  function triggerBeat() {
+    const eligible=nodes.filter(n=>time>=n.refractory&&Math.abs(n.x)<1.3&&Math.abs(n.y)<.85&&n.z<.8);
+    if(eligible.length)excite(eligible[Math.floor(Math.random()*eligible.length)],time);
+  }
+  function advanceSignals() {
+    // Arrival times use actual polyline length, including every bend and bifurcation.
+    for(const pulse of signals.slice()) {
+      const f=pulse.fiber,distance=(time-pulse.start)*pulse.speed;
+      if(distance<0)continue;
+      if(!pulse.reverse) for(const child of f.children) {
+        if(distance>=child.distance&&!pulse.split.has(child)) {
+          pulse.split.add(child);
+          if(Math.random()<.7)launch(child.fiber,false,pulse.start+child.distance/pulse.speed,pulse.speed,pulse.strength*.78,pulse.hops);
+        }
+      }
+      if(distance>=f.length&&!pulse.arrived) {
+        pulse.arrived=true;
+        if(f.other)excite(pulse.reverse?f.owner:f.other,pulse.start+f.length/pulse.speed,f,pulse.strength*.79,pulse.hops+1);
+      }
+    }
+    signals=signals.filter(p=>(time-p.start)*p.speed<p.fiber.length+p.trail);
+  }
+
+  function project(x,y,z) {
+    const rx=x*camera.cy+z*camera.sy,rz=-x*camera.sy+z*camera.cy;
+    const ry=y*camera.cp-rz*camera.sp,depth=y*camera.sp+rz*camera.cp;
+    const perspective=4.5/(4.5+depth);
+    return {x:W*.5+rx*camera.size*perspective,y:H*.46+ry*camera.size*perspective,depth,scale:perspective};
+  }
+  function circle(x,y,r,fill) {
+    ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fillStyle=fill;ctx.fill();
+  }
+  function render() {
+    ctx.clearRect(0,0,W,H);
+    // A slow camera orbit reveals depth without making neurons swim independently.
+    const yaw=Math.sin(time*.00007)*.16,pitch=Math.cos(time*.00005)*.055;
+    camera={cy:Math.cos(yaw),sy:Math.sin(yaw),cp:Math.cos(pitch),sp:Math.sin(pitch),size:W<650?Math.max(W*.38,H*.3):Math.max(W*.29,H*.43)};
+    ctx.lineCap='round';ctx.lineJoin='round';
+    for(const n of nodes) {
+      n.screen=project(n.x,n.y,n.z);
+      const age=time-n.beat;
+      n.energy=age>=0&&age<2100?Math.pow(1-Math.exp(-age/60),2)*Math.exp(-age/620):0;
+    }
+    for(const f of fibers) {
+      const depth=f.owner.screen.depth;
+      const near=clamp((1.55-depth)/2.1,0,1);
+      const energy=f.other?(f.owner.energy+f.other.energy)*.5:f.owner.energy;
+      const alpha=clamp((.045+Math.pow(near,1.6)*.66+energy*.2*near)*f.alpha,.025,.95);
+      const points=f.points.map(p=>project(p.x,p.y,p.z));
+      f.screen=points;
+      // Three tapered sections keep trunks substantial and terminal branches hair-fine.
+      for(let part=0;part<3;part++) {
+        const first=Math.floor((points.length-1)*part/3),last=Math.floor((points.length-1)*(part+1)/3);
+        ctx.beginPath();ctx.moveTo(points[first].x,points[first].y);
+        for(let i=first+1;i<=last;i++) ctx.lineTo(points[i].x,points[i].y);
+        ctx.strokeStyle='rgba(0,0,0,'+alpha+')';
+        ctx.lineWidth=Math.max(.18,(f.width*(1-part/3)+f.endWidth*part/3)*(.48+near*.62)*(1+energy*.2));
+        ctx.stroke();
+      }
+    }
+
+
+    // Sub-segment interpolation keeps luminous points precisely on the nerve paths.
+    function sample(f,distance) {
+      distance=clamp(distance,0,f.length);
+      let lo=1,hi=f.distances.length-1;
+      while(lo<hi) {const mid=(lo+hi)>>1;if(f.distances[mid]<distance)lo=mid+1;else hi=mid;}
+      const a=f.points[lo-1],b=f.points[lo];
+      const t=(distance-f.distances[lo-1])/(f.distances[lo]-f.distances[lo-1]||1);
+      return project(a.x+(b.x-a.x)*t,a.y+(b.y-a.y)*t,a.z+(b.z-a.z)*t);
+    }
+    for(const pulse of signals) {
+      const f=pulse.fiber,front=(time-pulse.start)*pulse.speed;
+      if(front<0||front>f.length+pulse.trail)continue;
+      const distance=pulse.reverse?f.length-front:front;
+      const head=sample(f,distance);
+      const near=clamp((1.55-head.depth)/2.1,0,1);
+      const fadeIn=clamp(front/.009,0,1),fadeOut=clamp((f.length+pulse.trail-front)/pulse.trail,0,1);
+      const opacity=(.55+near*.45)*pulse.strength*fadeIn*fadeOut;
+      const radius=(1.45+near*.55)*head.scale;
+      // A very short fading trace supports motion while preserving a round point.
+      for(let j=4;j>=1;j--) {
+        const behind=front-j*.0025;
+        if(behind<0||behind>f.length)continue;
+        const p=sample(f,pulse.reverse?f.length-behind:behind);
+        circle(p.x,p.y,radius*(.32+(1-j/5)*.3),'rgba(38,92,255,'+(opacity*(1-j/5)*.27)+')');
+      }
+      circle(head.x,head.y,radius*3.5,'rgba(38,92,255,'+(opacity*.035)+')');
+      circle(head.x,head.y,radius*2.1,'rgba(38,92,255,'+(opacity*.1)+')');
+      circle(head.x,head.y,radius,'rgba(32,88,255,'+(opacity*.98)+')');
+      circle(head.x-radius*.12,head.y-radius*.12,radius*.35,'rgba(218,232,255,'+(opacity*.9)+')');
+    }
+    for(const n of nodes.slice().sort((a,b)=>b.screen.depth-a.screen.depth)) {
+      const p=n.screen,near=clamp((1.55-p.depth)/2.1,0,1),size=n.r*camera.size*p.scale;
+      if(n.energy>.01) {
+        const radius=size*5+8;
+        const glow=ctx.createRadialGradient(p.x,p.y,size*.4,p.x,p.y,radius);
+        glow.addColorStop(0,'rgba(38,92,255,'+(n.energy*.5*(.4+near*.6))+')');
+        glow.addColorStop(.3,'rgba(38,92,255,'+(n.energy*.19*(.4+near*.6))+')');
+        glow.addColorStop(1,'rgba(38,92,255,0)');
+        circle(p.x,p.y,radius,glow);
+      }
+      const shape=n.shape.map(v=>project(v.x,v.y,v.z));
+      ctx.beginPath();
+      ctx.moveTo((shape[0].x+shape[13].x)/2,(shape[0].y+shape[13].y)/2);
+      shape.forEach((q,i)=>{const r=shape[(i+1)%shape.length];ctx.quadraticCurveTo(q.x,q.y,(q.x+r.x)/2,(q.y+r.y)/2);});
+      ctx.closePath();ctx.fillStyle='rgba(0,0,0,'+clamp(.12+near*.86+n.energy*.18,0,1)+')';ctx.fill();
+      circle(p.x,p.y,size*.34,'rgba(0,0,0,'+(.15+near*.8)+')');
+      if(n.energy>.025) {
+        circle(p.x,p.y,Math.max(1.2,size*.46),'rgba(38,92,255,'+(n.energy*.95)+')');
+        circle(p.x,p.y,Math.max(.5,size*.16),'rgba(191,213,255,'+(n.energy*.85)+')');
+      }
+    }
+  }
+  function resize() {
+    W=innerWidth;H=innerHeight;
+    const dpr=Math.min(devicePixelRatio||1,2);
+    canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    if(nodes.length) render(); else buildNetwork();
+  }
+  function animate(now) {
+    frame=0;
+    if(paused||document.hidden) return;
+    if(!last) last=now;
+    { // Render every display frame; progress uses elapsed time, not frame count.
+      time+=Math.min(now-last,65);last=now;
+      if(time>=nextBeat) {if(signals.length<26)triggerBeat();nextBeat=time+800-Math.log(Math.max(.001,Math.random()))*1700;}
+      advanceSignals();
+      render();
+    }
+    frame=requestAnimationFrame(animate);
+  }
+  function start() {if(!frame&&!paused&&!document.hidden){last=0;frame=requestAnimationFrame(animate);}}
+  function syncPause() {
+    document.body.classList.toggle('paused',paused);
+    pauseButton.setAttribute('aria-pressed',String(paused));
+    const label=paused?'Reprendre l’animation':'Mettre en pause';
+    pauseButton.setAttribute('aria-label',label);pauseButton.title=label;
+    status.textContent=paused?'Simulation en pause':'Simulation active';
+    if(paused){cancelAnimationFrame(frame);frame=0;}else start();
+  }
+  pauseButton.addEventListener('click',()=>{paused=!paused;syncPause();});
+  document.getElementById('reset').addEventListener('click',buildNetwork);
+  density.addEventListener('input',()=>{output.textContent=density.value+' %';clearTimeout(densityTimer);densityTimer=setTimeout(buildNetwork,90);});
+  window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(resize,100);});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frame);frame=0;}else start();});
+  motion.addEventListener('change',e=>{paused=e.matches;syncPause();});
+  resize();syncPause();
+})();
+
+</script>
+</body>
+</html>

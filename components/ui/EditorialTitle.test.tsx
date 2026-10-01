@@ -110,8 +110,77 @@ describe("EditorialTitle.module.css", () => {
     expect(line).toMatch(/text-wrap:\s*balance/);
   });
 
-  it("stops everything under reduced motion and under the site pause", () => {
+  it("stops everything under reduced motion; the site pause is gone (docs §2.11.6)", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*animation:\s*none/);
-    expect(css).toMatch(/data-landing-motion="paused"[\s\S]*?animation:\s*none;[\s\S]*?opacity:\s*1/);
+    expect(css).not.toMatch(/data-landing-motion/);
+  });
+
+  it("never loops nor glows, and holds the accent effects to their spec values (§2.11.2)", () => {
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(code).not.toMatch(/infinite/);
+    expect(code).not.toMatch(/drop-shadow|box-shadow|text-shadow/);
+    expect(code).toMatch(/--focus-rest-blur:\s*5px/);
+    expect(code).toMatch(/--focus-rest-blur:\s*3px/);
+    expect(code).toMatch(/--focus-frame-arm:\s*16px/);
+    expect(code).toMatch(/--focus-frame-arm:\s*12px/);
+    expect(code).toMatch(/--focus-frame-width:\s*3px/);
+    expect(code).toMatch(/--focus-frame-width:\s*2px/);
+    expect(code).toMatch(/--focus-frame-from:\s*1\.28/);
+    expect(code).toMatch(/--mark-draw:\s*640ms/);
+    expect(code).toMatch(/var\(--ease-draw\) 760ms/);
+    expect(code).toMatch(/var\(--ease-draw\) 1560ms/);
+    // The frame is never shown without motion: hidden by default, only `display: block` when welcome.
+    const frame = code.slice(code.indexOf(".frame {"), code.indexOf("}", code.indexOf(".frame {")));
+    expect(frame).toMatch(/display:\s*none/);
+  });
+});
+
+describe("EditorialTitle accentEffect (docs/design-system.md §2.11.2)", () => {
+  const ornaments = () => ({
+    frames: document.querySelectorAll("[data-accent-frame]"),
+    marks: document.querySelectorAll("[data-accent-mark]"),
+  });
+
+  it("renders no ornament by default (CRM, /estimation unchanged)", () => {
+    renderTitle();
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.hasAttribute("data-accent-effect")).toBe(false);
+    expect(ornaments().frames).toHaveLength(0);
+    expect(ornaments().marks).toHaveLength(0);
+    expect(document.querySelector("[data-accent]")?.getAttribute("style")).toBeNull();
+  });
+
+  it.each([
+    ["underline", 0, 1],
+    ["focus", 1, 0],
+    ["focus-underline", 1, 1],
+  ] as const)("%s renders %i frame and %i mark, empty, inside the hidden visual", (effect, frameCount, markCount) => {
+    renderTitle({ accentEffect: effect });
+    const heading = screen.getByRole("heading", { level: 2, name: SENTENCE });
+    expect(heading.getAttribute("data-accent-effect")).toBe(effect);
+    const { frames, marks } = ornaments();
+    expect(frames).toHaveLength(frameCount);
+    expect(marks).toHaveLength(markCount);
+    const visual = screen.getByTestId("editorial-title-visual");
+    for (const node of [...frames, ...marks]) {
+      expect(node.textContent).toBe("");
+      expect(node.closest("[aria-hidden='true']")).toBe(visual);
+      expect(node.parentElement?.hasAttribute("data-accent")).toBe(true);
+    }
+    // No text added: the visual still reads the sentence, the name is unchanged.
+    expect(visual.textContent?.replace(/\s+/g, " ").trim()).toBe(SENTENCE);
+    expect(heading.querySelector(".sr-only")?.textContent).toBe(SENTENCE);
+  });
+
+  it("centres the frame on the ink of an italic « f » ending", () => {
+    renderTitle({ accentEffect: "focus" });
+    const accent = document.querySelector<HTMLElement>("[data-accent]");
+    expect(accent?.style.getPropertyValue("--accent-overhang")).toBe("0.15em");
+  });
+
+  it("drops the effect when there is no accented word", () => {
+    render(<EditorialTitle as="h2" id="t" lines={["Sans mot"]} accent="absent" size="statement" reveal="in-view" accentEffect="focus" />);
+    expect(screen.getByRole("heading", { level: 2 }).hasAttribute("data-accent-effect")).toBe(false);
+    expect(ornaments().frames).toHaveLength(0);
   });
 });

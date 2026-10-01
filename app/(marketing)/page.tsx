@@ -20,7 +20,7 @@ export default function HomePage() {
     <>
       <LivingBackground initialScene="hero" />
       {/* overflow-x-clip: the soft veils behind the headings reach past the edges on a phone. */}
-      <div className="relative z-10 overflow-x-clip">
+      <div data-landing="" className="relative z-10 overflow-x-clip">
         <LandingHero />
         <LandingProblem />
         <LandingSolution />

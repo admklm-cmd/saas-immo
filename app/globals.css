@@ -143,6 +143,9 @@
   --ease-exit: cubic-bezier(0.4, 0, 1, 1);
   /* Only the line-by-line reveal of the public editorial titles (docs §2.2.7). */
   --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Only a stroke that draws itself: the mark under the accented word of the
+     landing titles (docs §2.11.2). Soft start and arrival, like a pen. */
+  --ease-draw: cubic-bezier(0.65, 0, 0.35, 1);
   --duration-fast: 150ms;
   --duration-base: 220ms;
   --duration-slow: 300ms;
@@ -429,6 +432,18 @@
 .particle-veil-tight::before {
   --veil-x: 0.5rem;
   --veil-y: 0.375rem;
+}
+
+/*
+ * Landing (`/`) only, lot landing-motion (docs/design-system.md §2.11.5): the
+ * Simulation badge plays ONE cycle (float 3 s, dot 2 s), then stays still —
+ * nothing loops on the landing. The badge text never changes. The signed-in
+ * space keeps its infinite badge (§2.5.7). `data-landing` is set by
+ * app/(marketing)/page.tsx.
+ */
+[data-landing] .simulation-badge,
+[data-landing] .simulation-dot {
+  animation-iteration-count: 1;
 }
 
 /* Motion is decoration: honour the OS setting (WCAG 2.3.3). */

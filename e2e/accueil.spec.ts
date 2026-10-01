@@ -3,6 +3,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
 import { LIVING_SCENES } from "@/components/landing/living/scenes";
 
+import { signIn } from "./helpers/sign-in";
+
 /**
  * Public home page: the hero (title revealed line then word, tilted tag, black
  * then light action), the fictitious journey labelled as a simulation, and the
@@ -10,7 +12,9 @@ import { LIVING_SCENES } from "@/components/landing/living/scenes";
  *
  * The suite runs in reduced motion (playwright.config.ts): everything is in its
  * final state at once. One group opts back into real motion to check that the
- * background really runs, follows the sections and can be paused.
+ * background runs and follows the sections, that the journey plays once then
+ * stays still, and that the Simulation badge plays one cycle on / only
+ * (docs/design-system.md §2.11.5).
  */
 
 const COLD_START = 60_000;
@@ -44,7 +48,7 @@ test("accueil : titre, étiquette, deux actions et parcours fictif étiqueté si
   await expect(journey.getByTestId("hero-journey-label")).toContainText("Simulation");
   await expect(main).toContainText(HERO.illustrationNote);
 
-  // Reduced motion: the final state at once, nothing to pause.
+  // Reduced motion: the final state at once, no pause button (§2.11.6).
   const steps = journey.getByRole("listitem");
   await expect(steps).toHaveCount(JOURNEY.steps.length);
   for (const step of await steps.all()) await expect(step).toHaveAttribute("data-state", "done");
@@ -158,7 +162,7 @@ test("cas d'erreur : une adresse inconnue du site public répond 404, sans fond 
 test.describe("avec animations", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("le fond vivant tourne, suit la section visible et se met en pause", async ({ page }) => {
+  test("le fond vivant tourne et suit la section visible", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
     const canvas = page.getByTestId("living-background");
@@ -177,14 +181,54 @@ test.describe("avec animations", () => {
     await page.mouse.wheel(0, 200);
     await expect(canvas).toHaveAttribute("data-scene", "controle", { timeout: 10_000 });
 
-    // WCAG 2.2.2: one switch pauses the illustrations; the loop really stops.
-    await page.evaluate(() => window.scrollTo(0, 0));
-    const toggle = page.getByTestId("landing-motion-toggle");
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await expect(canvas).toHaveAttribute("data-motion", "hidden");
-    await toggle.click();
-    await expect(canvas).toHaveAttribute("data-motion", "running");
+    // The page pause is gone (docs/design-system.md §2.11.6): nothing on / lasts 5 s.
+    await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
+  });
+
+  test("parcours du hero : joué une fois jusqu'au mandat, puis immobile (§2.11.5)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const journey = page.getByTestId("hero-journey");
+    const steps = journey.getByRole("listitem");
+    const states = () => steps.evaluateAll((items) => items.map((item) => item.getAttribute("data-state")));
+
+    // It really plays: a human validation is awaited at some point.
+    await expect(journey).toHaveAttribute("data-playback", /playing|played/);
+    await expect.poll(async () => (await states()).includes("awaiting"), { timeout: 5_000, intervals: [50] }).toBe(true);
+
+    // Then the final state (≤ 5.2 s after load at 1440), and it no longer changes.
+    await expect(journey).toHaveAttribute("data-playback", "played", { timeout: 5_200 });
+    const final = await states();
+    expect(final.every((state) => state === "done")).toBe(true);
+    await expect(journey).toContainText(JOURNEY.states.confirmed);
+    await page.waitForTimeout(3_000);
+    expect(await states()).toEqual(final);
+    await expect(journey).toHaveAttribute("data-playback", "played");
+    await expect(page.locator("main")).toContainText(JOURNEY.note);
+  });
+
+  test("badge « Simulation » : un seul cycle sur l'accueil, infini dans l'espace agence (§2.11.5)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const iterations = (selector: string) =>
+      page.locator(selector).first().evaluate((node) =>
+        node.getAnimations().map((animation) => (animation.effect?.getComputedTiming().iterations ?? 0) as number),
+      );
+    const badge = page.getByTestId("hero-journey").locator(".simulation-badge");
+    await expect(badge).toContainText("Simulation");
+    expect(await iterations("[data-testid='hero-journey'] .simulation-badge")).toEqual([1]);
+    expect(await iterations("[data-testid='hero-journey'] .simulation-dot")).toEqual([1]);
+    // After its cycle (3 s), nothing is left running on the badge; the word stays.
+    await page.waitForTimeout(3_300);
+    expect(await iterations("[data-testid='hero-journey'] .simulation-badge")).toEqual([]);
+    await expect(badge).toContainText("Simulation");
+
+    // The signed-in space keeps its badge unchanged.
+    await signIn(page, "agentA");
+    await page.goto("/rendez-vous");
+    await expect(page.locator(".simulation-badge").first()).toBeVisible({ timeout: COLD_START });
+    expect(await iterations(".simulation-badge")).toEqual([Infinity]);
+    expect(await iterations(".simulation-dot")).toEqual([Infinity]);
   });
 
   test("le réseau des sections problème et agents reste sous 4 ms par image", async ({ page }) => {

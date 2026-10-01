@@ -12,12 +12,15 @@
   --title-focus-duration: 640ms;
   --title-line-step: 80ms;
   --title-line-delay: 0ms;
+  /* Blur held on the rest of the title during a focus effect (§2.11.2). */
+  --focus-rest-blur: 5px;
   /* No mask: an `overflow: hidden` would cut the blur and the italic descenders. */
 }
 
 @media (width < 40rem) {
   .title {
     --title-line-step: 60ms;
+    --focus-rest-blur: 3px;
   }
 }
 
@@ -93,16 +96,6 @@
   }
 }
 
-/* Site pause (MotionToggle, WCAG 2.2.2): the title is shown at once. The
-   selectors (0,4,1) outweigh the hidden state above (0,4,0). */
-:global(html[data-landing-motion="paused"]) .title .word.focusWord,
-:global(html[data-landing-motion="paused"]) .title .nowrap .sharpWord {
-  animation: none;
-  opacity: 1;
-  transform: none;
-  filter: none;
-}
-
 /* Reduced motion: nothing moves, no intermediate opacity (explicit, on top of
    the global rule of globals.css). */
 @media (prefers-reduced-motion: reduce) {
@@ -134,5 +127,260 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/*
+ * Effects of the accented word — landing only (docs/design-system.md §2.11.2).
+ * `accentEffect`: underline (hero), focus (problem), focus-underline (final).
+ * Ornaments are empty spans inside `.title-accent`, absolutely positioned: the
+ * line box never changes. Lengths are in the accent's em (the accent is set at
+ * `--accent-word-size`, 1.06 × the title): 0.02 title em = 0.019 em here.
+ * CSS only, played once by the existing triggers (load, Reveal), no timer.
+ */
+.accentHost {
+  /* A stacking context: the mark (z-index -1) sits behind the glyphs. */
+  position: relative;
+  z-index: 0;
+  /* Local tokens (§2.11.2); --focus-rest-blur lives on .title. */
+  --focus-frame-arm: 16px;
+  --focus-frame-width: 3px;
+  --focus-frame-from: 1.28;
+  --mark-thickness: max(3px, 0.0472em);
+  --mark-draw: 640ms;
+  /* Geometry measured on Instrument Serif italic in Chromium (accent em, from
+     the top of the content area, 1440 and 390 px): baseline 0.99, ink top of
+     the ascenders 0.232 (0.758 above the baseline), ink bottom 1.0 (the italic
+     « f » has no descender, 0.009 under the baseline). Reported in §2.11.2. */
+  --accent-baseline: 0.99em;
+  --accent-ink-top: 0.232em;
+  --accent-ink-bottom: 1em;
+}
+
+@media (width < 64rem) {
+  .accentHost {
+    --focus-frame-arm: 12px;
+    --focus-frame-width: 2px;
+  }
+}
+
+@media (width < 40rem) {
+  .accentHost {
+    --mark-thickness: 3px;
+  }
+}
+
+/* The mark: a cobalt bar under the word, rounded ends, 0.08–0.12 title em
+   under the baseline, from -0.02 em to +0.06 em (past the italic overhang).
+   Final state by default: complete, no clip-path. */
+.mark {
+  position: absolute;
+  z-index: -1;
+  left: -0.019em;
+  right: -0.057em;
+  top: calc(var(--accent-baseline) + 0.094em);
+  height: var(--mark-thickness);
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  pointer-events: none;
+}
+
+/* The frame: four L corners (8 gradient layers), sharp, no shadow, around
+   the ink of the word (0.12 em left and right, 0.08 em above the ascenders,
+   0.04 em under the lowest descender, title em). Never shown at rest: it only
+   exists during the effect, so it is absent without motion. */
+.frame {
+  display: none;
+  position: absolute;
+  /* The ink starts 0.01 em after the box; it ends `--accent-overhang` past it
+     (italic overhang, set per word by EditorialTitle). */
+  left: -0.103em;
+  right: calc(-0.113em - var(--accent-overhang, 0.02em));
+  top: calc(var(--accent-ink-top) - 0.075em);
+  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.113em);
+  pointer-events: none;
+  transform-origin: center;
+  --frame-color: var(--color-accent);
+  background-image:
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color)),
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color)),
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color)),
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color));
+  background-repeat: no-repeat;
+  background-size:
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm),
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm),
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm),
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm);
+  background-position:
+    left top,
+    left top,
+    right top,
+    right top,
+    left bottom,
+    left bottom,
+    right bottom,
+    right bottom;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The frame exists (invisible at rest) only when motion is welcome. */
+  .frame {
+    display: block;
+    opacity: 0;
+  }
+
+  /* A. Underline, hero (on load): drawn left to right, 760 ms → 1 400 ms. */
+  .load .mark {
+    animation: accent-mark-draw var(--mark-draw) var(--ease-draw) 760ms backwards;
+  }
+
+  /* Hidden section (before the Reveal enters): no mark yet. */
+  :global(.reveal[data-reveal="hidden"]) .inView .mark {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+
+  /* B. Focus, problem section: the rest stays blurred, the frame tightens on
+     the word, holds, then everything turns sharp (≤ 2.5 s). */
+  :global(.reveal[data-reveal="entering"]) .inView.effectFocus .focusWord {
+    animation: title-focus-hold 2340ms backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :global(.reveal[data-reveal="entering"]) .inView.effectFocus .frame {
+    animation: accent-frame-focus 2020ms 160ms backwards;
+  }
+
+  /* C. Focus then underline, final panel: the frame fades while the mark is drawn. */
+  :global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline .focusWord {
+    animation: title-focus-hold-short 2220ms backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline .frame {
+    animation: accent-frame-focus-short 1620ms 160ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline .mark {
+    animation: accent-mark-draw var(--mark-draw) var(--ease-draw) 1560ms backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark,
+  .frame {
+    animation: none;
+  }
+}
+
+@keyframes accent-mark-draw {
+  from {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+
+/* B, non-accented words, 2 340 ms: arrival (blur 8 → 5 px at 352 ms, landed
+   at 640 ms), hold at 5 px, release at 1 820 ms in 520 ms. */
+@keyframes title-focus-hold {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  15.04% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: linear;
+  }
+  27.35% {
+    opacity: 1;
+    transform: none;
+  }
+  77.78% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: var(--ease-standard);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* C, non-accented words, 2 220 ms: same arrival, release at 1 700 ms. */
+@keyframes title-focus-hold-short {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  15.86% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: linear;
+  }
+  28.83% {
+    opacity: 1;
+    transform: none;
+  }
+  76.58% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: var(--ease-standard);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* B, frame, from 160 ms: tightens in 560 ms, holds, fades out at 1 900 ms in 280 ms. */
+@keyframes accent-frame-focus {
+  0% {
+    opacity: 0;
+    transform: scale(var(--focus-frame-from));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  27.72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  86.14% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: var(--ease-exit);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* C, frame, from 160 ms: tightens in 560 ms, fades out at 1 500 ms in 280 ms. */
+@keyframes accent-frame-focus-short {
+  0% {
+    opacity: 0;
+    transform: scale(var(--focus-frame-from));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  34.57% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  82.72% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: var(--ease-exit);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
   }
 }

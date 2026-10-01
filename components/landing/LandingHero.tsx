@@ -3,7 +3,6 @@ import { ButtonLink } from "@/components/ui/ButtonLink";
 import { EditorialTitle } from "@/components/ui/EditorialTitle";
 
 import { HeroJourney } from "./HeroJourney";
-import { MotionToggle } from "./MotionToggle";
 
 const TEXTS = LANDING_TEXTS.hero;
 const ACTIONS = LANDING_TEXTS.actions;
@@ -39,6 +38,7 @@ export function LandingHero() {
             accent={TEXTS.titleAccent}
             size="poster"
             reveal="load"
+            accentEffect="underline"
           />
         </div>
 
@@ -68,10 +68,7 @@ export function LandingHero() {
 
       <div className="grid gap-3">
         <HeroJourney />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-ink-subtle">{TEXTS.illustrationNote}</p>
-          <MotionToggle />
-        </div>
+        <p className="text-xs text-ink-subtle">{TEXTS.illustrationNote}</p>
       </div>
     </section>
   );

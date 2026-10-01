@@ -6,6 +6,8 @@
  * prototype: no client, testimonial, price, percentage or result is invented
  * (see `components/landing-texts.test.ts`, which fails on any of them).
  */
+import { BRAND } from "@/components/brand";
+
 export const LANDING_TEXTS = {
   actions: {
     estimation: "Demander une estimation",
@@ -57,7 +59,7 @@ export const LANDING_TEXTS = {
       validated: "Validé par un conseiller",
       confirmed: "Confirmé par un humain",
     },
-    note: "Illustration rejouée en boucle. Aucun prospect réel, aucun envoi.",
+    note: "Illustration jouée une fois. Aucun prospect réel, aucun envoi.",
   },
 
   problem: {
@@ -340,12 +342,8 @@ export const LANDING_TEXTS = {
     titleLines: ["Déposez une demande fictive.", "Retrouvez-la", "dans l'espace agence."],
     titleAccent: "fictive",
     note: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
-  },
-
-  /** Page-level pause of the looping illustrations (WCAG 2.2.2). */
-  motion: {
-    pause: "Mettre les animations en pause",
-    resume: "Reprendre les animations",
+    /** Decorative wordmark signing the panel (`aria-hidden`, §2.11.3). */
+    wordmark: BRAND.shortName,
   },
 
   /**

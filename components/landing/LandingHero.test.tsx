@@ -25,7 +25,6 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
-  delete document.documentElement.dataset.landingMotion;
 });
 
 describe("LandingHero without JavaScript (server HTML)", () => {
@@ -61,52 +60,103 @@ describe("LandingHero without JavaScript (server HTML)", () => {
   });
 });
 
+/** IntersectionObserver stub: `show()` reports the figure as fully visible. */
+function mockIntersection() {
+  const callbacks: IntersectionObserverCallback[] = [];
+  let observed = 0;
+  class Observer {
+    constructor(callback: IntersectionObserverCallback) {
+      callbacks.push(callback);
+    }
+    observe() {
+      observed += 1;
+    }
+    disconnect() {}
+    unobserve() {}
+    takeRecords() {
+      return [];
+    }
+  }
+  window.IntersectionObserver = Observer as unknown as typeof IntersectionObserver;
+  return {
+    observed: () => observed,
+    show(target: Element) {
+      const entry = { isIntersecting: true, intersectionRatio: 1, target } as unknown as IntersectionObserverEntry;
+      act(() => callbacks.forEach((callback) => callback([entry], {} as IntersectionObserver)));
+    },
+  };
+}
+
 describe("LandingHero in the browser", () => {
-  it("keeps the final state and no pause button under reduced motion", () => {
+  const statesOf = () =>
+    within(screen.getByTestId("hero-journey"))
+      .getAllByRole("listitem")
+      .map((item) => item.getAttribute("data-state"));
+
+  it("keeps the final state under reduced motion: no timer, no observer, no button", () => {
     mockMotion(true);
+    const io = mockIntersection();
     render(<LandingHero />);
+    expect(io.observed()).toBe(0);
     act(() => {
       vi.advanceTimersByTime(10_000);
     });
-    const journey = screen.getByTestId("hero-journey");
-    const states = within(journey)
-      .getAllByRole("listitem")
-      .map((item) => item.getAttribute("data-state"));
-    expect(states.every((state) => state === "done")).toBe(true);
-    expect(screen.queryByTestId("landing-motion-toggle")).toBeNull();
+    expect(statesOf().every((state) => state === "done")).toBe(true);
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("plays the illustration with full motion, stops at the human validation, and can be paused", () => {
+  it("plays once when it enters the screen, stops at the human validation, then stays on the final state", () => {
     mockMotion(false);
+    const io = mockIntersection();
     render(<LandingHero />);
-    const humanIndex = JOURNEY.steps.findIndex((step) => step.kind === "human");
     const journey = screen.getByTestId("hero-journey");
-    const stateOf = (index: number) => within(journey).getAllByRole("listitem")[index]?.getAttribute("data-state");
+    // Before entering: the final state (server HTML), nothing scheduled.
+    expect(statesOf().every((state) => state === "done")).toBe(true);
+    expect(journey.getAttribute("data-playback")).toBe("ready");
 
-    // Advance until the first human step waits for its validation.
-    for (let tick = 0; tick < 40 && stateOf(humanIndex) !== "awaiting"; tick++) {
+    io.show(journey);
+    expect(journey.getAttribute("data-playback")).toBe("playing");
+    expect(statesOf().every((state) => state === "waiting")).toBe(true);
+
+    const humanIndex = JOURNEY.steps.findIndex((step) => step.kind === "human");
+    let sawAwaiting = false;
+    for (let elapsed = 0; elapsed < 4_700; elapsed += 50) {
       act(() => {
-        vi.advanceTimersByTime(250);
+        vi.advanceTimersByTime(50);
       });
+      if (statesOf()[humanIndex] === "awaiting") sawAwaiting = true;
     }
-    expect(stateOf(humanIndex)).toBe("awaiting");
-    expect(screen.getByText(JOURNEY.states.awaiting)).toBeDefined();
-
-    const toggle = screen.getByTestId("landing-motion-toggle");
-    act(() => {
-      toggle.click();
-    });
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    const frozen = within(journey)
-      .getAllByRole("listitem")
-      .map((item) => item.getAttribute("data-state"));
+    expect(sawAwaiting).toBe(true);
+    // 4.7 s: the final state, and nothing left to play.
+    expect(statesOf().every((state) => state === "done")).toBe(true);
+    expect(journey.getAttribute("data-playback")).toBe("played");
+    expect(vi.getTimerCount()).toBe(0);
     act(() => {
       vi.advanceTimersByTime(20_000);
     });
-    expect(
-      within(journey)
-        .getAllByRole("listitem")
-        .map((item) => item.getAttribute("data-state")),
-    ).toEqual(frozen);
+    expect(statesOf().every((state) => state === "done")).toBe(true);
+    // Entering the screen again replays nothing.
+    io.show(journey);
+    expect(journey.getAttribute("data-playback")).toBe("played");
+  });
+
+  it("jumps to the final state when the tab is hidden mid-way", () => {
+    mockMotion(false);
+    const io = mockIntersection();
+    render(<LandingHero />);
+    const journey = screen.getByTestId("hero-journey");
+    io.show(journey);
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(statesOf().some((state) => state !== "done")).toBe(true);
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    expect(statesOf().every((state) => state === "done")).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

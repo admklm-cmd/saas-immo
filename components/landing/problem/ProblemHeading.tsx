@@ -24,6 +24,7 @@ export function ProblemHeading() {
         subtleBefore={TEXTS.titleSubtleBefore}
         size="statement"
         reveal="in-view"
+        accentEffect="focus"
       />
       <p className="max-w-[52ch] text-lede text-pretty text-ink-muted">{TEXTS.body}</p>
     </div>

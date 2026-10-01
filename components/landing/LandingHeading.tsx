@@ -1,4 +1,4 @@
-import { EditorialTitle } from "@/components/ui/EditorialTitle";
+import { EditorialTitle, type AccentEffect } from "@/components/ui/EditorialTitle";
 import { Overline } from "@/components/ui/Overline";
 import { cn } from "@/components/ui/cn";
 
@@ -15,6 +15,8 @@ type LandingHeadingProps = {
    * opaque panel (final call to action), where it would draw a lighter box.
    */
   veil?: boolean;
+  /** Effect of the accented word (final panel only, docs/design-system.md §2.11.2). */
+  accentEffect?: AccentEffect;
   className?: string;
 };
 
@@ -32,6 +34,7 @@ export function LandingHeading({
   titleAccent,
   body,
   veil = true,
+  accentEffect,
   className,
 }: LandingHeadingProps) {
   return (
@@ -44,6 +47,7 @@ export function LandingHeading({
         accent={titleAccent}
         size="statement"
         reveal="in-view"
+        accentEffect={accentEffect}
         className={kicker ? "mt-5" : undefined}
       />
       {body ? <p className="mt-6 max-w-[52ch] text-lede text-pretty text-ink-muted">{body}</p> : null}
