@@ -263,3 +263,14 @@ Rappel : ces règles résument la réglementation connue en septembre 2026 et do
 - `npm run lint`, `npx tsc --noEmit` : vérifications
 - `npx vitest run` : tests unitaires
 - `npx playwright test` : tests E2E
+
+## Synthèse de fin de session (second cerveau Obsidian)
+
+À la fin de chaque session de travail, l'orchestrateur écrit une note de synthèse dans le coffre Obsidian de l'utilisateur :
+
+- Dossier : `D:\Documents\Obsidian Vault\01-Projets\Ascend-Strategy-SaaS-immo\Sessions\`
+- Nom : `AAAA-MM-JJ-SaaS-immo-session.md` (si plusieurs sessions le même jour : suffixe `-2`, `-3`…)
+- Gabarit : `D:\Documents\Obsidian Vault\Templates\session-projet-template.md` (objectif, fait, décisions, tests réellement exécutés, état du code, prochaines étapes). Court, en français simple.
+- Liens obligatoires : `[[Ascend-Strategy-SaaS-immo]]` et `[[SaaS-immo-Journal]]`, et ajout d'une ligne vers la nouvelle note dans `SaaS-immo-Journal.md`.
+- Si la session change le produit, l'architecture, la sécurité ou le design de façon notable, mettre à jour la note de synthèse correspondante (`SaaS-immo-*.md`) et l'« État actuel » de la note principale.
+- Respecter `D:\Documents\Obsidian Vault\CLAUDE.md` (règles du coffre). Ne jamais y copier de secret, de mot de passe ni de donnée personnelle, et ne supprimer aucune note sans confirmation.

@@ -42,3 +42,6 @@ Thumbs.db
 
 # locally generated fixture credentials (never commit)
 fixtures/.generated-credentials.json
+
+# graphify knowledge graph (local, regenerated)
+graphify-out/
