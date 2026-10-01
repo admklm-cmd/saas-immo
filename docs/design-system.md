@@ -1264,7 +1264,10 @@ titre, quelle que soit la largeur du contenu.
 > voiles, T7 test « aucune boucle » de page entière, T8 captures — **implémentés et testés**
 > (unitaires `components/landing/living/*.test.ts` ; E2E `landing-reseau`, `landing-sans-boucle`,
 > `accueil`). Mesures réelles et écarts : fin du § 2.11.4 (« Mesures réelles — passe 2 »).
-> **Validation visuelle** : à faire par le `web-designer` (audit).
+> **Validation visuelle** : audit du `web-designer` (aller-retour 1)
+> `docs/audits/2026-10-02-landing-motion.md` — **CONFORME AVEC CORRECTIONS MINEURES** : voile des
+> deux lignes grises du titre « problème » à 75 % (2,97:1 mesuré au pire à 70 %), contour du
+> wordmark sans tracés internes (cosmétique).
 > Périmètre : **`/` seulement.** Le CRM, `/estimation`, `.particle-veil`, `RouteParticles` et le
 > badge « Simulation » du CRM ne changent pas.
 > **Révision « 02/10 — référence utilisateur »** : le réseau (§ 2.11.4) est réécrit d'après la

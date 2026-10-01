@@ -1,5 +1,8 @@
 /**
  * Adapted from React Bits — TechText (https://reactbits.dev)
+ * Copyright (c) 2026 David Haz — MIT + Commons Clause License Condition v1.0:
+ * full notice in THIRD_PARTY_NOTICES.md (keep it; never sell or redistribute
+ * this component on its own).
  *
  * Drives the brand wordmark canvas (docs/design-system.md §2.11.3): the
  * one-time sweep, the hover outline and frame (fine pointer), the drag and

@@ -158,6 +158,20 @@ describe("wordmark sources", () => {
     expect(read("TechWordmark.tsx")).toMatch(/Adapted from React Bits — TechText \(https:\/\/reactbits\.dev\)/);
   });
 
+  it("keeps the React Bits copyright and licence notice (MIT + Commons Clause)", () => {
+    for (const name of ["tech-wordmark.ts", "paint-wordmark.ts", "wordmark-engine.ts", "TechWordmark.tsx", "TechWordmark.module.css"]) {
+      const source = read(name);
+      expect(source, name).toMatch(/Copyright \(c\) 2026 David Haz/);
+      expect(source, name).toMatch(/THIRD_PARTY_NOTICES\.md/);
+    }
+    const notices = readFileSync(join(process.cwd(), "THIRD_PARTY_NOTICES.md"), "utf8");
+    expect(notices).toMatch(/MIT \+ Commons Clause License Condition v1\.0/);
+    expect(notices).toMatch(/Copyright \(c\) 2026 David Haz/);
+    expect(notices).toMatch(/The above copyright notice and this permission notice shall be included in all/);
+    expect(notices).toMatch(/do not sell, sublicense, or redistribute the components themselves/);
+    expect(notices).toMatch(/THE SOFTWARE IS PROVIDED "AS IS"/);
+  });
+
   it("never blocks the scroll on touch", () => {
     const css = read("TechWordmark.module.css");
     expect(css).toMatch(/touch-action:\s*pan-y pinch-zoom/);

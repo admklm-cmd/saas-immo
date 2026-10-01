@@ -137,6 +137,8 @@
  * line box never changes. Lengths are in the accent's em (the accent is set at
  * `--accent-word-size`, 1.06 × the title): 0.02 title em = 0.019 em here.
  * CSS only, played once by the existing triggers (load, Reveal), no timer.
+ * The focus idea comes from React Bits' TrueFocus; independent implementation,
+ * no code reused (credited in THIRD_PARTY_NOTICES.md).
  */
 .accentHost {
   /* A stacking context: the mark (z-index -1) sits behind the glyphs. */
