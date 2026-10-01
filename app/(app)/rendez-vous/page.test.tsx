@@ -103,7 +103,7 @@ describe("Écran Rendez-vous d'estimation", () => {
 
     await renderPage();
 
-    expect(screen.getByText(TEXTS.emptyTitles.upcoming)).toBeDefined();
+    expect(screen.getByTestId("empty-state-title").textContent).toBe(TEXTS.emptyTitles.upcoming);
     expect(screen.getByRole("link", { name: TEXTS.emptyAction }).getAttribute("href")).toBe("/contacts");
   });
 

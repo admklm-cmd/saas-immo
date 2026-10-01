@@ -7,6 +7,8 @@ const ROWS = 8;
 export default function ContactsLoading() {
   return (
     <div aria-busy="true" aria-label={APP_TEXTS.states.loading} className="page-frame">
+      {/* Overline line of the page header (docs/design-system.md §2.2.9). */}
+      <Skeleton className="mb-3 h-(--text-overline) w-24" />
       <Skeleton className="h-10 w-72 max-w-full sm:h-12" />
       <Skeleton className="mt-3 h-4 w-96 max-w-full" />
       <Skeleton className="mt-4 h-6 w-24 rounded-full" />

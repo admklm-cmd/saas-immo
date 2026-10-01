@@ -38,7 +38,7 @@ export function RecentIssuesList({
   return (
     <section aria-labelledby="recent-issues" id="a-examiner" className="scroll-mt-6" data-testid="recent-issues">
       <div className="particle-veil flex w-fit max-w-full flex-col gap-1">
-        <h2 id="recent-issues" className="text-section font-bold text-ink">
+        <h2 id="recent-issues" className="text-section font-semibold text-ink">
           {TEXTS.lastErrors}
         </h2>
       </div>

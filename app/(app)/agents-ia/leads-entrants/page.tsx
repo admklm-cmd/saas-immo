@@ -27,6 +27,7 @@ export default async function InboundLeadsPage() {
   return (
     <div className="page-frame page-frame-reading">
       <PageHeader
+        overline={APP_TEXTS.nav.groupAgents}
         title={TEXTS.title}
         description={TEXTS.subtitle}
         meta={
@@ -59,6 +60,7 @@ export default async function InboundLeadsPage() {
           <EmptyState
             icon="leads"
             title={TEXTS.emptyTitle}
+            titleAccent={TEXTS.emptyTitleAccent}
             description={TEXTS.emptyBody}
             action={
               <ButtonLink href="/contacts" variant="secondary">

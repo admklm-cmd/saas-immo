@@ -186,6 +186,7 @@ export function PendingMessagesList({ messages, initialSelectedId = null }: Pend
         <EmptyState
           icon="humanValidation"
           title={TEXTS.emptyTitle}
+          titleAccent={TEXTS.emptyTitleAccent}
           description={TEXTS.emptyBody}
           action={
             <ButtonLink href="/contacts" variant="secondary">

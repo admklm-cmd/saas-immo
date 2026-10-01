@@ -20,7 +20,7 @@ export function LandingProblem() {
       data-living-scene="probleme"
       className="mx-auto w-full max-w-7xl px-6 py-28 sm:px-8 lg:px-12 lg:py-44"
     >
-      <Reveal>
+      <Reveal frame="still">
         <div className="particle-veil">
           <ProblemHeading />
         </div>

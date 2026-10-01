@@ -25,7 +25,7 @@ export default async function SignInPage({
 
   return (
     <div className="w-full max-w-sm animate-rise">
-      <h1 className="text-title font-semibold tracking-tight text-ink">{APP_TEXTS.auth.title}</h1>
+      <h1 className="text-title font-semibold text-ink">{APP_TEXTS.auth.title}</h1>
       <p className="mt-2 text-sm text-ink-muted">{APP_TEXTS.auth.subtitle}</p>
 
       <div className="mt-8 rounded-xl border border-line bg-surface p-6 shadow-raised sm:p-7">

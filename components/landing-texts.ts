@@ -14,10 +14,14 @@ export const LANDING_TEXTS = {
 
   hero: {
     tag: "5 agents · contrôle humain",
-    /** One entry per visual line: the reveal animation works line by line. */
+    /**
+     * Editorial title (docs/design-system.md §2.2.9): author lines (the reveal
+     * works line by line), one accented word, and the sentence they compose
+     * (`title === titleLines.join(" ")`, tested).
+     */
+    title: "Chaque demande vendeur avance. Votre agence garde la main.",
     titleLines: ["Chaque demande", "vendeur avance.", "Votre agence", "garde la main."],
-    /** From this line on, the title is set in the secondary ink. */
-    titleSecondFrom: 2,
+    titleAccent: "main",
     subtitle:
       "Cinq agents IA préparent chaque étape jusqu'à une prochaine action claire. Le premier message et le mandat restent validés par votre équipe.",
     proofLabel: "Ce que le prototype fait réellement",
@@ -59,13 +63,11 @@ export const LANDING_TEXTS = {
   problem: {
     kicker: "Le problème",
     title: "Ce n'est pas la prospection qui freine vos mandats. C'est l'administratif.",
-    /**
-     * The same title, as composed on screen: the observation, then the answer.
-     * Joined with a space they give `title` (tested).
-     */
-    titleLines: ["Ce n'est pas la prospection qui freine vos mandats.", "C'est l'administratif."],
-    /** Word of the answer set apart, soberly. */
-    titleEmphasis: "administratif",
+    /** The same title, in author lines: the observation, then the answer. */
+    titleLines: ["Ce n'est pas la prospection", "qui freine vos mandats.", "C'est l'administratif."],
+    titleAccent: "administratif",
+    /** The lines of the observation (before this index) are set in the subtle ink. */
+    titleSubtleBefore: 2,
     body: "Les demandes arrivent. Mais chaque dossier traîne des relances à faire à la main, des informations éparpillées et des fiches en double. Le suivi sature, et le dossier s'arrête avant le rendez-vous.",
     /**
      * The four causes of the administrative block. `key` links each one to the
@@ -119,7 +121,9 @@ export const LANDING_TEXTS = {
 
   solution: {
     kicker: "La solution",
-    title: "Un ordre lisible, de la demande au mandat.",
+    title: "Chaque dossier suit le même chemin, de la demande au mandat.",
+    titleLines: ["Chaque dossier suit", "le même chemin,", "de la demande au mandat."],
+    titleAccent: "chemin",
     body: "Chaque étape a un responsable, une sortie attendue et une condition de passage. Le dossier ne franchit jamais une validation humaine sans elle.",
     railLabel: "Étapes d'un dossier vendeur",
     rail: [
@@ -137,6 +141,8 @@ export const LANDING_TEXTS = {
   agents: {
     kicker: "Cinq agents, cinq périmètres",
     title: "Chaque agent sait où son travail commence. Et où il s'arrête.",
+    titleLines: ["Chaque agent sait", "où son travail commence.", "Et où il s'arrête."],
+    titleAccent: "s'arrête",
     body: "Le dossier avance dans un ordre lisible. Les informations manquantes deviennent des tâches, jamais des suppositions.",
     carousel: {
       label: "Étapes d'un dossier vendeur, de la demande au mandat",
@@ -300,6 +306,8 @@ export const LANDING_TEXTS = {
   control: {
     kicker: "Le contrôle reste humain",
     title: "L'IA prépare. Votre équipe décide.",
+    titleLines: ["L'IA prépare.", "Votre équipe décide."],
+    titleAccent: "décide",
     body: "Les garde-fous sont vérifiés par le serveur à chaque action, pas seulement affichés à l'écran.",
     facts: [
       { title: "Premier contact", body: "Toujours relu et validé par un conseiller avant tout envoi." },
@@ -313,7 +321,9 @@ export const LANDING_TEXTS = {
 
   result: {
     kicker: "Le résultat",
-    title: "Chaque dossier a une prochaine action claire.",
+    title: "Vous ouvrez l'espace agence. Vous savez par quoi commencer.",
+    titleLines: ["Vous ouvrez l'espace agence.", "Vous savez par quoi", "commencer."],
+    titleAccent: "commencer",
     body: "Dans l'espace agence, chaque contact indique son étape, ce qui a été fait et ce qui attend une décision.",
     pipelineLabel: "Étapes du pipeline",
     /** The stage names themselves come from the pipeline domain (real labels). */
@@ -326,8 +336,9 @@ export const LANDING_TEXTS = {
   },
 
   final: {
-    title: "Voyez le parcours complet avec un bien fictif.",
-    body: "Commencez par une demande d'estimation, puis retrouvez le dossier dans l'espace agence.",
+    title: "Déposez une demande fictive. Retrouvez-la dans l'espace agence.",
+    titleLines: ["Déposez une demande fictive.", "Retrouvez-la", "dans l'espace agence."],
+    titleAccent: "fictive",
     note: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
   },
 
@@ -361,4 +372,4 @@ export const LANDING_TEXTS = {
 export type LandingTexts = typeof LANDING_TEXTS;
 
 /** Full hero title, as read by assistive technology and search engines. */
-export const HERO_TITLE = LANDING_TEXTS.hero.titleLines.join(" ");
+export const HERO_TITLE = LANDING_TEXTS.hero.title;

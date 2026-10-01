@@ -31,6 +31,7 @@ export default async function PipelinePage() {
   return (
     <div className="page-frame">
       <PageHeader
+        overline={APP_TEXTS.nav.groupPilotage}
         icon="pipeline"
         title={TEXTS.title}
         meta={contacts && contacts.length > 0 ? <Badge tone="outline">{CONTACTS_TEXTS.count(contacts.length)}</Badge> : null}
@@ -53,6 +54,7 @@ export default async function PipelinePage() {
           <EmptyState
             icon="pipeline"
             title={CONTACTS_TEXTS.emptyTitle}
+            titleAccent={CONTACTS_TEXTS.emptyTitleAccent}
             description={CONTACTS_TEXTS.emptyBody}
             action={
               <ButtonLink href="/estimation" variant="secondary">

@@ -47,7 +47,7 @@ export function PipelineFrieze({ pipeline, todo }: { pipeline: DashboardPipeline
     >
       <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-3">
         <div className="min-w-0">
-          <h2 id="dashboard-frieze-title" className="text-section font-bold text-ink">
+          <h2 id="dashboard-frieze-title" className="text-section font-semibold text-ink">
             {TEXTS.friezeTitle}
           </h2>
           <p className="mt-1.5 text-sm text-ink-muted">

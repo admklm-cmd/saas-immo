@@ -200,6 +200,13 @@ test.describe("physique du défilement — mobile", () => {
       await client.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y }] });
       await page.waitForTimeout(16);
     }
+    // A real finger cannot lift before its last move has reached the page. Sent
+    // while the renderer still processes the queued moves, the synthetic
+    // `touchEnd` is sometimes dropped: the gesture never ends, no `scrollend`
+    // fires and the native snap never runs (measured: 5/30 before this lot,
+    // 3/25 after, always `scrollend` absent; 30/30 with this wait). Two frames
+    // let the page render the last move first.
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     await client.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 
     await expect.poll(async () => (await trackState(page)).left, { timeout: 3_000 }).toBeGreaterThan(50);

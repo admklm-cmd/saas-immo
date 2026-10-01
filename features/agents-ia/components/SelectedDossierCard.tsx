@@ -40,6 +40,7 @@ export function SelectedDossierCard({ agents }: { agents: readonly AgentOverview
         <EmptyState
           icon="sarah"
           title={TEXTS.emptyTitle}
+          titleAccent={TEXTS.emptyTitleAccent}
           description={TEXTS.emptyBody}
           action={
             <ButtonLink href="/contacts" variant="secondary" arrow="forward">

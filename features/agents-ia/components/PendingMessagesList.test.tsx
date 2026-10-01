@@ -56,7 +56,7 @@ describe("PendingMessagesList", () => {
   it("suggests what to do when the queue is empty", () => {
     render(<PendingMessagesList messages={[]} />);
 
-    expect(screen.getByText(TEXTS.emptyTitle)).toBeDefined();
+    expect(screen.getByTestId("empty-state-title").textContent).toBe(TEXTS.emptyTitle);
     expect(screen.getByRole("link", { name: TEXTS.emptyAction }).getAttribute("href")).toBe(
       "/contacts",
     );

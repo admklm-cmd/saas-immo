@@ -19,7 +19,7 @@ export function TodoSection({ todo }: { todo: DashboardTodo }) {
   return (
     <section aria-labelledby="dashboard-todo-title" data-testid="dashboard-todo">
       <div className="particle-veil w-fit max-w-full">
-        <h2 id="dashboard-todo-title" className="text-section font-bold text-ink">
+        <h2 id="dashboard-todo-title" className="text-section font-semibold text-ink">
           {TEXTS.todoTitle}
         </h2>
       </div>

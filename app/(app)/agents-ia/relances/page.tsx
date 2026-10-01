@@ -29,6 +29,7 @@ export default async function EmmaFollowUpsPage() {
   return (
     <div className="page-frame">
       <PageHeader
+        overline={APP_TEXTS.nav.groupAgents}
         title={TEXTS.title}
         description={TEXTS.subtitle}
         meta={
@@ -67,6 +68,7 @@ export default async function EmmaFollowUpsPage() {
             <EmptyState
               icon="emma"
               title={TEXTS.emptyTitle}
+              titleAccent={TEXTS.emptyTitleAccent}
               description={TEXTS.emptyBody}
               action={
                 <ButtonLink href="/contacts" variant="secondary">

@@ -57,6 +57,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
   return (
     <div className="page-frame page-frame-reading">
       <PageHeader
+        overline={APP_TEXTS.nav.groupPilotage}
         icon="calendar"
         title={TEXTS.title}
         description={TEXTS.subtitle}
@@ -138,6 +139,7 @@ function AppointmentsContent({ page }: { page: AppointmentsPage }) {
     <EmptyState
       icon="calendar"
       title={TEXTS.emptyTitles[page.view]}
+      titleAccent={page.view === "upcoming" ? TEXTS.emptyTitleAccent.upcoming : undefined}
       description={TEXTS.emptyBodies[page.view]}
       action={
         <ButtonLink href="/contacts" variant="secondary">

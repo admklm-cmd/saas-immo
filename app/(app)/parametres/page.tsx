@@ -31,6 +31,7 @@ export default async function SettingsPage() {
   return (
     <div className="page-frame page-frame-medium">
       <PageHeader
+        overline={APP_TEXTS.nav.groupSettings}
         icon="settings"
         title={TEXTS.title}
         meta={<Badge tone="outline">{TEXTS.readOnlyBadge}</Badge>}

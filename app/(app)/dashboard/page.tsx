@@ -40,6 +40,7 @@ export default async function DashboardPage() {
   return (
     <div className="page-frame">
       <PageHeader
+        overline={APP_TEXTS.nav.groupPilotage}
         icon="dashboard"
         title={TEXTS.title}
         meta={

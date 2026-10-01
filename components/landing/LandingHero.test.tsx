@@ -37,7 +37,7 @@ describe("LandingHero without JavaScript (server HTML)", () => {
     const h1 = container.querySelector("h1");
     expect(h1?.querySelector(".sr-only")?.textContent).toBe(HERO_TITLE);
     // The visible words, line by line, are in the HTML too: no JavaScript needed.
-    const visual = h1?.querySelector("[data-testid='hero-title-visual']");
+    const visual = h1?.querySelector("[data-testid='editorial-title-visual']");
     expect(visual?.textContent?.replace(/\s+/g, " ").trim()).toBe(HERO_TITLE);
   });
 

@@ -1,0 +1,138 @@
+/*
+ * Editorial title of the public site (docs/design-system.md §2.2.7, §3.8).
+ *
+ * Final state by default: the initial (hidden, blurred) state only exists
+ * inside `prefers-reduced-motion: no-preference`, and `backwards` leaves no
+ * transform nor filter behind once a line has landed. CSS only: no timer.
+ */
+
+.title {
+  /* Local tokens of the reveal (§2.2.7). */
+  --title-focus-blur: 8px;
+  --title-focus-duration: 640ms;
+  --title-line-step: 80ms;
+  --title-line-delay: 0ms;
+  /* No mask: an `overflow: hidden` would cut the blur and the italic descenders. */
+}
+
+@media (width < 40rem) {
+  .title {
+    --title-line-step: 60ms;
+  }
+}
+
+/* Poster: capped by its column, which must be an inline-size container
+   (docs §2.2.3). The coefficient is the only value frontend-ux may tune
+   (12cqi–14cqi); the retained value is reported in the design system.
+   Narrow option (§2.2.1, decision of 01/10/2026): `wdth` 92 on the hero only;
+   the accented word resets it (`.title-accent` sets `normal`). */
+.poster {
+  font-size: min(var(--text-poster), 14cqi);
+  font-variation-settings: "wdth" 92;
+  line-height: var(--text-poster--line-height);
+  letter-spacing: var(--text-poster--letter-spacing);
+}
+
+/* Balanced: an author line that wraps (below 1024 px) never leaves a word
+   alone; no effect where the line fits on one visual line. */
+.line {
+  display: block;
+  text-wrap: balance;
+}
+
+.subtle {
+  color: var(--color-ink-subtle);
+}
+
+/* The blur needs a box: each non-accented word is an inline-block. */
+.word {
+  display: inline-block;
+}
+
+/* The accented word, its elided article and its punctuation never break apart. */
+.nowrap {
+  white-space: nowrap;
+}
+
+.load {
+  --title-line-delay: 100ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* On load (hero, /estimation). */
+  .load .focusWord {
+    animation: title-focus-in var(--title-focus-duration) var(--ease-emphasis) backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  .load .sharpWord {
+    animation: title-sharp-in var(--duration-base) var(--ease-standard) backwards;
+    animation-delay: var(--title-line-delay);
+  }
+
+  /* On entering the viewport: driven by the enclosing Reveal. Its hidden
+     state is only ever set by JavaScript, never in the server HTML. */
+  :global(.reveal[data-reveal="hidden"]) .inView .focusWord {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+  }
+
+  :global(.reveal[data-reveal="hidden"]) .inView .sharpWord {
+    opacity: 0;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .inView .focusWord {
+    animation: title-focus-in var(--title-focus-duration) var(--ease-emphasis) backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :global(.reveal[data-reveal="entering"]) .inView .sharpWord {
+    animation: title-sharp-in var(--duration-base) var(--ease-standard) backwards;
+    animation-delay: var(--title-line-delay);
+  }
+}
+
+/* Site pause (MotionToggle, WCAG 2.2.2): the title is shown at once. The
+   selectors (0,4,1) outweigh the hidden state above (0,4,0). */
+:global(html[data-landing-motion="paused"]) .title .word.focusWord,
+:global(html[data-landing-motion="paused"]) .title .nowrap .sharpWord {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* Reduced motion: nothing moves, no intermediate opacity (explicit, on top of
+   the global rule of globals.css). */
+@media (prefers-reduced-motion: reduce) {
+  .focusWord,
+  .sharpWord {
+    animation: none;
+  }
+}
+
+@keyframes title-focus-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+  }
+  55% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes title-sharp-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

@@ -19,6 +19,7 @@ export default async function ContactsPage() {
   return (
     <div className="page-frame">
       <PageHeader
+        overline={APP_TEXTS.nav.groupPilotage}
         icon="contacts"
         title={TEXTS.title}
         meta={contacts && contacts.length > 0 ? <Badge tone="outline">{TEXTS.count(contacts.length)}</Badge> : null}
@@ -41,6 +42,7 @@ export default async function ContactsPage() {
           <EmptyState
             icon="contacts"
             title={TEXTS.emptyTitle}
+            titleAccent={TEXTS.emptyTitleAccent}
             description={TEXTS.emptyBody}
             action={
               <ButtonLink href="/estimation" variant="secondary">

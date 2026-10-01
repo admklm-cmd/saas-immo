@@ -201,12 +201,14 @@
 .stagger > :nth-child(n + 6) { animation-delay: calc(var(--stagger-step) * 5); }
 
 /* Visible by default: without JavaScript, Reveal never hides its content. */
-.reveal[data-reveal="hidden"] {
+.reveal[data-reveal="hidden"]:not([data-reveal-frame="still"]) {
   opacity: 0;
   transform: translate3d(0, 12px, 0);
 }
 
-.reveal[data-reveal="entering"] {
+/* `frame="still"` (docs §3.8): the block stays opaque and still in every
+   state; only the editorial title inside it moves. */
+.reveal[data-reveal="entering"]:not([data-reveal-frame="still"]) {
   animation: card-arrive 550ms var(--ease-standard) backwards;
   animation-delay: calc(var(--reveal-index, 0) * var(--stagger-step));
 }

@@ -218,7 +218,7 @@ export function SarahAppointmentCard({ appointment }: { appointment: ReportedApp
     >
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h2 id={titleId} className="text-heading font-bold text-ink">
+          <h2 id={titleId} className="text-heading font-semibold text-ink">
             {appointment.contactName}
           </h2>
           <p className="mt-1 text-sm text-ink-muted">

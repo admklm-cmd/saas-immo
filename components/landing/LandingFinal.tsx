@@ -7,7 +7,11 @@ import { LandingHeading } from "./LandingHeading";
 const TEXTS = LANDING_TEXTS.final;
 const ACTIONS = LANDING_TEXTS.actions;
 
-/** Final call to action: the same two actions as the hero, black then light. */
+/**
+ * Final call to action, in one column (docs/design-system.md §2.2.9): the
+ * sentence title, then the same two actions as the hero (black then light),
+ * aligned left, then the prototype note.
+ */
 export function LandingFinal() {
   return (
     <section
@@ -15,10 +19,11 @@ export function LandingFinal() {
       data-living-scene="final"
       className="mx-auto w-full max-w-7xl px-6 pt-16 pb-24 sm:px-8 lg:px-12 lg:pb-36"
     >
-      <Reveal>
-        <div className="grid gap-10 rounded-2xl border border-line bg-surface/90 p-8 shadow-raised backdrop-blur-sm md:grid-cols-[1fr_auto] md:items-end lg:p-12">
-          <LandingHeading id="final-title" title={TEXTS.title} body={TEXTS.body} className="[&_h2]:mt-0" />
-          <div className="flex flex-wrap gap-3 md:justify-end">
+      <Reveal frame="still">
+        <div className="grid justify-items-start gap-10 rounded-2xl border border-line bg-surface/90 p-8 shadow-raised backdrop-blur-sm lg:p-12">
+          {/* No veil: the panel is already opaque, the veil would draw a lighter box. */}
+          <LandingHeading id="final-title" titleLines={TEXTS.titleLines} titleAccent={TEXTS.titleAccent} veil={false} />
+          <div className="flex flex-wrap gap-3">
             <ButtonLink href="/estimation" size="lg" arrow="forward">
               {ACTIONS.estimation}
             </ButtonLink>
@@ -26,7 +31,7 @@ export function LandingFinal() {
               {ACTIONS.signIn}
             </ButtonLink>
           </div>
-          <p className="text-xs text-ink-subtle md:col-span-2">{TEXTS.note}</p>
+          <p className="text-xs text-ink-subtle">{TEXTS.note}</p>
         </div>
       </Reveal>
     </section>

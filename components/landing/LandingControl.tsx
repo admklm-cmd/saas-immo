@@ -13,8 +13,14 @@ export function LandingControl() {
       data-living-scene="controle"
       className="mx-auto w-full max-w-7xl px-6 py-24 sm:px-8 lg:px-12 lg:py-36"
     >
-      <Reveal>
-        <LandingHeading id="control-title" kicker={TEXTS.kicker} title={TEXTS.title} body={TEXTS.body} />
+      <Reveal frame="still">
+        <LandingHeading
+          id="control-title"
+          kicker={TEXTS.kicker}
+          titleLines={TEXTS.titleLines}
+          titleAccent={TEXTS.titleAccent}
+          body={TEXTS.body}
+        />
       </Reveal>
       <ul className="stagger mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TEXTS.facts.map((fact) => (

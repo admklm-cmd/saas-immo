@@ -82,7 +82,7 @@ export function SituationStrip({ dashboard }: { dashboard: AgentsDashboard }) {
               <span className="block text-xs font-medium text-ink-muted">{figure.label}</span>
               <span
                 className={cn(
-                  "mt-1 block text-section font-bold figure",
+                  "mt-1 block text-section font-semibold figure",
                   figure.key === "pending" && figure.attention ? "text-accent-strong" : "text-ink",
                 )}
               >

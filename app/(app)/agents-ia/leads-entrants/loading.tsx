@@ -10,6 +10,8 @@ export default function InboundLeadsLoading() {
       aria-label={APP_TEXTS.states.loading}
       className="page-frame page-frame-reading"
     >
+      {/* Overline line of the page header (docs/design-system.md §2.2.9). */}
+      <Skeleton className="mb-3 h-(--text-overline) w-24" />
       <Skeleton className="h-9 w-64" />
       <Skeleton className="mt-3 h-4 w-[28rem]" />
       <Skeleton className="mt-8 h-16 w-full rounded-lg" />

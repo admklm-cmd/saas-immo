@@ -127,7 +127,7 @@ describe("latestDossierRun (level 2)", () => {
   it("returns nothing when no run belongs to a contact: the empty state is shown", () => {
     expect(latestDossierRun([agent({ lastRun: null })])).toBeNull();
     render(<SelectedDossierCard agents={[agent({ lastRun: null })]} />);
-    expect(screen.getByText("Aucun dossier traité pour l’instant")).toBeDefined();
+    expect(screen.getByTestId("empty-state-title").textContent).toBe("Aucun dossier traité pour l’instant");
     expect(screen.getByRole("link", { name: "Ouvrir les contacts" }).getAttribute("href")).toBe("/contacts");
   });
 });

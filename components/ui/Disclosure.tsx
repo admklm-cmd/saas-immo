@@ -84,7 +84,7 @@ export function Disclosure({
           <Icon name="chevronRight" px={card ? 16 : size === "xs" ? 10 : 12} />
         </span>
         <span className="min-w-0 flex-1">
-          <Label className={cn("block", card ? "text-section font-bold text-ink" : size === "xs" ? "font-normal" : "font-medium")}>
+          <Label className={cn("block", card ? "text-section font-semibold text-ink" : size === "xs" ? "font-normal" : "font-medium")}>
             {summary}
           </Label>
           {hint ? <span className="mt-0.5 block text-xs text-ink-muted">{hint}</span> : null}

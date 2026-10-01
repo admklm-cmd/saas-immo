@@ -41,7 +41,7 @@ export function AnimationGallery() {
     <main className="mx-auto min-h-dvh max-w-6xl px-6 py-16 sm:px-10 lg:py-24">
       <header className="max-w-3xl">
         <p className="text-overline font-semibold uppercase text-ink-subtle">Outil de développement</p>
-        <h1 className="mt-4 text-display font-semibold text-balance">Mouvements autorisés</h1>
+        <h1 className="mt-4 text-title font-semibold sm:text-hero lg:text-page text-balance">Mouvements autorisés</h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-ink-muted">
           Cette galerie compare les amplitudes et durées du système. Elle ne charge aucune donnée de
           l’agence et n’existe pas en production.

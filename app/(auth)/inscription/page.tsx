@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand
 export default function SignUpPage() {
   return (
     <div className="w-full max-w-sm animate-rise" data-testid="sign-up">
-      <h1 className="text-title font-semibold tracking-tight text-ink">{TEXTS.title}</h1>
+      <h1 className="text-title font-semibold text-ink">{TEXTS.title}</h1>
       <p className="mt-2 text-sm text-ink-muted">{TEXTS.lead}</p>
 
       <div className="mt-8 rounded-xl border border-line bg-surface p-6 shadow-raised sm:p-7">

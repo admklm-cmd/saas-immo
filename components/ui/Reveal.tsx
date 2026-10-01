@@ -12,8 +12,20 @@ const MAX_INDEX = 5;
  * 12 px rise over 550 ms, once. `index` staggers neighbouring blocks by
  * `--stagger-step` (110 ms), capped.
  * The default is deliberately visible so missing JavaScript never hides content.
+ *
+ * `frame="still"`: the block itself never moves nor fades; `data-reveal` still
+ * goes `hidden` → `entering` and only triggers the editorial title inside it
+ * (docs/design-system.md §3.8: one movement per block).
  */
-export function Reveal({ children, index = 0 }: { children: ReactNode; index?: number }) {
+export function Reveal({
+  children,
+  index = 0,
+  frame = "move",
+}: {
+  children: ReactNode;
+  index?: number;
+  frame?: "move" | "still";
+}) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<RevealState>("visible");
 
@@ -43,6 +55,7 @@ export function Reveal({ children, index = 0 }: { children: ReactNode; index?: n
       ref={elementRef}
       className="reveal"
       data-reveal={state}
+      data-reveal-frame={frame === "still" ? "still" : undefined}
       style={{ "--reveal-index": Math.min(Math.max(index, 0), MAX_INDEX) } as CSSProperties}
     >
       {children}

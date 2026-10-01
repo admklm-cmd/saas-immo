@@ -80,7 +80,7 @@ describe("Écran Tâches", () => {
 
     await renderPage();
 
-    expect(screen.getByText(TEXTS.emptyTitles.all)).toBeDefined();
+    expect(screen.getByTestId("empty-state-title").textContent).toBe(TEXTS.emptyTitles.all);
     expect(screen.getByRole("link", { name: TEXTS.emptyAction }).getAttribute("href")).toBe("/contacts");
     expect(screen.getByTestId("tasks-total-value").textContent).toBe("0");
   });
@@ -95,7 +95,7 @@ describe("Écran Tâches", () => {
 
     expect(screen.getByText(TEXTS.pastEndTitle)).toBeDefined();
     expect(screen.getByRole("link", { name: TEXTS.pastEndAction }).getAttribute("href")).toBe("/taches");
-    expect(screen.queryByText(TEXTS.emptyTitles.all)).toBeNull();
+    expect(screen.getByTestId("empty-state-title").textContent).not.toBe(TEXTS.emptyTitles.all);
   });
 
   it("affiche l'erreur du serveur telle quelle, avec un retour aux filtres par défaut", async () => {

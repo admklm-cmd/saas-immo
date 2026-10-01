@@ -53,7 +53,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="page-frame page-frame-reading">
-      <PageHeader icon="tasks" title={TEXTS.title} />
+      <PageHeader overline={APP_TEXTS.nav.groupPilotage} icon="tasks" title={TEXTS.title} />
 
       <div className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         {page ? (
@@ -120,6 +120,7 @@ function TasksContent({ page }: { page: OpenTasksPage }) {
   return (
     <EmptyState
       title={TEXTS.emptyTitles[page.scope]}
+      titleAccent={page.scope === "all" ? TEXTS.emptyTitleAccent.all : undefined}
       description={TEXTS.emptyBodies[page.scope]}
       action={
         page.scope === "all" ? (

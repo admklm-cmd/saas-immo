@@ -17,8 +17,14 @@ export function LandingResult() {
       data-living-scene="resultat"
       className="mx-auto w-full max-w-7xl px-6 py-24 sm:px-8 lg:px-12 lg:py-36"
     >
-      <Reveal>
-        <LandingHeading id="result-title" kicker={TEXTS.kicker} title={TEXTS.title} body={TEXTS.body} />
+      <Reveal frame="still">
+        <LandingHeading
+          id="result-title"
+          kicker={TEXTS.kicker}
+          titleLines={TEXTS.titleLines}
+          titleAccent={TEXTS.titleAccent}
+          body={TEXTS.body}
+        />
       </Reveal>
 
       <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8">

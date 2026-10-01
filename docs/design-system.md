@@ -33,7 +33,9 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   **forme** (double contour), pas à la couleur. `LandingSolution` et `HeroJourney`
   gardent pour l'instant l'accent statique du Lot 1 sur les étapes humaines.
 - **Section « problème »** (`LandingProblem` + `BlockerChart`) : titre « Ce n'est pas
-  la prospection qui freine vos mandats. C'est l'administratif. » ; graphique SVG
+  la prospection qui freine vos mandats. C'est l'administratif. » (trois lignes d'auteur, les
+  deux premières en `ink-subtle`, « administratif » en italique ; le filet cobalt sous le mot
+  est supprimé depuis le 01/10/2026) ; graphique SVG
   (Server Component) d'une courbe de mandats qui progresse puis plafonne sous une zone
   en pointillés « Blocage administratif ». **Aucun chiffre** : axes « Temps » et
   « Mandats » seulement, étiquette visible « Illustration — exemple fictif ». Courbe
@@ -72,16 +74,21 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
 - Les preuves restent vérifiables dans le prototype : cinq rôles bornés, validation
   humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
   témoignage n'est inventé.
-- La grande typographie utilise une échelle fluide propre au marketing. Elle complète
-  `text-display`, dimensionné pour les autres pages ; depuis le 26/09/2026 les titres y sont aussi en Geist (règle de base `h1–h4`, § 2.2), sans réécriture du contenu.
+- **Typographie expressive (01/10/2026, § 2.2)** : titres-phrases en Bricolage Grotesque 600,
+  échelle fluide propre au site public (`text-poster`, `text-statement`, `text-lede`), un seul
+  mot accentué par titre en Instrument Serif italique (encre, jamais de couleur), sur-titres
+  mono à trait cobalt, apparition **ligne par ligne** (le mot accentué arrive le premier, net ;
+  le reste passe du flou au net). Composant unique `EditorialTitle` ; textes exacts au § 2.2.9.
 - Les sections utilisent `Reveal`, `rise-soft` et `stagger`. Le contenu reste visible
   sans JavaScript et immédiatement disponible avec `prefers-reduced-motion`.
 - Sur mobile, toutes les compositions reviennent à une colonne, les actions peuvent
   passer à la ligne et aucune zone ne dépend d'une hauteur d'écran fixe.
 - **Hero** (`components/landing/LandingHero.tsx`) : étiquette inclinée
-  « 5 AGENTS · CONTRÔLE HUMAIN », titre `HeroTitle` révélé ligne puis mot (masque, flou
-  court, CSS pur ; état final par défaut et sous mouvement réduit ; nom accessible lu
-  une fois depuis une copie `sr-only`), action noire (`primary`) puis claire
+  « 5 AGENTS · CONTRÔLE HUMAIN », titre `EditorialTitle` (`h1`, `poster` borné par sa
+  colonne) révélé **ligne par ligne** au chargement (mot accentué « main » net en premier,
+  flou court sur le reste, CSS pur ; état final par défaut et sous mouvement réduit ; nom
+  accessible lu une fois depuis une copie `sr-only` ; `HeroTitle` est supprimé), sous-titre en
+  `text-lede`, action noire (`primary`) puis claire
   (`secondary`), ce que le prototype fait réellement, et `HeroJourney` : parcours d'un
   prospect **fictif** étiqueté « Exemple fictif — simulation » + `SimulationBadge`. Le
   HTML serveur est l'état final (toutes les étapes terminées).
@@ -211,48 +218,443 @@ transparence.
 
 ### 2.2 Typographie
 
-**Décision du 26/09/2026 — l'ancien choix « pas de police de marque » est abandonné.**
-La pile système donnait un espace connecté plat : une seule famille, des graisses
-voisines, des titres qui ne se détachaient pas. Le produit doit se comprendre en
-regardant l'écran avant de le lire : il faut quatre rôles typographiques qui ne se
-confondent jamais. Les polices sont chargées par `next/font/google` (`app/layout.tsx`) :
-fichiers téléchargés **au build** et servis depuis notre origine (aucune requête du
-navigateur vers Google, CSP `font-src 'self'` inchangée), `display: swap`, repli
-métrique automatique contre le décalage de mise en page. Aucune dépendance npm ajoutée.
-Contrepartie assumée : le build a besoin du réseau (sans lui il échoue, il ne retombe
-pas en silence sur la pile système, qui reste seulement le repli d'affichage).
+**Décision du 01/10/2026 (remplace celle du 26/09/2026).** Source : le plan
+`docs/plans/2026-10-01-expressive-typography.md` et les choix de l'utilisateur (§ 10 de ce
+plan). Titres en **Bricolage Grotesque**, mot accentué en **Instrument Serif italique**, corps en
+**Geist**, chiffres et labels techniques en **Geist Mono**. **Inter disparaît du produit.** Site
+public très expressif (titres-phrases, mot accentué, apparition ligne par ligne) ; CRM
+« expressif contrôlé » (échelle élargie, sur-titre mono à trait cobalt, mot accentué seulement
+dans les états vides, aucune apparition ligne par ligne).
 
-| Rôle | Famille | Graisse | Où | Token / classe |
+Le chargement ne change pas de principe : `next/font/google` télécharge les fichiers **au build**
+et les sert depuis notre origine (aucune requête du navigateur vers Google, CSP
+`font-src 'self'` inchangée), `display: "swap"`, repli métrique automatique. Aucune dépendance
+npm. Contrepartie inchangée : le build a besoin du réseau.
+
+#### 2.2.1 Familles, imports et variables
+
+Tout est déclaré dans `app/layout.tsx`, et seulement là. Les classes `.variable` des quatre
+familles sont posées sur `<html>`.
+
+| Rôle | Famille | Import exact (`next/font/google`) | Variable next/font | Token `@theme` (`app/globals.css`) |
 |---|---|---|---|---|
-| **Titre** | Geist | 800 (page), 700 (carte, section) | `h1` de `PageHeader`, titres de `Card`, `h2` de section | `--font-display` ; règle de base `h1–h4` |
-| **Corps** | Inter | 400–500 | Texte courant, boutons, champs | `--font-sans` (défaut du `body`) |
-| **Chiffre** | Geist Mono, chiffres tabulaires | 600 | KPI, totaux, compteurs, dates de statistiques | `--font-mono` + classe `.figure` |
-| **Étiquette** | Inter, capitales espacées | 500–600 | Sur-titres, `dt`, en-têtes de tableau | `text-overline` (`0.1em`) ou `.label`, toujours `text-ink-subtle` |
+| Titre | Bricolage Grotesque, variable 200–800, axe optique | `Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz"], display: "swap", variable: "--font-bricolage" })` | `--font-bricolage` | `--font-display: var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif` |
+| Mot accentué | Instrument Serif, **italique 400 seulement** (un seul fichier) | `Instrument_Serif({ subsets: ["latin"], weight: "400", style: "italic", display: "swap", variable: "--font-instrument-serif" })` | `--font-instrument-serif` | `--font-accent: var(--font-instrument-serif), ui-serif, Georgia, serif` |
+| Corps, interface, labels | Geist (inchangé) | `Geist({ subsets: ["latin"], display: "swap", variable: "--font-geist" })` | `--font-geist` | `--font-sans: var(--font-geist), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif` |
+| Chiffres, label technique | Geist Mono (inchangé) | `Geist_Mono({ subsets: ["latin"], display: "swap", variable: "--font-geist-mono" })` | `--font-geist-mono` | `--font-mono` (inchangé) |
 
-Variables posées sur `<html>` par next/font : `--font-inter`, `--font-geist`,
-`--font-geist-mono` ; les tokens `@theme` les lisent, pile système en repli.
-Un chiffre accompagné de mots (« 5 sur 5 ») : le chiffre en `.figure`, les mots en corps.
+Règles :
 
-**Écriture des titres (26/09/2026)** : un titre porte l'idée seul, en 1 à 4 mots ; la
-description d'un `PageHeader` tient sur une ligne ou disparaît si elle répète le titre.
-Une explication devient d'abord une information visuelle (chiffre, badge, pastille,
-frise), puis seulement le texte devenu redondant est retiré. Jamais retirés : mentions
-« Simulation », consentement, désinscription, validation humaine du premier contact,
-mandat confirmé par un humain, coupe-circuit et son libellé, états d'erreur.
-**Une action principale par écran**, dans l'en-tête ou le premier bloc, visible sans
-défiler à 1440 × 900 (testé : `e2e/premier-regard.spec.ts`).
+- **Supprimés** : l'import `Inter`, la variable `--font-inter` et toute mention de
+  `var(--font-inter)` (y compris dans le repli de `--font-display`). Un test échoue si
+  `--font-inter` ou `Inter(` réapparaît dans `app/` ou `components/`.
+- **Nom de variable next/font ≠ nom du token `@theme`.** La galerie `/dev/typographie` nommait la
+  variable de l'italique `--font-accent` : ne pas recopier, cela donnerait
+  `--font-accent: var(--font-accent)` (référence circulaire, police perdue).
+- **Axe `wdth` chargé — option « serré » activée sur le hero seulement (décision du
+  01/10/2026).** Après l'audit (hero à 78,6 px contre 72 px pour les sections, hiérarchie
+  trop plate), l'orchestrateur a retenu l'option 1 du `web-designer` pour un rendu « vraiment
+  expressif » : import `Bricolage_Grotesque({ subsets: ["latin"], axes: ["opsz", "wdth"],
+  display: "swap", variable: "--font-bricolage" })` (accepté par `next/font` 16.3.8 : axe
+  `wdth` 75–100 déclaré pour la famille) et `font-variation-settings: "wdth" 92` sur la classe
+  `poster` d'`EditorialTitle` **seulement** (le `h1` du hero). Le mot accentué remet
+  `font-variation-settings: normal` (`.title-accent`) ; sections, CRM et `/estimation` restent
+  en largeur 100.
+- **Axe `opsz`** : `font-optical-sizing: auto` (valeur par défaut du navigateur), jamais de
+  `"opsz"` forcé. C'est lui qui rend Bricolage affirmée à 80–120 px et calme à 21 px.
+- La galerie `/dev/typographie` chargeait aussi Schibsted Grotesk et Mona Sans : ces deux
+  familles ne sont **jamais** importées dans le produit. (Galerie supprimée le 01/10/2026 après
+  la livraison du lot ; sa logique `splitAccent` / `countAccent` vit dans
+  `components/ui/editorial-title.ts`.)
 
-| Token | Taille | Interlignage | Usage |
+#### 2.2.2 Rôles et graisses
+
+| Rôle | Famille | Graisse | Règle |
 |---|---|---|---|
-| `text-display` | 52 px | 1.04 | Titre de page d'accueil publique |
-| `text-hero` | 42 px, `-0.035em` | 1.05 | `h1` des écrans applicatifs dès 640 px (Geist 800) |
-| `text-title` | 32 px | 1.15 | `h1` sur téléphone ; grands chiffres (`.figure`) |
-| `text-section` | 24 px | 1.2 | `h2` de section hors carte (Geist 700) |
-| `text-heading` | 21 px | 1.25 | Titre de carte (`h2`/`h3`) |
-| `text-base` | 16 px | — | Corps |
-| `text-sm` | 14 px | — | Texte d'interface courant |
-| `text-xs` | 12 px | — | Légendes, badges |
-| `text-overline` | 11 px, `0.1em` | 1.2 | Sur-titres en capitales (`dt`, en-têtes de tableau) |
+| **Titre** | Bricolage (`font-display`) | **600 partout** (`font-semibold`), public et CRM | Une seule voix : la force vient de la **taille** et de l'**encre noire**, pas de la graisse. 650 n'est pas retenu, 700 et 800 disparaissent de tous les titres (`font-bold` / `font-extrabold` → `font-semibold`, liste au brief). |
+| **Mot accentué** | Instrument Serif italique (`font-accent`) | 400 | Uniquement par la classe `.title-accent` (§ 2.2.5). Jamais ailleurs. |
+| **Corps** | Geist (`font-sans`, défaut du `body`) | 400 texte courant ; 500 interface (boutons, champs, navigation, badges) ; 600 mise en avant dans une phrase | — |
+| **Chiffre** | Geist Mono, chiffres tabulaires (`.figure`) | 600 | `letter-spacing: -0.03em` (inchangé). Tailles inchangées (`text-title`, `text-hero`, `text-section`). Jamais en Bricolage, jamais en italique. `font-bold` → `font-semibold` sur les chiffres. |
+| **Label** | Geist (`.label` / `text-overline`) | 500 (600 toléré là où il existe déjà) | 11 px, capitales, `0.1em`, `text-ink-subtle` : `dt`, en-têtes de tableau, sur-titres internes aux cartes. |
+| **Label mono** (nouveau) | Geist Mono (`.label-mono`) | 500 | 11 px, capitales (`text-transform`, le texte est stocké en casse normale), `0.08em`, interlignage 1,2, `text-ink-subtle`. Sur-titre de page (CRM), sur-titre de section (site public), index (« 04 / 07 »). |
+
+**Bricolage jamais sous 18 px.** Un titre composé en `text-xs`, `text-sm`, `text-base`, `text-lg`
+ou `text-overline` (ex. `h3` « L’agent au travail » des cartes, `h2` des colonnes du pipeline,
+`h2` en capitales de `RunOutcomeSummary`) est en **Geist**. Mise en œuvre recommandée, dans
+`@layer base` de `app/globals.css`, juste après la règle `h1–h4` :
+`:is(h1, h2, h3, h4):is(.text-xs, .text-sm, .text-base, .text-lg, .text-overline) { font-family: var(--font-sans); }`
+(les utilitaires restent prioritaires, la règle couvre aussi les futurs titres). Une autre mise
+en œuvre est acceptée si le résultat calculé est le même.
+
+#### 2.2.3 Échelle — site public
+
+| Token | Taille calculée (390 / 1024 / 1440 px) | Interlignage | Approche | Usage |
+|---|---|---|---|---|
+| `text-poster` | `clamp(2.5rem, 1rem + 7.2vw, 7.5rem)` : 44 / 90 / 120 px, **borné par la colonne** : `font-size: min(var(--text-poster), 14cqi)`, `wdth` 92 (décision du 01/10/2026) | 0,95 | `-0.035em` | `h1` du hero |
+| `text-statement` | `clamp(2.25rem, 1.25rem + 3.9vw, 4rem)` : 36 / 60 / 64 px (maximum ramené de 72 à 64 px, décision du 01/10/2026) | 1,0 | `-0.03em` | `h2` des sept sections de la landing |
+| `text-page` → `text-hero` → `text-title` | 32 (< 640) / 42 (640–1023) / 48 px (≥ 1024) | 1,15 / 1,05 / 1,05 | `-0.02em` / `-0.025em` / `-0.025em` | `h1` de `/estimation` (colonne `max-w-2xl` : le poster n'y tiendrait pas) |
+| `text-lede` (nouveau) | `clamp(1.0625rem, 1rem + 0.3vw, 1.25rem)` : 17 → 20 px | 1,55 | 0 | Sous-titre du hero, introduction des sections, sous-titre de `/estimation`. `text-ink-muted`, `max-width: 52ch` |
+| `text-base` | 16 px | 1,6 | 0 | Corps |
+| `label-mono` | 11 px, capitales | 1,2 | `0.08em` | Sur-titre de section avec trait cobalt (§ 2.2.6) |
+
+**Hero borné par sa colonne.** La grille du hero (`lg:grid-cols-[1.08fr_0.92fr]`) n'est pas
+refaite : à 1440 px la colonne du titre mesure ≈ 600 px, 120 px n'y tiennent pas. La colonne de
+texte du hero reçoit `container-type: inline-size` et le titre prend
+`min(var(--text-poster), 14cqi)` en `wdth` 92 (≈ 85 px à 1440, ≈ 65 px à 1024, 44 px à 390). Critère : à
+1440 et 1024 px, **chaque ligne d'auteur tient sur une ligne visuelle** (mesuré). Le
+coefficient (`14cqi`) est la seule valeur que `frontend-ux` peut ajuster, entre `12cqi` et
+`14cqi`, pour satisfaire ce critère ; la valeur finale est reportée ici. Compromis assumé : le
+hero est un peu plus petit que l'actuel (88 px en Geist serré) mais nettement plus présent par
+le dessin ; si l'utilisateur le juge trop petit à l'audit, le levier est l'option « serré »
+(§ 2.2.1), pas une refonte de la grille.
+
+**Valeur retenue — décision du 01/10/2026 (après audit) : `14cqi` + `wdth` 92 sur le hero,
+`text-statement` plafonné à 64 px.** Mesures (Chromium, polices chargées, 01/10/2026) :
+
+| Largeur | Hero (`h1`) | Colonne | Ligne la plus longue (« Chaque demande ») | Lignes visuelles | Sections (`h2`) | Rapport hero / sections |
+|---|---|---|---|---|---|---|
+| 1440 | 84,67 px | 604,8 px | 548,3 px (marge 56 px) | 1 par ligne d'auteur | 64 px | **1,32** |
+| 1024 | 65,32 px | 466,5 px | 437,7 px (marge 29 px) | 1 par ligne d'auteur | 59,9 px | 1,09 |
+| 390 | 44,08 px | 342 px | 165 px | 1 par ligne d'auteur | 36 px | 1,22 |
+| 360 | 41,92 px | 312 px | 157,5 px | 1 par ligne d'auteur | 36 px | 1,16 |
+
+Le serré libère de la place : « Chaque demande » passe de 575 px (78,6 px, largeur 100) à
+548 px à 84,7 px ; la cible ≈ 85 px est atteinte sans toucher la grille, et le hero ne se
+replie plus du tout à 360 px. Sections à 1440 : la ligne la plus longue est « Déposez une
+demande fictive. » (791 px, panneau final) ; toutes les lignes d'auteur tiennent sur une ligne
+visuelle à 1440 et 1024. Hauteur de ligne avec et sans `.title-accent` : écart **0 px** (hero
+80,44 / 62,05 / 41,86 / 39,81 px à 1440 / 1024 / 390 / 360 ; sections 64 / 59,94 / 36 px ;
+`/estimation` 36,8 px à 390 et 360). Aucun débordement horizontal (0 px) à 1440 / 1024 / 390 /
+360. À 1024 le rapport reste 1,09 : le hero y est borné par sa colonne (466 px) alors que les
+sections n'atteignent pas encore leur plafond ; accepté (grille inchangée, § 2.2.3).
+
+*Historique (mesure initiale du 01/10/2026, avant audit : `13cqi`, largeur 100, sections à
+72 px).* Colonne du titre 605 px à 1440
+(titre 78,6 px, ligne la plus longue « Chaque demande » 575 px, marge 30 px) et 467 px à 1024
+(titre 60,7 px, ligne la plus longue 455 px, marge 12 px) : chaque ligne d'auteur tient sur une
+ligne visuelle. `14cqi` ferait passer « Chaque demande » à ≈ 619 px à 1440, au-delà des 605 px de
+la colonne : 13 est le plafond utile. À 390 px : 44,1 px, les quatre lignes tiennent chacune sur
+une ligne. À 360 px : 40,6 px, « Chaque demande » se replie sur deux lignes visuelles (autorisé
+sous 1024 px, § 2.2.7 ; aucun débordement). Sections (`text-statement`) : 72 px à 1440 et
+59,9 px à 1024, toutes les lignes d'auteur sur une ligne visuelle ; la plus serrée est
+« Ce n'est pas la prospection » (803 px, titre de la section « problème »). `/estimation` :
+48 px dès 1024, chaque ligne sur une ligne visuelle (540 px dans une colonne de 624 px).
+Hauteur de ligne avec et sans `.title-accent` : écart 0 px mesuré (hero 74,69 / 57,61 /
+41,86 px à 1440 / 1024 / 390 ; état vide « Aucune tâche ouverte » 33,59 px à 1440 / 1024 / 390,
+mot à 29,68 px).
+
+Rapport titre / label : ≈ 7,7:1 à 1440 px (85 / 11) dans le hero, 5,8:1 dans les sections
+(64 / 11) ; 4:1 sur téléphone.
+
+#### 2.2.4 Échelle — CRM (« expressif contrôlé »)
+
+| Token | Taille | Interlignage | Approche | Usage |
+|---|---|---|---|---|
+| `text-page` (nouveau) | 48 px (`3rem`) | 1,05 | `-0.025em` | `h1` de `PageHeader` **dès 1024 px** |
+| `text-hero` | 42 px | 1,05 | `-0.025em` (était `-0.035em`) | `h1` de 640 à 1023 px ; grands chiffres (`.figure`) |
+| `text-title` | 32 px | 1,15 | `-0.02em` | `h1` sous 640 px ; chiffres du tableau de bord |
+| `text-section` | **28 px** (était 24) | 1,2 | **`-0.015em`** (était `-0.022em`) | `h2` de section hors carte, titre d'`EmptyState`, `Disclosure` en carte ; chiffre de `SituationStrip` (vérifier 390 px) |
+| `text-heading` | 21 px | 1,25 | `-0.01em` (était `-0.012em`) | Titre de carte (`Card`), `Dialog` |
+| `text-base` / `text-sm` / `text-xs` | 16 / 14 / 12 px | — | 0 | Corps, interface, légendes |
+| `text-overline` | 11 px | 1,2 | `0.1em` (inchangé) | `.label` |
+
+`text-display` (52 px) est **retiré** : aucun écran ne l'utilise.
+
+**Approche des titres de section (point tranché).** `-0.015em` à 28 px : la progression reste
+proportionnelle à la taille (48 → `-0.025`, 32 → `-0.02`, 28 → `-0.015`, 21 → `-0.01`). L'ancienne
+valeur Geist (`-0.022em`) referme les contre-formes de Bricolage (« rn », « m ») à cette taille ;
+la valeur de la galerie (`-0.01em`, celle des titres de carte) paraît lâche sous un `h1` à
+`-0.025em`. Si `text-section` devait rester ponctuellement à 24 px (aucun cas prévu), même
+approche `-0.015em`.
+
+**Titres de carte (point tranché).** Bricolage 600, 21 px, `-0.01em` : à cette taille l'axe
+optique la rend calme et ouverte, cohérente avec le `h1`. Pas de Geist pour les titres de carte
+(deux voix pour un même rôle, c'est le défaut corrigé). Les petits titres internes (≤ 18 px)
+restent en Geist (§ 2.2.2).
+
+**Chiffres (point tranché).** Aucune nouvelle taille ni nouvelle police : Geist Mono 600
+tabulaire, ce qui sépare nettement un chiffre (mono) d'un titre (Bricolage). Seul effet du lot :
+le chiffre de `SituationStrip` passe de 24 à 28 px avec `text-section` (aucun débordement à
+390 px, sinon le signaler).
+
+#### 2.2.5 Le mot accentué (variante A, partout où il existe)
+
+**Où** : le `h1` du hero, les `h2` des six autres sections de la landing, le `h1` de
+`/estimation`, et **huit états vides** du CRM (§ 2.2.9). **Nulle part ailleurs** : jamais dans
+un `h1` du CRM, une carte, un bouton, un label, un badge, un tableau, une alerte, un garde-fou,
+un blocage, une erreur, une page introuvable, un résultat de filtre, un chiffre, une donnée.
+
+**Règles** :
+
+1. Un seul mot par titre, **mot entier**, présent **exactement une fois** (testé). Jamais un
+   article (l'article élidé reste dehors : « l'*administratif* »), jamais un nom d'agent, un
+   chiffre, « Simulation » ou une mention de garde-fou. La ponctuation reste dehors (« *main*. »).
+2. **Taille calculée du titre ≥ 28 px**, à toutes les largeurs (360 px comprises). Italique
+   interdit en dessous.
+3. Couleur : **encre** (`--color-ink`, 17,7:1 sur blanc, 14,6:1 sur `pearl`), comme le reste
+   du titre. Jamais de couleur sur le mot ; la variante B (bleu) n'est utilisée nulle part.
+4. Un `span`, jamais `<em>` ni `<i>` (aucune emphase vocale ajoutée par les lecteurs d'écran).
+5. Au plus deux procédés par titre : le ton (lignes d'observation en `ink-subtle`, section
+   « problème » seulement) et le mot accentué. La moitié grise du hero (`titleSecondFrom`) et le
+   filet cobalt sous « administratif » sont **supprimés**.
+6. Au plus un titre accentué par hauteur d'écran (vrai par construction : un par section).
+
+**Classe unique `.title-accent`** (`app/globals.css`, `@layer utilities`), utilisée par
+`EditorialTitle` et `EmptyState` :
+
+| Propriété | Valeur | Pourquoi |
+|---|---|---|
+| `font-family` | `var(--font-accent)` | Instrument Serif italique |
+| `font-style` / `font-weight` | `italic` / `400` | Seul fichier chargé |
+| `font-size` | `1.06em` (token `--accent-word-size`) | Hauteur d'x plus petite que Bricolage |
+| `letter-spacing` | `-0.01em` | La serif n'a pas besoin d'être resserrée |
+| `font-variation-settings` | `normal` | N'hérite pas d'un réglage de Bricolage |
+| `line-height` | `0` | Les jambages de la serif ne grandissent pas la boîte de ligne |
+| `display` | **`inline`** (jamais `inline-block`) | Sur un `inline-block`, `line-height: 0` écrase la boîte et décale la ligne de base. L'apparition du mot (opacité) fonctionne sur un élément `inline`. |
+
+Critère mesuré : la ligne qui porte le mot a la **même hauteur** (écart ≤ 0,5 px) que la même
+ligne rendue sans `.title-accent`, à 1440, 1024 et 390 px ; aucun glyphe italique ne touche le
+caractère suivant (contrôle visuel sur « *main*. », « *s'arrête*. », « *commencer*. »).
+
+Le mot et sa ponctuation ne doivent jamais être séparés par un retour à la ligne : le groupe
+« préfixe + mot + suffixe » est enveloppé dans un `span` `white-space: nowrap` (élément
+`inline`).
+
+#### 2.2.6 Sur-titre à trait cobalt (`Overline`)
+
+Langage d'accent de la direction artistique (§ 2 de la règle du 30/09) : un petit label mono
+précédé d'un **trait cobalt de 12 × 2 px** (`--color-accent`, repère graphique, jamais du
+texte), écart **10 px**, aligné au centre de la hauteur d'x du label. Exemple affiché :
+`— PILOTAGE`. Le trait est un pseudo-élément (`::before`, `content: ""`) : rien n'est lu par un
+lecteur d'écran. Le sur-titre est un `<p>` **hors** du titre (le nom accessible du `h1`/`h2` ne
+contient jamais le sur-titre). Hors carte, il porte `.particle-veil .particle-veil-tight`
+(contraste mesuré sur le fond vivant). `text-ink-subtle` : 5,7:1 sur blanc, 4,7:1 sur `pearl`
+(≥ 4,5:1 exigé à 11 px).
+
+Où : sur-titre de page des écrans du CRM (§ 2.2.9), sur-titre des sections de la landing (les
+`kicker` actuels), sur-titre de `/estimation`. Pas sur la fiche contact ni sur la page
+d'exécution (le fil d'Ariane joue déjà ce rôle), pas sur la politique de confidentialité.
+L'étiquette inclinée du hero (« 5 agents · contrôle humain ») n'est pas un sur-titre : elle
+reste telle quelle (police Geist désormais).
+
+#### 2.2.7 Apparition ligne par ligne (site public seulement, variante C)
+
+Le mot accentué apparaît **le premier, net** ; le reste de la phrase passe du flou au net,
+**ligne d'auteur par ligne d'auteur**. Aucun mouvement mot par mot (l'ancien « ligne puis mot »
+de `HeroTitle` disparaît). Rien de tout cela dans le CRM.
+
+| Token (local à `EditorialTitle.module.css`) | Valeur |
+|---|---|
+| `--title-focus-blur` | `8px` (flou initial des mots non accentués) |
+| `--title-focus-duration` | `640ms` par ligne ; le flou est nul à **55 %** (352 ms) |
+| `--title-line-step` | `80ms` entre deux lignes ; `60ms` sous 640 px |
+| `--title-line-delay` | `100ms` au chargement (hero, `/estimation`) ; `0ms` à l'entrée dans l'écran (sections) |
+| Courbe des lignes | `--ease-emphasis` = `cubic-bezier(0.16, 1, 0.3, 1)` (nouveau token global, § 2.5.1) |
+
+| Élément | État initial | État final | Propriétés | Durée, courbe | Délai |
+|---|---|---|---|---|---|
+| Mot non accentué (`inline-block`, le flou l'exige) | opacité 0, `translateY(0.2em)`, `blur(8px)` | opacité 1, `transform: none`, `filter: none` | `opacity`, `transform`, `filter` | 640 ms, `--ease-emphasis` | `--title-line-delay` + n° de ligne × `--title-line-step` (tous les mots d'une ligne partagent ce délai) |
+| Mot accentué (`inline`) | opacité 0 | opacité 1 | `opacity` seule : **aucun flou, aucune translation** | **`--duration-base` (220 ms), `--ease-standard`** | `--title-line-delay`, quelle que soit sa ligne |
+
+**Courbe et durée du mot net (point tranché)** : on garde ce que l'utilisateur a vu et validé,
+`--duration-base` + `--ease-standard`. C'est une apparition sans déplacement, catégorie
+« apparition » du § 2.5.3 ; `--ease-emphasis` reste réservée au déplacement des lignes.
+
+Repères pour 4 lignes (hero) : mot accentué opaque à **320 ms** ; dernier flou terminé à
+100 + 3 × 80 + 352 = **692 ms** ; dernière ligne posée à 100 + 240 + 640 = **980 ms**.
+
+Règles :
+
+- **Lignes d'auteur** déclarées dans les textes, jamais mesurées au runtime. Chaque ligne est un
+  bloc. Sous 1024 px, une ligne d'auteur peut se replier sur deux lignes visuelles : elle reste
+  **une** unité d'animation. Chaque ligne d'auteur porte `text-wrap: balance` (décision du
+  01/10/2026, audit) : un repli ne laisse jamais un mot seul (`/estimation` à 390 et 360 px :
+  « Parlez-nous / de votre bien. », « Un *conseiller* / vous répond. ») ; sans effet là où la
+  ligne tient sur une ligne visuelle.
+- **CSS seulement**, aucun minuteur JavaScript. Hero et `/estimation` : animation au
+  chargement. Sections : déclenchées par le `Reveal` existant (`[data-reveal="entering"]`) ;
+  l'état initial n'existe que sous `[data-reveal="hidden"]` (posé par JavaScript).
+- **État final par défaut** (lisible sans JavaScript). L'état initial n'existe que dans
+  `@media (prefers-reduced-motion: no-preference)`, jamais `opacity: 0` hors de cette requête.
+- `prefers-reduced-motion: reduce` : **rien ne bouge** — aucun flou, aucune translation,
+  aucune opacité intermédiaire ; le mot italique reste visible (accent durable).
+- Pause du site (`<html data-landing-motion="paused">`, `MotionToggle`) : titre affiché
+  directement.
+- Au plus **4 lignes** animées ; au-delà le titre est statique (accent conservé).
+- **Une seule fois** : `animation-fill-mode: backwards`, aucun `transform` ni `filter`
+  résiduel ; un re-rendu React ne rejoue rien ; revenir sur une section ne la rejoue pas.
+- Aucune action n'attend la fin : les boutons du hero sont cliquables immédiatement.
+- Le `Reveal` qui contient un titre éditorial ne déplace plus son bloc : option `frame="still"`
+  (§ 3). Sur-titre et introduction de la section sont simplement visibles ; seul le titre
+  porte le mouvement (un seul mouvement par bloc).
+
+#### 2.2.8 Écriture des titres
+
+- **CRM** (règle du 26/09/2026, inchangée) : un titre porte l'idée seul, en 1 à 4 mots ; la
+  description d'un `PageHeader` tient sur une ligne ou disparaît si elle répète le titre. Une
+  explication devient d'abord une information visuelle (chiffre, badge, pastille, frise), puis
+  seulement le texte devenu redondant est retiré. **Une action principale par écran**, visible
+  sans défiler à 1440 × 900 (testé : `e2e/premier-regard.spec.ts`).
+- **Site public** : titres-phrases, en lignes d'auteur (≤ 4), un mot accentué.
+- **Jamais retirés** : mentions « Simulation » et « Exemple fictif — simulation »,
+  consentement, désinscription, validation humaine du premier contact, mandat confirmé par un
+  humain, coupe-circuit et son libellé, états d'erreur, note « Aucune donnée réelle, aucun
+  envoi réel », sous-titre de `/estimation` (« aucune estimation chiffrée »).
+- Aucun chiffre, pourcentage, prix ni témoignage dans un titre public
+  (`components/landing-texts.test.ts`) ; aucune promesse d'estimation instantanée ni d'envoi
+  automatique.
+
+#### 2.2.9 Inventaire exact des titres
+
+Textes centralisés : `components/landing-texts.ts` (`LANDING_TEXTS`, site public) et
+`components/texts.ts` (`APP_TEXTS`, CRM et `/estimation`). Pour chaque titre éditorial, trois
+clés : `titleLines` (lignes d'auteur), `titleAccent` (le mot), `title` (= `titleLines.join(" ")`,
+testé, sert aux tests E2E et au nom accessible). Les textes publics gardent l'apostrophe droite
+`'` (§ 6). Le mot accentué est entre astérisques ci-dessous ; `/` sépare les lignes d'auteur.
+
+**Site public**
+
+| Section (clé) | Composant | Balise, taille, déclenchement | Titre exact (lignes) | Mot | Sur-titre affiché |
+|---|---|---|---|---|---|
+| Hero (`hero`) | `LandingHero` | `h1`, `poster`, chargement | Chaque demande / vendeur avance. / Votre agence / garde la *main*. | main | aucun (étiquette inclinée conservée) |
+| Problème (`problem`) | `ProblemHeading` | `h2`, `statement`, entrée | Ce n'est pas la prospection / qui freine vos mandats. / C'est l'*administratif*. — lignes 1–2 en `ink-subtle` (`titleSubtleBefore: 2`) | administratif | — LE PROBLÈME |
+| Solution (`solution`) | `LandingSolution` → `LandingHeading` | `h2`, `statement`, entrée | Chaque dossier suit / le même *chemin*, / de la demande au mandat. | chemin | — LA SOLUTION |
+| Agents (`agents`) | `LandingAgents` → `LandingHeading` | `h2`, `statement`, entrée | Chaque agent sait / où son travail commence. / Et où il *s'arrête*. | s'arrête | — CINQ AGENTS, CINQ PÉRIMÈTRES |
+| Contrôle (`control`) | `LandingControl` → `LandingHeading` | `h2`, `statement`, entrée | L'IA prépare. / Votre équipe *décide*. | décide | — LE CONTRÔLE RESTE HUMAIN |
+| Résultat (`result`) | `LandingResult` → `LandingHeading` | `h2`, `statement`, entrée | Vous ouvrez l'espace agence. / Vous savez par quoi / *commencer*. | commencer | — LE RÉSULTAT |
+| Final (`final`) | `LandingFinal` → `LandingHeading` | `h2`, `statement`, entrée | Déposez une demande *fictive*. / Retrouvez-la / dans l'espace agence. | fictive | aucun (pas de `kicker` aujourd'hui) |
+| `/estimation` (`APP_TEXTS.estimation`) | `app/(marketing)/estimation/page.tsx` | `h1`, `page`, chargement | Parlez-nous de votre bien. / Un *conseiller* vous répond. | conseiller | — DEMANDE D'ESTIMATION (`eyebrow` actuel) |
+
+Conséquences de texte : `final.body` est **supprimé** (redondant avec le titre) ; `final.note`
+« Prototype de démonstration. Aucune donnée réelle, aucun envoi réel. » est **conservée** ;
+`hero.titleSecondFrom` et `problem.titleEmphasis` disparaissent (remplacés par `titleAccent`).
+Les titres « problème », « agents » et « contrôle » ne changent pas de texte (seulement de
+découpage). Le sous-titre de `/estimation` et les textes de consentement ne changent pas. Les
+titres internes des scènes (`SceneFrame`) et des cartes ne changent pas.
+
+Mises en page touchées (et seulement elles) : `LandingHeading` — le titre peut occuper
+`max-w-5xl` (l'introduction reste `max-w-2xl`) ; `ProblemHeading` — le `max-width: 21ch` du
+titre est retiré (les lignes d'auteur font la mesure) ; `LandingFinal` — le panneau passe en
+**une colonne** (titre, puis actions alignées à gauche, puis la note), sinon le titre n'aurait
+qu'≈ 600 px.
+
+**CRM — sur-titres de page** (affichés en capitales par CSS, stockés en casse normale ; le texte
+réutilise les groupes de la navigation, aucune nouvelle chaîne)
+
+| Écran | Fichier | `h1` | Sur-titre (source) | Affiché |
+|---|---|---|---|---|
+| Tableau de bord | `app/(app)/dashboard/page.tsx` | Tableau de bord | `APP_TEXTS.nav.groupPilotage` | — PILOTAGE |
+| Contacts vendeurs | `app/(app)/contacts/page.tsx` | Contacts vendeurs | `nav.groupPilotage` | — PILOTAGE |
+| Pipeline | `app/(app)/pipeline/page.tsx` | Pipeline | `nav.groupPilotage` | — PILOTAGE |
+| Tâches | `app/(app)/taches/page.tsx` | Tâches | `nav.groupPilotage` | — PILOTAGE |
+| Rendez-vous | `app/(app)/rendez-vous/page.tsx` | Rendez-vous d’estimation | `nav.groupPilotage` | — PILOTAGE |
+| Agents IA | `app/(app)/agents-ia/page.tsx` | Agents IA | `nav.agentsOverview` | — VUE D’ENSEMBLE |
+| Leads entrants | `app/(app)/agents-ia/leads-entrants/page.tsx` | Leads entrants | `nav.groupAgents` | — AGENTS IA |
+| Messages à valider | `app/(app)/agents-ia/a-valider/page.tsx` | Messages à valider | `nav.groupAgents` | — AGENTS IA |
+| Relances Emma | `app/(app)/agents-ia/relances/page.tsx` | Relances Emma | `nav.groupAgents` | — AGENTS IA |
+| Suivi des rendez-vous | `app/(app)/agents-ia/suivi-rendez-vous/page.tsx` | Suivi des rendez-vous | `nav.groupAgents` | — AGENTS IA |
+| Paramètres | `app/(app)/parametres/page.tsx` | Paramètres | `nav.groupSettings` | — RÉGLAGES |
+| Fiche contact | `app/(app)/contacts/[id]/page.tsx` | nom du contact | aucun (fil d'Ariane) | — |
+| Exécution d'un agent | `app/(app)/agents-ia/executions/[runId]/page.tsx` | Exécution de {agent} | aucun (fil d'Ariane) | — |
+| Politique de confidentialité | `app/(marketing)/politique-confidentialite/page.tsx` | inchangé | aucun | — |
+| Connexion, inscription | `app/(auth)/…/page.tsx` | inchangés (`h1` `text-title` 600, Bricolage par la règle de base ; retirer `tracking-tight`, l'approche vient du token) | aucun | — |
+
+Les `loading.tsx` de ces écrans réservent la ligne du sur-titre (un `Skeleton` de 11 px de haut,
+≈ 6 rem de large, au-dessus de celui du titre) pour que rien ne saute à l'arrivée du contenu.
+
+**CRM — états vides qui reçoivent le mot italique** (texte inchangé ; nouvelle clé d'accent à
+côté du titre, ex. `emptyTitleAccent`)
+
+| Écran | Appel | Titre exact | Mot |
+|---|---|---|---|
+| Messages à valider | `PendingMessagesList` (`validationQueue.emptyTitle`) | Aucun message en *attente* | attente |
+| Leads entrants | `leads-entrants/page.tsx` (`leadsInbox.emptyTitle`) | Aucun lead *entrant* | entrant |
+| Relances Emma | `relances/page.tsx` (`emmaFollowUps.emptyTitle`) | Aucun dossier à *relancer* | relancer |
+| Suivi des rendez-vous | `suivi-rendez-vous/page.tsx` (`followThrough.emptyTitle`) | Aucun rendez-vous à *suivre* | suivre |
+| Contacts vendeurs et Pipeline | `contacts/page.tsx`, `pipeline/page.tsx` (`contacts.emptyTitle`) | Aucun *contact* pour l’instant | contact |
+| Tâches, vue « Toutes » | `taches/page.tsx` (`tasks.emptyTitles.all`) | Aucune tâche *ouverte* | ouverte |
+| Rendez-vous, vue « À venir » | `rendez-vous/page.tsx` (`appointments.emptyTitles.upcoming`) | Aucun rendez-vous à *venir* | venir |
+| Agents IA, dossier sélectionné | `SelectedDossierCard` (`dossierJourney.emptyTitle`) | Aucun dossier *traité* pour l’instant | traité |
+
+**Sans** mot italique (titre en `text-section` quand même, pour que tous les états vides aient
+la même taille) : tâches « En retard » et « Les miennes », rendez-vous « Passés » (résultats de
+filtre), « Cette page est vide » (tâches, rendez-vous), « Aucune exécution ne correspond »
+(filtre), « Aucun événement pour ce contact » (historique), « Contact introuvable. » et « Page
+introuvable » (erreurs de navigation).
+
+#### 2.2.10 Critères de contrôle (audit de fin de lot)
+
+1. **Aucune requête** vers `fonts.googleapis.com` ni `fonts.gstatic.com` sur `/`,
+   `/estimation`, `/dashboard` (onglet réseau / écoute Playwright) ; `npm run build` réussit ;
+   aucune occurrence de `--font-inter` ni de l'import `Inter` dans `app/` et `components/`.
+2. **Familles calculées** : `h1`/`h2` en Bricolage, `body` en Geist, `.figure` et
+   `.label-mono` en Geist Mono, `.title-accent` en Instrument Serif italique 400 ; aucun titre
+   de 18 px ou moins en Bricolage.
+3. **Graisses** : 600 sur tous les titres (aucun 700/800 calculé sur un `h1`–`h4`).
+4. **Contraste** : titres `ink` ≥ 14,6:1 (pire cas `pearl`) ; lignes d'observation `ink-subtle`
+   ≥ 4,7:1 ; sur-titres mono `ink-subtle` 11 px ≥ 4,5:1 sur leur fond réel, voile compris
+   (re-mesure par `e2e/voiles-lisibilite.spec.ts`, minimum actuel 5,41:1).
+5. **Débordement** : `scrollWidth ≤ clientWidth` du document et de chaque titre à 1440, 1024,
+   390 et 360 px sur `/`, `/estimation`, `/dashboard`, `/contacts`, `/agents-ia/a-valider`
+   (avec et sans messages), `/taches` (vide) ; à 1440 et 1024 px, chaque ligne d'auteur de la
+   landing et de `/estimation` tient sur une ligne visuelle.
+6. **Hauteur de ligne** : écart ≤ 0,5 px entre la ligne qui porte le mot italique et la même
+   ligne sans `.title-accent` (hero 1440/1024/390, état vide 1440/390).
+7. **Taille minimale** : `font-size` calculée de tout `.title-accent` ≥ 28 px, 360 px compris.
+8. **Mouvement réduit** (et JavaScript désactivé, et pause du site) : à l'instant 0, sans
+   attente, chaque mot a `opacity: 1`, `transform: none`, `filter: none`.
+9. **Rythme** (mouvement autorisé) : mot accentué opaque ≤ 320 ms après le chargement du hero ;
+   plus aucun flou à 700 ms ; dernière ligne posée ≤ 1 s ; rien ne se rejoue au retour sur une
+   section ; boutons du hero cliquables immédiatement.
+10. **Structure** : un seul `h1` par page ; nom accessible de chaque titre éditorial = la
+    phrase exacte (`title`), lu une fois (copie `sr-only` + rendu `aria-hidden`) ; aucun `<em>`
+    ; le sur-titre n'entre pas dans le nom du titre.
+11. **CRM** : `h1` 48 px dès 1024, 42 px de 640 à 1023, 32 px dessous, graisse 600 ; `h2` de
+    section 28 px ; titres de carte 21 px ; sur-titre exact sur les onze écrans listés, absent
+    des quatre autres ; aucun italique hors des huit états vides ; aucune variante B ni C,
+    aucune apparition ligne par ligne.
+12. **Premier regard** : `e2e/premier-regard.spec.ts` passe (action principale visible sans
+    défiler à 1440 × 900, malgré le sur-titre et le `h1` plus grand).
+13. **Garde-fous** : « Simulation », « Exemple fictif — simulation », note finale, sous-titre de
+    `/estimation`, textes de consentement présents et inchangés ; aucun chiffre ajouté.
+
+#### 2.2.11 Tokens `@theme` à jour (récapitulatif pour `app/globals.css`)
+
+```css
+--font-sans: var(--font-geist), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+--font-display: var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+--font-accent: var(--font-instrument-serif), ui-serif, Georgia, serif;
+--font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+
+--text-poster: clamp(2.5rem, 1rem + 7.2vw, 7.5rem);
+--text-poster--line-height: 0.95;
+--text-poster--letter-spacing: -0.035em;
+/* Hero : min(var(--text-poster), 14cqi) + font-variation-settings: "wdth" 92, dans
+   EditorialTitle.module.css (.poster), décision du 01/10/2026 */
+--text-statement: clamp(2.25rem, 1.25rem + 3.9vw, 4rem); /* 64 px max, décision du 01/10/2026 */
+--text-statement--line-height: 1;
+--text-statement--letter-spacing: -0.03em;
+--text-lede: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+--text-lede--line-height: 1.55;
+--text-page: 3rem;
+--text-page--line-height: 1.05;
+--text-page--letter-spacing: -0.025em;
+--text-hero: 2.625rem;              /* line-height 1.05 inchangé */
+--text-hero--letter-spacing: -0.025em;
+--text-title: 2rem;                 /* inchangé : 1.15, -0.02em */
+--text-section: 1.75rem;
+--text-section--line-height: 1.2;
+--text-section--letter-spacing: -0.015em;
+--text-heading: 1.3125rem;          /* line-height 1.25 inchangé */
+--text-heading--letter-spacing: -0.01em;
+/* --text-display supprimé ; --text-overline inchangé. */
+
+--accent-word-size: 1.06em;
+--ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+```
+
+Hors `@theme`, dans `@layer utilities` : `.label` (inchangé, Geist par `--font-sans`),
+`.label-mono` (nouveau), `.title-accent` (nouveau, § 2.2.5).
 
 ### 2.3 Rayons
 
@@ -276,7 +678,7 @@ n'est pas ajoutée. Plan de travail associé : `docs/plans/2026-09-18-animations
 
 #### 2.5.1 Tokens réels et quand les utiliser
 
-Ces cinq tokens existent aujourd'hui dans `@theme` (`app/globals.css`). Aucun autre.
+Ces six tokens existent dans `@theme` (`app/globals.css`). Aucun autre. (`--ease-emphasis` ajouté le 01/10/2026.)
 
 | Token | Valeur | Utilitaire | Quand l'utiliser |
 |---|---|---|---|
@@ -285,6 +687,7 @@ Ces cinq tokens existent aujourd'hui dans `@theme` (`app/globals.css`). Aucun au
 | `--duration-slow` | 300 ms | `duration-300` | Entrée d'une section entière au chargement : en-tête de page, carte, tableau, état vide |
 | `--ease-standard` | `cubic-bezier(.22,.61,.36,1)` | `ease-standard` | **Toute entrée** : l'élément démarre vite puis se pose. C'est la courbe par défaut du projet |
 | `--ease-exit` | `cubic-bezier(.4,0,1,1)` | `ease-exit` | **Toute sortie** : l'élément part et accélère. Token disponible, **aucun composant ne l'utilise encore** |
+| `--ease-emphasis` | `cubic-bezier(0.16, 1, 0.3, 1)` | `ease-emphasis` | **Uniquement** l'apparition ligne par ligne des titres éditoriaux du site public (`EditorialTitle`, § 2.2.7) : rapide puis se pose longuement. Jamais dans le CRM, jamais pour une réaction à une action |
 
 > Tailwind v4 n'expose pas d'espace de noms `--duration-*` : on utilise l'utilitaire
 > numérique correspondant, dont la valeur **est** celle du token. Les courbes, elles,
@@ -327,6 +730,7 @@ maximale, la durée, un écran concerné.
 | Passage squelette → contenu | Scintillement du squelette, puis entrée du contenu | 8 px | 1,4 s en boucle, puis `--duration-slow` | `app/(app)/contacts/loading.tsx` puis la liste réelle |
 | Ouverture d'une fenêtre de confirmation (`Dialog`) | Opacité + `scale(.98)` → `scale(1)` (`animate-settle`), fond flouté fixe | `scale(0.98)` | `--duration-base` | Confirmation du mandat signé (pipeline) |
 | Ouverture d'un panneau ancré ou d'une pastille de confirmation | Opacité + translation de 4 px (`animate-rise-soft`) | 4 px | `--duration-base` | Liste « Changer d'étape » dépliée dans la carte, pastille « dossier déplacé » du pipeline |
+| Apparition d'un titre éditorial (site public seulement) | Lignes : opacité + `translateY(0.2em)` + `filter: blur(8px)` → net ; mot accentué : opacité seule | 0,2 em ; flou 8 px ; ≤ 4 lignes ; une seule fois | 640 ms par ligne, pas de 80 ms (60 ms sous 640 px), `--ease-emphasis` ; mot accentué `--duration-base` | `h1` du hero, `h2` des sections, `h1` de `/estimation` (§ 2.2.7) |
 | Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(écran livré ; variante `settle` encore attendue en phase 1)* |
 
 #### 2.5.4 Interdits
@@ -334,7 +738,8 @@ maximale, la durée, un écran concerné.
 1. **Jamais d'animation sur une propriété qui recalcule la mise en page.**
    Interdits : `height`, `width`, `margin`, `padding`, `top`, `left`, `font-size`.
    Autorisés : `opacity`, `transform`, et les propriétés de peinture pure
-   (`background-color`, `color`, `border-color`, `box-shadow`).
+   (`background-color`, `color`, `border-color`, `box-shadow`). Seule exception pour
+   `filter: blur()` : l'apparition des titres éditoriaux du site public (§ 2.2.7), < 1 s, une fois.
 2. **Jamais d'animation qui retarde une action ou masque une erreur.** Un bouton est
    cliquable dès qu'il est affiché. Un message d'erreur n'attend aucune animation :
    il apparaît en opacité, immédiatement.
@@ -585,7 +990,8 @@ L'anneau de focus cobalt reste toujours visible.
   posé sur l'enveloppe du layout connecté.
 - `.particle-veil` : voile de lisibilité sous un texte posé sur le fond de particules (§ 2.5.8). `.app-particles` a été supprimé le 26/09/2026.
 - `.particle-veil-tight` : variante serrée (débord 0,5 × 0,375 rem), toujours avec `.particle-veil`, près d'un voisin à ne pas couvrir (§ 2.5.8).
-- `.figure` (Geist Mono, chiffres tabulaires) et `.label` (étiquette Inter en capitales) : rôles typographiques du § 2.2.
+- Jamais de voile **dans** une surface déjà opaque : il y dessine un rectangle plus clair et peut déborder de la surface. `LandingHeading` accepte `veil={false}` ; seul le panneau final de la landing l'utilise (décision du 01/10/2026, audit ; titre mesuré à 17,3:1 au pixel le plus sombre du fond du panneau, sans voile, à 1440 et 390).
+- `.figure` (Geist Mono, chiffres tabulaires), `.label` (étiquette Geist en capitales), `.label-mono` (étiquette Geist Mono en capitales, sur-titres) et `.title-accent` (mot accentué en Instrument Serif italique, `inline`, `line-height: 0`) : rôles typographiques du § 2.2.
 - `.brand-symbol` : peint le symbole de marque avec `currentColor` à travers l'alpha du
   fichier maître, utilisé comme masque CSS (voir § 2.7).
 
@@ -787,8 +1193,9 @@ titre, quelle que soit la largeur du contenu.
   (enfants plafonnés à `max-w-4xl`) ou `page-frame-medium` (`max-w-5xl`) : le contenu
   reste **aligné à gauche** sur le même bord, jamais recentré. Tableau de bord, pipeline et
   contacts : `page-frame` seul. Ne plus écrire `mx-auto max-w-* px-6 py-10…` dans une page.
-- **En-tête** : `PageHeader` (`components/ui/PageHeader.tsx`) — `h1` Geist 800 en
-  `text-title` (téléphone) puis `text-hero` dès 640 px, au plus une ligne
+- **En-tête** : `PageHeader` (`components/ui/PageHeader.tsx`) — sur-titre `Overline` (mono,
+  trait cobalt, § 2.2.6) au-dessus de la rangée tuile + titre, puis `h1` Bricolage 600 en
+  `text-title` (téléphone), `text-hero` dès 640 px, `text-page` (48 px) dès 1024 px (01/10/2026), au plus une ligne
   `text-base text-ink-muted`, badges (`meta`, ex. `SimulationBadge`) **sous** la phrase,
   l'action principale à droite. `size` n'a plus d'effet (même rôle partout, 26/09/2026).
 - **Navigation** (`components/app/`) : `nav-items.ts` est la source unique (`NAV_GROUPS`,
@@ -828,16 +1235,18 @@ titre, quelle que soit la largeur du contenu.
 | `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3. Les actions (badge, lien court) restent **sur la ligne du titre** à toutes les largeurs ; la description passe dessous, pleine largeur — elle ne repousse jamais un badge sur une ligne à part |
 | `LogoSymbol` | `LogoSymbol.tsx` | Symbole seul, `sm` / `md` / `lg` ; nommé par défaut, silencieux avec `label={null}` ; inversion par `currentColor` (§ 2.7) |
 | `Logo` | `Logo.tsx` | Verrouillage complet (symbole + nom sur deux lignes), `sm` / `md` ; un seul nom accessible (§ 2.7.2) |
-| `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge |
+| `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge ; `frame="still"` : le bloc ne bouge pas, seul le déclencheur `data-reveal` sert (titres éditoriaux, § 3.8) |
 | `Badge` | `Badge.tsx` | `neutral`, `outline`, `solid`, `dashed` (information absente) |
 | `PipelineStageBadge` | `PipelineStageBadge.tsx` | 7 étapes ; barre de 6 points pour la progression, `perdu` en pointillés, `mandat_signé` en plein noir |
 | `SimulationBadge` | `SimulationBadge.tsx` | Unique, toujours visible, toujours accompagné du mot « Simulation » |
 | `Alert` | `Alert.tsx` | `error` (fond noir, `role="alert"`), `success` / `info` (`role="status"`) |
-| `EmptyState` | `EmptyState.tsx` | Titre, description, action suggérée |
+| `EmptyState` | `EmptyState.tsx` | Titre (`text-section`, Bricolage 600), mot accentué facultatif (`titleAccent`, § 3.8), description, action suggérée |
 | `Skeleton` | `Skeleton.tsx` | Chargement, `aria-hidden`, scintillement désactivé si mouvement réduit |
 | `Field` | `Field.tsx` | Libellé réel, aide, erreur (`aria-invalid` + `aria-describedby`), désactivé |
 | `DataList` | `DataList.tsx` | `dl` 1 ou 2 colonnes |
-| `PageHeader` | `PageHeader.tsx` | Fil d'Ariane, `h1`, description, badges, actions |
+| `PageHeader` | `PageHeader.tsx` | Fil d'Ariane, **sur-titre** (`overline`, § 3.8), `h1`, description, badges, actions |
+| `Overline` | `Overline.tsx` | Sur-titre `label-mono` précédé du trait cobalt 12 × 2 px (§ 2.2.6, § 3.8) |
+| `EditorialTitle` | `EditorialTitle.tsx` + `.module.css` | Titre-phrase du site public : lignes d'auteur, un mot accentué, apparition ligne par ligne (§ 2.2.7, § 3.8) |
 | `Select` | `Select.tsx` | `<select>` natif, `<label for>` réel, `id` obligatoire (utilisable en Server Component), survol, désactivé |
 | `Checkbox` | `Checkbox.tsx` (client) | Case de confirmation explicite : toute la zone bordée est le `<label>`, contrôlée, **jamais précochée** ; cochée = cadre noir + fond atténué (jamais la couleur seule), désactivée |
 | `Dialog` | `Dialog.tsx` (client) | Fenêtre modale sur `<dialog>` natif + `showModal()` : titre (`aria-labelledby`), résumé (`aria-describedby`), `aria-modal`, focus piégé par le navigateur, Échap et clic sur le fond pour annuler (`dismissible={false}` pendant une requête), retour du focus (`returnFocusRef`), pied d'actions empilé en mobile |
@@ -1209,6 +1618,88 @@ carte `shadow-raised`) : explication en carte avec pictogramme cadenas `aria-hid
 bouton principal pleine largeur « Se connecter », lien discret « Retour à l'accueil ». Aucun
 formulaire, aucune adresse de contact inventée.
 
+### 3.8 Titres éditoriaux, sur-titres et états vides (typographie expressive, 01/10/2026)
+
+Valeurs au § 2.2 ; textes exacts au § 2.2.9.
+
+**`EditorialTitle`** (`components/ui/EditorialTitle.tsx` + `EditorialTitle.module.css`, Server
+Component, aucun JavaScript). Seul composant de titre-phrase du site public : il remplace
+`HeroTitle` (supprimé avec son module CSS), le `h2` de `LandingHeading` et celui de
+`ProblemHeading`, et le `h1` de `/estimation`.
+
+| Prop | Type | Règle |
+|---|---|---|
+| `as` | `"h1" \| "h2"` | Obligatoire. Un seul `h1` par page |
+| `id` | `string` | Obligatoire (cible des `aria-labelledby` des sections) |
+| `lines` | `readonly string[]` | Lignes d'auteur, déclarées dans les textes. 1 à 4 lignes animées ; au-delà, rendu statique |
+| `accent` | `string?` | Un mot entier présent exactement une fois dans `lines` ; sinon aucun accent (et le test des textes échoue) |
+| `subtleBefore` | `number?` | Les lignes d'indice < n sont en `ink-subtle` (section « problème » : 2) |
+| `size` | `"poster" \| "statement" \| "page"` | `poster` : `min(var(--text-poster), 14cqi)` en `wdth` 92, à placer dans un conteneur `container-type: inline-size` ; `statement` : `text-statement` ; `page` : `text-title` → `sm:text-hero` → `lg:text-page` |
+| `reveal` | `"load" \| "in-view" \| "none"` | `load` : animation CSS au chargement, `--title-line-delay` 100 ms ; `in-view` : joue sous le `Reveal` englobant (`[data-reveal="entering"]`), délai 0 ; `none` : statique |
+| `className` | `string?` | Mise en page seulement (marges, largeur max) |
+
+Structure rendue (identique pour tous les modes, pour un seul test d'accessibilité) :
+
+```
+<h1|h2 id class="title size">              Bricolage 600, ink, approche du token
+  <span class="sr-only">{lines.join(" ")}</span>   nom accessible, lu une fois
+  <span aria-hidden="true" data-testid="editorial-title-visual">
+    <span class="line" style="--line:n">   display:block, une par ligne d'auteur
+      <span class="word">Chaque</span> …   inline-block (le flou l'exige), espaces texte entre mots
+      <span class="nowrap">                inline, white-space:nowrap : préfixe + mot + suffixe
+        <span class="word">l'</span><span class="title-accent" data-accent>administratif</span><span class="word">.</span>
+```
+
+- Découpage : par espaces ; le mot accentué est cherché comme **mot entier** (« main » n'est pas
+  trouvé dans « maintenant ») ; article élidé et ponctuation restent hors du mot. Reprendre la
+  logique `splitAccent` / `countAccent` déjà écrite et testée dans
+  `app/dev/typographie/AccentTitle.tsx` (à déplacer dans `components/ui/editorial-title.ts`,
+  fonction pure, avant la suppression de la galerie). **Fait** ; le module ajoute
+  `splitTextAccent` (découpage d'un titre d'une ligne, utilisé par `EmptyState`), `findAccent`
+  et `isAnimatable`, testés dans `components/ui/editorial-title.test.ts`.
+- Mot accentué : classe globale `.title-accent` (`inline`), plus la classe d'animation « net »
+  quand `reveal` ≠ `none`. Jamais `inline-block`.
+- Pas de masque `overflow: hidden` (il couperait le flou et les jambages de l'italique).
+- Sans JavaScript, sous mouvement réduit, sous pause du site, avec `reveal="none"` ou plus de
+  quatre lignes : phrase complète, nette, immobile.
+
+**`Overline`** (`components/ui/Overline.tsx`). Props : `children: string`, `as?: "p" | "span"`
+(défaut `p`), `className?`. Rendu : `.label-mono` + trait `::before` 12 × 2 px `bg-accent`,
+`inline-flex items-center gap-2.5`. Le texte est passé en casse normale (capitales par CSS).
+Utilisé par `PageHeader`, `LandingHeading`, `ProblemHeading` et `/estimation` ; remplace les
+`kicker` en `text-overline font-semibold uppercase` de la landing.
+
+**`PageHeader`** (évolution, mêmes props + `overline?: string`) :
+
+- Sur-titre au-dessus de la rangée « tuile + titre », sur le bord gauche de la page (même bord
+  que le fil d'Ariane), `mb-3`, posé sur `.particle-veil .particle-veil-tight w-fit`. Si
+  `eyebrow` (fil d'Ariane) est présent, pas de sur-titre (règle du § 2.2.6, non imposée par le
+  type mais par les appels).
+- `h1` : `font-display font-semibold text-title sm:text-hero lg:text-page text-balance text-ink`
+  (fin de `font-extrabold`).
+- Tuile d'écran (56 px), description, badges, actions, `animate-rise` : inchangés. Aucune
+  apparition ligne par ligne, aucun mot accentué.
+- Téléphone : sur-titre, puis titre 32 px ; le sur-titre ne passe jamais sur deux lignes (textes
+  ≤ 16 caractères).
+
+**`EmptyState`** (évolution, mêmes props + `titleAccent?: string`) :
+
+- Titre : `font-display text-section font-semibold text-balance text-ink` (28 px, Bricolage 600,
+  `-0.015em`), pour **tous** les états vides, accentués ou non.
+- `titleAccent` (seulement si `title` est une chaîne et contient le mot entier) : le mot est
+  enveloppé dans un `span.title-accent` **dans le texte**, sans copie `sr-only` ni
+  `aria-hidden` (aucun découpage en mots, donc nom et `textContent` identiques au titre ;
+  `getByText(titre)` continue de trouver un seul élément). Aucune animation propre : l'état vide
+  garde `animate-rise`.
+- Mot introuvable : titre rendu sans accent (jamais d'erreur à l'écran) ; le test des textes
+  empêche ce cas.
+
+**`Reveal`** (évolution) : prop `frame?: "move" | "still"` (défaut `move`, comportement actuel).
+`still` pose `data-reveal-frame="still"` : le bloc reste opaque et immobile dans tous les
+états ; l'attribut `data-reveal` continue de passer `hidden` → `entering` et sert uniquement de
+déclencheur au titre éditorial qu'il contient. Utilisé par les sections de la landing dont le
+premier bloc contient un `EditorialTitle`.
+
 ## 4. États d'écran obligatoires
 
 Chaque écran gère quatre états :
@@ -1269,7 +1760,8 @@ Chaque écran gère quatre états :
   `xl:grid-cols-2`. Blocs espacés de `gap-12` (`gap-14` dès 1024 px). Aucun `Reveal` : seule
   l'arrivée `stagger` (CSS pur, coupée en reduced motion) anime les rangées.
 - Pages publiques de saisie (`/estimation`, `/politique-confidentialite`) : colonne
-  unique `max-w-2xl`, gouttières `px-6`, respiration `py-16` (`sm:py-20`). Le
+  unique `max-w-2xl` (sur `/estimation`, en-tête = `Overline` + `EditorialTitle` `h1` taille
+  `page` + sous-titre `text-lede`, à la place de `PageHeader`, § 2.2.9), gouttières `px-6`, respiration `py-16` (`sm:py-20`). Le
   formulaire vit dans une `Card` unique, ses sections espacées de `gap-10`, l'action
   principale séparée par un filet `border-t border-line`. Les champs passent de deux
   colonnes (`sm:grid-cols-2`) à une seule sous 640 px.
@@ -1306,8 +1798,9 @@ Chaque écran gère quatre états :
   lançable depuis `AgentActionsPanel` de la fiche contact, à côté de Hugo et Louis.
 - Le rejeu ne propose ni pause ni retour arrière étape par étape : « Tout afficher »
   et « Rejouer » suffisent pour le prototype.
-- Polices Geist / Inter / Geist Mono depuis le 26/09/2026 (§ 2.2) ; le verrouillage du
-  logo reste composé en Inter, pas dans un caractère dessiné pour la marque. Le build a
+- Polices Bricolage Grotesque / Instrument Serif italique / Geist / Geist Mono depuis le
+  01/10/2026 (§ 2.2) ; le verrouillage du logo est composé en Geist (police d'interface), pas
+  dans un caractère dessiné pour la marque. Le build a
   besoin d'accéder à Google Fonts (next/font) : hors ligne il échoue au lieu de dégrader.
 - Le symbole est **matriciel**, pas vectoriel : le fichier fourni était un PNG sans canal
   alpha et aucun outil de traçage n'est installé. Le redessiner à la main aurait approximé

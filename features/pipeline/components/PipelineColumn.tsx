@@ -82,7 +82,7 @@ export function PipelineColumn({
             neighbouring column nor the connector line (docs/design-system.md §2.5.8). */}
         <div className="particle-veil particle-veil-tight mt-3 w-fit max-w-full min-w-0">
           <p className="text-xs text-ink-subtle sm:sr-only">{TEXTS.stageIndex(position, total)}</p>
-          <h2 id={headingId} tabIndex={-1} className="mt-1 text-base font-bold text-ink sm:mt-0">
+          <h2 id={headingId} tabIndex={-1} className="mt-1 text-base font-semibold text-ink sm:mt-0">
             {PIPELINE_STAGE_LABELS[stage]}
           </h2>
 

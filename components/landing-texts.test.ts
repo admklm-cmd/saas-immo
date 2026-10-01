@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { HERO_TITLE, LANDING_TEXTS } from "./landing-texts";
+import { countAccent, MAX_ANIMATED_LINES } from "./ui/editorial-title";
 
 /** Every string of the landing copy, flattened. */
 function strings(value: unknown): string[] {
@@ -38,10 +39,9 @@ describe("landing copy", () => {
     expect(strings(LANDING_TEXTS.problem.chart).join(" ")).not.toMatch(/\d/);
   });
 
-  it("composes the problem title from its two lines, and names four causes and six events", () => {
+  it("names four causes and six events, and sets the observation in the subtle ink", () => {
     const problem = LANDING_TEXTS.problem;
-    expect(problem.titleLines.join(" ")).toBe(problem.title);
-    expect(problem.titleLines[1]).toContain(problem.titleEmphasis);
+    expect(problem.titleSubtleBefore).toBe(2);
     expect(problem.symptoms.map((symptom) => symptom.title)).toEqual([
       "Relances manuelles",
       "Dossiers dispersés",
@@ -55,5 +55,52 @@ describe("landing copy", () => {
   it("carries the tag of the hero and a title made of its lines", () => {
     expect(LANDING_TEXTS.hero.tag.toUpperCase()).toBe("5 AGENTS · CONTRÔLE HUMAIN");
     expect(HERO_TITLE).toBe(LANDING_TEXTS.hero.titleLines.join(" "));
+  });
+});
+
+/** The seven editorial titles of the landing (docs/design-system.md §2.2.9). */
+const EDITORIAL = {
+  hero: LANDING_TEXTS.hero,
+  problem: LANDING_TEXTS.problem,
+  solution: LANDING_TEXTS.solution,
+  agents: LANDING_TEXTS.agents,
+  control: LANDING_TEXTS.control,
+  result: LANDING_TEXTS.result,
+  final: LANDING_TEXTS.final,
+};
+
+describe("landing editorial titles", () => {
+  it.each(Object.entries(EDITORIAL))("%s: title = its author lines, at most four", (_key, texts) => {
+    expect(texts.title).toBe(texts.titleLines.join(" "));
+    expect(texts.titleLines.length).toBeGreaterThan(0);
+    expect(texts.titleLines.length).toBeLessThanOrEqual(MAX_ANIMATED_LINES);
+  });
+
+  it.each(Object.entries(EDITORIAL))("%s: exactly one accented whole word, never a figure", (_key, texts) => {
+    expect(countAccent(texts.titleLines, texts.titleAccent)).toBe(1);
+    expect(texts.titleAccent).not.toMatch(/\s|\d/);
+    expect(texts.title).not.toMatch(/\d/);
+    for (const forbidden of ["Simulation", "Léa", "Hugo", "Emma", "Louis", "Sarah"]) {
+      expect(texts.titleAccent).not.toBe(forbidden);
+    }
+  });
+
+  it("keeps the exact titles and accents validated by the user", () => {
+    expect(Object.fromEntries(Object.entries(EDITORIAL).map(([key, texts]) => [key, [texts.titleLines, texts.titleAccent]]))).toEqual({
+      hero: [["Chaque demande", "vendeur avance.", "Votre agence", "garde la main."], "main"],
+      problem: [["Ce n'est pas la prospection", "qui freine vos mandats.", "C'est l'administratif."], "administratif"],
+      solution: [["Chaque dossier suit", "le même chemin,", "de la demande au mandat."], "chemin"],
+      agents: [["Chaque agent sait", "où son travail commence.", "Et où il s'arrête."], "s'arrête"],
+      control: [["L'IA prépare.", "Votre équipe décide."], "décide"],
+      result: [["Vous ouvrez l'espace agence.", "Vous savez par quoi", "commencer."], "commencer"],
+      final: [["Déposez une demande fictive.", "Retrouvez-la", "dans l'espace agence."], "fictive"],
+    });
+  });
+
+  it("keeps the prototype note of the final call and drops its redundant body", () => {
+    expect(LANDING_TEXTS.final.note).toBe("Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.");
+    expect("body" in LANDING_TEXTS.final).toBe(false);
+    expect("titleSecondFrom" in LANDING_TEXTS.hero).toBe(false);
+    expect("titleEmphasis" in LANDING_TEXTS.problem).toBe(false);
   });
 });

@@ -159,6 +159,8 @@ export const APP_TEXTS = {
     title: "Contacts vendeurs",
     count: (total: number) => (total > 1 ? `${total} contacts` : `${total} contact`),
     emptyTitle: "Aucun contact pour l’instant",
+    /** Word set in Instrument Serif italic in the empty state (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: "contact",
     emptyBody: "Ils arrivent par le formulaire d’estimation, un import ou une saisie.",
     errorTitle: "Impossible d’afficher les contacts",
     columnName: "Contact",
@@ -325,6 +327,8 @@ export const APP_TEXTS = {
       overdue: "Aucune tâche en retard",
       mine: "Aucune tâche ne vous est assignée",
     } satisfies Record<TaskScope, string>,
+    /** Only the « Toutes » view: the two others are filter results (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: { all: "ouverte" },
     emptyBodies: {
       all: "Un agent IA ouvre une tâche quand une information manque.",
       overdue: "Toutes les tâches ouvertes sont dans les temps.",
@@ -381,6 +385,8 @@ export const APP_TEXTS = {
       upcoming: "Aucun rendez-vous à venir",
       past: "Aucun rendez-vous passé",
     } satisfies Record<AppointmentView, string>,
+    /** Only the « À venir » view: « Passés » is a filter result (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: { upcoming: "venir" },
     emptyBodies: {
       upcoming: "Louis propose un créneau depuis la fiche d’un contact qualifié ; un conseiller le confirme ensuite.",
       past: "Les rendez-vous dont l’heure est passée apparaîtront ici, quel que soit leur statut.",
@@ -604,6 +610,8 @@ export const APP_TEXTS = {
       total > 1 ? `${total} messages en attente` : `${total} message en attente`,
     errorTitle: "Impossible d’afficher la file de validation",
     emptyTitle: "Aucun message en attente",
+    /** Word set in Instrument Serif italic in the empty state (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: "attente",
     emptyBody: "Les brouillons d’Emma et de Louis arrivent ici, avec leur canal et leur consentement.",
     emptyAction: "Voir les contacts",
 
@@ -688,6 +696,8 @@ export const APP_TEXTS = {
     count: (total: number) => (total > 1 ? `${total} leads` : `${total} lead`),
     errorTitle: "Impossible d’afficher les leads entrants",
     emptyTitle: "Aucun lead entrant",
+    /** Word set in Instrument Serif italic in the empty state (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: "entrant",
     emptyBody:
       "Les demandes du site public et des logiciels immobiliers arrivent ici, avant toute création de fiche.",
     emptyAction: "Voir les contacts",
@@ -731,6 +741,8 @@ export const APP_TEXTS = {
       total > 1 ? `${total} rendez-vous à suivre` : `${total} rendez-vous à suivre`,
     errorTitle: "Impossible d’afficher les rendez-vous à suivre",
     emptyTitle: "Aucun rendez-vous à suivre",
+    /** Word set in Instrument Serif italic in the empty state (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: "suivre",
     emptyBody:
       "Les propositions de Louis et les rendez-vous confirmés ou réalisés apparaissent ici.",
     emptyAction: "Voir les contacts",
@@ -819,6 +831,8 @@ export const APP_TEXTS = {
     selectedSubtitle: (agent: string, contact: string) =>
       `Dernière exécution enregistrée rattachée à un contact : ${agent}, pour ${contact}.`,
     emptyTitle: "Aucun dossier traité pour l’instant",
+    /** Word set in Instrument Serif italic in the empty state (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: "traité",
     emptyBody:
       "Le parcours apparaîtra ici dès qu’un agent aura travaillé sur un dossier. Lancez Hugo, Emma ou Louis depuis une fiche contact.",
     emptyCta: "Ouvrir les contacts",
@@ -1079,6 +1093,8 @@ export const APP_TEXTS = {
     ruleBody:
       "Emma ne choisit ni le destinataire ni le canal et n’envoie rien. Chaque proposition rejoint la file de validation humaine.",
     emptyTitle: "Aucun dossier à relancer",
+    /** Word set in Instrument Serif italic in the empty state (docs/design-system.md §2.2.9). */
+    emptyTitleAccent: "relancer",
     emptyBody:
       "Les dossiers signés, perdus ou repris par un conseiller sont exclus automatiquement.",
     emptyAction: "Voir les contacts",
@@ -1142,7 +1158,10 @@ export const APP_TEXTS = {
    */
   estimation: {
     eyebrow: "Demande d'estimation",
-    title: "Parlez-nous de votre bien",
+    /** Editorial title (docs/design-system.md §2.2.9): `title === titleLines.join(" ")`, tested. */
+    title: "Parlez-nous de votre bien. Un conseiller vous répond.",
+    titleLines: ["Parlez-nous de votre bien.", "Un conseiller vous répond."],
+    titleAccent: "conseiller",
     subtitle:
       "Quelques informations suffisent pour démarrer. Un conseiller de l'agence étudie votre demande et vous recontacte — aucune estimation chiffrée n'est communiquée par ce formulaire.",
 

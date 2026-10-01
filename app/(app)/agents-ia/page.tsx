@@ -66,6 +66,7 @@ export default async function AgentsIaPage({ searchParams }: { searchParams: Pro
   return (
     <div className="mx-auto w-full max-w-7xl px-6 py-10 lg:px-10 lg:py-14">
       <PageHeader
+        overline={APP_TEXTS.nav.agentsOverview}
         icon="aiAgent"
         title={TEXTS.title}
         meta={
@@ -132,7 +133,7 @@ export default async function AgentsIaPage({ searchParams }: { searchParams: Pro
           {/* The five agents. */}
           <section className="mt-14" aria-labelledby="agents-section">
             <div className="particle-veil w-fit max-w-full">
-              <h2 id="agents-section" className="text-section font-bold text-ink">
+              <h2 id="agents-section" className="text-section font-semibold text-ink">
                 {TEXTS.agentsSectionTitle}
               </h2>
             </div>

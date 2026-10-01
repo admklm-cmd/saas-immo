@@ -7,6 +7,8 @@ const ITEMS = 4;
 export default function MessagesToValidateLoading() {
   return (
     <div aria-busy="true" aria-label={APP_TEXTS.states.loading} className="page-frame">
+      {/* Overline line of the page header (docs/design-system.md §2.2.9). */}
+      <Skeleton className="mb-3 h-(--text-overline) w-24" />
       <Skeleton className="h-11 w-80 max-w-full" />
       <Skeleton className="mt-4 h-4 w-[30rem] max-w-full" />
       <Skeleton className="mt-8 h-12 w-[40rem] max-w-full rounded-lg" />

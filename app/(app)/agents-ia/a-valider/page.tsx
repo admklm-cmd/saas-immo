@@ -34,6 +34,7 @@ export default async function MessagesToValidatePage({ searchParams }: { searchP
   return (
     <div className="page-frame">
       <PageHeader
+        overline={APP_TEXTS.nav.groupAgents}
         title={TEXTS.title}
         meta={
           <>

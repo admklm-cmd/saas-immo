@@ -58,14 +58,19 @@ describe("BlockerChart", () => {
 });
 
 describe("LandingProblem", () => {
-  it("carries the full title as the accessible name, composed in two lines", () => {
+  it("carries the full title as the accessible name, composed in three author lines", () => {
     render(<LandingProblem />);
     const heading = screen.getByRole("heading", {
       level: 2,
       name: "Ce n'est pas la prospection qui freine vos mandats. C'est l'administratif.",
     });
-    expect(heading.textContent).toBe(PROBLEM.title);
-    expect(within(heading).getByText(PROBLEM.titleEmphasis)).toBeDefined();
+    expect(heading.querySelector(".sr-only")?.textContent).toBe(PROBLEM.title);
+    const lines = heading.querySelectorAll("[data-title-line]");
+    expect(lines).toHaveLength(PROBLEM.titleLines.length);
+    expect(heading.querySelector("[data-accent]")?.textContent).toBe(PROBLEM.titleAccent);
+    // The two lines of the observation are in the subtle ink, the answer is not.
+    const subtle = Array.from(lines).map((line) => line.className.includes("subtle"));
+    expect(subtle).toEqual([true, true, false]);
   });
 
   it("lists the four causes with the words of the events they produce", () => {
