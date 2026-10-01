@@ -28,7 +28,7 @@ export function LandingSolution() {
         />
       </Reveal>
 
-      <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8">
+      <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8" data-network-cover="">
         <ol aria-label={TEXTS.railLabel} className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
           {TEXTS.rail.map((step, index) => {
             const human = "human" in step && step.human;

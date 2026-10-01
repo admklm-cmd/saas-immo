@@ -8,13 +8,15 @@ import { signIn } from "./helpers/sign-in";
 /**
  * Public home page: the hero (title revealed line then word, tilted tag, black
  * then light action), the fictitious journey labelled as a simulation, and the
- * « fond vivant » that follows the section in view.
+ * neural network behind the page, which follows the section in view.
  *
  * The suite runs in reduced motion (playwright.config.ts): everything is in its
  * final state at once. One group opts back into real motion to check that the
- * background runs and follows the sections, that the journey plays once then
- * stays still, and that the Simulation badge plays one cycle on / only
- * (docs/design-system.md §2.11.5).
+ * neural network plays its arrival, rests and follows the sections, that the
+ * journey plays once then stays still, and that the Simulation badge plays one
+ * cycle on / only (docs/design-system.md §2.11.4, §2.11.5). The network is
+ * covered in depth by e2e/landing-reseau.spec.ts, the whole page « no loop »
+ * by e2e/landing-sans-boucle.spec.ts.
  */
 
 const COLD_START = 60_000;
@@ -162,12 +164,13 @@ test("cas d'erreur : une adresse inconnue du site public répond 404, sans fond 
 test.describe("avec animations", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("le fond vivant tourne et suit la section visible", async ({ page }) => {
+  test("le réseau joue son arrivée, se pose, puis suit la section visible", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
     const canvas = page.getByTestId("living-background");
-    await expect(canvas).toHaveAttribute("data-motion", "running");
     await expect(canvas).toHaveAttribute("data-scene", "hero");
+    await expect(canvas).toHaveAttribute("data-motion", "settled", { timeout: 15_000 });
+    await expect(canvas).toHaveAttribute("data-sequences", "arrivee");
 
     // Respects the device pixel ratio (capped), never a blurry or oversized buffer.
     const ratio = await canvas.evaluate((element) => {
@@ -180,6 +183,8 @@ test.describe("avec animations", () => {
     await page.locator("section[data-living-scene='controle']").scrollIntoViewIfNeeded();
     await page.mouse.wheel(0, 200);
     await expect(canvas).toHaveAttribute("data-scene", "controle", { timeout: 10_000 });
+    await expect(canvas).toHaveAttribute("data-sequences", /controle/);
+    await expect(canvas).toHaveAttribute("data-motion", "settled", { timeout: 6_000 });
 
     // The page pause is gone (docs/design-system.md §2.11.6): nothing on / lasts 5 s.
     await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
@@ -229,34 +234,5 @@ test.describe("avec animations", () => {
     await expect(page.locator(".simulation-badge").first()).toBeVisible({ timeout: COLD_START });
     expect(await iterations(".simulation-badge")).toEqual([Infinity]);
     expect(await iterations(".simulation-dot")).toEqual([Infinity]);
-  });
-
-  test("le réseau des sections problème et agents reste sous 4 ms par image", async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await openHome(page);
-    const canvas = page.getByTestId("living-background");
-    await expect(canvas).toHaveAttribute("data-motion", "running");
-
-    for (const scene of ["probleme", "agents"] as const) {
-      // Put the section across the middle of the screen, like a reader would.
-      await page.locator(`section[data-living-scene='${scene}']`).evaluate((section) => {
-        window.scrollTo(0, section.getBoundingClientRect().top + window.scrollY + 120);
-      });
-      await expect(canvas).toHaveAttribute("data-scene", scene, { timeout: 10_000 });
-      await expect(canvas).toHaveAttribute("data-motion", "running");
-      // data-frame-ms is the average cost of a frame over the last 2 s window.
-      // Skip the window running during the scroll, then read one measured
-      // entirely in this scene.
-      for (let pass = 0; pass < 2; pass++) {
-        await canvas.evaluate((element) => {
-          delete (element as HTMLCanvasElement).dataset.frameMs;
-        });
-        await expect.poll(async () => canvas.getAttribute("data-frame-ms"), { timeout: 10_000 }).not.toBeNull();
-      }
-      const cost = Number(await canvas.getAttribute("data-frame-ms"));
-      test.info().annotations.push({ type: `data-frame-ms ${scene}`, description: String(cost) });
-      expect(cost).toBeGreaterThan(0);
-      expect(cost).toBeLessThan(4);
-    }
   });
 });

@@ -1259,8 +1259,12 @@ titre, quelle que soit la largeur du contenu.
 > déclenché 2 012 ms après l'entrée à 60 %, durée 1 539 ms ; lettres peintes = lettres HTML
 > au pixel près (0 pixel différent sur « end » à 1440, DPR 1) ; ressort : retour < 0,5 px
 > en ≤ 700 ms et dépassement ≤ 6 px (test unitaire, de 38 à 144 px de départ).
-> `MotionToggle` est retiré ; `landing-motion.ts` reste lu par `LivingBackground` jusqu'à T6/T7
-> (plus aucun bouton ne l'active).
+> `MotionToggle` est retiré ; `landing-motion.ts` est supprimé (passe 2).
+> **Avancement (01/10/2026, `frontend-ux`, passe 2)** : T5 modèle du réseau, T6 rendu / moteur /
+> voiles, T7 test « aucune boucle » de page entière, T8 captures — **implémentés et testés**
+> (unitaires `components/landing/living/*.test.ts` ; E2E `landing-reseau`, `landing-sans-boucle`,
+> `accueil`). Mesures réelles et écarts : fin du § 2.11.4 (« Mesures réelles — passe 2 »).
+> **Validation visuelle** : à faire par le `web-designer` (audit).
 > Périmètre : **`/` seulement.** Le CRM, `/estimation`, `.particle-veil`, `RouteParticles` et le
 > badge « Simulation » du CRM ne changent pas.
 > **Révision « 02/10 — référence utilisateur »** : le réseau (§ 2.11.4) est réécrit d'après la
@@ -1629,8 +1633,8 @@ toutes les 0,8–3 s, sans fin].**
   pendant l'arrivée + état `settled` ; 1440 × 900 et 390 × 844 ; tous les textes hors carte
   de `/`) : texte < 24 px (≤ 18,66 px gras) **≥ 4,5:1** (cible ≥ 5,4) ; titres en encre
   **≥ 7:1** ; lignes de titre `ink-subtle` (section « problème », grand texte) **≥ 3:1** au
-  pixel le plus sombre **et ≥ 4,5:1** au pixel médian. *Compromis à faire valider par
-  l'utilisateur (non tranché)* : ces deux lignes passent de ≈ 4,7:1 (réseau effacé) à ≥ 3:1
+  pixel le plus sombre **et ≥ 4,5:1** au pixel médian. *Tranché par l'utilisateur : option A
+  (réseau visible derrière ces lignes ; mesuré 3,65:1 au pire, médian 5,69:1).* Ces deux lignes passent de ≈ 4,7:1 (réseau effacé) à ≥ 3:1
   (AA grand texte, 1.4.3) pour que le réseau soit réellement derrière le titre ; si
   l'utilisateur préfère l'ancien niveau, ces deux lignes reprennent `.particle-veil` (90 %).
 
@@ -1649,7 +1653,74 @@ toutes les 0,8–3 s, sans fin].**
 (inchangé), `data-sequences` (séquences jouées, ex. `arrivee,probleme`), `data-nodes` (neurones),
 `data-links` (fibres de liaison), `data-fibers` (toutes les fibres), `data-signals`
 (impulsions en vol), `data-lit` (cœurs allumés), `data-frames` (images dessinées depuis le
-chargement), `data-frame-ms` (moyenne de la dernière fenêtre active), `data-frame-ms-p95`.
+chargement), `data-frame-ms` (moyenne de la dernière fenêtre active), `data-frame-ms-p95`
+(+ `data-frame-ms-p95-full` : images qui redessinent le réseau ; `data-frame-ms-p95-cached` :
+images qui copient le cache).
+
+**Mesures réelles — passe 2 (01/10/2026, `frontend-ux` ; Chromium sans interface, Playwright
+1.63, DPR 1, serveur de développement).** Elles remplacent les valeurs « cible » ci-dessus.
+
+| Mesure | Valeur mesurée | Exigence |
+|---|---|---|
+| Neurones / fibres / liaisons / points (large) | 34 / 2 450 / 63 / 40 036 | 34 ; ≤ 2 900 ; ≤ 3 N ; ≤ 46 000 |
+| Neurones / fibres / liaisons (compact) | 20 / 1 412 / 40 | 20 ; ≤ 1 700 |
+| Coût p95 caméra en mouvement, 1440 × 900 (`data-frame-ms-p95`) | **1,2 – 1,6 ms** (moyenne 1,2–1,3) | ≤ 4 ms |
+| Coût p95 de l'arrivée (dérive active : chaque image redessine) | **1,6 – 1,7 ms** | ≤ 4 ms |
+| Coût p95 d'une image de séquence à caméra immobile (dérive mise à 0 pour la mesure) | **0,20 ms** | ≤ 1,5 ms |
+| 390 × 844 (compact), p95 | 1,0 ms | ≤ 4 ms |
+| Intervalle p95 entre deux images (rAF), arrivée / défilement + salve, 1440 | 16,7 / 16,8 ms (60 i/s tenues) | — |
+| Repli appliqué | **aucun** (dérive de séquence conservée, 65 pas, 34 neurones) | — |
+| `settled` après la fin du chargement (arrivée) | 5,1 – 5,9 s | ≤ 6,0 s |
+| Salve de section → `settled` | 2,9 – 4,0 s (6 sections) | ≤ 4,0 s |
+| Caméra posée après le dernier événement de défilement | 18 ms (petit pas final) ; ≤ 0,95 s pour le plus grand saut (unitaire) | ≤ 1,2 s |
+| Encre (alpha moyen, `settled`) | 1440 : 1,54–1,64 % ; 1024 : 1,37–1,49 % ; 390 : 1,24–1,29 % ; 360 : 1,33–1,38 % | 1,2–2,2 % / 0,8–2,0 % |
+| Pixels cobalt au repos et en mouvement réduit | 0 | 0 |
+| Contraste minimal (pixel le plus sombre, texte masqué, 3 instants d'arrivée + repos, toutes sections) | 1440 : titres encre 9,13:1 · petits textes 4,91:1 · lignes grises du titre « problème » 3,88:1 (médian 5,69:1). 390 : 9,75 · 4,59 · 3,65 (médian 5,69) | ≥ 7 · ≥ 4,5 · ≥ 3 (médian ≥ 4,5) |
+
+*Ce que mesure `data-frame-ms`* : le travail du script de dessin (projection, enregistrement des
+tracés, copies), comme la mesure de la référence (7,7 → 3,6 ms). La rastérisation se fait ensuite
+dans le pipeline du navigateur et n'y figure pas. Constat de la passe 2 : quand une copie du cache
+était faite à chaque image de défilement, elle forçait cette rastérisation dans le script (≈ 7 ms
+de plus en rendu logiciel sans GPU) ; d'où la règle retenue ci-dessous. L'intervalle entre images
+(16,7 ms au p95) montre que la cadence de 60 i/s est tenue, rastérisation comprise, dans cet
+environnement.
+
+**Écarts de mise en œuvre (passe 2), et pourquoi.**
+
+1. **Graine par défaut** : `DEFAULT_SEED` = **20261069** (20261002 laissait une case vide dans le
+   test de couverture à 390 × 844 et 1024 × 768). Couverture et espacement vérifiés dans les trois
+   classes (test unitaire).
+2. **Cache** : caméra en mouvement → le réseau est redessiné **directement** dans le canvas visible
+   (pas de copie de cache, qui forcerait la rastérisation à chaque image) ; caméra immobile pendant
+   une séquence → cache construit une fois puis copié. Avec la dérive active, l'arrivée et les
+   salves redessinent à chaque image (1,6–1,7 ms p95, sous le budget).
+3. **Dérive** sur la durée **effective** de la séquence (dernière impulsion et dernier cœur éteints,
+   ≤ 4,8 / 3,8 s) plutôt que sur la durée plafond : la caméra revient à 0 au moment où tout s'éteint.
+4. **Origine d'une séquence** : la règle de la référence (neurones centraux, 70 % central) ne
+   laisse **aucun** neurone éligible dans le hero à 1440 (colonne de titre à gauche, parcours à
+   droite). Repli ajouté : à défaut, tout neurone projeté dans la fenêtre moins 4 % de marge. Les
+   origines évitent aussi les **surfaces opaques** (`data-network-cover` à ≥ 24 px : parcours du
+   hero, panneaux solution / résultat / final, cartes du contrôle — une impulsion née derrière ne
+   serait jamais vue) et le voile blanc de l'en-tête (y ≥ 120 px). À 390, l'arrivée n'a qu'une
+   origine éligible et les liaisons sont longues : la cascade y est courte (un neurone allumé,
+   ≈ 18 impulsions) — conséquence de la règle « plus courte, jamais plus rapide ».
+5. **Voiles** (mesure de contraste) : les boîtes des glyphes débordent les boîtes de ligne
+   (jambages, italique). `.network-veil-title` garde 70 % mais sa zone pleine dépasse le bloc de
+   1,5 rem en haut et en bas et de 0,5 rem sur les côtés avant le fondu ; sur la landing seulement,
+   `.particle-veil` dépasse de 0,375 rem × 0,25 rem (`[data-landing] .particle-veil::before`, le CRM
+   est inchangé). Sans cela : 6,4:1 sous « garde » (titre encre) et 3,1:1 sous les sur-titres à 390.
+6. **Voile du système « problème »** (`ProblemSystem.module.css`) : 76 % → **90 %** et débord de
+   2,5 rem sur téléphone (petits textes du graphique et des causes à 4,2:1 sinon). Indice et
+   navigation du carrousel des agents (posés à nu sur la page) : `.particle-veil` + zone calme
+   (1,14:1 mesuré sinon, une fibre traversant la ligne).
+7. Le corps cellulaire d'un neurone allumé est redessiné par-dessus le cache (il paraît un peu plus
+   sombre pendant ≈ 2 s) ; les impulsions passent sous les corps du cache au lieu de dessous.
+8. **Mouvement réduit** : pas d'atténuation des corps dans les zones calmes (le canvas ne se redessine
+   pas au défilement, l'atténuation serait décalée) ; les voiles assurent seuls le contraste.
+
+Captures de contrôle (passe 2) : `…/scratchpad/landing-motion/pass2/` (1440 / 1024 / 390 / 360 :
+arrivée à ≈ 2 s, repos haut / milieu / bas, salve « problème », titre « problème » option A,
+mouvement réduit ; comparaison côte à côte avec la démo à 1440 et 390).
 
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 

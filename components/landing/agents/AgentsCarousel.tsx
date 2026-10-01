@@ -3,6 +3,7 @@
 import { Fragment, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
+import { cn } from "@/components/ui/cn";
 
 import { AGENT_STEPS, nextStepIndex, STEP_PANEL_ID, stepTabId } from "./agent-steps";
 import styles from "./agents.module.css";
@@ -93,7 +94,10 @@ export function AgentsCarousel() {
   return (
     <div data-testid="agents-carousel" className={styles.os}>
       <div className={styles.bar}>
-        <p className={styles.hint}>{TEXTS.hint}</p>
+        {/* Posed on the page, over the network: a veil and a quiet zone (docs/design-system.md §2.11.4). */}
+        <p className={cn("particle-veil", styles.hint)} data-network-quiet="">
+          {TEXTS.hint}
+        </p>
         <StepNavigator
           position={selected + 1}
           count={COUNT}

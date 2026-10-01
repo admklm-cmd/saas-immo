@@ -24,7 +24,7 @@ export function LandingControl() {
       </Reveal>
       <ul className="stagger mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TEXTS.facts.map((fact) => (
-          <li key={fact.title} className="rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm">
+          <li key={fact.title} className="rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm" data-network-cover="">
             <p className="flex items-center gap-2 text-sm font-semibold text-ink">
               <span aria-hidden="true" className="size-2 rounded-full border-2 border-accent" />
               {fact.title}

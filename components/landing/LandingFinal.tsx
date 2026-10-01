@@ -23,7 +23,10 @@ export function LandingFinal() {
       className="mx-auto w-full max-w-7xl px-6 pt-16 pb-24 sm:px-8 lg:px-12 lg:pb-36"
     >
       <Reveal frame="still">
-        <div className="@container grid justify-items-start gap-10 rounded-2xl border border-line bg-surface/90 p-8 shadow-raised backdrop-blur-sm lg:p-12">
+        <div
+          className="@container grid justify-items-start gap-10 rounded-2xl border border-line bg-surface/90 p-8 shadow-raised backdrop-blur-sm lg:p-12"
+          data-network-cover=""
+        >
           {/* No veil: the panel is already opaque, the veil would draw a lighter box. */}
           <LandingHeading
             id="final-title"

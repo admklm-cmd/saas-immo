@@ -345,26 +345,6 @@ export const LANDING_TEXTS = {
     /** Decorative wordmark signing the panel (`aria-hidden`, §2.11.3). */
     wordmark: BRAND.shortName,
   },
-
-  /**
-   * Short interface fragments painted by the living background (decorative,
-   * `aria-hidden`): generic, no real name, no figure.
-   */
-  living: {
-    agents: ["Léa", "Hugo", "Emma", "Louis", "Sarah"],
-    gate: "Validation humaine",
-    goal: "Mandat",
-    fragments: {
-      received: "Demande reçue",
-      status: "Statut : qualifié",
-      duration: "Durée mesurée",
-      validation: "Validation requise",
-      validated: "Validé",
-      appointment: "Rendez-vous proposé",
-      followUp: "Suivi du dossier",
-      blocked: "Bloqué par un garde-fou",
-    },
-  },
 } as const;
 
 export type LandingTexts = typeof LANDING_TEXTS;

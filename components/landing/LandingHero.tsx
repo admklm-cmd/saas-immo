@@ -21,8 +21,10 @@ export function LandingHero() {
       data-living-scene="hero"
       className="mx-auto grid min-h-[calc(100dvh-4.5rem)] w-full max-w-7xl items-center gap-12 px-6 pt-14 pb-16 sm:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-16 lg:px-12 lg:pt-20"
     >
-      {/* An inline-size container: the poster title is capped by this column (§2.2.3). */}
-      <div className="particle-veil @container min-w-0">
+      {/* An inline-size container: the poster title is capped by this column (§2.2.3).
+          One veil per role of text, sized to the words (§2.11.4): the network
+          stays visible around and, at 30 %, behind the title. */}
+      <div className="@container min-w-0">
         <p
           data-testid="hero-tag"
           className="inline-block -rotate-3 rounded-full border border-ink bg-surface px-3.5 py-1.5 text-overline font-semibold text-ink uppercase shadow-subtle"
@@ -30,7 +32,7 @@ export function LandingHero() {
           {TEXTS.tag}
         </p>
 
-        <div className="mt-8">
+        <div className="network-veil-title mt-8 w-fit max-w-full" data-network-quiet="">
           <EditorialTitle
             as="h1"
             id="hero-title"
@@ -42,9 +44,11 @@ export function LandingHero() {
           />
         </div>
 
-        <p className="mt-8 max-w-[52ch] text-lede text-pretty text-ink-muted">{TEXTS.subtitle}</p>
+        <p className="particle-veil mt-8 w-fit max-w-[52ch] text-lede text-pretty text-ink-muted" data-network-quiet="">
+          {TEXTS.subtitle}
+        </p>
 
-        <div className="mt-9 flex flex-wrap gap-3">
+        <div className="mt-9 flex w-fit max-w-full flex-wrap gap-3" data-network-quiet="">
           <ButtonLink href="/estimation" size="lg" arrow="forward">
             {ACTIONS.estimation}
           </ButtonLink>
@@ -53,7 +57,7 @@ export function LandingHero() {
           </ButtonLink>
         </div>
 
-        <div className="mt-12 border-t border-line pt-5">
+        <div className="particle-veil mt-12 border-t border-line pt-5" data-network-quiet="">
           <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.proofLabel}</p>
           <ul className="mt-3 grid gap-x-6 gap-y-2 text-sm text-ink sm:grid-cols-2" data-testid="hero-proofs">
             {TEXTS.proofs.map((proof) => (
@@ -68,7 +72,9 @@ export function LandingHero() {
 
       <div className="grid gap-3">
         <HeroJourney />
-        <p className="text-xs text-ink-subtle">{TEXTS.illustrationNote}</p>
+        <p className="particle-veil particle-veil-tight w-fit text-xs text-ink-subtle" data-network-quiet="">
+          {TEXTS.illustrationNote}
+        </p>
       </div>
     </section>
   );

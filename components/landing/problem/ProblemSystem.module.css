@@ -21,11 +21,15 @@
   --veil-edge: 3.5rem;
   content: "";
   position: absolute;
-  /* Phones: never wider than the page margins (no horizontal scroll). */
-  inset: -1.5rem -1.25rem;
+  /* Phones: the content (1.25–1.5rem padding) starts past the 3.5rem fade, so
+     every word sits on the full veil; what reaches past the page margins is
+     clipped by the landing wrapper (overflow-x: clip), never scrolled. */
+  inset: -2.5rem;
   z-index: -1;
   pointer-events: none;
-  background-color: color-mix(in srgb, var(--color-canvas) 76%, transparent);
+  /* 90 %, like .particle-veil: the small text of the causes and of the chart stays
+     AA over the darkest fibers of the network (docs/design-system.md §2.11.4). */
+  background-color: color-mix(in srgb, var(--color-canvas) 90%, transparent);
   -webkit-mask-image:
     linear-gradient(to right, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent),
     linear-gradient(to bottom, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent);

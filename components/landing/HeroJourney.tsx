@@ -106,6 +106,7 @@ export function HeroJourney() {
       aria-labelledby="hero-journey-title"
       data-testid="hero-journey"
       data-playback={playback}
+      data-network-cover=""
       className="rounded-xl border border-line bg-surface/90 p-5 shadow-raised backdrop-blur-sm sm:p-6"
     >
       <figcaption className="flex flex-wrap items-center justify-between gap-3">

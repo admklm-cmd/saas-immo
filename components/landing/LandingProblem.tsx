@@ -21,9 +21,7 @@ export function LandingProblem() {
       className="mx-auto w-full max-w-7xl px-6 py-28 sm:px-8 lg:px-12 lg:py-44"
     >
       <Reveal frame="still">
-        <div className="particle-veil">
-          <ProblemHeading />
-        </div>
+        <ProblemHeading />
       </Reveal>
 
       <Reveal index={1}>

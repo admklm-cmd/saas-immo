@@ -1,410 +1,410 @@
 /**
- * Canvas 2D painter of the living background. Stateless apart from a cache of
- * text widths: it paints whatever `buildFrame` produced.
+ * Canvas 2D painter of the neural network background
+ * (docs/design-system.md §2.11.4), after the user's reference.
  *
- * Opacities stay low (the page text always wins): grey links, grey prospects,
- * a single cobalt accent for signals, active stages and the human gate.
+ * - Fibers are stroked in GROUPS (opacity to 1/20, width to 1/4 px): one
+ *   `stroke()` per group instead of three per fiber — same colour, so the
+ *   order of the groups does not change the result.
+ * - Camera moving: the network at rest is repainted straight into the
+ *   visible canvas. Camera still during a sequence: it is painted once into
+ *   an off-screen cache, and each frame = copy of the cache + impulses + lit
+ *   cores. Cobalt exists only there: at rest the canvas holds no cobalt pixel.
+ * - No shadow blur, no CSS filter, no drop shadow. The only gradient is the
+ *   discreet halo of a lit core, at the reference values (ceilings).
  *
- * `frame.presence` (1 = reference) raises the network a little in the scenes
- * that ask for it: every term below multiplies by `presence` or adds a share
- * of `presence - 1`, so a presence of 1 draws exactly the reference frame.
- *
- * The mesh (problem and agents scenes) is drawn first, behind everything: grey
- * hairlines, never the accent colour, each opacity capped by `MESH.linkCap`
- * (a scene with a mesh profile, agents, gives each hairline its own opacity
- * and width, draws every vertex and sends route impulses: see mesh-style.ts).
- * Its cobalt impulses move; nothing at rest is cobalt. No shadow, no blur, no
- * gradient: flat strokes and fills only. Other scenes have no mesh at all,
- * so none of these calls happen there.
+ * Buffers are allocated when the network changes, never per frame.
  */
 
-import { GATE_STOP, GOAL_STOP } from "./scenes";
-import type { Frame, NodeDraw, PulseDraw } from "./types";
+import { nearness, projectInto, type Projector } from "./camera";
+import { samplePath, SHAPE_POINTS, type Network } from "./network";
+import { bodyFactor, signalFactor, type QuietZones } from "./quiet";
+import {
+  clampRange,
+  createCacheSurface,
+  createRestKey,
+  DEFAULT_PALETTE,
+  dot,
+  matchesRest,
+  rememberRest,
+  rgb,
+  surfaceOf,
+  type Context2D,
+  type Palette,
+  type Surface,
+} from "./paint-kit";
+import type { SignalField } from "./signals";
 
-export type Rgb = readonly [number, number, number];
+/** Opacity levels of the fiber groups (1/20). */
+const ALPHA_LEVELS = 20;
+/** Width levels of the fiber groups (1/4 px, up to 4 px). */
+const WIDTH_LEVELS = 16;
+const GROUPS = (ALPHA_LEVELS + 1) * WIDTH_LEVELS;
+/** Spacing of the 4 trail points behind a head (world units). */
+const TRAIL_STEP = 0.0025;
+const FADE_IN = 0.009;
 
-export type Palette = { ink: Rgb; line: Rgb; accent: Rgb; paper: Rgb };
-
-export const DEFAULT_PALETTE: Palette = {
-  ink: [24, 24, 27],
-  line: [150, 150, 160],
-  accent: [36, 87, 255],
-  paper: [255, 255, 255],
+export type PaintInput = {
+  network: Network;
+  projector: Projector;
+  /** Pose identity (cache key): any change repaints the network at rest. */
+  yaw: number;
+  pitch: number;
+  zones: QuietZones;
+  /** Quiet zones apply to the bodies (not under reduced motion: the canvas never repaints on scroll there). */
+  quietBodies: boolean;
+  field: SignalField | null;
+  time: number;
 };
 
-export type DrawOptions = {
-  width: number;
-  height: number;
-  dpr: number;
-  /** Global opacity multiplier: low at rest, slightly higher while scrolling. */
-  intensity: number;
-  compact: boolean;
-  palette?: Palette;
+export type PaintStats = {
+  /** The network at rest was repainted (camera moved, size or zones changed). */
+  repainted: boolean;
+  strokes: number;
+  pulses: number;
+  lit: number;
 };
 
-/** Share of the extra presence given to sizes (nodes, prospects, signals) and to the main links. */
-const LIFT = {
-  node: 0.9,
-  /** Outline opacity of the stages. */
-  nodeAlpha: 0.2,
-  /** Cobalt disc of an active stage (its pulsation). */
-  halo: 0.6,
-  mote: 0.35,
-  signal: 0.3,
-  strongLink: 1.2,
-  strongWidth: 0.6,
-  label: 0.5,
-};
+export class NetworkPainter {
+  private readonly main: Surface | null;
+  private readonly cache: Surface | null;
+  private readonly palette: Palette;
+  private readonly inkStyle: string;
+  private readonly accentStyle: string;
+  private readonly highlightStyle: string;
+  private readonly coreStyle: string;
+  private readonly accentClear: string;
+  /** 0.19 / 0.5 of the accent: second stop of the core halo. */
+  private readonly accentHalo: string;
+  private width = 0;
+  private height = 0;
+  private dpr = 1;
 
-/** Mesh: grey hairlines (near / far plane), vertex dots, cobalt impulses. */
-const MESH = {
-  link: 0.079,
-  /** Phones: fewer prospects, hence a sparser mesh; each hairline slightly firmer. */
-  compactLink: 2,
-  /** Upper opacity of a single mesh link, whatever the intensity. */
-  linkCap: 0.08,
-  farLink: 0.55,
-  width: 0.8,
-  farWidth: 0.55,
-  point: 0.22,
-  farPoint: 0.6,
-  pointRadius: 1,
-  farPointRadius: 0.7,
-  pulse: 0.75,
-  pulseRadius: 1.8,
-  pulseRadiusCompact: 1.4,
-};
+  private network: Network | null = null;
+  private nodeScreen = new Float32Array(0);
+  private pointScreen = new Float32Array(0);
+  private partFirst = new Uint32Array(0);
+  private partLast = new Uint32Array(0);
+  private partKey = new Uint16Array(0);
+  private partOrder = new Uint32Array(0);
+  private readonly groupCount = new Uint32Array(GROUPS + 1);
+  private bodyOrder = new Uint16Array(0);
+  private readonly sample = new Float64Array(3);
+  private readonly projected = new Float64Array(4);
 
-/** Upper opacities, before `intensity` and each element's own presence. */
-const ALPHA = {
-  skeleton: 0.16,
-  trail: 0.42,
-  node: 0.42,
-  label: 0.5,
-  signal: 0.85,
-  mote: 0.3,
-  fragment: 0.8,
-  mark: 0.6,
-};
+  /** Rest state held by the cache, and rest state of the last visible frame. */
+  private readonly cacheKey = createRestKey();
+  private readonly mainKey = createRestKey();
 
-const FONT_STACK = 'ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
-const widths = new Map<string, number>();
-
-function rgba([r, g, b]: Rgb, alpha: number): string {
-  return `rgba(${r},${g},${b},${alpha < 0 ? 0 : alpha > 1 ? 1 : alpha.toFixed(3)})`;
-}
-
-export function parseColor(value: string | null | undefined, fallback: Rgb): Rgb {
-  const hex = value?.trim().match(/^#([0-9a-f]{6})$/i)?.[1];
-  if (!hex) return fallback;
-  return [parseInt(hex.slice(0, 2), 16), parseInt(hex.slice(2, 4), 16), parseInt(hex.slice(4, 6), 16)];
-}
-
-export function drawFrame(ctx: CanvasRenderingContext2D, frame: Frame, options: DrawOptions) {
-  const palette = options.palette ?? DEFAULT_PALETTE;
-  const level = options.intensity;
-  const presence = frame.presence;
-  const lift = presence - 1;
-  ctx.setTransform(options.dpr, 0, 0, options.dpr, 0, 0);
-  ctx.clearRect(0, 0, options.width, options.height);
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  if (frame.meshLinks.length > 0 || frame.meshPoints.length > 0) drawMesh(ctx, frame, palette, level, options.compact);
-
-  // Ambient prospects.
-  for (const mote of frame.motes) {
-    if (mote.alpha <= 0.01) continue;
-    ctx.fillStyle = rgba(palette.ink, ALPHA.mote * mote.alpha * level * presence);
-    ctx.beginPath();
-    ctx.arc(mote.x, mote.y, mote.r * (1 + lift * LIFT.mote), 0, Math.PI * 2);
-    ctx.fill();
+  constructor(canvas: HTMLCanvasElement | null, palette: Palette = DEFAULT_PALETTE) {
+    this.palette = palette;
+    this.main = canvas ? surfaceOf(canvas) : null;
+    this.cache = this.main ? createCacheSurface() : null;
+    this.inkStyle = rgb(palette.ink);
+    this.accentStyle = rgb(palette.accent);
+    this.highlightStyle = rgb(palette.highlight);
+    this.coreStyle = rgb(palette.core);
+    this.accentClear = `rgba(${palette.accent[0]}, ${palette.accent[1]}, ${palette.accent[2]}, 0)`;
+    this.accentHalo = `rgba(${palette.accent[0]}, ${palette.accent[1]}, ${palette.accent[2]}, 0.38)`;
   }
 
-  // Links: the structure first, then the trails that connect and fade.
-  ctx.lineWidth = 1;
-  for (const link of frame.links) {
-    if (link.alpha <= 0.01) continue;
-    ctx.setLineDash(link.dashed && !link.trail ? [3, 7] : []);
-    const strong = link.strong ? lift : 0;
-    ctx.strokeStyle = rgba(
-      palette.line,
-      (link.trail ? ALPHA.trail : ALPHA.skeleton) * link.alpha * level * presence * (1 + strong * LIFT.strongLink),
-    );
-    ctx.lineWidth = link.trail ? 1.25 : 1 + strong * LIFT.strongWidth;
-    ctx.beginPath();
-    ctx.moveTo(link.x1, link.y1);
-    ctx.lineTo(link.x2, link.y2);
-    ctx.stroke();
+  /** False in environments without a 2D context (jsdom, very old browsers). */
+  get available(): boolean {
+    return this.main !== null && this.cache !== null;
   }
-  ctx.setLineDash([]);
 
-  for (const node of frame.nodes) drawNode(ctx, node, palette, level, presence, options);
-
-  // Signals (fictitious files).
-  for (const token of frame.tokens) {
-    if (token.alpha <= 0.01) continue;
-    const alpha = ALPHA.signal * token.alpha * level * presence;
-    if (!token.still) {
-      ctx.strokeStyle = rgba(palette.accent, alpha * 0.4);
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(token.tx, token.ty);
-      ctx.lineTo(token.x, token.y);
-      ctx.stroke();
+  resize(width: number, height: number, dpr: number): void {
+    this.width = width;
+    this.height = height;
+    this.dpr = dpr;
+    for (const surface of [this.main, this.cache]) {
+      if (!surface) continue;
+      surface.canvas.width = Math.max(1, Math.round(width * dpr));
+      surface.canvas.height = Math.max(1, Math.round(height * dpr));
     }
-    ctx.fillStyle = rgba(palette.accent, alpha);
-    ctx.beginPath();
-    ctx.arc(token.x, token.y, (options.compact ? 2 : 2.6) * (1 + lift * LIFT.signal), 0, Math.PI * 2);
-    ctx.fill();
+    this.cacheKey.valid = false;
+    this.mainKey.valid = false;
   }
 
-  // Impulses of the mesh: small cobalt dots with a short tail, no glow.
-  for (const pulse of frame.pulses) {
-    if (pulse.trail) {
-      drawRoutePulse(ctx, pulse, palette, level);
-      continue;
-    }
-    if (pulse.alpha <= 0.01) continue;
-    const alpha = MESH.pulse * pulse.alpha * level;
-    ctx.strokeStyle = rgba(palette.accent, alpha * 0.4);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(pulse.tx, pulse.ty);
-    ctx.lineTo(pulse.x, pulse.y);
-    ctx.stroke();
-    ctx.fillStyle = rgba(palette.accent, alpha);
-    ctx.beginPath();
-    ctx.arc(pulse.x, pulse.y, options.compact ? MESH.pulseRadiusCompact : MESH.pulseRadius, 0, Math.PI * 2);
-    ctx.fill();
+  setNetwork(network: Network): void {
+    if (network === this.network) return;
+    this.network = network;
+    this.nodeScreen = new Float32Array(network.nodeCount * 4);
+    this.pointScreen = new Float32Array(network.pointCount * 2);
+    const parts = network.fiberCount * 3;
+    this.partFirst = new Uint32Array(parts);
+    this.partLast = new Uint32Array(parts);
+    this.partKey = new Uint16Array(parts);
+    this.partOrder = new Uint32Array(parts);
+    this.bodyOrder = new Uint16Array(network.nodeCount);
+    this.cacheKey.valid = false;
+    this.mainKey.valid = false;
   }
 
-  // Halted impulses and confirmations.
-  for (const mark of frame.marks) {
-    if (mark.alpha <= 0.01) continue;
-    const alpha = ALPHA.mark * mark.alpha * level;
-    ctx.save();
-    ctx.translate(mark.x, mark.y);
-    if (mark.kind === "halt") {
-      ctx.rotate(mark.angle + Math.PI / 2);
-      ctx.strokeStyle = rgba(palette.ink, alpha);
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(-5, 0);
-      ctx.lineTo(5, 0);
-      ctx.stroke();
+  /** Paints one frame. Returns what was done (for the cost and test attributes). */
+  paint(input: PaintInput): PaintStats {
+    const stats: PaintStats = { repainted: false, strokes: 0, pulses: 0, lit: 0 };
+    if (!this.main || !this.cache || this.width <= 0) return stats;
+    this.setNetwork(input.network);
+    this.projectNodes(input.projector);
+
+    const context = this.main.context;
+    if (!matchesRest(this.mainKey, input)) {
+      // The camera moved (or the size, or the text blocks): the network is
+      // repainted straight into the visible canvas. Copying a cache here would
+      // force its rasterisation on every frame of a scroll.
+      stats.strokes = this.paintRest(context, input);
+      rememberRest(this.mainKey, input);
+      this.cacheKey.valid = false;
+      stats.repainted = true;
     } else {
-      ctx.strokeStyle = rgba(palette.accent, alpha);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(-3.5, -9);
-      ctx.lineTo(-1, -6.5);
-      ctx.lineTo(3.5, -11.5);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  if (!options.compact) drawFragments(ctx, frame, palette, level, options);
-}
-
-function drawMesh(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette, level: number, compact: boolean) {
-  const base = MESH.link * level * (compact ? MESH.compactLink : 1);
-  for (const link of frame.meshLinks) {
-    // A mesh profile (agents) gives its own final opacity and width.
-    const alpha =
-      link.width !== undefined
-        ? link.alpha * level
-        : Math.min(MESH.linkCap, base * link.alpha * (link.far ? MESH.farLink : 1));
-    if (alpha <= 0.002) continue;
-    ctx.strokeStyle = rgba(palette.line, alpha);
-    ctx.lineWidth = link.width ?? (link.far ? MESH.farWidth : MESH.width);
-    ctx.beginPath();
-    if (link.parts) {
-      // Pieces left around the labels, still one stroke per link.
-      for (const [from, to] of link.parts) {
-        ctx.moveTo(link.x1 + (link.x2 - link.x1) * from, link.y1 + (link.y2 - link.y1) * from);
-        ctx.lineTo(link.x1 + (link.x2 - link.x1) * to, link.y1 + (link.y2 - link.y1) * to);
+      // Camera still (a sequence playing): copy of the network at rest, built once.
+      if (!matchesRest(this.cacheKey, input)) {
+        stats.strokes = this.paintRest(this.cache.context, input);
+        rememberRest(this.cacheKey, input);
       }
-    } else {
-      ctx.moveTo(link.x1, link.y1);
-      ctx.lineTo(link.x2, link.y2);
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.globalAlpha = 1;
+      context.clearRect(0, 0, this.main.canvas.width, this.main.canvas.height);
+      context.drawImage(this.cache.canvas, 0, 0);
     }
-    ctx.stroke();
-  }
-  // Mesh profile: every vertex, a small grey dot; a hub, an outlined circle.
-  for (const point of frame.meshPoints) {
-    const look = point.look;
-    if (!look || look.alpha * level <= 0.005) continue;
-    const alpha = look.alpha * level;
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, look.r, 0, Math.PI * 2);
-    if (look.hub) {
-      ctx.fillStyle = rgba(palette.paper, Math.min(1, alpha * 2));
-      ctx.fill();
-      ctx.strokeStyle = rgba(palette.ink, alpha);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      ctx.fillStyle = rgba(palette.ink, alpha);
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 1.1, 0, Math.PI * 2);
-    } else {
-      ctx.fillStyle = rgba(palette.ink, alpha);
+    if (input.field) {
+      context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      stats.pulses = this.paintPulses(context, input);
+      stats.lit = this.paintLitCores(context, input);
+      context.globalAlpha = 1;
     }
-    ctx.fill();
-  }
-  // Vertices left by a prospect that went towards the entry.
-  for (const point of frame.meshPoints) {
-    const alpha = MESH.point * point.alpha * frame.mesh * level * (point.far ? MESH.farPoint : 1);
-    if (alpha <= 0.005) continue;
-    ctx.fillStyle = rgba(palette.ink, alpha);
-    ctx.beginPath();
-    ctx.arc(point.x, point.y, point.far ? MESH.farPointRadius : MESH.pointRadius, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-/**
- * Impulse of a mesh profile: the vertex it reached (brief cobalt disc), a tail
- * in segments of decreasing opacity and width along its route, then the dot.
- * Flat fills and strokes only: no shadow, no blur, no gradient.
- */
-function drawRoutePulse(ctx: CanvasRenderingContext2D, pulse: PulseDraw, palette: Palette, level: number) {
-  const flash = pulse.flash;
-  if (flash && flash.alpha * level > 0.01) {
-    ctx.fillStyle = rgba(palette.accent, flash.alpha * level);
-    ctx.beginPath();
-    ctx.arc(flash.x, flash.y, flash.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  if (pulse.alpha <= 0.01 || !pulse.trail) return;
-  const alpha = pulse.alpha * level;
-  const trail = pulse.trail;
-  const pieces = trail.length / 2 - 1;
-  const width = pulse.trailWidth ?? 1.4;
-  for (let piece = 0; piece < pieces; piece++) {
-    const x1 = trail[piece * 2] ?? 0;
-    const y1 = trail[piece * 2 + 1] ?? 0;
-    const x2 = trail[piece * 2 + 2] ?? x1;
-    const y2 = trail[piece * 2 + 3] ?? y1;
-    if (Math.hypot(x2 - x1, y2 - y1) < 0.3) continue;
-    ctx.strokeStyle = rgba(palette.accent, alpha * 0.62 * (1 - piece / pieces));
-    ctx.lineWidth = width * (1 - (0.5 * piece) / pieces);
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  }
-  ctx.fillStyle = rgba(palette.accent, alpha);
-  ctx.beginPath();
-  ctx.arc(pulse.x, pulse.y, pulse.r ?? MESH.pulseRadius, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawNode(
-  ctx: CanvasRenderingContext2D,
-  node: NodeDraw,
-  palette: Palette,
-  level: number,
-  presence: number,
-  options: DrawOptions,
-) {
-  if (node.alpha <= 0.01) return;
-  const lift = presence - 1;
-  const alpha = ALPHA.node * node.alpha * level * presence * (1 + lift * LIFT.nodeAlpha);
-  const active = node.activity * node.alpha * level;
-  const size = (options.compact ? 3.4 : 4.6) * (1 + lift * LIFT.node * node.variance);
-
-  if (node.stop === 0) {
-    ctx.fillStyle = rgba(palette.ink, alpha * 0.6);
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, 1.6, 0, Math.PI * 2);
-    ctx.fill();
-    return;
+    return stats;
   }
 
-  // Halo of an active stage (cobalt), then the stage itself on paper.
-  if (active > 0.02) {
-    ctx.fillStyle = rgba(palette.accent, 0.12 * active * presence * (1 + lift * LIFT.halo));
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, size + 7 * node.activity, 0, Math.PI * 2);
-    ctx.fill();
+  private projectNodes(projector: Projector): void {
+    const network = this.network!;
+    for (let n = 0; n < network.nodeCount; n++) {
+      projectInto(projector, network.nodeX[n]!, network.nodeY[n]!, network.nodeZ[n]!, this.nodeScreen, n * 4);
+    }
+    // Bodies from the farthest to the nearest (insertion sort: 34 items, no allocation).
+    const order = this.bodyOrder;
+    for (let n = 0; n < network.nodeCount; n++) order[n] = n;
+    for (let i = 1; i < network.nodeCount; i++) {
+      const item = order[i]!;
+      const depth = this.nodeScreen[item * 4 + 2]!;
+      let j = i - 1;
+      while (j >= 0 && this.nodeScreen[order[j]! * 4 + 2]! < depth) {
+        order[j + 1] = order[j]!;
+        j--;
+      }
+      order[j + 1] = item;
+    }
   }
 
-  ctx.fillStyle = rgba(palette.paper, node.alpha);
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  if (node.stop === GATE_STOP) {
-    // The human gate: a diamond, always outlined in cobalt.
-    ctx.moveTo(node.x, node.y - size - 1.5);
-    ctx.lineTo(node.x + size + 1.5, node.y);
-    ctx.lineTo(node.x, node.y + size + 1.5);
-    ctx.lineTo(node.x - size - 1.5, node.y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = rgba(palette.accent, Math.min(1, alpha * 1.4));
-  } else if (node.stop === GOAL_STOP) {
-    ctx.rect(node.x - size, node.y - size, size * 2, size * 2);
-    ctx.fill();
-    ctx.strokeStyle = rgba(palette.ink, alpha);
-  } else {
-    ctx.arc(node.x, node.y, size, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = rgba(palette.ink, alpha);
-  }
-  ctx.stroke();
+  /** Fibers (grouped strokes) and bodies at rest, into the cache. Returns the stroke count. */
+  private paintRest(context: Context2D, input: PaintInput): number {
+    const network = this.network!;
+    const { projector } = input;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalAlpha = 1;
+    context.clearRect(0, 0, this.width * this.dpr + 1, this.height * this.dpr + 1);
+    context.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    context.lineCap = "round";
+    context.lineJoin = "round";
+    context.strokeStyle = this.inkStyle;
+    context.fillStyle = this.inkStyle;
 
-  if (active > 0.02) {
-    ctx.fillStyle = rgba(node.stop === GOAL_STOP ? palette.ink : palette.accent, 0.9 * active);
-    ctx.beginPath();
-    ctx.arc(node.x, node.y, size * 0.45, 0, Math.PI * 2);
-    ctx.fill();
+    // Project every point once.
+    const points = network.points;
+    const screen = this.pointScreen;
+    const { cosYaw, sinYaw, cosPitch, sinPitch, size, centerX, centerY } = projector;
+    for (let i = 0; i < network.pointCount; i++) {
+      const x = points[i * 3]!;
+      const y = points[i * 3 + 1]!;
+      const z = points[i * 3 + 2]!;
+      const rx = x * cosYaw + z * sinYaw;
+      const rz = -x * sinYaw + z * cosYaw;
+      const ry = y * cosPitch - rz * sinPitch;
+      const depth = y * sinPitch + rz * cosPitch;
+      const scale = (size * 4.5) / (4.5 + depth);
+      screen[i * 2] = centerX + rx * scale;
+      screen[i * 2 + 1] = centerY + ry * scale;
+    }
+
+    // Three tapered sections per fiber, each assigned to an (opacity, width) group.
+    const counts = this.groupCount;
+    counts.fill(0);
+    let parts = 0;
+    for (let f = 0; f < network.fiberCount; f++) {
+      const near = nearness(this.nodeScreen[network.fiberOwner[f]! * 4 + 2]!);
+      const alpha = clampRange((0.045 + Math.pow(near, 1.6) * 0.66) * network.fiberAlpha[f]!, 0.025, 0.95);
+      const alphaLevel = Math.max(1, Math.round(alpha * ALPHA_LEVELS));
+      const start = network.fiberStart[f]!;
+      const last = network.fiberSize[f]! - 1;
+      const width = network.fiberWidth[f]!;
+      const endWidth = network.fiberEndWidth[f]!;
+      const spread = 0.48 + near * 0.62;
+      for (let part = 0; part < 3; part++) {
+        const lineWidth = Math.max(0.18, (width * (1 - part / 3) + (endWidth * part) / 3) * spread);
+        const widthLevel = Math.min(WIDTH_LEVELS - 1, Math.max(1, Math.round(lineWidth * 4)));
+        const key = alphaLevel * WIDTH_LEVELS + widthLevel;
+        this.partFirst[parts] = start + Math.floor((last * part) / 3);
+        this.partLast[parts] = start + Math.floor((last * (part + 1)) / 3);
+        this.partKey[parts] = key;
+        counts[key + 1] = counts[key + 1]! + 1;
+        parts++;
+      }
+    }
+    for (let k = 0; k < GROUPS; k++) counts[k + 1] = counts[k + 1]! + counts[k]!;
+    // counts[k] is now the first slot of group k; fill the order (stable).
+    for (let p = 0; p < parts; p++) {
+      const key = this.partKey[p]!;
+      this.partOrder[counts[key]!] = p;
+      counts[key] = counts[key]! + 1;
+    }
+    let strokes = 0;
+    let slot = 0;
+    for (let key = 0; key < GROUPS; key++) {
+      const end = counts[key]!;
+      if (end === slot) continue;
+      context.beginPath();
+      for (; slot < end; slot++) {
+        const p = this.partOrder[slot]!;
+        const first = this.partFirst[p]!;
+        context.moveTo(screen[first * 2]!, screen[first * 2 + 1]!);
+        for (let i = first + 1; i <= this.partLast[p]!; i++) context.lineTo(screen[i * 2]!, screen[i * 2 + 1]!);
+      }
+      context.globalAlpha = Math.floor(key / WIDTH_LEVELS) / ALPHA_LEVELS;
+      context.lineWidth = (key % WIDTH_LEVELS) / 4;
+      context.stroke();
+      strokes++;
+    }
+
+    for (let i = 0; i < network.nodeCount; i++) {
+      const node = this.bodyOrder[i]!;
+      this.paintBody(context, input, node, 0);
+    }
+    context.globalAlpha = 1;
+    return strokes;
   }
 
-  if (node.label) {
-    ctx.font = `500 11px ${FONT_STACK}`;
-    const width = measure(ctx, node.label);
-    const leftSide = node.x + 10 + width > options.width - 8;
-    ctx.textAlign = leftSide ? "right" : "left";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = rgba(
-      palette.ink,
-      ALPHA.label * node.alpha * level * (0.7 + 0.3 * node.activity) * (1 + lift * LIFT.label),
-    );
-    ctx.fillText(node.label, leftSide ? node.x - 10 : node.x + 10, node.y + 0.5);
+  /** Irregular outline smoothed through the midpoints, and its dark nucleus. */
+  private paintBody(context: Context2D, input: PaintInput, node: number, energy: number): void {
+    const network = this.network!;
+    const sx = this.nodeScreen[node * 4]!;
+    const sy = this.nodeScreen[node * 4 + 1]!;
+    const near = nearness(this.nodeScreen[node * 4 + 2]!);
+    const size = network.nodeR[node]! * input.projector.size * this.nodeScreen[node * 4 + 3]!;
+    const quiet = input.quietBodies ? bodyFactor(input.zones, sx, sy) : 1;
+    const out = this.projected;
+    const base = node * SHAPE_POINTS * 3;
+    const shape = network.shape;
+    context.beginPath();
+    projectInto(input.projector, shape[base + 13 * 3]!, shape[base + 13 * 3 + 1]!, shape[base + 13 * 3 + 2]!, out, 0);
+    const lastX = out[0]!;
+    const lastY = out[1]!;
+    projectInto(input.projector, shape[base]!, shape[base + 1]!, shape[base + 2]!, out, 0);
+    const firstX = out[0]!;
+    const firstY = out[1]!;
+    context.moveTo((firstX + lastX) / 2, (firstY + lastY) / 2);
+    let qx = firstX;
+    let qy = firstY;
+    for (let j = 0; j < SHAPE_POINTS; j++) {
+      const k = (j + 1) % SHAPE_POINTS;
+      projectInto(input.projector, shape[base + k * 3]!, shape[base + k * 3 + 1]!, shape[base + k * 3 + 2]!, out, 0);
+      const rx = out[0]!;
+      const ry = out[1]!;
+      context.quadraticCurveTo(qx, qy, (qx + rx) / 2, (qy + ry) / 2);
+      qx = rx;
+      qy = ry;
+    }
+    context.closePath();
+    context.fillStyle = this.inkStyle;
+    context.globalAlpha = clampRange(0.12 + near * 0.86 + energy * 0.18, 0, 1) * quiet;
+    context.fill();
+    context.beginPath();
+    context.arc(sx, sy, Math.max(0, size * 0.34), 0, Math.PI * 2);
+    context.globalAlpha = (0.15 + near * 0.8) * quiet;
+    context.fill();
   }
-}
 
-function drawFragments(ctx: CanvasRenderingContext2D, frame: Frame, palette: Palette, level: number, options: DrawOptions) {
-  ctx.font = `500 10.5px ${FONT_STACK}`;
-  ctx.textAlign = "left";
-  ctx.textBaseline = "middle";
-  for (const fragment of frame.fragments) {
-    if (fragment.alpha <= 0.02) continue;
-    const alpha = ALPHA.fragment * fragment.alpha * level;
-    const width = measure(ctx, fragment.text) + 16;
-    const height = 20;
-    let x = fragment.x + 12;
-    const y = Math.max(4, fragment.y - 30);
-    if (x + width > options.width - 8) x = fragment.x - 12 - width;
-    ctx.fillStyle = rgba(palette.paper, 0.92 * fragment.alpha);
-    ctx.strokeStyle = rgba(palette.line, 0.55 * alpha);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(x, y, width, height, 10);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = rgba(palette.ink, 0.72 * alpha);
-    ctx.fillText(fragment.text, x + 8, y + height / 2 + 0.5);
+  /** Impulses: trail, two discreet halos, head and its reflection (reference values, ceilings). */
+  private paintPulses(context: Context2D, input: PaintInput): number {
+    const field = input.field!;
+    const network = this.network!;
+    const time = input.time;
+    const out = this.projected;
+    let drawn = 0;
+    for (const pulse of field.pulses) {
+      if (time < pulse.start || time >= pulse.end) continue;
+      const length = network.fiberLength[pulse.fiber]!;
+      const front = (time - pulse.start) * pulse.speed;
+      if (front < 0 || front > length + pulse.trail) continue;
+      samplePath(network, pulse.fiber, pulse.reverse ? length - front : front, this.sample);
+      projectInto(input.projector, this.sample[0]!, this.sample[1]!, this.sample[2]!, out, 0);
+      const hx = out[0]!;
+      const hy = out[1]!;
+      const near = nearness(out[2]!);
+      const scale = out[3]!;
+      const fadeIn = Math.min(1, front / FADE_IN);
+      const fadeOut = clampRange((length + pulse.trail - front) / pulse.trail, 0, 1);
+      const opacity = (0.55 + near * 0.45) * pulse.strength * fadeIn * fadeOut;
+      if (opacity <= 0) continue;
+      const radius = (1.45 + near * 0.55) * scale;
+      context.fillStyle = this.accentStyle;
+      for (let j = 4; j >= 1; j--) {
+        const behind = front - j * TRAIL_STEP;
+        if (behind < 0 || behind > length) continue;
+        samplePath(network, pulse.fiber, pulse.reverse ? length - behind : behind, this.sample);
+        projectInto(input.projector, this.sample[0]!, this.sample[1]!, this.sample[2]!, out, 0);
+        const quiet = signalFactor(input.zones, out[0]!, out[1]!);
+        if (quiet <= 0) continue;
+        dot(context, out[0]!, out[1]!, radius * (0.32 + (1 - j / 5) * 0.3), opacity * (1 - j / 5) * 0.27 * quiet);
+      }
+      const quiet = signalFactor(input.zones, hx, hy);
+      if (quiet <= 0) continue;
+      const strength = opacity * quiet;
+      dot(context, hx, hy, radius * 3.5, strength * 0.035);
+      dot(context, hx, hy, radius * 2.1, strength * 0.1);
+      dot(context, hx, hy, radius, strength * 0.98);
+      context.fillStyle = this.highlightStyle;
+      dot(context, hx - radius * 0.12, hy - radius * 0.12, radius * 0.35, strength * 0.9);
+      drawn++;
+    }
+    return drawn;
   }
-}
 
-function measure(ctx: CanvasRenderingContext2D, text: string): number {
-  const key = `${ctx.font}|${text}`;
-  let width = widths.get(key);
-  if (width === undefined) {
-    width = ctx.measureText(text).width;
-    widths.set(key, width);
+  /** Lit cores, from the farthest: halo (radial gradient ≤ 0.5 at the centre), body, cobalt core, clear centre. */
+  private paintLitCores(context: Context2D, input: PaintInput): number {
+    const field = input.field!;
+    const network = this.network!;
+    let lit = 0;
+    for (let i = 0; i < network.nodeCount; i++) {
+      const node = this.bodyOrder[i]!;
+      const energy = field.energy(node, input.time);
+      if (energy <= 0.01) continue;
+      lit++;
+      const sx = this.nodeScreen[node * 4]!;
+      const sy = this.nodeScreen[node * 4 + 1]!;
+      const near = nearness(this.nodeScreen[node * 4 + 2]!);
+      const size = network.nodeR[node]! * input.projector.size * this.nodeScreen[node * 4 + 3]!;
+      const quiet = signalFactor(input.zones, sx, sy);
+      if (quiet > 0) {
+        const radius = size * 5 + 8;
+        const glow = context.createRadialGradient(sx, sy, size * 0.4, sx, sy, radius);
+        // Stops 0.5 / 0.19 / 0 of the reference, scaled by globalAlpha below.
+        glow.addColorStop(0, this.accentStyle);
+        glow.addColorStop(0.3, this.accentHalo);
+        glow.addColorStop(1, this.accentClear);
+        context.fillStyle = glow;
+        context.globalAlpha = energy * 0.5 * (0.4 + near * 0.6) * quiet;
+        context.beginPath();
+        context.arc(sx, sy, radius, 0, Math.PI * 2);
+        context.fill();
+      }
+      this.paintBody(context, input, node, energy);
+      if (energy > 0.025 && quiet > 0) {
+        context.fillStyle = this.accentStyle;
+        dot(context, sx, sy, Math.max(1.2, size * 0.46), energy * 0.95 * quiet);
+        context.fillStyle = this.coreStyle;
+        dot(context, sx, sy, Math.max(0.5, size * 0.16), energy * 0.85 * quiet);
+      }
+    }
+    return lit;
   }
-  return width;
 }

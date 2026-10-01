@@ -27,7 +27,7 @@ export function LandingResult() {
         />
       </Reveal>
 
-      <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8">
+      <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8" data-network-cover="">
         <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.pipelineLabel}</p>
         <ol aria-label={TEXTS.pipelineLabel} className="mt-4 flex flex-wrap items-center gap-2">
           {STAGES.map((stage) => (

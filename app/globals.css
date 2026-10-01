@@ -435,6 +435,51 @@
 }
 
 /*
+ * Landing (`/`) only (docs/design-system.md §2.11.4): veil of the big titles
+ * over the neural network. Same shape as `.particle-veil` (soft edges, 3rem ×
+ * 1.25rem overflow) but white 70 %: the network stays visible behind the
+ * titles (at 30 %), while an ink title keeps ≥ 7:1 and a subtle-ink title line
+ * ≥ 3:1 at its darkest pixel (measured, §2.11.4). Sized to the words (`w-fit`),
+ * never to the column. Small text keeps `.particle-veil` (90 %).
+ */
+.network-veil-title {
+  position: relative;
+  isolation: isolate;
+}
+
+.network-veil-title::before {
+  --veil-x: 3rem;
+  --veil-y: 1.25rem;
+  content: "";
+  position: absolute;
+  /* The glyph boxes of a tight title overflow its line boxes (ascenders,
+     descenders, italic overhang): the full-strength veil reaches 1.5rem above
+     and below the block and 0.5rem on the sides before fading out. */
+  inset: calc((var(--veil-y) + 1.5rem) * -1) calc((var(--veil-x) + 0.5rem) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 70%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  mask-composite: intersect;
+}
+
+/*
+ * Landing only: the 90 % veils of the small text reach 0.375rem past the box
+ * before fading out (the glyph boxes of a label overflow its line box), so
+ * no fiber of the network reaches the letters at full strength
+ * (docs/design-system.md §2.11.4). The signed-in space keeps §2.5.8 as is.
+ */
+[data-landing] .particle-veil::before {
+  inset: calc((var(--veil-y) + 0.375rem) * -1) calc((var(--veil-x) + 0.25rem) * -1);
+}
+
+/*
  * Landing (`/`) only, lot landing-motion (docs/design-system.md §2.11.5): the
  * Simulation badge plays ONE cycle (float 3 s, dot 2 s), then stays still —
  * nothing loops on the landing. The badge text never changes. The signed-in

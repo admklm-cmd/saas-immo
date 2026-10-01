@@ -1,47 +1,83 @@
 /**
- * Animation loop of the landing living background.
+ * Engine of the landing neural network background (docs/design-system.md
+ * §2.11.4).
  *
- * One engine, one requestAnimationFrame loop. Time-based (independent of the
- * frame rate), capped steps so a stall never makes the scene jump, paused in a
- * hidden tab and off screen. Under prefers-reduced-motion no loop runs at all:
- * one representative composition is drawn per scene.
+ * States: `idle` (drawn at rest, arrival not played yet) → `sequence` (bounded
+ * cascade of impulses) → `settled` (still, nothing scheduled); `camera` while
+ * the camera follows a scroll; `reduced` (one fixed pose, one drawing, never a
+ * frame); `hidden` (tab hidden: nothing runs, what was in flight is dropped).
+ *
+ * A requestAnimationFrame loop runs ONLY during a sequence or a camera move:
+ * at rest there is no frame request and no timer at all.
  */
 
-import { buildFrame, DEFAULT_SEED, displayedPoints, STATIC_TIME } from "./model";
-import { drawFrame, type Palette } from "./renderer";
+import {
+  approach,
+  createProjector,
+  poseFromProgress,
+  projectInto,
+  REDUCED_POSE,
+  SEQUENCE_DRIFT,
+  sequenceDrift,
+  setProjector,
+  type Pose,
+} from "./camera";
+import { FrameCostWindow, type FrameCost } from "./frame-cost";
+import { buildNetwork, CLASS_BUDGET, fingerprint, STEP_DENSITY, type Network, type ScreenClass } from "./network";
+import { createQuietZones, type QuietZones } from "./quiet";
+import { DEFAULT_SEED } from "./random";
 import type { LivingScene } from "./scenes";
-import type { SceneState, Viewport } from "./types";
+import type { PaintInput, PaintStats } from "./renderer";
+import { SignalField, type SequenceName } from "./signals";
 
-export type MotionState = "running" | "reduced" | "hidden" | "idle";
+export type { FrameCost } from "./frame-cost";
+
+export type MotionState = "idle" | "sequence" | "camera" | "settled" | "reduced" | "hidden";
 
 export type EngineEnvironment = {
   requestFrame: (callback: (timestamp: number) => void) => number;
   cancelFrame: (id: number) => void;
+  /** Milliseconds, monotonic. */
   now: () => number;
 };
 
-export type LivingEngineOptions = {
-  scene: LivingScene;
-  reduced: boolean;
-  palette?: Palette;
-  seed?: number;
-  env?: EngineEnvironment;
-  /** Called when the loop starts, stops or switches to the static composition. */
-  onMotion?: (state: MotionState) => void;
-  /** Average cost of one frame (ms) over the last 2 s window. */
-  onFrameCost?: (milliseconds: number) => void;
+/** What the engine needs from a painter (the canvas one, or a recorder in tests). */
+export type Painter = {
+  resize: (width: number, height: number, dpr: number) => void;
+  setNetwork: (network: Network) => void;
+  paint: (input: PaintInput) => PaintStats;
 };
 
-/** Largest clock step fed to the model, in seconds. */
-const MAX_STEP = 0.05;
-/** Opacity at rest; scrolling raises it briefly towards 1. */
-export const REST_INTENSITY = 0.72;
-const BOOST_DECAY_SECONDS = 1.6;
-/** Time constant of the parallax easing, seconds: the mesh never jumps with the scroll. */
-const PARALLAX_EASE_SECONDS = 0.25;
-const STATS_WINDOW_MS = 2000;
+export type EngineStats = {
+  frames: number;
+  signals: number;
+  lit: number;
+  sequences: readonly SequenceName[];
+};
+
+export type LivingEngineOptions = {
+  reduced: boolean;
+  painter: Painter;
+  seed?: number;
+  env?: EngineEnvironment;
+  /**
+   * Fills the quiet zones (text blocks, read at each active frame) and the
+   * opaque surfaces (read when a sequence picks its origin).
+   */
+  readZones?: (quiet: QuietZones, covers: QuietZones) => void;
+  onMotion?: (state: MotionState) => void;
+  onStats?: (stats: EngineStats) => void;
+  onFrameCost?: (cost: FrameCost) => void;
+  /** Fallbacks of §2.11.4 (« Replis »), in this order: drift → 0, steps 65 → 45, large 34 → 30. */
+  drift?: number;
+  stepDensity?: number;
+  largeNeurons?: number;
+};
+
 export const MAX_PIXEL_RATIO = 2;
 export const MAX_PIXEL_RATIO_COMPACT = 1.5;
+/** Largest step fed to the camera smoothing, seconds (a stalled frame never jumps). */
+const MAX_STEP_SECONDS = 0.1;
 
 const browserEnvironment: EngineEnvironment = {
   requestFrame: (callback) => window.requestAnimationFrame(callback),
@@ -50,198 +86,329 @@ const browserEnvironment: EngineEnvironment = {
 };
 
 export class LivingEngine {
-  private readonly canvas: HTMLCanvasElement;
-  private readonly context: CanvasRenderingContext2D | null;
   private readonly env: EngineEnvironment;
+  private readonly painter: Painter;
   private readonly seed: number;
-  private readonly palette?: Palette;
+  private readonly drift: number;
+  private readonly stepDensity: number;
+  private readonly largeNeurons: number | undefined;
+  private readonly readZones?: (quiet: QuietZones, covers: QuietZones) => void;
   private readonly onMotion?: (state: MotionState) => void;
-  private readonly onFrameCost?: (milliseconds: number) => void;
+  private readonly onStats?: (stats: EngineStats) => void;
 
-  private state: SceneState;
-  private viewport: Viewport = { width: 0, height: 0, compact: false };
-  private pixelRatio = 1;
+  private network: Network | null = null;
+  private field: SignalField | null = null;
+  private screenClass: ScreenClass | null = null;
+  private width = 0;
+  private height = 0;
   private reduced: boolean;
   private hidden = false;
-  private offscreen = false;
-  private clock = 0;
-  private lastTimestamp: number | null = null;
-  private frameId: number | null = null;
-  private boostLevel = 0;
-  private parallaxTarget = 0;
-  private parallax = 0;
-  private motion: MotionState = "idle";
-  private statsStart = 0;
-  private statsTotal = 0;
-  private statsCount = 0;
   private destroyed = false;
 
-  constructor(canvas: HTMLCanvasElement, options: LivingEngineOptions) {
-    this.canvas = canvas;
-    this.context = safeContext(canvas);
+  private readonly target: Pose = { ...REDUCED_POSE };
+  private readonly pose: Pose = { ...REDUCED_POSE };
+  private hasTarget = false;
+  private readonly projector = createProjector();
+  private readonly zones = createQuietZones();
+  private readonly covers = createQuietZones();
+  private readonly emptyZones = createQuietZones();
+  private nodeScreen = new Float32Array(0);
+  private readonly nodeX: number[] = [];
+  private readonly nodeY: number[] = [];
+
+  private frameId: number | null = null;
+  private lastFrame: number | null = null;
+  private motion: MotionState | null = null;
+  private frames = 0;
+  private readonly costs: FrameCostWindow;
+
+  constructor(options: LivingEngineOptions) {
     this.env = options.env ?? browserEnvironment;
+    this.painter = options.painter;
     this.seed = options.seed ?? DEFAULT_SEED;
-    this.palette = options.palette;
     this.reduced = options.reduced;
+    this.drift = options.drift ?? SEQUENCE_DRIFT;
+    this.stepDensity = options.stepDensity ?? STEP_DENSITY;
+    this.largeNeurons = options.largeNeurons;
+    this.readZones = options.readZones;
     this.onMotion = options.onMotion;
-    this.onFrameCost = options.onFrameCost;
-    this.state = { scene: options.scene, since: 0, previous: null, from: null };
-  }
-
-  /** Clock of the animation, in seconds (stands still while paused). */
-  get time(): number {
-    return this.clock;
-  }
-
-  get scene(): LivingScene {
-    return this.state.scene;
+    this.onStats = options.onStats;
+    this.costs = new FrameCostWindow(options.onFrameCost);
   }
 
   get motionState(): MotionState {
-    return this.motion;
+    return this.motion ?? "idle";
   }
 
-  resize(width: number, height: number, devicePixelRatio: number, compact: boolean) {
+  get frameCount(): number {
+    return this.frames;
+  }
+
+  get currentNetwork(): Network | null {
+    return this.network;
+  }
+
+  get geometry(): string {
+    return this.network ? fingerprint(this.network) : "";
+  }
+
+  /** True while a frame is requested (tests). */
+  get looping(): boolean {
+    return this.frameId !== null;
+  }
+
+  get signalField(): SignalField | null {
+    return this.field;
+  }
+
+  resize(width: number, height: number, devicePixelRatio: number, screenClass: ScreenClass): void {
     if (this.destroyed) return;
-    this.viewport = { width, height, compact };
-    this.pixelRatio = Math.max(1, Math.min(devicePixelRatio || 1, compact ? MAX_PIXEL_RATIO_COMPACT : MAX_PIXEL_RATIO));
-    this.canvas.width = Math.max(1, Math.round(width * this.pixelRatio));
-    this.canvas.height = Math.max(1, Math.round(height * this.pixelRatio));
-    this.refresh();
+    this.width = width;
+    this.height = height;
+    const cap = screenClass === "compact" ? MAX_PIXEL_RATIO_COMPACT : MAX_PIXEL_RATIO;
+    const dpr = Math.max(1, Math.min(devicePixelRatio || 1, cap));
+    this.painter.resize(width, height, dpr);
+    if (screenClass !== this.screenClass || !this.network) {
+      // A new class is a new network; a mere resize only re-projects it.
+      this.screenClass = screenClass;
+      const network = buildNetwork({
+        seed: this.seed,
+        screenClass,
+        stepDensity: this.stepDensity,
+        neurons: screenClass === "large" ? this.largeNeurons : undefined,
+      });
+      const previous = this.field;
+      this.network = network;
+      this.field = new SignalField(network, CLASS_BUDGET[screenClass].maxSignals, this.seed);
+      // Sequences already played are never replayed with the new network.
+      for (const name of previous?.playedNames() ?? []) this.field.markPlayed(name);
+      this.nodeScreen = new Float32Array(network.nodeCount * 4);
+      this.painter.setNetwork(network);
+    }
+    if (this.reduced || this.hidden || this.frameId === null) this.paintNow();
+    this.publishStats();
   }
 
-  setScene(scene: LivingScene) {
-    if (this.destroyed || scene === this.state.scene) return;
-    if (this.reduced) {
-      this.state = { scene, since: 0, previous: null, from: null };
-      this.refresh();
+  /** Scroll progress of the page (0 → 1): the camera pose follows it. */
+  setScrollProgress(progress: number): void {
+    if (this.destroyed) return;
+    poseFromProgress(progress, this.target);
+    if (!this.hasTarget) {
+      // First reading (before the first drawing): the camera starts posed.
+      this.hasTarget = true;
+      this.pose.yaw = this.target.yaw;
+      this.pose.pitch = this.target.pitch;
       return;
     }
-    // Start from what is displayed: a quick scroll never makes the path jump.
-    const from = this.viewport.width > 0 ? displayedPoints(this.state, this.viewport, this.clock, this.seed) : null;
-    this.state = { scene, since: this.clock, previous: from ? this.state.scene : null, from };
-    this.refresh();
-  }
-
-  setReduced(reduced: boolean) {
-    if (this.destroyed || reduced === this.reduced) return;
-    this.reduced = reduced;
-    if (reduced) this.state = { scene: this.state.scene, since: 0, previous: null, from: null };
-    this.refresh();
-  }
-
-  setHidden(hidden: boolean) {
-    this.hidden = hidden;
-    this.refresh();
-  }
-
-  setOffscreen(offscreen: boolean) {
-    this.offscreen = offscreen;
-    this.refresh();
+    if (this.reduced || this.hidden) return;
+    if (this.pose.yaw !== this.target.yaw || this.pose.pitch !== this.target.pitch) this.ensureLoop();
   }
 
   /**
-   * Scroll progress through the section in view (-1..1). Drives the light
-   * parallax of the mesh (problem and agents scenes only, see mesh.ts);
-   * ignored under reduced motion.
+   * A section became the current scene: its first entry plays one salvo.
+   * The hero never does (it has the arrival cascade).
    */
-  setParallax(progress: number) {
-    this.parallaxTarget = Number.isFinite(progress) ? Math.max(-1, Math.min(1, progress)) : 0;
+  enterScene(scene: LivingScene): boolean {
+    if (scene === "hero") return false;
+    return this.startSequence(scene);
   }
 
-  /** Scrolling: the background gets slightly more present, then calms down. */
-  boost() {
-    this.boostLevel = 1;
+  /**
+   * Plays a sequence (once per name). Returns false when it does not play:
+   * already played, reduced motion, hidden tab, or no network yet.
+   */
+  startSequence(name: SequenceName): boolean {
+    if (this.destroyed || !this.field || !this.network || this.reduced) return false;
+    if (this.hidden) {
+      this.field.markPlayed(name);
+      this.publishStats();
+      return false;
+    }
+    const now = this.env.now();
+    this.updateProjector(now);
+    this.readAllZones();
+    for (let n = 0; n < this.network.nodeCount; n++) {
+      projectInto(this.projector, this.network.nodeX[n]!, this.network.nodeY[n]!, this.network.nodeZ[n]!, this.nodeScreen, n * 4);
+      this.nodeX[n] = this.nodeScreen[n * 4]!;
+      this.nodeY[n] = this.nodeScreen[n * 4 + 1]!;
+    }
+    const record = this.field.start(name, now, {
+      screenX: this.nodeX,
+      screenY: this.nodeY,
+      width: this.width,
+      height: this.height,
+      zones: this.zones,
+      covers: this.covers,
+    });
+    this.publishStats();
+    if (!record) return false;
+    this.ensureLoop();
+    return true;
   }
 
-  destroy() {
-    this.destroyed = true;
-    if (this.frameId !== null) this.env.cancelFrame(this.frameId);
-    this.frameId = null;
-  }
-
-  private refresh() {
-    if (this.destroyed) return;
-    if (this.reduced) {
+  setHidden(hidden: boolean): void {
+    if (this.destroyed || hidden === this.hidden) return;
+    this.hidden = hidden;
+    if (hidden) {
       this.stopLoop();
-      this.drawStatic();
+      // Nothing surges when the tab comes back: what was in flight is dropped.
+      if (this.field && this.isSequenceActive(this.env.now())) this.field.cancel();
+      this.setMotion(this.reduced ? "reduced" : "hidden");
+      return;
+    }
+    if (this.reduced) {
       this.setMotion("reduced");
       return;
     }
-    const canRun = !this.hidden && !this.offscreen && this.viewport.width > 0;
-    if (!canRun) {
-      this.stopLoop();
-      this.setMotion(this.hidden || this.offscreen ? "hidden" : "idle");
-      return;
-    }
-    if (this.frameId === null) this.frameId = this.env.requestFrame(this.tick);
-    this.setMotion("running");
+    // Back: the camera lands on its target at once, the network is drawn at rest.
+    this.pose.yaw = this.target.yaw;
+    this.pose.pitch = this.target.pitch;
+    this.paintNow();
+    this.setMotion(this.restState());
   }
 
-  private stopLoop() {
+  setReduced(reduced: boolean): void {
+    if (this.destroyed || reduced === this.reduced) return;
+    this.reduced = reduced;
+    if (reduced) {
+      this.stopLoop();
+      this.field?.cancel();
+    } else {
+      this.pose.yaw = this.target.yaw;
+      this.pose.pitch = this.target.pitch;
+    }
+    this.paintNow();
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    this.stopLoop();
+  }
+
+  /** Synchronous drawing outside the loop (first drawing, resize, reduced motion, return of the tab). */
+  private paintNow(): void {
+    if (!this.network || this.width <= 0) return;
+    const now = this.env.now();
+    this.updateProjector(now);
+    if (!this.reduced) this.readAllZones();
+    this.paintFrame(now);
+    if (this.reduced) this.setMotion("reduced");
+    else if (this.hidden) this.setMotion("hidden");
+    else if (this.frameId === null) this.setMotion(this.restState());
+  }
+
+  private ensureLoop(): void {
+    if (this.destroyed || this.reduced || this.hidden || this.frameId !== null || !this.network) return;
+    this.lastFrame = null;
+    this.costs.reset();
+    this.frameId = this.env.requestFrame(this.tick);
+    this.setMotion(this.isSequenceActive(this.env.now()) ? "sequence" : "camera");
+  }
+
+  private stopLoop(): void {
     if (this.frameId !== null) this.env.cancelFrame(this.frameId);
     this.frameId = null;
-    // The next frame restarts from a zero step: no jump after a pause.
-    this.lastTimestamp = null;
+    this.lastFrame = null;
   }
 
-  private readonly tick = (timestamp: number) => {
+  private readonly tick = () => {
     this.frameId = null;
-    if (this.destroyed) return;
-    const step = this.lastTimestamp === null ? 0 : Math.min(Math.max(timestamp - this.lastTimestamp, 0) / 1000, MAX_STEP);
-    this.lastTimestamp = timestamp;
-    this.clock += step;
-    this.boostLevel = Math.max(0, this.boostLevel - step / BOOST_DECAY_SECONDS);
-    this.parallax += (this.parallaxTarget - this.parallax) * (1 - Math.exp(-step / PARALLAX_EASE_SECONDS));
+    if (this.destroyed || this.reduced || this.hidden) return;
+    const now = this.env.now();
+    const dt = this.lastFrame === null ? 1 / 60 : Math.min(Math.max(now - this.lastFrame, 0) / 1000, MAX_STEP_SECONDS);
+    this.lastFrame = now;
+    this.pose.yaw = approach(this.pose.yaw, this.target.yaw, dt);
+    this.pose.pitch = approach(this.pose.pitch, this.target.pitch, dt);
+    const cameraMoving = this.pose.yaw !== this.target.yaw || this.pose.pitch !== this.target.pitch;
+    const sequence = this.isSequenceActive(now);
 
-    const started = this.env.now();
-    this.draw(this.clock, this.state, REST_INTENSITY + (1 - REST_INTENSITY) * this.boostLevel, this.parallax);
-    this.recordCost(this.env.now() - started, started);
+    this.updateProjector(now);
+    this.readAllZones();
+    this.paintFrame(now);
+    this.field?.prune(now);
 
-    if (!this.reduced && !this.hidden && !this.offscreen) this.frameId = this.env.requestFrame(this.tick);
+    if (cameraMoving || sequence) {
+      this.frameId = this.env.requestFrame(this.tick);
+      this.setMotion(sequence ? "sequence" : "camera");
+      return;
+    }
+    // The frame just drawn is the network at rest: stop, nothing is armed.
+    this.lastFrame = null;
+    this.costs.flush();
+    this.setMotion(this.restState());
   };
 
-  private drawStatic() {
-    this.draw(STATIC_TIME, { scene: this.state.scene, since: STATIC_TIME - 60, previous: null, from: null }, REST_INTENSITY);
-  }
-
-  /** `parallax` stays 0 for the static composition (reduced motion). */
-  private draw(time: number, state: SceneState, intensity: number, parallax = 0) {
-    if (!this.context || this.viewport.width <= 0) return;
-    const frame = buildFrame({ time, state, viewport: this.viewport, seed: this.seed, parallax });
-    drawFrame(this.context, frame, {
-      width: this.viewport.width,
-      height: this.viewport.height,
-      dpr: this.pixelRatio,
-      intensity,
-      compact: this.viewport.compact,
-      palette: this.palette,
+  private paintFrame(now: number): void {
+    const network = this.network;
+    if (!network) return;
+    const started = this.env.now();
+    const stats = this.painter.paint({
+      network,
+      projector: this.projector,
+      yaw: this.projectedYaw,
+      pitch: this.projectedPitch,
+      zones: this.reduced ? this.emptyZones : this.zones,
+      quietBodies: !this.reduced,
+      field: this.reduced ? null : this.field,
+      time: now,
     });
+    const cost = this.env.now() - started;
+    this.frames += 1;
+    if (this.frameId !== null || this.lastFrame !== null) this.costs.record(cost, stats.repainted);
+    this.publishStats(now);
   }
 
-  private recordCost(milliseconds: number, now: number) {
-    if (this.statsCount === 0) this.statsStart = now;
-    this.statsTotal += milliseconds;
-    this.statsCount += 1;
-    if (now - this.statsStart >= STATS_WINDOW_MS) {
-      this.onFrameCost?.(this.statsTotal / this.statsCount);
-      this.statsTotal = 0;
-      this.statsCount = 0;
+  private projectedYaw = 0;
+  private projectedPitch = 0;
+
+  private updateProjector(now: number): void {
+    const pose = this.reduced ? REDUCED_POSE : this.pose;
+    const yaw = pose.yaw + (this.reduced ? 0 : this.currentDrift(now));
+    this.projectedYaw = yaw;
+    this.projectedPitch = pose.pitch;
+    setProjector(this.projector, yaw, pose.pitch, this.width, this.height, this.screenClass ?? "large");
+  }
+
+  private currentDrift(now: number): number {
+    if (!this.field || this.drift === 0) return 0;
+    let drift = 0;
+    for (const record of this.field.sequences) {
+      // Over the effective length of the sequence: back to 0 when its last core goes off.
+      const value = sequenceDrift(now - record.start, record.end - record.start, this.drift);
+      if (value > drift) drift = value;
     }
+    return drift;
   }
 
-  private setMotion(state: MotionState) {
+  private isSequenceActive(now: number): boolean {
+    if (!this.field) return false;
+    return now < this.field.busyUntil;
+  }
+
+  private readAllZones(): void {
+    this.zones.count = 0;
+    this.covers.count = 0;
+    this.readZones?.(this.zones, this.covers);
+  }
+
+  private restState(): MotionState {
+    return this.field?.hasPlayed("arrivee") ? "settled" : "idle";
+  }
+
+  private setMotion(state: MotionState): void {
     if (state === this.motion) return;
     this.motion = state;
     this.onMotion?.(state);
   }
-}
 
-/** jsdom and old browsers may not implement the 2D context: stay silent. */
-function safeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D | null {
-  try {
-    return canvas.getContext("2d");
-  } catch {
-    return null;
+  private publishStats(now = this.env.now()): void {
+    if (!this.onStats) return;
+    const field = this.field;
+    this.onStats({
+      frames: this.frames,
+      signals: field && !this.reduced ? field.inFlight(now) : 0,
+      lit: field && !this.reduced ? field.litCount(now) : 0,
+      sequences: field ? field.playedNames() : [],
+    });
   }
 }

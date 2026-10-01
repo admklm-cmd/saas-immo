@@ -25,7 +25,12 @@ export function StepNavigator({ position, count, onPrevious, onNext }: StepNavig
   const atEnd = position >= count;
 
   return (
-    <div role="group" aria-label={TEXTS.navLabel} className={styles.nav}>
+    <div
+      role="group"
+      aria-label={TEXTS.navLabel}
+      className={cn("particle-veil particle-veil-tight", styles.nav)}
+      data-network-quiet=""
+    >
       <button
         type="button"
         aria-label={TEXTS.previous}

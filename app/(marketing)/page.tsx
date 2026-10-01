@@ -10,9 +10,10 @@ import { LivingBackground } from "@/components/landing/living/LivingBackground";
 /**
  * Public home page of the agency website.
  *
- * The living background is a fixed, `aria-hidden` illustration (fictitious
- * files, simulation) whose scene follows the section in view; every section
- * carries `data-living-scene`. The content is painted above it and is complete
+ * The living background is a fixed, `aria-hidden` neural network
+ * (illustration, simulation; docs/design-system.md §2.11.4): bounded
+ * sequences of impulses, still at rest; every section carries
+ * `data-living-scene`. The content is painted above it and is complete
  * without JavaScript. No figure, client, testimonial or price is shown.
  */
 export default function HomePage() {
