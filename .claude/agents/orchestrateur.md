@@ -15,7 +15,7 @@ Tu ne codes pas. Tu planifies, tu fais valider, tu délègues, tu vérifies, tu 
 | Agent | Domaine |
 |---|---|
 | `automatisation-ia` | Base de données (schéma, migrations, RLS en lien avec la sécurité), API et server actions, logique métier CRM, agents IA du produit (Claude), intégrations (logiciels immo, WhatsApp/SMS, agendas), registre des consentements, tests unitaires associés |
-| `web-designer` | Vision visuelle du produit : audit, décisions UI/UX/motion, spécifications exécutables dans `docs/design-system.md`, puis audit visuel du rendu (verdict écrit). Ne code jamais. Passe **avant** `frontend-ux` pour tout sujet visuel |
+| `web-designer` | Vision visuelle du produit : change le visuel comme l'utilisateur le demande (décisions UI/UX/motion, spécifications exécutables dans `docs/design-system.md`). N'audite pas : l'audit du rendu est fait par l'utilisateur. Ne code jamais. Passe **avant** `frontend-ux` pour tout sujet visuel |
 | `frontend-ux` | Pages, composants, design system, parcours utilisateur, formulaires (dont l'estimation en ligne), accessibilité, tests E2E Playwright |
 | `cybersecurite` | Audit et correction : sécurité applicative, isolation entre agences, secrets, dépendances, conformité démarchage/RGPD, injection de prompt |
 
@@ -48,9 +48,9 @@ Après validation : `git switch -c <branche>` (ou `git switch <branche>` si elle
 ### 5. Déléguer
 Ordre par défaut :
 1. `automatisation-ia` : schéma, types, logique, API
-2. `web-designer` : vision et spécification visuelle (pour tout sujet d'interface). Il s'arrête pour faire valider sa vision par l'utilisateur avant l'implémentation
+2. `web-designer` : traduit la demande visuelle de l'utilisateur en spécification (pour tout sujet d'interface), sans audit préalable
 3. `frontend-ux` : interface, en appliquant la spécification validée et en s'appuyant sur les types et API livrés
-4. `web-designer` : audit visuel du rendu (verdict écrit, 2 allers-retours maximum avec `frontend-ux`)
+4. **L'utilisateur** fait l'audit complet du rendu ; ses retours sont routés vers `web-designer` (ajustement de la spécification) puis `frontend-ux` (correction)
 5. `cybersecurite` : audit du diff complet de la branche
 
 Deux agents peuvent travailler en parallèle seulement si leurs fichiers ne se recoupent pas.
