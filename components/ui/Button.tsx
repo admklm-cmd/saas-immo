@@ -8,8 +8,11 @@ import { ThreeDotLoader } from "./ThreeDotLoader";
  * `primary`: black, the one main action of a zone. `accent`: cobalt, reserved
  * to the rare action that must stand out from a black one nearby (never a
  * destructive action). `secondary`: bordered, pearl on hover. `ghost`: text.
+ * `light` and `outline-light`: the same two roles on a near-black panel (the
+ * final call to action of the landing, docs/design-system.md §2.11.8.5) — a
+ * light fill with its arrow boxed, and a light outline.
  */
-export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "accent" | "secondary" | "ghost" | "light" | "outline-light";
 export type ButtonSize = "sm" | "md" | "lg";
 /** Direction of the optional arrow: two stacked arrows swap on hover. */
 export type ButtonArrow = "forward" | "back";
@@ -41,13 +44,29 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary:
     "border border-line-strong bg-surface text-ink shadow-subtle hover:border-ink-subtle hover:bg-pearl-soft hover:shadow-raised",
   ghost: "text-ink-muted hover:bg-surface-sunken hover:text-ink",
+  light: "ui-arrow-boxed bg-ink-inverse text-inverse font-semibold hover:bg-line",
+  "outline-light": "border border-white/24 bg-transparent text-ink-inverse hover:bg-white/8",
 };
 
 /** Variants that carry the cursor-following border halo. */
-const HALO: Record<ButtonVariant, boolean> = { primary: true, accent: true, secondary: true, ghost: false };
+const HALO: Record<ButtonVariant, boolean> = {
+  primary: true,
+  accent: true,
+  secondary: true,
+  ghost: false,
+  light: true,
+  "outline-light": true,
+};
 
 /** Variants whose label letters roll on hover. */
-const LETTERS: Record<ButtonVariant, boolean> = { primary: true, accent: true, secondary: false, ghost: false };
+const LETTERS: Record<ButtonVariant, boolean> = {
+  primary: true,
+  accent: true,
+  secondary: false,
+  ghost: false,
+  light: true,
+  "outline-light": false,
+};
 
 const SIZES: Record<ButtonSize, string> = {
   sm: "h-8 px-3.5 text-sm",

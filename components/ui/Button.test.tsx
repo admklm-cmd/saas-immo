@@ -13,6 +13,32 @@ afterEach(() => {
 });
 
 describe("Button", () => {
+  it("offers a light and a light-outline variant for a dark panel, without changing the others", () => {
+    render(
+      <>
+        <Button variant="light" arrow="forward">
+          Demander une estimation
+        </Button>
+        <Button variant="outline-light">Espace agence</Button>
+      </>,
+    );
+    const light = screen.getByRole("button", { name: "Demander une estimation" });
+    const outline = screen.getByRole("button", { name: "Espace agence" });
+    expect(light.className).toContain("bg-ink-inverse");
+    expect(light.className).toContain("text-inverse");
+    // The arrow sits in its 22 px box (interactions.css, .ui-arrow-boxed).
+    expect(light.className).toContain("ui-arrow-boxed");
+    expect(light.querySelector("[data-testid=\"button-arrow\"]")).not.toBeNull();
+    expect(outline.className).toContain("border-white/24");
+    expect(outline.className).toContain("text-ink-inverse");
+    expect(outline.className).toContain("hover:bg-white/8");
+    expect(outline.className).not.toContain("bg-ink-inverse");
+    // The existing variants are untouched.
+    const { container } = render(<Button>Valider</Button>);
+    expect(container.firstElementChild?.className).toContain("bg-inverse text-ink-inverse");
+    expect(container.firstElementChild?.className).not.toContain("ui-arrow-boxed");
+  });
+
   it("is a non-submitting button by default", () => {
     render(<Button>Lancer Hugo</Button>);
     const button = screen.getByRole("button", { name: "Lancer Hugo" });

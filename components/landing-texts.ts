@@ -223,16 +223,70 @@ export const LANDING_TEXTS = {
     titleAccent: "chemin",
     body: "Chaque étape a un responsable, une sortie attendue et une condition de passage. Le dossier ne franchit jamais une validation humaine sans elle.",
     railLabel: "Étapes d'un dossier vendeur",
+    /** The seven steps of a dossier, in order (roadmap of tile 1, docs/design-system.md §2.11.8.4). */
     rail: [
-      { label: "Demande reçue", owner: "Léa" },
-      { label: "Qualification", owner: "Hugo" },
-      { label: "Relance préparée", owner: "Emma" },
-      { label: "Validation humaine", owner: "Conseiller", human: true },
-      { label: "Rendez-vous", owner: "Louis" },
-      { label: "Suivi", owner: "Sarah" },
-      { label: "Mandat", owner: "Conseiller", human: true },
+      { label: "Demande reçue", owner: "Léa", glyph: "lea" },
+      { label: "Qualification", owner: "Hugo", glyph: "hugo" },
+      { label: "Relance préparée", owner: "Emma", glyph: "emma" },
+      { label: "Validation humaine", owner: "Conseiller", glyph: "humanValidation", human: true },
+      { label: "Rendez-vous", owner: "Louis", glyph: "louis" },
+      { label: "Suivi", owner: "Sarah", glyph: "sarah" },
+      { label: "Mandat", owner: "Conseiller", glyph: "mandate", human: true },
     ],
-    railNote: "Exemple fictif — simulation.",
+    /** Label of the illustrations of tiles 1 to 4, next to the Simulation badge. */
+    fictive: "Exemple fictif",
+    /**
+     * The five tiles of block B (docs/design-system.md §2.11.8.4). Tiles 1 to 4
+     * are fictitious illustrations; tile 5 states real rules of the prototype
+     * (no real send, two mandatory human validations — CLAUDE.md).
+     */
+    tiles: {
+      roadmap: {
+        title: "Un seul chemin",
+        body: "Sept étapes, un responsable chacune. Le dossier attend la validation humaine.",
+        visualLabel: "Feuille de route fictive : sept étapes, la validation humaine attend le conseiller",
+        pending: "En attente de vous",
+      },
+      progress: {
+        title: "Un dossier qui avance",
+        body: "Chaque étape du pipeline, du nouveau contact au mandat signé.",
+        visualLabel: "Courbe fictive d'un dossier, de Nouveau à Mandat signé, sans valeurs",
+        heading: "Progression — dossier fictif",
+      },
+      team: {
+        title: "Cinq agents, un conseiller",
+        body: "Chaque agent prépare sa part. Vous gardez la décision.",
+        visualLabel: "Cinq agents autour du conseiller",
+        you: "Vous",
+        youRole: "Conseiller · décide",
+        agents: [
+          { name: "Léa", glyph: "lea" },
+          { name: "Hugo", glyph: "hugo" },
+          { name: "Emma", glyph: "emma" },
+          { name: "Louis", glyph: "louis" },
+          { name: "Sarah", glyph: "sarah" },
+        ],
+      },
+      report: {
+        title: "Le compte-rendu, exploité",
+        body: "Sarah transforme la visite en prochaines actions, à valider.",
+        visualLabel: "Compte-rendu fictif exploité par Sarah, simulation",
+        card: "Compte-rendu · Sarah",
+        actions: "3 actions prêtes",
+      },
+      guards: {
+        title: "Des garde-fous réels",
+        body: "Vérifiés par le serveur à chaque action, pas seulement affichés.",
+        figures: [
+          { value: "0", caption: "envoi réel dans ce prototype" },
+          { value: "2", caption: "validations humaines obligatoires" },
+        ],
+        rows: [
+          { label: "Premier contact et mandat", value: "Validés par un humain" },
+          { label: "Coupe-circuit", value: "Un clic" },
+        ],
+      },
+    },
   },
 
   agents: {
@@ -436,7 +490,126 @@ export const LANDING_TEXTS = {
     title: "Déposez une demande fictive. Retrouvez-la dans l'espace agence.",
     titleLines: ["Déposez une demande fictive.", "Retrouvez-la", "dans l'espace agence."],
     titleAccent: "fictive",
+    body: "Sept étapes, de la demande au mandat. Deux restent toujours humaines.",
     note: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
+    /**
+     * The carousel of block C (docs/design-system.md §2.11.8.5). No percentage
+     * here: the progress is computed (`process/process-carousel.ts`).
+     */
+    carousel: {
+      label: "Les sept étapes d'un dossier",
+      previous: "Étape précédente",
+      next: "Étape suivante",
+      stepPrefix: "Étape n°",
+      human: "Humaine",
+      position: "Étape {n} sur 7",
+      badge: "Exemple fictif — simulation",
+    },
+    /** The seven steps; `pending` / `done`: label of the visual while it plays / once played. */
+    steps: [
+      {
+        key: "lea",
+        title: "Demande reçue",
+        owner: "Léa",
+        glyph: "lea",
+        human: false,
+        body: "La source est vérifiée, les doublons écartés, une fiche propre est créée.",
+        pending: "Vérification de la source…",
+        done: "Source vérifiée",
+      },
+      {
+        key: "hugo",
+        title: "Qualification",
+        owner: "Hugo",
+        glyph: "hugo",
+        human: false,
+        body: "Bien, secteur, motivation et délai structurés. Ce qui manque est signalé, jamais inventé.",
+        pending: "Structuration du projet…",
+        done: "Motivation à demander",
+      },
+      {
+        key: "emma",
+        title: "Relance préparée",
+        owner: "Emma",
+        glyph: "emma",
+        human: false,
+        body: "Un premier message adapté au dossier, consentement vérifié. Rien n'est envoyé.",
+        pending: "Rédaction du brouillon…",
+        done: "Brouillon prêt · rien n'est envoyé",
+      },
+      {
+        key: "review",
+        title: "Validation humaine",
+        owner: "Vous",
+        glyph: "humanValidation",
+        human: true,
+        body: "Le conseiller relit, modifie, valide ou refuse. Sans lui, aucun premier contact ne part.",
+        pending: "En attente de votre décision…",
+        done: "Validé par un humain",
+      },
+      {
+        key: "louis",
+        title: "Rendez-vous",
+        owner: "Louis",
+        glyph: "louis",
+        human: false,
+        body: "Un créneau d'estimation libre est proposé, jamais réservé deux fois.",
+        pending: "Recherche d'un créneau libre…",
+        done: "Créneau proposé",
+      },
+      {
+        key: "sarah",
+        title: "Suivi",
+        owner: "Sarah",
+        glyph: "sarah",
+        human: false,
+        body: "Le compte-rendu de visite devient des prochaines actions, à valider.",
+        pending: "Lecture du compte-rendu…",
+        done: "Prochaines actions prêtes",
+      },
+      {
+        key: "mandate",
+        title: "Mandat",
+        owner: "Vous",
+        glyph: "mandate",
+        human: true,
+        body: "La signature est confirmée par le conseiller. Jamais déclarée par un agent IA.",
+        pending: "Confirmation humaine requise…",
+        done: "Mandat confirmé par un humain",
+      },
+    ],
+    /** Words drawn inside the visuals of the seven cards (fictitious example, decorative). */
+    visuals: {
+      lea: { targets: ["Formulaire du site", "Appel reçu"], merged: "1 fiche" },
+      hugo: {
+        rows: [
+          { label: "Bien", value: "T3 avec terrasse" },
+          { label: "Secteur", value: "Cassis" },
+          { label: "Délai", value: "Avant l'été" },
+        ],
+        missingLabel: "Motivation",
+        missingValue: "Manquante — signalée",
+      },
+      emma: {
+        channel: "E-mail · Brouillon",
+        subject: "Votre demande d'estimation à Cassis",
+        consent: "Consentement vérifié",
+        unsubscribe: "Se désinscrire",
+      },
+      review: { actions: ["Modifier", "Refuser", "Valider"], cursor: "Vous" },
+      louis: {
+        slots: [
+          { time: "9 h 30", note: "Déjà réservé", taken: true },
+          { time: "11 h 00", note: "", taken: false },
+          { time: "15 h 30", note: "Libre", taken: false },
+        ],
+        proposed: "Proposé au vendeur",
+      },
+      sarah: {
+        actions: ["Avis de valeur — après validation", "Relance — si consentement valide", "Étape : estimation faite"],
+      },
+      mandate: { pending: "À confirmer", confirm: "Confirmer", cursor: "Vous" },
+    },
   },
 } as const;
 

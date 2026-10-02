@@ -1,0 +1,183 @@
+/*
+ * Process card visual — cards 2 and 3, Hugo's fields and Emma's draft (docs/design-system.md §2.11.8.5).
+ * Rule of every visual: the DEFAULT styles are the final state (server HTML,
+ * no JavaScript, reduced motion, a card that has not played); under
+ * `[data-run]` (set on the window, `frame.module.css`) each piece plays once,
+ * filled BACKWARDS only, so nothing lingers when it ends. No red.
+ */
+
+/* --- Card 2: fields ------------------------------------------------------------------ */
+.fields {
+  display: grid;
+  gap: 10px;
+  padding: 8px 6px 0;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.fieldLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-inverse-muted);
+}
+
+.fieldValue {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--color-ink-inverse);
+}
+
+.fieldMissing {
+  font-size: 12px;
+  line-height: 16px;
+  font-style: italic;
+  color: var(--color-ink-inverse-muted);
+}
+
+.fieldBar,
+.fieldDashed {
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.fieldBar {
+  background-color: rgb(255 255 255 / 0.16);
+  transform-origin: left;
+}
+
+.fieldDashed {
+  border: 1px dashed rgb(255 255 255 / 0.32);
+}
+
+/* --- Card 3: draft e-mail ------------------------------------------------------------ */
+.mail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radius-md);
+  background-color: rgb(255 255 255 / 0.04);
+}
+
+.mailChannel {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--color-ink-inverse-muted);
+}
+
+.mailSubject {
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--color-ink-inverse);
+}
+
+.mailLines {
+  display: grid;
+  gap: 7px;
+  margin: 4px 0 6px;
+}
+
+.mailLine {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background-color: rgb(255 255 255 / 0.14);
+}
+
+.consent {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background-color: rgb(255 255 255 / 0.06);
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--color-ink-inverse);
+}
+
+.consentCheck {
+  color: var(--color-accent);
+}
+
+.unsubscribe {
+  font-size: 11px;
+  line-height: 14px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  color: var(--color-ink-inverse-muted);
+}
+
+/* --- Play, once ----------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-run] .fieldBar {
+    animation: hugo-fill 360ms var(--ease-emphasis) calc(200ms + var(--row-index) * 140ms) backwards;
+  }
+
+  [data-run] .fieldValue {
+    animation: visual-in 160ms var(--ease-standard) calc(560ms + var(--row-index) * 140ms) backwards;
+  }
+
+  [data-run] .fieldDashed {
+    animation: visual-write 300ms var(--ease-standard) 1000ms backwards;
+  }
+
+  [data-run] .fieldMissing {
+    animation: visual-in 200ms var(--ease-standard) 1300ms backwards;
+  }
+
+  [data-run] .mailLine {
+    animation: visual-write 400ms var(--ease-standard) calc(200ms + var(--line-index) * 160ms) backwards;
+  }
+
+  [data-run] .consent {
+    animation: visual-rise 200ms var(--ease-emphasis) 1200ms backwards;
+  }
+}
+
+@keyframes visual-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes visual-rise {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
+}
+
+@keyframes visual-write {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes hugo-fill {
+  from {
+    scale: 0 1;
+  }
+}

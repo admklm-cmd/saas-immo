@@ -1632,7 +1632,7 @@ nécessaire (`flex-wrap gap-3` inchangé), note dessous à 16 px, alignée à ga
 
 > **Révision du 02/10/2026 (référence utilisateur).** L'utilisateur a fourni le rendu exact
 > attendu : `ascend-neural-network-demo.html` (fichier autonome, canvas 2D, aucune dépendance ;
-> chemin d'origine `C:\Users\admha\Documents\Codex\2026-10-01\am\outputs\`, **hors dépôt** — à
+> dossier local de l’utilisateur, **hors dépôt** — à
 > verser dans `docs/references/reseau-neuronal-demo.html` par l'orchestrateur pour la
 > traçabilité). Ce paragraphe **remplace** l'interprétation du 01/10 (220 nœuds ronds, 480 fibres
 > droites ou peu courbées en tapis, trois plans discrets, cœurs sans halo). Les valeurs ci-dessous
@@ -2170,7 +2170,7 @@ global (état final immédiat).
 
 #### 2.11.8 Révision « modèles MIG / Striker » (02/10/2026, soir) — effets uniques, blocs A, B, C
 
-> Statut : **spécifié** le 02/10/2026 par le `web-designer`, demande **validée** par l'utilisateur
+> Statut : **spécifié** le 02/10/2026 par le `web-designer`, **Lots 1 et 2 implémentés** (02–03/10, `frontend-ux`, voir ci-dessous) ; demande **validée** par l'utilisateur
 > (source : `docs/references/2026-10-02-modeles-mig-striker.md`, capture du modèle C fournie).
 > Plan : `docs/plans/2026-10-02-landing-modeles.md` (deux lots indépendants). Branche
 > `feat/landing-polish`. Périmètre : **`/` seulement**. Inchangés : réseau de fond (§ 2.11.4),
@@ -2209,6 +2209,67 @@ global (état final immédiat).
 > des lignes grises du titre « problème » n'agrandit plus la zone défilable du `h2` (778 → 722 px
 > à 1440, 398 → 342 px à 390) — positionnement par ancre (`anchor-name`, sous `@supports`),
 > pixels identiques avant / après (captures comparées à 1440 et 390).
+>
+> **Avancement Lot 2 (03/10/2026, `frontend-ux`) — implémenté et testé** : bloc B et bloc C.
+> Fichiers : `components/landing/solution/` (`SolutionTile.tsx`, `RoadmapVisual.tsx`,
+> `ProgressVisual.tsx`, `TeamVisual.tsx`, `ReportVisual.tsx`, `GuardsVisual.tsx`,
+> `solution-geometry.ts`, `solution.module.css`, `solution-paths.module.css`,
+> `solution-people.module.css`), `components/landing/process/` (`ProcessCarousel.tsx`,
+> `ProcessCard.tsx`, `useProcessTrack.ts`, `process-carousel.ts`, `final.module.css` (panneau),
+> `process.module.css` (carrousel), `visuals/` : `VisualFrame.tsx`, `ProcessVisual.tsx`, sept
+> visuels, `frame.module.css`, `lea.module.css`, `fields.module.css`, `slots.module.css`,
+> `decisions.module.css`) ; `LandingSolution.tsx`, `LandingFinal.tsx` réécrits ;
+> `LandingHeading` transmet `tone` / `align` ; `Button` : variantes `light` et `outline-light`
+> (+ `.ui-arrow-boxed` dans `interactions.css`) ; `Badge` : ton `solid-light` ; `SimulationBadge` :
+> `surface`. `useTrackPhysics` / `track-physics` et `CursorYou` **réutilisés sans modification**.
+> **Mesures réelles** (Chromium, 1440 × 900) : bloc B, toutes les animations du bloc finies
+> **1 659 ms** après l'entrée des cinq tuiles (critère ≤ 2 000) ; bloc C, visuels mesurés de
+> `playing` à `done` (minuteur = fin du dessin + 60 ms) : Léa 2 446, Hugo 1 755, Emma 1 780,
+> validation 1 577, Louis 1 676, Sarah 1 476, mandat 2 275 ms (≤ 2 600) ; **0 appel
+> `requestAnimationFrame`** carrousel au repos (3 s), 58 images pour un glissement de flèche
+> (≈ 1 s, `GLIDE_TAU_MS` 140, déclenché par l'utilisateur seulement). Contrastes calculés sur
+> couleurs calculées : titre **19,0:1**, paragraphe 8,4, note 8,4, titre de carte 18,0, texte
+> de carte 8,0, pastille « ÉTAPE » 10,4, pourcentage 8,4, chevron des flèches 16,9,
+> remplissage cobalt 3,7. **Écarts à la spécification** (signalés, à valider à l'audit) :
+> (1) feuille de route : cartes **à la largeur de leur contenu** (≤ 70 %), tuile à
+> l'extérieur (à droite pour les étapes paires), sentier tracé **de tuile en tuile à côté
+> des cartes** — à 70 % fixes avec 12 px d'écart, le sentier passait sous les cartes et ne se
+> voyait pas ; (2) étapes 05–07 : **contenu** à 0,55, carte opaque (sinon le sentier se voit à
+> travers) ; (3) courbe de la tuile 2 révélée par `clip-path` de gauche à droite (et non
+> `stroke-dashoffset`) : avec `preserveAspectRatio="none"` + trait non mis à l'échelle, les
+> tirets de `pathLength` ne sont pas fiables ; points apparus au même rythme (`--ease-draw`
+> inversé) ; (4) libellés des six étapes affichés si la carte graphique fait ≥ 300 px
+> (1440), **les deux extrêmes seulement en dessous** (requête de conteneur), donc aussi à 1024
+> et 640–1023 où six libellés ne tiennent pas ; (5) équipe : Léa, Hugo, Emma à gauche,
+> Louis, Sarah à droite (ordre du parcours), angles 220 / 180 / 140 / 335 / 25°, centre de
+> « Vous » à 112 px (sous l'étiquette « Simulation ») ; (6) tuile 5 : cadre **min.** 200 px
+> qui grandit avec son texte (à 1024 les lignes passent sur deux lignes et étaient coupées) ;
+> (7) déclencheur des tuiles : le `Reveal` existant (seuil 8 %), une par tuile, pas 35 % ;
+> (8) B3 « aucun chiffre hors tuile 5 » lu comme « aucun chiffre présenté comme une
+> statistique » : les numéros d'étape 01–07 (tuile 1) et « 3 actions prêtes » (tuile 4,
+> fictif) demandés par la spec restent, testés comme seules exceptions ; (9) carrousel
+> **centré** : `useProcessTrack` enveloppe `useTrackPhysics` (inchangé) — `scroll-padding` posé
+> en px (`--process-pad`) pour que ses arrêts centrent une carte ; flèches et clavier glissent
+> avec la même courbe (`approach`, `GLIDE_TAU_MS`) car `revealOffset` ne fait qu'amener en vue ;
+> un glissement d'inertie en cours est interrompu par un événement `wheel` synthétique (son
+> propre écouteur) ; (10) focus clavier de la piste : anneau cobalt 2 px **autour de la carte
+> active** (`box-shadow`, 4 px de noir entre les deux) — le fondu des bords effaçait un contour
+> posé sur la piste ; (11) fondu des bords **4 %** sous 640 px (12 % masquait la voisine) ;
+> avec 300 px + 20 px d'espacement, la voisine dépasse de **17 px** à 390 (pas 24) ;
+> (12) un lancer rapide à la souris peut passer plusieurs cartes (inertie de
+> `useTrackPhysics`, comme le carrousel des agents) ; un glisser de 200 px à vitesse de main
+> (≈ 0,5 px/ms) amène la carte suivante (testé) ; (13) Léa : cibles à 80 et 96 px du centre,
+> touchées quand le secteur y passe (30 % et 62 % du tour → 179 et 425 ms avec
+> `--ease-standard`) ; carte 7 : mini-pipeline **vertical** (six libellés ne tiennent pas en
+> ligne dans 292 px) ; (14) carte 1 « armée » : avec mouvement autorisé, son dessin attend sur
+> sa première image (animations en pause) jusqu'à 50 % visible ; HTML serveur, sans JS,
+> mouvement réduit : état final ; (15) noms accessibles « Étape précédente / suivante »
+> identiques à ceux du carrousel des agents (textes imposés), chacun dans sa région nommée ;
+> (16) tests : la garde « aucun % » de `e2e/accueil.spec.ts` exclut le pourcentage **calculé**
+> de position (vérifié à part, « 14 % ») ; `waitForRest` de `e2e/typographie-expressive.spec.ts`
+> attend `entering` (« pas `hidden` » était vrai avant l'hydratation : course révélée par
+> l'îlot client du bloc C, 2 échecs sur 6 avant correctif, 6 sur 6 réussis après) ;
+> `Badge` reçoit un ton `solid-light` (`cn` ne fusionne pas les classes Tailwind).
 
 ##### 2.11.8.1 Règles de l'utilisateur, traduites
 
@@ -2639,15 +2700,15 @@ animations infinies reste exigée vide. Réseau, voiles, CRM (`particules`,
 
 | Composant | Fichier | États |
 |---|---|---|
-| `Button` | `Button.tsx` | `primary` / `secondary` / `ghost` × `sm` / `md` / `lg` ; repos, survol, focus visible, actif (`scale .98`), `isLoading` (spinner + `aria-busy`), `disabled` (opacité 40 %) |
+| `Button` | `Button.tsx` | `primary` / `secondary` / `ghost` (+ `light` / `outline-light` sur le panneau noir de la landing, § 2.11.8.5 : fond clair et flèche dans un carré 22 px ; contour clair) × `sm` / `md` / `lg` ; repos, survol, focus visible, actif (`scale .98`), `isLoading` (spinner + `aria-busy`), `disabled` (opacité 40 %) |
 | `ButtonLink` | `ButtonLink.tsx` | Mêmes styles, mais reste une ancre `next/link` |
 | `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3. Les actions (badge, lien court) restent **sur la ligne du titre** à toutes les largeurs ; la description passe dessous, pleine largeur — elle ne repousse jamais un badge sur une ligne à part |
 | `LogoSymbol` | `LogoSymbol.tsx` | Symbole seul, `sm` / `md` / `lg` ; nommé par défaut, silencieux avec `label={null}` ; inversion par `currentColor` (§ 2.7) |
 | `Logo` | `Logo.tsx` | Verrouillage complet (symbole + nom sur deux lignes), `sm` / `md` ; un seul nom accessible (§ 2.7.2) |
 | `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge ; `frame="still"` : le bloc ne bouge pas, seul le déclencheur `data-reveal` sert (titres éditoriaux, § 3.8) |
-| `Badge` | `Badge.tsx` | `neutral`, `outline`, `solid`, `dashed` (information absente) |
+| `Badge` | `Badge.tsx` | `neutral`, `outline`, `solid`, `solid-light` (même emphase sur fond quasi noir), `dashed` (information absente) |
 | `PipelineStageBadge` | `PipelineStageBadge.tsx` | 7 étapes ; barre de 6 points pour la progression, `perdu` en pointillés, `mandat_signé` en plein noir |
-| `SimulationBadge` | `SimulationBadge.tsx` | Unique, toujours visible, toujours accompagné du mot « Simulation » |
+| `SimulationBadge` | `SimulationBadge.tsx` | Unique, toujours visible, toujours accompagné du mot « Simulation » ; `surface="dark"` (panneau noir de la landing, § 2.11.8.5) : pastille claire, texte encre — défaut `light` inchangé, jamais utilisé dans le CRM |
 | `Alert` | `Alert.tsx` | `error` (fond noir, `role="alert"`), `success` / `info` (`role="status"`) |
 | `EmptyState` | `EmptyState.tsx` | Titre (`text-section`, Bricolage 600), mot accentué facultatif (`titleAccent`, § 3.8), description, action suggérée |
 | `Skeleton` | `Skeleton.tsx` | Chargement, `aria-hidden`, scintillement désactivé si mouvement réduit |

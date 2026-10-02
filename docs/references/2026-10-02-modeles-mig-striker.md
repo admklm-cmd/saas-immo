@@ -64,7 +64,7 @@ en 1 clic). Animations fluides à l'arrivée (pas de boucle imposée).
 
 ## C. Remplace le panneau final « Déposez une demande fictive » (`LandingFinal`) — modèle Striker « processus »
 
-Capture : `C:\Users\admha\AppData\Local\Temp\claude\c--Users-admha-mon-saas-saas-immo\3cf715ba-a128-4217-9fd8-d828901ea528\images\4.png`.
+Capture : capture fournie par l’utilisateur (hors dépôt).
 Structure du modèle : section **sombre** (grand panneau quasi noir arrondi), **titre centré** sur
 2 lignes, paragraphe centré court, **bouton clair centré** avec petite flèche ↗ dans un carré ;
 puis **flèches précédent/suivant** (pilules) centrées ; **fond à grille de lignes fines** (colonnes

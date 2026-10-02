@@ -22,6 +22,10 @@ type LandingHeadingProps = {
   accentEffect?: AccentEffect;
   /** Replays the effect when a mouse or a pen enters the title (§2.11.2 D). */
   accentReplay?: boolean;
+  /** Ink of the title: `inverse` on the near-black final panel (§2.11.8.5). Default `ink`. */
+  tone?: "ink" | "inverse";
+  /** `center`: the title and its paragraph centred (final panel, §2.11.8.5). Default `start`. */
+  align?: "start" | "center";
   className?: string;
 };
 
@@ -43,18 +47,21 @@ export function LandingHeading({
   veil = true,
   accentEffect,
   accentReplay = false,
+  tone,
+  align,
   className,
 }: LandingHeadingProps) {
+  const centered = align === "center";
   // Inside an opaque panel the network is already hidden: no quiet zone.
   const quiet = veil ? "" : undefined;
   return (
-    <div className={cn("max-w-5xl", className)}>
+    <div className={cn("max-w-5xl", centered && "mx-auto text-center", className)}>
       {kicker ? (
         <div className={cn(veil && "particle-veil particle-veil-tight", "w-fit")} data-network-quiet={quiet}>
           <Overline>{kicker}</Overline>
         </div>
       ) : null}
-      <div className={cn(veil && "network-veil-title", "w-fit max-w-full", kicker && "mt-5")} data-network-quiet={quiet}>
+      <div className={cn(veil && "network-veil-title", "w-fit max-w-full", centered && "mx-auto", kicker && "mt-5")} data-network-quiet={quiet}>
         <EditorialTitle
           as="h2"
           id={id}
@@ -64,11 +71,13 @@ export function LandingHeading({
           reveal="in-view"
           accentEffect={accentEffect}
           accentReplay={accentReplay}
+          tone={tone}
+          align={align}
         />
       </div>
       {body ? (
         <p
-          className={cn(veil && "particle-veil", "mt-6 w-fit max-w-[52ch] text-lede text-pretty text-ink-muted")}
+          className={cn(veil && "particle-veil", "mt-6 w-fit max-w-[52ch] text-lede text-pretty text-ink-muted", centered && "mx-auto")}
           data-network-quiet={quiet}
         >
           {body}

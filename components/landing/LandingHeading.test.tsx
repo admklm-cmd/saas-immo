@@ -42,6 +42,24 @@ describe("LandingHeading veil", () => {
     expect(html).not.toContain("data-network-quiet");
   });
 
+  it("passes tone and alignment to the title, unchanged by default", () => {
+    const plain = document.createElement("div");
+    plain.innerHTML = renderToStaticMarkup(<LandingHeading id="t" titleLines={FINAL.titleLines} titleAccent={FINAL.titleAccent} />);
+    expect(plain.querySelector("h2")!.hasAttribute("data-title-color")).toBe(false);
+    expect(plain.querySelector("h2")!.hasAttribute("data-title-align")).toBe(false);
+    expect(plain.firstElementChild!.className).not.toContain("text-center");
+
+    const centred = document.createElement("div");
+    centred.innerHTML = renderToStaticMarkup(
+      <LandingHeading id="t" titleLines={FINAL.titleLines} titleAccent={FINAL.titleAccent} veil={false} tone="inverse" align="center" />,
+    );
+    const title = centred.querySelector("h2")!;
+    expect(title.getAttribute("data-title-color")).toBe("inverse");
+    expect(title.getAttribute("data-title-align")).toBe("center");
+    expect(centred.firstElementChild!.className).toContain("mx-auto");
+    expect(centred.firstElementChild!.className).toContain("text-center");
+  });
+
   it("has no veil inside the opaque final panel, which keeps its prototype note", () => {
     const html = renderToStaticMarkup(<LandingFinal />);
     expect(html).not.toContain("particle-veil");

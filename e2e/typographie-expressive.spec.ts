@@ -292,6 +292,22 @@ test.describe("site public", () => {
     }
   });
 
+  test("titre final (bloc C, §2.11.8.5) : centré, blanc #fafafa mot accentué compris, sans effet", async ({ page }) => {
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: HEIGHT });
+      await open(page, "/");
+      const title = page.locator("#final-title");
+      await expect(title).toHaveAttribute("data-title-align", "center");
+      await expect(title).toHaveAttribute("data-title-color", "inverse");
+      await expect(title).toHaveCSS("text-align", "center");
+      await expect(title).not.toHaveAttribute("data-accent-effect");
+      const colours = await title.locator("[data-title-line], .title-accent").evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).color));
+      expect(new Set(colours)).toEqual(new Set(["rgb(250, 250, 250)"]));
+      const accent = await title.locator(".title-accent").evaluate((node) => getComputedStyle(node).fontFamily);
+      expect(accent.split(",")[0]).toMatch(/Instrument Serif/);
+    }
+  });
+
   test("mouvement réduit : chaque mot est net, opaque et immobile dès l'instant 0", async ({ page }) => {
     for (const path of ["/", "/estimation"]) {
       await page.goto(path, { waitUntil: "domcontentloaded" });
@@ -482,9 +498,22 @@ test.describe("site public", () => {
   });
 });
 
-/** Waits until the entry of the title has started (Reveal no longer hidden), then until no animation runs in it. */
+/**
+ * Waits until the entry of the title has started, then until no animation runs
+ * in it. « Started » = its Reveal is `entering` (or there is no Reveal, or the
+ * motion is reduced): « not hidden » alone is also true BEFORE hydration (the
+ * Reveal is `visible` by default), and the entry would then start after the
+ * check, under the pointer of the test.
+ */
 async function waitForRest(page: Page, selector: string): Promise<void> {
-  await expect(page.locator(`.reveal[data-reveal='hidden'] ${selector}`)).toHaveCount(0, { timeout: 6_000 });
+  await page.waitForFunction(
+    (scope) => {
+      const reveal = document.querySelector(scope)?.closest<HTMLElement>(".reveal");
+      return !reveal || reveal.dataset.reveal === "entering" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    },
+    selector,
+    { timeout: 6_000 },
+  );
   // One frame for the entry animations to be created.
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await expect

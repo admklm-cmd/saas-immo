@@ -1,0 +1,199 @@
+/*
+ * Block B — the « partner » grid of the solution (docs/design-system.md
+ * §2.11.8.4): five white tiles, a framed visual on top of each. Tile 1 runs on
+ * two rows. The final state is the default: the arrival is a CSS animation
+ * filled BACKWARDS only, played once when the tile's `Reveal` enters, so the
+ * page holds no running or lingering animation afterwards (criterion B2) and
+ * the hover lift is never overridden by a finished animation.
+ * The visuals live in `solution-visuals.module.css`.
+ */
+
+.grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 3.5rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cell1 {
+    grid-row: span 2;
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cell1 {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+
+  .cell2 {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .cell3 {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .cell4 {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .cell5 {
+    grid-column: 3;
+    grid-row: 2;
+  }
+}
+
+.cell {
+  display: flex;
+  min-width: 0;
+}
+
+.cell > :global(.reveal) {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- The tile ---------------------------------------------------------------- */
+.tile {
+  --tile-delay: calc(var(--tile-index, 0) * 80ms);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  transition:
+    translate var(--duration-interactive) var(--ease-standard),
+    box-shadow var(--duration-interactive) var(--ease-standard);
+}
+
+.frame {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-muted);
+  /* The visuals read their size from the frame (cqw / cqh). */
+  container-type: size;
+}
+
+.tall .frame {
+  flex: 1;
+  height: auto;
+  min-height: 400px;
+}
+
+@media (min-width: 1024px) {
+  .tall .frame {
+    min-height: 456px;
+  }
+}
+
+.drawing {
+  position: absolute;
+  inset: 0;
+}
+
+/* Tile 5: real text, never clipped — the frame grows with it. */
+.fluid {
+  display: flex;
+  height: auto;
+  min-height: 200px;
+  container-type: inline-size;
+}
+
+.fluid .drawing {
+  position: relative;
+  inset: auto;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* « Simulation » + « Exemple fictif », top left of the frame, above the drawing. */
+.fictive {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+.text {
+  padding: 1rem 1rem 0.75rem;
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.375rem;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.icon {
+  flex: none;
+}
+
+.body {
+  margin: 0.25rem 0 0;
+  max-width: 44ch;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--color-ink-muted);
+  text-wrap: pretty;
+}
+
+/* --- Hover (fine pointer, motion allowed): 2 px up, raised shadow ----------------- */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .tile:hover {
+    translate: 0 -2px;
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+/* --- Arrival, once (the drawing inside starts with it) ----------------------------- */
+:global(.reveal[data-reveal="hidden"]) .tile {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(.reveal[data-reveal="entering"]) .tile {
+    animation: solution-tile-in 560ms var(--ease-emphasis) var(--tile-delay) backwards;
+  }
+}
+
+@keyframes solution-tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}

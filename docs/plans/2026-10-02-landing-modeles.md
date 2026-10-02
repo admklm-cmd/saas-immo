@@ -6,7 +6,9 @@ Spécification : `docs/design-system.md` **§ 2.11.8** (2.11.8.1 règles, 2.11.8
 2.11.8.3 bloc A, 2.11.8.4 bloc B, 2.11.8.5 bloc C, 2.11.8.6 critères). Renvois posés dans § 1.1,
 § 2.11, § 2.11.1, § 2.11.2, § 2.11.3, § 2.11.3 bis, § 2.11.5, § 2.11.7.
 
-Statut : **spécifié**. Implémentation : `frontend-ux`. Audit : **l'utilisateur**.
+Statut : **Lot 1 et Lot 2 implémentés et testés** (`frontend-ux`, 02–03/10/2026 ; avancement, mesures
+réelles et écarts : `docs/design-system.md` § 2.11.8). Implémentation : `frontend-ux`. Audit : **l'utilisateur**
+(à faire).
 Périmètre : `/` seulement. Ne changent pas : réseau (`components/landing/living/`), voiles
 (`.particle-veil`, `.network-veil-title`), CRM, `/estimation`, sections problème / agents /
 résultat (hors effet de titre). Aucune dépendance npm, aucune donnée, aucune requête.

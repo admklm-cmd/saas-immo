@@ -1,0 +1,115 @@
+/*
+ * The window of a process card (docs/design-system.md §2.11.8.5): dark inset
+ * panel, status pill (« …ing » while it plays, the result after), the stage
+ * that holds the drawing, and the time of the status crossfade per step.
+ * `[data-run]`: the drawing plays once; `[data-paused]`: held on its first
+ * frame (armed first card, not seen yet). Drawings: lea, fields, slots,
+ * decisions modules.
+ */
+
+/* --- The window ------------------------------------------------------------------- */
+.visual {
+  --label-at: 0ms;
+  position: relative;
+  height: 260px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background-color: rgb(255 255 255 / 0.02);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06);
+}
+
+@media (max-width: 639px) {
+  .visual {
+    height: 220px;
+  }
+}
+
+.visual[data-paused] * {
+  animation-play-state: paused !important;
+}
+
+/* Status pill, centred on top: « …ing » while it plays, then the result. */
+.status {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 3;
+  display: grid;
+  translate: -50% 0;
+  padding: 4px 10px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 999px;
+  background-color: rgb(255 255 255 / 0.08);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  /* #e4e4e9 on the panel. */
+  color: var(--color-line);
+}
+
+.statusPending,
+.statusDone {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+
+.statusPending {
+  opacity: 0;
+}
+
+.stage {
+  position: absolute;
+  inset: 48px 16px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.timingLea {
+  --label-at: 2160ms;
+}
+
+.timingHugo,
+.timingEmma {
+  --label-at: 1460ms;
+}
+
+.timingReview {
+  --label-at: 1260ms;
+}
+
+.timingLouis {
+  --label-at: 1360ms;
+}
+
+.timingSarah {
+  --label-at: 1160ms;
+}
+
+.timingMandate {
+  --label-at: 1960ms;
+}
+
+/* --- Play, once ----------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-run] .statusPending {
+    animation: visual-out 240ms var(--ease-standard) var(--label-at) backwards;
+  }
+
+  [data-run] .statusDone {
+    animation: visual-in 240ms var(--ease-standard) var(--label-at) backwards;
+  }
+}
+
+@keyframes visual-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes visual-out {
+  from {
+    opacity: 1;
+  }
+}

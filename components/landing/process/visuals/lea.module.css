@@ -1,0 +1,160 @@
+/*
+ * Process card visual — card 1, Léa's radar (docs/design-system.md §2.11.8.5).
+ * Rule of every visual: the DEFAULT styles are the final state (server HTML,
+ * no JavaScript, reduced motion, a card that has not played); under
+ * `[data-run]` (set on the window, `frame.module.css`) each piece plays once,
+ * filled BACKWARDS only, so nothing lingers when it ends. No red.
+ */
+
+.radar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+}
+
+.rings {
+  position: absolute;
+  top: -120px;
+  left: -120px;
+  width: 240px;
+  height: 240px;
+  overflow: visible;
+}
+
+.rings circle {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.14);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+/* The sweep: a 70° sector whose leading edge is the brightest. Final: gone. */
+.sweep {
+  position: absolute;
+  top: -120px;
+  left: -120px;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: conic-gradient(from 0deg, transparent 0deg 290deg, rgb(255 255 255 / 0.14) 360deg);
+  opacity: 0;
+}
+
+/* A source, at its place; final: merged into the record (moved to the centre, gone). */
+.target {
+  position: absolute;
+  width: 0;
+  height: 0;
+  translate: var(--to-x) var(--to-y);
+  opacity: 0;
+}
+
+.targetDot {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-accent);
+  border-radius: 999px;
+}
+
+.targetLabel {
+  position: absolute;
+  top: 9px;
+  left: 0;
+  translate: -50% 0;
+  font-size: 11px;
+  line-height: 14px;
+  white-space: nowrap;
+  color: var(--color-ink-inverse-muted);
+}
+
+.merged {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.mergedDot {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 4px rgb(36 87 255 / 0.22);
+}
+
+.mergedPill {
+  position: absolute;
+  top: -10px;
+  left: 14px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: rgb(255 255 255 / 0.1);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--color-ink-inverse);
+}
+
+/* --- Play, once ----------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-run] .sweep {
+    animation: lea-sweep 1840ms var(--ease-standard) backwards;
+  }
+
+  [data-run] .target {
+    animation: lea-merge 320ms var(--ease-emphasis) 1900ms backwards;
+  }
+
+  [data-run] .targetDot {
+    animation: lea-hit 160ms var(--ease-standard) var(--hit) backwards;
+  }
+
+  [data-run] .merged {
+    animation: visual-pop 240ms var(--ease-emphasis) 2060ms backwards;
+  }
+}
+
+@keyframes visual-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@keyframes lea-sweep {
+  0% {
+    opacity: 1;
+    rotate: 0deg;
+  }
+  87% {
+    opacity: 1;
+    rotate: 360deg;
+  }
+  100% {
+    opacity: 0;
+    rotate: 360deg;
+  }
+}
+
+@keyframes lea-merge {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes lea-hit {
+  from {
+    border-color: transparent;
+    background-color: rgb(255 255 255 / 0.5);
+    scale: 0.6;
+  }
+}

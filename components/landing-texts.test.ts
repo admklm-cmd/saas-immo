@@ -58,6 +58,62 @@ describe("landing copy", () => {
     expect("prospect" in journey).toBe(false);
   });
 
+  it("block B: five tiles, fictitious label, true figures of tile 5 only (§2.11.8.4)", () => {
+    const solution = LANDING_TEXTS.solution;
+    expect(solution.fictive).toBe("Exemple fictif");
+    expect(solution.rail.map((step) => `${step.label} · ${step.owner}`)).toEqual([
+      "Demande reçue · Léa",
+      "Qualification · Hugo",
+      "Relance préparée · Emma",
+      "Validation humaine · Conseiller",
+      "Rendez-vous · Louis",
+      "Suivi · Sarah",
+      "Mandat · Conseiller",
+    ]);
+    expect(Object.values(solution.tiles).map((tile) => tile.title)).toEqual([
+      "Un seul chemin",
+      "Un dossier qui avance",
+      "Cinq agents, un conseiller",
+      "Le compte-rendu, exploité",
+      "Des garde-fous réels",
+    ]);
+    // The two figures are rules of the prototype (CLAUDE.md), not statistics.
+    expect(solution.tiles.guards.figures.map((figure) => `${figure.value} ${figure.caption}`)).toEqual([
+      "0 envoi réel dans ce prototype",
+      "2 validations humaines obligatoires",
+    ]);
+    expect(solution.tiles.team.agents.map((agent) => agent.name)).toEqual(["Léa", "Hugo", "Emma", "Louis", "Sarah"]);
+    expect("railNote" in solution).toBe(false);
+  });
+
+  it("block C: seven steps, two human, carousel labels, no percentage in the copy (§2.11.8.5)", () => {
+    const final = LANDING_TEXTS.final;
+    expect(final.steps.map((step) => `${step.title} · ${step.owner}`)).toEqual([
+      "Demande reçue · Léa",
+      "Qualification · Hugo",
+      "Relance préparée · Emma",
+      "Validation humaine · Vous",
+      "Rendez-vous · Louis",
+      "Suivi · Sarah",
+      "Mandat · Vous",
+    ]);
+    expect(final.steps.filter((step) => step.human).map((step) => step.key)).toEqual(["review", "mandate"]);
+    expect(final.carousel).toEqual({
+      label: "Les sept étapes d'un dossier",
+      previous: "Étape précédente",
+      next: "Étape suivante",
+      stepPrefix: "Étape n°",
+      human: "Humaine",
+      position: "Étape {n} sur 7",
+      badge: LANDING_TEXTS.journey.badge,
+    });
+    for (const step of final.steps) {
+      expect(step.pending, step.key).toMatch(/…$/);
+      expect(step.done.length, step.key).toBeGreaterThan(0);
+    }
+    expect(JSON.stringify(final)).not.toMatch(/%/);
+  });
+
   it("labels the illustrations as a fictitious simulation", () => {
     expect(LANDING_TEXTS.journey.badge).toMatch(/fictif/i);
     expect(LANDING_TEXTS.journey.badge).toMatch(/simulation/i);
@@ -129,9 +185,9 @@ describe("landing editorial titles", () => {
     });
   });
 
-  it("keeps the prototype note of the final call and drops its redundant body", () => {
+  it("keeps the prototype note of the final call, with the paragraph of block C (§2.11.8.5)", () => {
     expect(LANDING_TEXTS.final.note).toBe("Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.");
-    expect("body" in LANDING_TEXTS.final).toBe(false);
+    expect(LANDING_TEXTS.final.body).toBe("Sept étapes, de la demande au mandat. Deux restent toujours humaines.");
     expect("titleSecondFrom" in LANDING_TEXTS.hero).toBe(false);
     expect("titleEmphasis" in LANDING_TEXTS.problem).toBe(false);
   });

@@ -81,7 +81,15 @@ test("accueil : titre, étiquette, deux actions et bloc « Vous » étiqueté si
     sections.map((section) => section.getAttribute("data-living-scene")),
   );
   expect(scenes).toEqual([...LIVING_SCENES]);
-  await expect(main).not.toContainText(/\d\s?%|€|témoignage/i);
+  // The only « % » of the page is the computed POSITION of block C's carousel
+  // (step 1 of 7 → 14 %, §2.11.8.5), never a claimed figure: checked apart.
+  const claims = await main.evaluate((element) => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("[data-testid='process-percent']").forEach((node) => node.remove());
+    return copy.textContent ?? "";
+  });
+  expect(claims).not.toMatch(/\d\s?%|€|témoignage/i);
+  await expect(page.getByTestId("process-percent")).toHaveText("14 %");
   // No floating contact button: no real channel is configured.
   await expect(page.getByRole("link", { name: /whatsapp|nous contacter/i })).toHaveCount(0);
 });
@@ -173,29 +181,39 @@ test("cas dégradé : sans JavaScript, tout le contenu reste lisible", async ({ 
   await context.close();
 });
 
-test("panneau final : la note est le dernier élément, 16 px sous les boutons, puis le rembourrage (§2.11.3 bis)", async ({ page }) => {
+test("panneau final (bloc C, §2.11.8.5) : titre centré, paragraphe, actions, note 16 px dessous, puis le carrousel des sept étapes", async ({ page }) => {
   for (const width of [1440, 1024, 390, 360]) {
     await page.setViewportSize({ width, height: 900 });
     await openHome(page);
-    const geometry = await page.locator("section[data-living-scene='final'] [data-network-cover]").evaluate((panel) => {
+    const geometry = await page.getByTestId("final-panel").evaluate((panel) => {
+      const centre = panel.getBoundingClientRect().left + panel.getBoundingClientRect().width / 2;
+      const box = (element: Element) => element.getBoundingClientRect();
+      const title = panel.querySelector("#final-title") as HTMLElement;
+      const body = panel.querySelector("[data-testid='final-body']") as HTMLElement;
       const actions = panel.querySelector("[data-testid='final-actions']") as HTMLElement;
       const buttons = actions.firstElementChild as HTMLElement;
       const note = actions.lastElementChild as HTMLElement;
+      const carousel = panel.querySelector("[data-testid='process-carousel']") as HTMLElement;
+      const middle = (element: HTMLElement) => box(element).left + box(element).width / 2;
       return {
-        last: panel.lastElementChild === actions && actions.lastElementChild === note,
         note: note.textContent,
-        gapToNote: note.getBoundingClientRect().top - buttons.getBoundingClientRect().bottom,
-        padding: panel.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom,
+        noteLast: actions.lastElementChild === note,
+        gapToNote: box(note).top - box(buttons).bottom,
+        order: [box(title).top, box(body).top, box(buttons).top, box(note).top, box(carousel).top],
+        offCentre: [title, body, buttons, note].map((element) => Math.abs(middle(element) - centre)),
+        cards: carousel.querySelectorAll("[data-testid='process-card']").length,
         canvases: panel.querySelectorAll("canvas").length,
         overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
       };
     });
-    expect(geometry.last, `${width}: the note closes the panel`).toBe(true);
     expect(geometry.note).toBe(LANDING_TEXTS.final.note);
+    expect(geometry.noteLast, `${width}: the note closes the actions`).toBe(true);
     expect(Math.abs(geometry.gapToNote - 16), `${width}: buttons → note ${geometry.gapToNote}`).toBeLessThanOrEqual(1);
-    // Border (1 px) included: 32 px of padding below 1024, 48 px from 1024.
-    const padding = width >= 1024 ? 48 : 32;
-    expect(Math.abs(geometry.padding - 1 - padding), `${width}: note → bottom ${geometry.padding}`).toBeLessThanOrEqual(1);
+    for (let index = 1; index < geometry.order.length; index += 1) {
+      expect(geometry.order[index]!, `${width}: order ${index}`).toBeGreaterThan(geometry.order[index - 1]!);
+    }
+    for (const offset of geometry.offCentre) expect(offset, `${width}: centred`).toBeLessThanOrEqual(2);
+    expect(geometry.cards).toBe(7);
     expect(geometry.canvases).toBe(0);
     expect(geometry.overflow, `${width}: page overflow`).toBeLessThanOrEqual(0);
   }

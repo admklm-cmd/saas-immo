@@ -1,15 +1,26 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { Reveal } from "@/components/ui/Reveal";
-import { SimulationBadge } from "@/components/ui/SimulationBadge";
-import { cn } from "@/components/ui/cn";
 
 import { LandingHeading } from "./LandingHeading";
+import { GuardsVisual } from "./solution/GuardsVisual";
+import { ProgressVisual } from "./solution/ProgressVisual";
+import { ReportVisual } from "./solution/ReportVisual";
+import { RoadmapVisual } from "./solution/RoadmapVisual";
+import { SolutionTile } from "./solution/SolutionTile";
+import { TeamVisual } from "./solution/TeamVisual";
+import styles from "./solution/solution.module.css";
 
 const TEXTS = LANDING_TEXTS.solution;
+const TILES = TEXTS.tiles;
 
 /**
- * Section « La solution »: the order of a seller's file, owner by owner. The
- * two human checkpoints carry the accent (plan: point de contrôle humain).
+ * Section « La solution » — block B (docs/design-system.md §2.11.8.4): one
+ * idea, a dossier follows a known path between bounded agents and real guard
+ * rails. The heading has no title effect (§2.11.8.2). Below it, the « partner »
+ * grid: the roadmap of the seven steps (on two rows), the rising curve of a
+ * fictitious dossier, the team around « Vous », Sarah's report, and the guard
+ * rails as two true figures. Each tile arrives once, its drawing with it; no
+ * loop. Tiles 1–4 are labelled « Simulation · Exemple fictif ».
  */
 export function LandingSolution() {
   return (
@@ -28,33 +39,23 @@ export function LandingSolution() {
         />
       </Reveal>
 
-      <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8" data-network-cover="">
-        <ol aria-label={TEXTS.railLabel} className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
-          {TEXTS.rail.map((step, index) => {
-            const human = "human" in step && step.human;
-            return (
-              <li
-                key={step.label}
-                data-kind={human ? "human" : "agent"}
-                className={cn(
-                  "rounded-lg border px-4 py-3",
-                  human ? "border-accent bg-accent-soft" : "border-line bg-surface",
-                )}
-              >
-                <span className="text-overline font-semibold text-ink-subtle">{String(index + 1).padStart(2, "0")}</span>
-                <span className="mt-1 block text-sm font-semibold text-ink">{step.label}</span>
-                <span className={cn("block text-xs", human ? "text-accent-strong" : "text-ink-muted")}>
-                  {step.owner}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-        <p className="mt-5 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-          <SimulationBadge />
-          {TEXTS.railNote}
-        </p>
-      </div>
+      <ul className={styles.grid} data-testid="solution-grid">
+        <SolutionTile index={1} icon="pipeline" title={TILES.roadmap.title} body={TILES.roadmap.body} visualLabel={TILES.roadmap.visualLabel} fictive tall>
+          <RoadmapVisual />
+        </SolutionTile>
+        <SolutionTile index={2} icon="growth" title={TILES.progress.title} body={TILES.progress.body} visualLabel={TILES.progress.visualLabel} fictive>
+          <ProgressVisual />
+        </SolutionTile>
+        <SolutionTile index={3} icon="aiAgent" title={TILES.team.title} body={TILES.team.body} visualLabel={TILES.team.visualLabel} fictive>
+          <TeamVisual />
+        </SolutionTile>
+        <SolutionTile index={4} icon="document" title={TILES.report.title} body={TILES.report.body} visualLabel={TILES.report.visualLabel} fictive>
+          <ReportVisual />
+        </SolutionTile>
+        <SolutionTile index={5} icon="humanValidation" title={TILES.guards.title} body={TILES.guards.body} visualLabel={null} fictive={false} fluid>
+          <GuardsVisual />
+        </SolutionTile>
+      </ul>
     </section>
   );
 }

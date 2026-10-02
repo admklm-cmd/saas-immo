@@ -1,0 +1,281 @@
+/*
+ * Block B, tiles 3, 4 and 5 (docs/design-system.md §2.11.8.4): the team around
+ * « Vous », the report Sarah works from, the real guard rails. Same rules as
+ * `solution-paths.module.css`: final state by default, arrival once, filled
+ * backwards, nothing under reduced motion.
+ */
+
+/* --- Tile 3: team ---------------------------------------------------------------- */
+.team {
+  position: absolute;
+  inset: 0;
+}
+
+.teamLines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.teamLines line {
+  stroke: var(--color-ink);
+  stroke-opacity: 0.08;
+  stroke-width: 1;
+}
+
+/* An agent: our tile and its first name, dimmed (the « sides » of the model). */
+.agent {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  transform: translate(-50%, -50%);
+  opacity: 0.7;
+}
+
+.agentName {
+  font-size: 11px;
+  line-height: 13px;
+  color: var(--color-ink-muted);
+}
+
+/* « Vous », sharp and raised, in the middle. */
+.you {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  width: 136px;
+  height: 152px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.youName {
+  margin-top: 0.625rem;
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.youRole {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-subtle);
+}
+
+/* --- Tile 4: report -------------------------------------------------------------- */
+.report {
+  position: absolute;
+  inset: 0;
+}
+
+.sheet {
+  position: absolute;
+  top: 48px;
+  left: 10%;
+  display: flex;
+  width: 70%;
+  height: 80%;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  rotate: -2deg;
+}
+
+/* A line of the report as a grid of dots: no readable word, nothing invented. */
+.sheetLine {
+  display: block;
+  height: 12px;
+  flex: none;
+  background-image: radial-gradient(circle, rgb(24 24 27 / 0.25) 0.75px, transparent 1.25px);
+  background-size: 6px 6px;
+}
+
+.reportCard {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.reportTitle {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.reportMeta {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-subtle);
+}
+
+/* --- Tile 5: guard rails (real rules, plain text) --------------------------------- */
+.guards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px 20px;
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.figure {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  margin: 0;
+  padding-right: 16px;
+}
+
+.figure + .figure {
+  padding-right: 0;
+  padding-left: 16px;
+  border-left: 1px solid var(--color-line);
+}
+
+.figureValue {
+  font-family: var(--font-display);
+  font-size: 56px;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.figureCaption {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-muted);
+}
+
+.rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-line);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.row dt {
+  color: var(--color-ink-muted);
+}
+
+.row dd {
+  margin: 0;
+  font-weight: 500;
+  text-align: right;
+  color: var(--color-ink);
+}
+
+/* --- Arrival, once ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: no-preference) {
+  :global(.reveal[data-reveal="entering"]) .you {
+    animation: people-pop 400ms var(--ease-emphasis) var(--tile-delay) backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .agent {
+    animation: people-leave-centre 480ms var(--ease-emphasis) calc(var(--tile-delay) + var(--agent-index) * 70ms) backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .teamLines {
+    animation: people-fade 300ms var(--ease-standard) calc(var(--tile-delay) + 600ms) backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .sheetLine {
+    animation: people-write 360ms var(--ease-standard) calc(var(--tile-delay) + var(--line-index) * 90ms) backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .reportCard {
+    animation: people-rise-12 320ms var(--ease-emphasis) calc(var(--tile-delay) + 800ms) backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .figure {
+    animation: people-rise-8 400ms var(--ease-emphasis) calc(var(--tile-delay) + var(--figure-index) * 120ms) backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .rows {
+    animation: people-fade 300ms var(--ease-standard) calc(var(--tile-delay) + 400ms) backwards;
+  }
+}
+
+@keyframes people-pop {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+
+/* From the centre of « Vous » to the agent's place (offsets in container units). */
+@keyframes people-leave-centre {
+  from {
+    opacity: 0;
+    translate: var(--team-from-x) var(--team-from-y);
+  }
+}
+
+@keyframes people-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes people-write {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+
+@keyframes people-rise-12 {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes people-rise-8 {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}

@@ -1,0 +1,287 @@
+/*
+ * Process card visual — cards 4 and 7, the two human decisions (« Vous » cursor of block A) (docs/design-system.md §2.11.8.5).
+ * Rule of every visual: the DEFAULT styles are the final state (server HTML,
+ * no JavaScript, reduced motion, a card that has not played); under
+ * `[data-run]` (set on the window, `frame.module.css`) each piece plays once,
+ * filled BACKWARDS only, so nothing lingers when it ends. No red.
+ */
+
+/* --- Card 4: human validation ------------------------------------------------------- */
+.message {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 14px 12px 12px;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radius-md);
+  background-color: rgb(255 255 255 / 0.04);
+}
+
+.messageLines {
+  display: grid;
+  gap: 8px;
+}
+
+.messageLine {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background-color: rgb(255 255 255 / 0.14);
+}
+
+.decisions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.decision,
+.decisionDone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--color-ink-inverse);
+}
+
+.decisionTarget {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Validated: filled light, checked (the default). */
+.decisionDone {
+  border-color: var(--color-ink-inverse);
+  background-color: var(--color-ink-inverse);
+  color: var(--color-inverse);
+}
+
+/* --- Card 7: mandate ------------------------------------------------------------------ */
+.stages {
+  --row: 22px;
+  --row-gap: 4px;
+  position: relative;
+  display: grid;
+  gap: var(--row-gap);
+  margin: 0;
+  padding: 6px 0 0 6px;
+  list-style: none;
+}
+
+/* The rail through the nodes. */
+.stages::before {
+  content: "";
+  position: absolute;
+  top: calc(6px + var(--row) / 2);
+  bottom: calc(var(--row) / 2);
+  left: calc(6px + 5px);
+  width: 1px;
+  background-color: rgb(255 255 255 / 0.14);
+}
+
+.stageRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--row);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  color: var(--color-ink-inverse);
+}
+
+/* A reached stage: filled white (the default). */
+.node {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  flex: none;
+  border: 1px solid var(--color-ink-inverse);
+  border-radius: 999px;
+  background-color: var(--color-ink-inverse);
+}
+
+.nodeLast {
+  position: relative;
+  display: inline-grid;
+  width: 11px;
+  height: 11px;
+  flex: none;
+}
+
+.nodeDashed,
+.nodeSealed {
+  grid-area: 1 / 1;
+  border-radius: 999px;
+}
+
+.nodeDashed {
+  border: 1px dashed rgb(255 255 255 / 0.6);
+  opacity: 0;
+}
+
+/* Sealed by a human: a filled disc with a double contour (the default). */
+.nodeSealed {
+  background-color: var(--color-ink-inverse);
+  outline: 1px solid rgb(255 255 255 / 0.55);
+  outline-offset: 2px;
+}
+
+.stageName {
+  font-weight: 500;
+}
+
+.stagePending {
+  color: var(--color-ink-inverse-muted);
+  opacity: 0;
+}
+
+.confirmTarget {
+  position: relative;
+  display: inline-flex;
+  margin-left: 12px;
+}
+
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--color-ink-inverse);
+  border-radius: 999px;
+  background-color: var(--color-ink-inverse);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--color-inverse);
+}
+
+/* The point of the dossier: it stops at « Estimation faite » (the default). */
+.point {
+  position: absolute;
+  top: calc(6px + (var(--last) - 1) * (var(--row) + var(--row-gap)) + var(--row) / 2 - 4px);
+  left: calc(6px + 1.5px);
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgb(36 87 255 / 0.25);
+}
+
+/* --- Play, once ----------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-run] .cursor {
+    animation: cursor-glide 560ms var(--ease-emphasis) 300ms backwards;
+  }
+
+  [data-run] .cursor > span {
+    animation: cursor-press 120ms var(--ease-standard) 860ms;
+  }
+
+  [data-run] .decisionDone {
+    animation: button-unfilled 200ms var(--ease-standard) 980ms backwards;
+  }
+
+  [data-run] .decisionDone svg {
+    animation: fade-in 200ms var(--ease-standard) 980ms backwards;
+  }
+
+  [data-run] .point {
+    animation: point-climb 640ms var(--ease-standard) 200ms backwards;
+  }
+
+  [data-run] .node {
+    animation: node-reach 120ms var(--ease-standard) calc(200ms + var(--stage-index) * 160ms) backwards;
+  }
+
+  [data-run] .cursorLate {
+    animation: cursor-glide 560ms var(--ease-emphasis) 900ms backwards;
+  }
+
+  [data-run] .cursorLate > span {
+    animation: cursor-press 120ms var(--ease-standard) 1460ms;
+  }
+
+  [data-run] .nodeDashed,
+  [data-run] .stagePending {
+    animation: fade-out 200ms var(--ease-standard) 1600ms backwards;
+  }
+
+  [data-run] .nodeSealed {
+    animation: fade-in 200ms var(--ease-standard) 1600ms backwards;
+  }
+
+  [data-run] .confirm {
+    animation: button-unfilled 200ms var(--ease-standard) 1600ms backwards;
+  }
+
+  [data-run] .confirm svg {
+    animation: fade-in 200ms var(--ease-standard) 1600ms backwards;
+  }
+}
+
+@keyframes cursor-glide {
+  from {
+    translate: 64px 72px;
+  }
+}
+
+@keyframes cursor-press {
+  50% {
+    scale: 0.88;
+  }
+}
+
+@keyframes button-unfilled {
+  from {
+    border-color: rgb(255 255 255 / 0.2);
+    background-color: transparent;
+    color: var(--color-ink-inverse);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+}
+
+@keyframes point-climb {
+  0% {
+    translate: 0 calc(-4 * (var(--row) + var(--row-gap)));
+  }
+  25% {
+    translate: 0 calc(-3 * (var(--row) + var(--row-gap)));
+  }
+  50% {
+    translate: 0 calc(-2 * (var(--row) + var(--row-gap)));
+  }
+  75% {
+    translate: 0 calc(-1 * (var(--row) + var(--row-gap)));
+  }
+  100% {
+    translate: 0 0;
+  }
+}
+
+@keyframes node-reach {
+  from {
+    background-color: transparent;
+  }
+}

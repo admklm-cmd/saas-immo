@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "./cn";
 
-export type BadgeTone = "neutral" | "outline" | "solid" | "dashed";
+export type BadgeTone = "neutral" | "outline" | "solid" | "solid-light" | "dashed";
 
 const TONES: Record<BadgeTone, string> = {
   /** Default: quiet grey chip. */
@@ -11,6 +11,8 @@ const TONES: Record<BadgeTone, string> = {
   outline: "border border-line-strong bg-surface text-ink-muted",
   /** Strongest emphasis available without using colour. */
   solid: "bg-inverse text-ink-inverse",
+  /** The same emphasis on a near-black surface (light chip, ink text). */
+  "solid-light": "bg-ink-inverse text-inverse",
   /** Something is missing or not yet acquired. */
   dashed: "border border-dashed border-line-strong bg-surface text-ink-subtle",
 };
