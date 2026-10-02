@@ -25,6 +25,9 @@ export type MeasuredLetter = {
   ink: LetterBox;
 };
 
+/** Visible width of the dashed outer contour (the stroke is drawn at twice this). */
+export const OUTLINE_PX = 1.5;
+
 export type Palette = { ink: string; accent: string; surface: string; labelFont: string };
 
 export type LetterPaint = {
@@ -93,22 +96,37 @@ export function paintLetters(
   context.textBaseline = "alphabetic";
   context.fillStyle = palette.ink;
   context.strokeStyle = palette.ink;
-  context.lineWidth = 1.5;
-  context.setLineDash([4, 2]);
-  letters.forEach((letter, index) => {
+  const placed = letters.map((letter, index) => {
     const paint = paints[index] ?? { outline: 0, dx: 0, dy: 0 };
-    const x = letter.x + paint.dx;
-    const y = letter.baseline + paint.dy;
-    if (paint.outline < 1) {
-      context.globalAlpha = 1 - paint.outline;
-      context.fillText(letter.char, x, y);
-    }
-    if (paint.outline > 0) {
-      context.globalAlpha = paint.outline;
-      context.strokeText(letter.char, x, y);
-    }
+    return { char: letter.char, x: letter.x + paint.dx, y: letter.baseline + paint.dy, outline: paint.outline };
   });
-  context.setLineDash([]);
+  const outlined = placed.filter((letter) => letter.outline > 0);
+  if (outlined.length > 0) {
+    // Outer contour only (docs/design-system.md §2.11.3): the variable font
+    // draws overlapping contours (bar of the « e », terminals of the « c »),
+    // so a plain stroke shows inner traces. The dashed stroke is drawn at
+    // twice the visible width, then the glyph itself is cut out: only the
+    // outer half (OUTLINE_PX) stays. The cut happens before any plain fill,
+    // frame or speck is painted, so it can only remove outline ink.
+    context.lineWidth = OUTLINE_PX * 2;
+    context.setLineDash([4, 2]);
+    for (const letter of outlined) {
+      context.globalAlpha = letter.outline;
+      context.strokeText(letter.char, letter.x, letter.y);
+    }
+    context.setLineDash([]);
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = "destination-out";
+    for (const letter of outlined) {
+      context.fillText(letter.char, letter.x, letter.y);
+    }
+    context.globalCompositeOperation = "source-over";
+  }
+  for (const letter of placed) {
+    if (letter.outline >= 1) continue;
+    context.globalAlpha = 1 - letter.outline;
+    context.fillText(letter.char, letter.x, letter.y);
+  }
   context.globalAlpha = 1;
 }
 

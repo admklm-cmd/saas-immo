@@ -470,6 +470,57 @@
 }
 
 /*
+ * Landing only, local variant of `.network-veil-title` for the title of the
+ * problem section (option A, docs/design-system.md §2.11.4): its two
+ * subtle-ink lines sit on a 75 % veil, so that even a pure ink pixel of the
+ * network keeps ≥ 3:1 under them, whatever the camera pose (motion allowed or
+ * reduced). The ink line and every other title stay on 70 %. The extra layer
+ * is 1/6 of white over the 70 % of the block veil: 1 − 0.30 × 5/6 = 0.75.
+ * One layer per subtle line, abutting (no overlap between them); the first
+ * reaches above the block like the block veil, the last a little below its
+ * line (descenders), then fades out.
+ */
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"] {
+  --veil-x: 3rem;
+  --veil-top: 0px;
+  --veil-top-fade: 0px;
+  --veil-bottom: 0px;
+  --veil-bottom-fade: 0px;
+  position: relative;
+  isolation: isolate;
+}
+
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"]:first-child {
+  --veil-top: 1.5rem;
+  --veil-top-fade: 1.25rem;
+}
+
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"]:not(:has(+ [data-title-tone="subtle"])) {
+  --veil-bottom: 0.25em;
+  --veil-bottom-fade: 0.25em;
+}
+
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"]::before {
+  content: "";
+  position: absolute;
+  top: calc((var(--veil-top) + var(--veil-top-fade)) * -1);
+  bottom: calc((var(--veil-bottom) + var(--veil-bottom-fade)) * -1);
+  left: calc((var(--veil-x) + 0.5rem) * -1);
+  right: calc((var(--veil-x) + 0.5rem) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 16.7%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-top-fade), #000 calc(100% - var(--veil-bottom-fade)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-top-fade), #000 calc(100% - var(--veil-bottom-fade)), transparent);
+  mask-composite: intersect;
+}
+
+/*
  * Landing only: the 90 % veils of the small text reach 0.375rem past the box
  * before fading out (the glyph boxes of a label overflow its line box), so
  * no fiber of the network reaches the letters at full strength

@@ -138,6 +138,7 @@ export function EditorialTitle({
               <span
                 className={cn(styles.line, lineIndex < subtleBefore && styles.subtle)}
                 data-title-line={lineIndex}
+                data-title-tone={lineIndex < subtleBefore ? "subtle" : undefined}
               >
                 {tokens.map((token, index) => (
                   <span key={`${index}-${token}`}>

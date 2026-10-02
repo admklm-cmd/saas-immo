@@ -46,6 +46,8 @@ describe("EditorialTitle", () => {
     expect(group.className).toMatch(/nowrap/);
     expect(group.textContent).toBe("l'administratif.");
     expect(Array.from(lines).map((line) => /subtle/.test(line.className))).toEqual([true, true, false]);
+    // Hook of the local 75 % veil of the problem title (docs/design-system.md §2.11.4).
+    expect(Array.from(lines).map((line) => line.getAttribute("data-title-tone"))).toEqual(["subtle", "subtle", null]);
   });
 
   it("does not accent a word found only inside another word", () => {

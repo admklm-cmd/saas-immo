@@ -14,8 +14,10 @@ const TEXTS = LANDING_TEXTS.problem;
  *
  * One veil per role of text (docs/design-system.md §2.11.4): overline and
  * paragraph on `.particle-veil` (90 %), the title on `.network-veil-title`
- * (70 %, option A validated by the user: the network stays visible behind the
- * two subtle-ink lines, ≥ 3:1 measured). Each block is a quiet zone.
+ * (70 %) with its local variant `.network-veil-title-subtle`: the two
+ * subtle-ink lines on 75 % (option A validated by the user: the network stays
+ * visible behind them, ≥ 3:1 whatever the camera pose, measured section at the
+ * top of the viewport, motion allowed and reduced). Each block is a quiet zone.
  */
 export function ProblemHeading() {
   return (
@@ -23,7 +25,7 @@ export function ProblemHeading() {
       <div className="particle-veil particle-veil-tight" data-network-quiet="">
         <Overline>{TEXTS.kicker}</Overline>
       </div>
-      <div className="network-veil-title max-w-full" data-network-quiet="">
+      <div className="network-veil-title network-veil-title-subtle max-w-full" data-network-quiet="">
         <EditorialTitle
           as="h2"
           id="problem-title"

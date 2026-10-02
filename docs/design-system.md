@@ -1267,7 +1267,9 @@ titre, quelle que soit la largeur du contenu.
 > **Validation visuelle** : audit du `web-designer` (aller-retour 1)
 > `docs/audits/2026-10-02-landing-motion.md` — **CONFORME AVEC CORRECTIONS MINEURES** : voile des
 > deux lignes grises du titre « problème » à 75 % (2,97:1 mesuré au pire à 70 %), contour du
-> wordmark sans tracés internes (cosmétique).
+> wordmark sans tracés internes (cosmétique). **Corrections appliquées (01/10, `frontend-ux`)** :
+> voile local à 75 % des deux lignes grises (pire mesuré 3,26:1, section en haut de fenêtre,
+> réduit, 1440) ; contour extérieur seul du wordmark (tracés internes 245 px → 0 sur le « e »).
 > Périmètre : **`/` seulement.** Le CRM, `/estimation`, `.particle-veil`, `RouteParticles` et le
 > badge « Simulation » du CRM ne changent pas.
 > **Révision « 02/10 — référence utilisateur »** : le réseau (§ 2.11.4) est réécrit d'après la
@@ -1425,6 +1427,15 @@ toléré entre lettre HTML et lettre dessinée : ≤ 1 px. Coût ≤ 2 ms par im
 est déjà lu dans le logo de l'en-tête et le pied de page ; un `role="img"` l'annoncerait une
 troisième fois au milieu de l'appel à l'action. Le mot reste visuellement lisible à tout instant
 (17,7:1 au repos ; en contour, trait encre 1,5 px). Aucune information n'en dépend.
+
+**Contour extérieur seul** (correction de l'audit du 01/10) : la police variable superpose des
+contours (barre du « e », terminaisons du « c ») ; un `strokeText` simple montre ces tracés
+internes. Le pointillé est tracé à 2 × 1,5 px, puis la lettre elle-même est découpée
+(`destination-out` + `fillText`) : seule la moitié extérieure (1,5 px) reste, comme le TechText
+d'origine. Mesuré à 1440 (DPR 2) : 0 pixel d'encre à plus de 2,5 px dans le glyphe (245 avant
+sur le « e ») ; le contour dépasse le glyphe HTML de 2,12 px au plus (1,12–1,42 px avant : + 0,7 à
+1,0 px, la largeur visible du trait) ; position des lettres inchangée ; coût d'une image active
+p95 0,20 ms, max 0,30 ms (identique avant / après).
 
 #### 2.11.4 Réseau neuronal 3D (évolution de `LivingBackground`) — révisé 02/10 — référence utilisateur
 
@@ -1637,7 +1648,12 @@ toutes les 0,8–3 s, sans fin].**
   de `/`) : texte < 24 px (≤ 18,66 px gras) **≥ 4,5:1** (cible ≥ 5,4) ; titres en encre
   **≥ 7:1** ; lignes de titre `ink-subtle` (section « problème », grand texte) **≥ 3:1** au
   pixel le plus sombre **et ≥ 4,5:1** au pixel médian. *Tranché par l'utilisateur : option A
-  (réseau visible derrière ces lignes ; mesuré 3,65:1 au pire, médian 5,69:1).* Ces deux lignes passent de ≈ 4,7:1 (réseau effacé) à ≥ 3:1
+  (réseau visible derrière ces lignes ; mesuré 3,65:1 au pire, médian 5,69:1).* **Révisé
+  (audit du 01/10)** : section amenée en haut de fenêtre, une fibre proche passait sous « vos »
+  (2,97:1 / 2,90:1 réduit à 70 %). Ces deux lignes seulement sont posées sur **75 %**
+  (`.network-veil-title-subtle`, landing seulement : une couche à 1/6 par ligne grise
+  `[data-title-tone="subtle"]`, au-dessus du voile de bloc à 70 %) ; 75 % tient ≥ 3,3:1 même sur
+  un pixel d'encre pur, quelle que soit la pose. La ligne en encre et les autres titres restent à 70 %. Ces deux lignes passent de ≈ 4,7:1 (réseau effacé) à ≥ 3:1
   (AA grand texte, 1.4.3) pour que le réseau soit réellement derrière le titre ; si
   l'utilisateur préfère l'ancien niveau, ces deux lignes reprennent `.particle-veil` (90 %).
 
@@ -1678,7 +1694,7 @@ images qui copient le cache).
 | Caméra posée après le dernier événement de défilement | 18 ms (petit pas final) ; ≤ 0,95 s pour le plus grand saut (unitaire) | ≤ 1,2 s |
 | Encre (alpha moyen, `settled`) | 1440 : 1,54–1,64 % ; 1024 : 1,37–1,49 % ; 390 : 1,24–1,29 % ; 360 : 1,33–1,38 % | 1,2–2,2 % / 0,8–2,0 % |
 | Pixels cobalt au repos et en mouvement réduit | 0 | 0 |
-| Contraste minimal (pixel le plus sombre, texte masqué, 3 instants d'arrivée + repos, toutes sections) | 1440 : titres encre 9,13:1 · petits textes 4,91:1 · lignes grises du titre « problème » 3,88:1 (médian 5,69:1). 390 : 9,75 · 4,59 · 3,65 (médian 5,69) | ≥ 7 · ≥ 4,5 · ≥ 3 (médian ≥ 4,5) |
+| Contraste minimal (pixel le plus sombre, texte masqué, 3 instants d'arrivée + repos, toutes sections, + section « problème » en haut de fenêtre en mouvement autorisé et réduit) | 1440 : titres encre 9,13:1 · petits textes 4,91:1 · lignes grises du titre « problème » 3,33:1 autorisé, 3,26:1 réduit (médian 5,69:1). 390 : 9,75 · 4,59 · 3,77 autorisé, 3,76 réduit (médian 5,69). *Avant correction (voile 70 %) : 2,97 / 2,90 à 1440, 3,47 / 3,44 à 390, en haut de fenêtre* | ≥ 7 · ≥ 4,5 · ≥ 3 (médian ≥ 4,5) |
 
 *Ce que mesure `data-frame-ms`* : le travail du script de dessin (projection, enregistrement des
 tracés, copies), comme la mesure de la référence (7,7 → 3,6 ms). La rastérisation se fait ensuite
@@ -1794,7 +1810,7 @@ global (état final immédiat).
    dendritiques qui s'affinent, liaisons sinueuses, impulsions à reflet et traînée, cœur qui
    s'illumine) : verdict visuel écrit dans l'audit.
 8. **Contraste** : seuils du § 2.11.4 sur tous les textes hors carte de `/` ; voile de titre
-   à 70 %.
+   à 70 % (75 % sous les deux lignes grises du titre « problème »).
 9. **Couleurs** : aucun pixel rouge ; cobalt uniquement sur traits, cadres, impulsions, cœurs,
    cadre du wordmark ; **en `settled` et en mouvement réduit, aucun pixel cobalt dans le canvas
    du réseau** ; aucun `shadowBlur`, `drop-shadow` ni `filter` dans les fichiers du lot ; seuls

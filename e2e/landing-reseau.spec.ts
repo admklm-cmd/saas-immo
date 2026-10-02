@@ -33,6 +33,15 @@ async function openHome(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
 }
 
+/**
+ * Brings a section to the top of the viewport (`scrollIntoView({ block: "start" })`):
+ * the camera pose that put a near fiber under « vos » in the problem title
+ * (audit 2026-10-02-landing-motion, 2.97:1 before the 75 % veil).
+ */
+async function topSection(page: Page, scene: string): Promise<void> {
+  await page.locator(`section[data-living-scene='${scene}']`).evaluate((section) => section.scrollIntoView({ block: "start", behavior: "instant" }));
+}
+
 function canvas(page: Page) {
   return page.getByTestId("living-background");
 }
@@ -206,6 +215,12 @@ test.describe("avec animations", () => {
         await page.waitForTimeout(2_600);
         record(`${viewport.width} ${scene}`, await measureContrast(page));
       }
+      // The problem section at the top of the viewport: the worst pose measured for its subtle lines.
+      await topSection(page, "probleme");
+      await page.waitForTimeout(300);
+      await waitForMotion(page, "settled", 6_000);
+      await page.waitForTimeout(600);
+      record(`${viewport.width} probleme en haut`, await measureContrast(page));
       test.info().annotations.push({
         type: `contraste minimal ${viewport.width}`,
         description: Object.entries(worst)
@@ -215,6 +230,30 @@ test.describe("avec animations", () => {
     }
     expect(report).toEqual([]);
   });
+});
+
+test("(i) mouvement réduit : contraste du titre « problème » amené en haut de la fenêtre, 1440 et 390", async ({ page }) => {
+  test.setTimeout(120_000);
+  const report: string[] = [];
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await openHome(page);
+    await waitForMotion(page, "reduced", 5_000);
+    await topSection(page, "probleme");
+    await page.waitForTimeout(600);
+    const results = await measureContrast(page);
+    const subtle = results.filter((line) => line.role === "title-subtle");
+    expect(subtle.length, "subtle lines measured").toBeGreaterThan(0);
+    test.info().annotations.push({
+      type: `contraste lignes grises réduit ${viewport.width}`,
+      description: `min ${Math.min(...subtle.map((line) => line.darkest)).toFixed(2)} · médian ${Math.min(...subtle.map((line) => line.median)).toFixed(2)}`,
+    });
+    report.push(...contrastFailures(results).map((failure) => `${viewport.width} réduit: ${failure}`));
+  }
+  expect(report).toEqual([]);
 });
 
 test("(f) mouvement réduit : pose fixe, aucun cobalt, rien ne bouge au défilement, aucune image demandée", async ({ page }) => {
