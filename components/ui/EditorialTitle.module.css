@@ -63,12 +63,12 @@
 
 @media (prefers-reduced-motion: no-preference) {
   /* On load (hero, /estimation). */
-  .load .focusWord {
+  :where(.load) .focusWord {
     animation: title-focus-in var(--title-focus-duration) var(--ease-emphasis) backwards;
     animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
   }
 
-  .load .sharpWord {
+  :where(.load) .sharpWord {
     animation: title-sharp-in var(--duration-base) var(--ease-standard) backwards;
     animation-delay: var(--title-line-delay);
   }
@@ -85,12 +85,12 @@
     opacity: 0;
   }
 
-  :global(.reveal[data-reveal="entering"]) .inView .focusWord {
+  :where(:global(.reveal[data-reveal="entering"]) .inView) .focusWord {
     animation: title-focus-in var(--title-focus-duration) var(--ease-emphasis) backwards;
     animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
   }
 
-  :global(.reveal[data-reveal="entering"]) .inView .sharpWord {
+  :where(:global(.reveal[data-reveal="entering"]) .inView) .sharpWord {
     animation: title-sharp-in var(--duration-base) var(--ease-standard) backwards;
     animation-delay: var(--title-line-delay);
   }
@@ -132,7 +132,9 @@
 
 /*
  * Effects of the accented word — landing only (docs/design-system.md §2.11.2).
- * `accentEffect`: underline (hero), focus (problem), focus-underline (final).
+ * `accentEffect`: underline (hero), focus (problem), focus-underline (solution,
+ * agents, control, result, final). Entry rules sit under `:where()` (0,1,0) so
+ * the hover replay (EditorialTitleReplay.module.css, §2.11.2 D) beats them.
  * Ornaments are empty spans inside `.title-accent`, absolutely positioned: the
  * line box never changes. Lengths are in the accent's em (the accent is set at
  * `--accent-word-size`, 1.06 × the title): 0.02 title em = 0.019 em here.
@@ -187,6 +189,14 @@
   pointer-events: none;
 }
 
+/* A comma or semicolon right after the word (« chemin, ») dips under the
+   baseline into the mark: the mark stops at the word (§2.11.2, measured 02/10:
+   8 px of the comma in the bar at 1440 with +0.06 em, still 1 px at `right: 0`,
+   none at 0.02 em short of the box). Other words keep +0.06 em. */
+.markBeforeDescender {
+  right: 0.02em;
+}
+
 /* The frame: four L corners (8 gradient layers), sharp, no shadow, around
    the ink of the word (0.12 em left and right, 0.08 em above the ascenders,
    0.04 em under the lowest descender, title em). Never shown at rest: it only
@@ -237,7 +247,7 @@
   }
 
   /* A. Underline, hero (on load): drawn left to right, 760 ms → 1 400 ms. */
-  .load .mark {
+  :where(.load) .mark {
     animation: accent-mark-draw var(--mark-draw) var(--ease-draw) 760ms backwards;
   }
 
@@ -248,26 +258,26 @@
 
   /* B. Focus, problem section: the rest stays blurred, the frame tightens on
      the word, holds, then everything turns sharp (≤ 2.5 s). */
-  :global(.reveal[data-reveal="entering"]) .inView.effectFocus .focusWord {
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocus) .focusWord {
     animation: title-focus-hold 2340ms backwards;
     animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
   }
 
-  :global(.reveal[data-reveal="entering"]) .inView.effectFocus .frame {
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocus) .frame {
     animation: accent-frame-focus 2020ms 160ms backwards;
   }
 
   /* C. Focus then underline, final panel: the frame fades while the mark is drawn. */
-  :global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline .focusWord {
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline) .focusWord {
     animation: title-focus-hold-short 2220ms backwards;
     animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
   }
 
-  :global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline .frame {
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline) .frame {
     animation: accent-frame-focus-short 1620ms 160ms backwards;
   }
 
-  :global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline .mark {
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline) .mark {
     animation: accent-mark-draw var(--mark-draw) var(--ease-draw) 1560ms backwards;
   }
 }

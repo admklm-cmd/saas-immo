@@ -27,6 +27,8 @@ export function LandingAgents() {
           titleLines={TEXTS.titleLines}
           titleAccent={TEXTS.titleAccent}
           body={TEXTS.body}
+          accentEffect="focus-underline"
+          accentReplay
         />
       </Reveal>
       <AgentsCarousel />

@@ -8,8 +8,10 @@
  * for point. Built once per class (never per frame); every array the frame
  * functions read is a typed array, so drawing allocates nothing.
  *
- * World units are those of the reference: x ∈ [-1.95, 1.95], y ∈ [-1.25, 1.25],
- * z ∈ [-0.5, 1.5] (z grows away from the viewer).
+ * World units are those of the reference: x ∈ [-X, X] (X = NODE_X_RANGE of the
+ * class), y ∈ [-1.25, 1.25], z ∈ [zMin(|x|), 1.5] (z grows away from the
+ * viewer): no near neuron on the side edges (§2.11.4, « Composition centrée,
+ * bords atténués »).
  */
 
 import { packNetwork, type RawFiber } from "./network-pack";
@@ -46,6 +48,24 @@ export const STEP_DENSITY = 65;
 /** Recursion depth of a dendritic tree (each root branch makes 1 + 2 + 4 fibers). */
 const BRANCH_LEVELS = 2;
 const PLACEMENT_ATTEMPTS = 20;
+
+/** Half-width of the neuron field (world x), per class: 1.85 wide and medium (1.95 before 02/10), compact unchanged. */
+export const NODE_X_RANGE: Record<ScreenClass, number> = { large: 1.85, medium: 1.85, compact: 1.95 };
+/** Half-height of the neuron field (world y). */
+export const NODE_Y_RANGE = 1.25;
+/** Depth range of the neurons (world z, grows away from the viewer). */
+export const NODE_Z_NEAR = -0.5;
+export const NODE_Z_FAR = 1.5;
+/** Raise of the nearest allowed depth at the side edges (fallback 0.45 if a contrast threshold falls). */
+export const EDGE_DEPTH_LIFT = 0.6;
+/** |x| from which the nearest allowed depth starts to rise. */
+export const EDGE_DEPTH_FROM = 1;
+
+/** Nearest allowed depth of a neuron at x: −0.5 + lift × smoothstep(1.0, X, |x|). */
+export function minDepthAt(x: number, range: number, lift = EDGE_DEPTH_LIFT): number {
+  const t = Math.min(1, Math.max(0, (Math.abs(x) - EDGE_DEPTH_FROM) / (range - EDGE_DEPTH_FROM)));
+  return NODE_Z_NEAR + lift * t * t * (3 - 2 * t);
+}
 
 export type Network = {
   screenClass: ScreenClass;
@@ -101,12 +121,21 @@ export type BuildOptions = {
   stepDensity?: number;
   /** Neuron count override (fallback « large : 34 → 30 »). */
   neurons?: number;
+  /** Raise of the nearest depth on the edges (fallback 0.6 → 0.45). */
+  edgeDepthLift?: number;
 };
 
 /** Builds the network of a screen class. Same options → same arrays. */
-export function buildNetwork({ seed, screenClass, stepDensity = STEP_DENSITY, neurons }: BuildOptions): Network {
+export function buildNetwork({
+  seed,
+  screenClass,
+  stepDensity = STEP_DENSITY,
+  neurons,
+  edgeDepthLift = EDGE_DEPTH_LIFT,
+}: BuildOptions): Network {
   const random = createRandom(deriveSeed(seed, screenClass));
   const count = neurons ?? CLASS_BUDGET[screenClass].neurons;
+  const range = NODE_X_RANGE[screenClass];
 
   const nodeX = new Float32Array(count);
   const nodeY = new Float32Array(count);
@@ -120,9 +149,9 @@ export function buildNetwork({ seed, screenClass, stepDensity = STEP_DENSITY, ne
     let y = 0;
     let z = 0;
     for (let attempt = 0; attempt < PLACEMENT_ATTEMPTS; attempt++) {
-      x = random.range(-1.95, 1.95);
-      y = random.range(-1.25, 1.25);
-      z = random.range(-0.5, 1.5);
+      x = random.range(-range, range);
+      y = random.range(-NODE_Y_RANGE, NODE_Y_RANGE);
+      z = random.range(minDepthAt(x, range, edgeDepthLift), NODE_Z_FAR);
       let clear = true;
       for (let j = 0; j < i; j++) {
         if (Math.hypot(nodeX[j]! - x, nodeY[j]! - y, (nodeZ[j]! - z) * 0.4) <= MIN_SPACING) {

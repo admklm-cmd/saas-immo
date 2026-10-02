@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createProjector, poseFromProgress, projectInto, setProjector } from "./camera";
+import { centerOffset } from "./composition";
 import { buildNetwork, CLASS_BUDGET, fingerprint, LINK_PASSES, MIN_SPACING, samplePath, SHAPE_POINTS, type Network, type ScreenClass } from "./network";
 import { createRandom, DEFAULT_SEED } from "./random";
 
@@ -96,7 +97,8 @@ describe("network: coverage (spaced neurons, not a carpet)", () => {
       const out = new Float64Array(4);
       for (const progress of [0, 0.5, 1]) {
         const pose = poseFromProgress(progress);
-        const projector = setProjector(createProjector(), pose.yaw, pose.pitch, width, height, screenClass);
+        // Projected as the engine does: centre shifted by the recentring of §2.11.4.
+        const projector = setProjector(createProjector(), pose.yaw, pose.pitch, width, height, screenClass, centerOffset(network, width, height, screenClass));
         const cells = new Array<number>(cols * rows).fill(0);
         for (let n = 0; n < network.nodeCount; n++) {
           projectInto(projector, network.nodeX[n]!, network.nodeY[n]!, network.nodeZ[n]!, out, 0);
@@ -114,7 +116,7 @@ describe("network: coverage (spaced neurons, not a carpet)", () => {
     const out = new Float64Array(4);
     for (const progress of [0, 0.5, 1]) {
       const pose = poseFromProgress(progress);
-      const projector = setProjector(createProjector(), pose.yaw, pose.pitch, 1440, 900, "large");
+      const projector = setProjector(createProjector(), pose.yaw, pose.pitch, 1440, 900, "large", centerOffset(network, 1440, 900, "large"));
       const tiles = new Array<number>(6 * 4).fill(0);
       for (let i = 0; i < network.pointCount; i++) {
         projectInto(projector, network.points[i * 3]!, network.points[i * 3 + 1]!, network.points[i * 3 + 2]!, out, 0);

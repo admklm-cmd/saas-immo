@@ -98,6 +98,8 @@ export function LivingBackground({ initialScene = "hero" }: { initialScene?: Liv
         canvas.dataset.nodes = String(network.nodeCount);
         canvas.dataset.links = String(network.linkCount);
         canvas.dataset.fibers = String(network.fiberCount);
+        // Recentring of §2.11.4 (lever 3), CSS px: computed on resize only.
+        canvas.dataset.centerOffset = engine.projectionOffset.toFixed(1);
       }
     };
     resize();

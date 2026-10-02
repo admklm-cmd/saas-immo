@@ -20,6 +20,8 @@ export function LandingControl() {
           titleLines={TEXTS.titleLines}
           titleAccent={TEXTS.titleAccent}
           body={TEXTS.body}
+          accentEffect="focus-underline"
+          accentReplay
         />
       </Reveal>
       <ul className="stagger mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

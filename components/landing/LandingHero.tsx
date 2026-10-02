@@ -41,6 +41,7 @@ export function LandingHero() {
             size="poster"
             reveal="load"
             accentEffect="underline"
+            accentReplay
           />
         </div>
 

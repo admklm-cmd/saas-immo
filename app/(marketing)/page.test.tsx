@@ -45,3 +45,21 @@ it("offers both public estimation and agency access, and no floating contact but
   expect(signInLinks.every((link) => link.getAttribute("href") === "/connexion")).toBe(true);
   expect(screen.queryByRole("link", { name: /whatsapp|contact/i })).toBeNull();
 });
+
+it("makes exactly the seven landing titles replayable on hover, each with its effect (§2.11.2)", () => {
+  const { container } = render(<HomePage />);
+  const titles = Array.from(container.querySelectorAll("[data-accent-replayable]"));
+  expect(titles.map((title) => [title.id, title.getAttribute("data-accent-effect")])).toEqual([
+    ["hero-title", "underline"],
+    ["problem-title", "focus"],
+    ["solution-title", "focus-underline"],
+    ["agents-title", "focus-underline"],
+    ["control-title", "focus-underline"],
+    ["result-title", "focus-underline"],
+    ["final-title", "focus-underline"],
+  ]);
+  // The final panel ends on its note, no canvas inside it (§2.11.3 bis).
+  const actions = screen.getByTestId("final-actions");
+  expect(actions.lastElementChild?.textContent).toBe(LANDING_TEXTS.final.note);
+  expect(actions.parentElement?.querySelector("canvas")).toBeNull();
+});

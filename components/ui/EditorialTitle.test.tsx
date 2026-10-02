@@ -186,3 +186,61 @@ describe("EditorialTitle accentEffect (docs/design-system.md §2.11.2)", () => {
     expect(ornaments().frames).toHaveLength(0);
   });
 });
+
+describe("EditorialTitle accentReplay (docs/design-system.md §2.11.2 D)", () => {
+  it.each(["underline", "focus", "focus-underline"] as const)("marks a %s title replayable only on request", (effect) => {
+    renderTitle({ accentEffect: effect, accentReplay: true });
+    const heading = screen.getByRole("heading", { level: 2, name: SENTENCE });
+    expect(heading.getAttribute("data-accent-replayable")).toBe("");
+    // Rendered at rest: the controller sets these, never the server.
+    expect(heading.hasAttribute("data-accent-played")).toBe(false);
+    expect(heading.hasAttribute("data-accent-replay")).toBe(false);
+    cleanup();
+    renderTitle({ accentEffect: effect });
+    expect(screen.getByRole("heading", { level: 2 }).hasAttribute("data-accent-replayable")).toBe(false);
+  });
+
+  it("is never replayable without an effect (CRM, /estimation) nor without an accented word", () => {
+    renderTitle({ accentReplay: true });
+    expect(screen.getByRole("heading", { level: 2 }).hasAttribute("data-accent-replayable")).toBe(false);
+    cleanup();
+    render(
+      <EditorialTitle as="h2" id="t" lines={["Sans mot"]} accent="absent" size="statement" reveal="in-view" accentEffect="focus" accentReplay />,
+    );
+    expect(screen.getByRole("heading", { level: 2 }).hasAttribute("data-accent-replayable")).toBe(false);
+  });
+
+  it("does not change the accessible name nor add any text", () => {
+    renderTitle({ accentEffect: "focus-underline", accentReplay: true });
+    const visual = screen.getByTestId("editorial-title-visual");
+    expect(visual.textContent?.replace(/\s+/g, " ").trim()).toBe(SENTENCE);
+    expect(screen.getByRole("heading", { level: 2, name: SENTENCE }).getAttribute("tabindex")).toBeNull();
+  });
+});
+
+describe("EditorialTitleReplay.module.css (specificity contract, §2.11.2 D)", () => {
+  const strip = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "");
+  const base = strip(readFileSync(join(process.cwd(), "components/ui/EditorialTitle.module.css"), "utf8"));
+  const replay = strip(readFileSync(join(process.cwd(), "components/ui/EditorialTitleReplay.module.css"), "utf8"));
+
+  it("keeps every entry rule under :where() so « played » and « replay » win without !important", () => {
+    expect(base + replay).not.toMatch(/!important/);
+    // Every rule that declares an entry animation starts with :where(…).
+    for (const match of base.matchAll(/([^{}]+)\{[^{}]*animation:\s*(?!none)[a-z]/g)) {
+      expect(match[1]!.trim()).toMatch(/^:where\(/);
+    }
+    expect(replay).toMatch(/\[data-accent-replayable\]\[data-accent-played\] :is\(/);
+  });
+
+  it("replays only when motion is welcome, never loops, and holds the spec durations", () => {
+    const welcome = replay.slice(replay.indexOf("@media (prefers-reduced-motion: no-preference)"));
+    expect(welcome).toMatch(/replay-words 1400ms/);
+    expect(welcome).toMatch(/replay-frame-focus 1180ms/);
+    expect(welcome).toMatch(/replay-frame-focus-underline 1040ms/);
+    expect(welcome).toMatch(/replay-mark-underline 960ms/);
+    expect(welcome).toMatch(/replay-mark-focus-underline 1400ms/);
+    const outside = replay.slice(0, replay.indexOf("@media"));
+    expect(outside).not.toMatch(/replay-/);
+    expect(replay).not.toMatch(/infinite|drop-shadow|box-shadow|cursor/);
+  });
+});

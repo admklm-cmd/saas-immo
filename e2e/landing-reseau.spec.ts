@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { HERO_TITLE } from "@/components/landing-texts";
 
 import {
+  canvasBands,
   canvasPixels,
   canvasSnapshot,
   centerSection,
@@ -179,6 +180,51 @@ test.describe("avec animations", () => {
     expect((await canvasPixels(page)).cobalt).toBe(0);
     await expectStill(page);
     await expect(canvas(page)).toHaveAttribute("data-sequences", "arrivee");
+  });
+
+  test("(7 bis) composition centrée : bords latéraux plus clairs que le centre, en haut et au milieu de la page (1440)", async ({ page }) => {
+    test.setTimeout(90_000);
+    await openHome(page);
+    await waitForMotion(page, "settled", 15_000);
+    const offset = Number(await canvas(page).getAttribute("data-center-offset"));
+    test.info().annotations.push({ type: "décalage du centre 1440 (px)", description: String(offset) });
+    expect(Math.abs(offset)).toBeLessThanOrEqual(144);
+    for (const where of ["haut", "milieu"] as const) {
+      if (where === "milieu") {
+        await page.evaluate(() => window.scrollTo({ top: (document.documentElement.scrollHeight - window.innerHeight) / 2, behavior: "instant" }));
+        await waitForMotion(page, "camera", 3_000).catch(() => undefined);
+        await waitForMotion(page, "settled", 10_000);
+      }
+      const bands = await canvasBands(page);
+      const ratio = Math.max(bands.left, bands.right) / bands.center;
+      test.info().annotations.push({
+        type: `bandes 10 % / centre 60 %, ${where} de page`,
+        description: `gauche ${(bands.left * 100).toFixed(2)} % · droite ${(bands.right * 100).toFixed(2)} % · centre ${(bands.center * 100).toFixed(2)} % · ratio max ${ratio.toFixed(2)}`,
+      });
+      expect(ratio, `${where}: extreme tenths vs central 60 %`).toBeLessThanOrEqual(0.8);
+      const pixels = await canvasPixels(page);
+      test.info().annotations.push({ type: `encre 1440 ${where} (%)`, description: (pixels.ink * 100).toFixed(2) });
+      expect(pixels.cobalt).toBe(0);
+      expect(pixels.ink).toBeGreaterThanOrEqual(0.012);
+      expect(pixels.ink).toBeLessThanOrEqual(0.022);
+    }
+  });
+
+  test("(h) encre au repos à 1024 × 768 et 1280 × 800 dans la bande (classes moyenne et large)", async ({ page }) => {
+    for (const viewport of [
+      { width: 1024, height: 768 },
+      { width: 1280, height: 800 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await openHome(page);
+      await waitForMotion(page, "settled", 15_000);
+      const pixels = await canvasPixels(page);
+      test.info().annotations.push({ type: `encre ${viewport.width} (%)`, description: (pixels.ink * 100).toFixed(2) });
+      test.info().annotations.push({ type: `décalage du centre ${viewport.width} (px)`, description: String(await canvas(page).getAttribute("data-center-offset")) });
+      expect(pixels.cobalt).toBe(0);
+      expect(pixels.ink).toBeGreaterThanOrEqual(0.012);
+      expect(pixels.ink).toBeLessThanOrEqual(0.022);
+    }
   });
 
   test("(i) contraste des textes hors carte : pendant l'arrivée et au repos, 1440 et 390", async ({ page }) => {

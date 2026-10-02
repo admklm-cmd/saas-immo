@@ -155,6 +155,34 @@ test("cas dégradé : sans JavaScript, tout le contenu reste lisible", async ({ 
   await context.close();
 });
 
+test("panneau final : la note est le dernier élément, 16 px sous les boutons, puis le rembourrage (§2.11.3 bis)", async ({ page }) => {
+  for (const width of [1440, 1024, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 });
+    await openHome(page);
+    const geometry = await page.locator("section[data-living-scene='final'] [data-network-cover]").evaluate((panel) => {
+      const actions = panel.querySelector("[data-testid='final-actions']") as HTMLElement;
+      const buttons = actions.firstElementChild as HTMLElement;
+      const note = actions.lastElementChild as HTMLElement;
+      return {
+        last: panel.lastElementChild === actions && actions.lastElementChild === note,
+        note: note.textContent,
+        gapToNote: note.getBoundingClientRect().top - buttons.getBoundingClientRect().bottom,
+        padding: panel.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom,
+        canvases: panel.querySelectorAll("canvas").length,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(geometry.last, `${width}: the note closes the panel`).toBe(true);
+    expect(geometry.note).toBe(LANDING_TEXTS.final.note);
+    expect(Math.abs(geometry.gapToNote - 16), `${width}: buttons → note ${geometry.gapToNote}`).toBeLessThanOrEqual(1);
+    // Border (1 px) included: 32 px of padding below 1024, 48 px from 1024.
+    const padding = width >= 1024 ? 48 : 32;
+    expect(Math.abs(geometry.padding - 1 - padding), `${width}: note → bottom ${geometry.padding}`).toBeLessThanOrEqual(1);
+    expect(geometry.canvases).toBe(0);
+    expect(geometry.overflow, `${width}: page overflow`).toBeLessThanOrEqual(0);
+  }
+});
+
 test("cas d'erreur : une adresse inconnue du site public répond 404, sans fond animé", async ({ page }) => {
   const response = await page.goto("/cette-page-n-existe-pas");
   expect(response?.status()).toBe(404);

@@ -22,6 +22,7 @@ import {
   setProjector,
   type Pose,
 } from "./camera";
+import { CENTER_OFFSET_CAP, centerOffset, EDGE_FADE } from "./composition";
 import { FrameCostWindow, type FrameCost } from "./frame-cost";
 import { buildNetwork, CLASS_BUDGET, fingerprint, STEP_DENSITY, type Network, type ScreenClass } from "./network";
 import { createQuietZones, type QuietZones } from "./quiet";
@@ -72,6 +73,10 @@ export type LivingEngineOptions = {
   drift?: number;
   stepDensity?: number;
   largeNeurons?: number;
+  /** Recentring cap, fraction of W (§2.11.4 lever 3; contrast fallback 0.06). */
+  centerOffsetCap?: number;
+  /** Edge fade used to weigh the ink when recentring: must match the painter's. */
+  edgeFade?: number;
 };
 
 export const MAX_PIXEL_RATIO = 2;
@@ -92,6 +97,10 @@ export class LivingEngine {
   private readonly drift: number;
   private readonly stepDensity: number;
   private readonly largeNeurons: number | undefined;
+  private readonly centerOffsetCap: number;
+  private readonly edgeFade: number;
+  /** Shift of the projection centre (CSS px), computed on resize only. */
+  private offsetX = 0;
   private readonly readZones?: (quiet: QuietZones, covers: QuietZones) => void;
   private readonly onMotion?: (state: MotionState) => void;
   private readonly onStats?: (stats: EngineStats) => void;
@@ -130,6 +139,8 @@ export class LivingEngine {
     this.drift = options.drift ?? SEQUENCE_DRIFT;
     this.stepDensity = options.stepDensity ?? STEP_DENSITY;
     this.largeNeurons = options.largeNeurons;
+    this.centerOffsetCap = options.centerOffsetCap ?? CENTER_OFFSET_CAP;
+    this.edgeFade = options.edgeFade ?? EDGE_FADE;
     this.readZones = options.readZones;
     this.onMotion = options.onMotion;
     this.onStats = options.onStats;
@@ -146,6 +157,11 @@ export class LivingEngine {
 
   get currentNetwork(): Network | null {
     return this.network;
+  }
+
+  /** Recentring shift of the projection centre, CSS px (tests, `data-center-offset`). */
+  get projectionOffset(): number {
+    return this.offsetX;
   }
 
   get geometry(): string {
@@ -185,6 +201,8 @@ export class LivingEngine {
       this.nodeScreen = new Float32Array(network.nodeCount * 4);
       this.painter.setNetwork(network);
     }
+    // Recentred at the reference pose, once per resize (never per frame): §2.11.4 lever 3.
+    this.offsetX = centerOffset(this.network!, width, height, screenClass, { cap: this.centerOffsetCap, fade: this.edgeFade });
     if (this.reduced || this.hidden || this.frameId === null) this.paintNow();
     this.publishStats();
   }
@@ -366,7 +384,7 @@ export class LivingEngine {
     const yaw = pose.yaw + (this.reduced ? 0 : this.currentDrift(now));
     this.projectedYaw = yaw;
     this.projectedPitch = pose.pitch;
-    setProjector(this.projector, yaw, pose.pitch, this.width, this.height, this.screenClass ?? "large");
+    setProjector(this.projector, yaw, pose.pitch, this.width, this.height, this.screenClass ?? "large", this.offsetX);
   }
 
   private currentDrift(now: number): number {

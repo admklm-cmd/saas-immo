@@ -20,6 +20,18 @@ import { fixtureUser, signIn, type FixtureUserKey } from "./helpers/sign-in";
  */
 
 const COLD_START = 60_000;
+
+/** The seven titles of `/` that carry an accent effect (docs/design-system.md §2.11.2). */
+const EFFECT_TITLES = [
+  ["#hero-title", "underline"],
+  ["#problem-title", "focus"],
+  ["#solution-title", "focus-underline"],
+  ["#agents-title", "focus-underline"],
+  ["#control-title", "focus-underline"],
+  ["#result-title", "focus-underline"],
+  ["#final-title", "focus-underline"],
+] as const;
+const FOCUS_TITLES = EFFECT_TITLES.filter(([, effect]) => effect !== "underline");
 const WIDTHS = [1440, 1024, 390, 360] as const;
 const HEIGHT = 900;
 const NAV = APP_TEXTS.nav;
@@ -363,15 +375,13 @@ test.describe("site public", () => {
     });
 
     for (const width of [1440, 390] as const) {
-      test(`mise au point « problème » et « finale » : flou tenu puis tout net (${width} px, §2.11.2 B et C)`, async ({ page }) => {
+      test(`mise au point des six titres de section : flou tenu puis tout net (${width} px, §2.11.2 B et C)`, async ({ page }) => {
+        test.setTimeout(120_000);
         await page.setViewportSize({ width, height: HEIGHT });
         await open(page, "/");
         const blur = width < 640 ? "blur(3px)" : "blur(5px)";
         const arm = width >= 1024 ? "16px 3px" : "12px 2px";
-        for (const [selector, effect] of [
-          ["#problem-title", "focus"],
-          ["#final-title", "focus-underline"],
-        ] as const) {
+        for (const [selector, effect] of FOCUS_TITLES) {
           const title = page.locator(selector);
           await expect(title).toHaveAttribute("data-accent-effect", effect);
           await title.scrollIntoViewIfNeeded();
@@ -402,14 +412,11 @@ test.describe("site public", () => {
     }
   });
 
-  test("effets du mot accentué, mouvement réduit : état final à l'instant 0 (trait présent, aucun cadre, aucun flou)", async ({ page }) => {
+  test("effets du mot accentué des sept titres, mouvement réduit : état final à l'instant 0 (trait présent, aucun cadre, aucun flou)", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: COLD_START });
     await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
-    for (const [selector, mark] of [
-      ["#hero-title", true],
-      ["#problem-title", false],
-      ["#final-title", true],
-    ] as const) {
+    for (const [selector, effect] of EFFECT_TITLES) {
+      const mark = effect !== "focus";
       const state = await accentEffectState(page, selector);
       expect(state.mark, selector).toBe(mark);
       if (mark) {
@@ -425,11 +432,11 @@ test.describe("site public", () => {
     await expect(page.locator("[data-accent-frame], [data-accent-mark]")).toHaveCount(0);
   });
 
-  test("les ornements ne changent pas la hauteur de ligne (écart ≤ 0,5 px, 1440 et 390)", async ({ page }) => {
+  test("les ornements ne changent pas la hauteur de ligne des sept titres (écart ≤ 0,5 px, 1440 et 390)", async ({ page }) => {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: HEIGHT });
       await open(page, "/");
-      for (const selector of ["#hero-title", "#problem-title", "#final-title"]) {
+      for (const [selector] of EFFECT_TITLES) {
         const heights = await page.evaluate((scope) => {
           const accent = document.querySelector<HTMLElement>(`${scope} [data-accent]`) as HTMLElement;
           const line = accent.closest("[data-title-line]") as HTMLElement;
@@ -444,6 +451,314 @@ test.describe("site public", () => {
         expect(Math.abs(heights.with - heights.without), `${selector} @ ${width}`).toBeLessThanOrEqual(0.5);
       }
     }
+  });
+});
+
+/**
+ * Ink of the accented word and of the punctuation right after it, every other
+ * pixel of the page hidden, ornaments hidden: top of the ink, and how many
+ * pixels of the punctuation fall inside the box of the mark (§2.11.2,
+ * « Géométrie à vérifier par mot nouveau »).
+ */
+async function accentInk(page: Page, selector: string) {
+  const boxes = await page.evaluate((scope) => {
+    const accent = document.querySelector<HTMLElement>(`${scope} [data-accent]`) as HTMLElement;
+    const box = (node: Element | null) => {
+      if (!node) return null;
+      const { left, top, right, bottom } = node.getBoundingClientRect();
+      return { left, top, right, bottom };
+    };
+    return {
+      em: parseFloat(getComputedStyle(accent.closest("h1, h2") as HTMLElement).fontSize),
+      accent: box(accent) as { left: number; top: number; right: number; bottom: number },
+      after: box(accent.nextElementSibling),
+      mark: box(accent.querySelector("[data-accent-mark]")),
+      frame: box(accent.querySelector("[data-accent-frame]")),
+    };
+  }, selector);
+  const style = await page.addStyleTag({
+    content: `body * { visibility: hidden !important; }
+      ${selector} [data-accent], ${selector} [data-accent] + span { visibility: visible !important; }
+      ${selector} [data-accent-mark], ${selector} [data-accent-frame] { visibility: hidden !important; }`,
+  });
+  const shot = await page.screenshot({ animations: "allow" });
+  await style.evaluate((node) => (node as Element).remove());
+  const ink = await page.evaluate(
+    async ({ image, boxes }) => {
+      const bitmap = new Image();
+      bitmap.src = `data:image/png;base64,${image}`;
+      await bitmap.decode();
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const context = canvas.getContext("2d")!;
+      context.drawImage(bitmap, 0, 0);
+      const { data, width, height } = context.getImageData(0, 0, bitmap.width, bitmap.height);
+      const inked = (x: number, y: number) => data[(y * width + x) * 4]! < 200;
+      let top = Infinity;
+      const right = boxes.after ? boxes.after.left : boxes.accent.right + 20;
+      for (let y = 0; y < height && top === Infinity; y++) {
+        for (let x = Math.max(0, Math.floor(boxes.accent.left - 20)); x < Math.min(width, Math.ceil(right)); x++) {
+          if (inked(x, y)) {
+            top = y;
+            break;
+          }
+        }
+      }
+      // Pixels of the punctuation (right of the word's box) inside the mark's box.
+      let touching = 0;
+      if (boxes.after && boxes.mark) {
+        for (let y = Math.floor(boxes.mark.top); y < Math.ceil(boxes.mark.bottom); y++) {
+          for (let x = Math.floor(boxes.accent.right - 4); x < Math.ceil(boxes.after.right); x++) {
+            const inside = x + 0.5 >= boxes.mark.left && x + 0.5 <= boxes.mark.right && y + 0.5 >= boxes.mark.top && y + 0.5 <= boxes.mark.bottom;
+            if (inside && inked(x, y)) touching += 1;
+          }
+        }
+      }
+      return { top, touching };
+    },
+    { image: shot.toString("base64"), boxes },
+  );
+  return { ...boxes, ...ink };
+}
+
+/** Waits until the entry of the title has started (Reveal no longer hidden), then until no animation runs in it. */
+async function waitForRest(page: Page, selector: string): Promise<void> {
+  await expect(page.locator(`.reveal[data-reveal='hidden'] ${selector}`)).toHaveCount(0, { timeout: 6_000 });
+  // One frame for the entry animations to be created.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          (scope) =>
+            (document.querySelector(scope) as HTMLElement)
+              .getAnimations({ subtree: true })
+              .filter((animation) => animation.playState === "running").length,
+          selector,
+        ),
+      { timeout: 6_000 },
+    )
+    .toBe(0);
+}
+
+/** Pauses every animation of the title at `ms` after the replay start, reads the state, then resumes. */
+async function replayStateAt(page: Page, selector: string, ms: number) {
+  await page.evaluate(
+    ({ scope, ms }) => {
+      for (const animation of (document.querySelector(scope) as HTMLElement).getAnimations({ subtree: true })) {
+        animation.pause();
+        animation.currentTime = ms;
+      }
+    },
+    { scope: selector, ms },
+  );
+  const state = await accentEffectState(page, selector);
+  await page.evaluate((scope) => {
+    for (const animation of (document.querySelector(scope) as HTMLElement).getAnimations({ subtree: true })) animation.play();
+  }, selector);
+  return state;
+}
+
+/** A point of the page outside every title (left margin, middle of the viewport). */
+async function leaveTitles(page: Page): Promise<void> {
+  await page.mouse.move(2, HEIGHT / 2);
+}
+
+async function enterTitle(page: Page, selector: string, dx = 0): Promise<void> {
+  const box = (await page.locator(`${selector} [data-accent]`).boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2);
+}
+
+async function replays(page: Page, selector: string): Promise<number> {
+  return Number((await page.locator(selector).getAttribute("data-accent-replays")) ?? 0);
+}
+
+async function runningAnimations(page: Page, selector: string): Promise<number> {
+  return page.evaluate((scope) => (document.querySelector(scope) as HTMLElement).getAnimations({ subtree: true }).length, selector);
+}
+
+async function accentLineHeight(page: Page, selector: string): Promise<number> {
+  return page.evaluate(
+    (scope) => (document.querySelector(`${scope} [data-accent]`)!.closest("[data-title-line]") as HTMLElement).getBoundingClientRect().height,
+    selector,
+  );
+}
+
+test.describe("géométrie des quatre nouveaux mots (§2.11.2)", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  for (const width of [1440, 390] as const) {
+    test(`trait sans contact avec la ponctuation (« chemin, »), cadre dégagé de l'encre (« s'arrête », « décide ») (${width} px)`, async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width, height: HEIGHT });
+      await open(page, "/");
+      for (const [selector] of FOCUS_TITLES.filter(([selector]) => selector !== "#problem-title")) {
+        await page.locator(selector).scrollIntoViewIfNeeded();
+        await expect(page.locator(`.reveal[data-reveal='entering'] ${selector}`)).toHaveCount(1);
+        await waitForRest(page, selector);
+        const ink = await accentInk(page, selector);
+        expect(ink.touching, `${selector} @ ${width}: punctuation pixels in the mark`).toBe(0);
+        // The frame (at rest, scale 1) clears the highest ink by ≥ 0.08 em (half a pixel of rounding).
+        expect(ink.top - (ink.frame?.top ?? 0), `${selector} @ ${width}: frame above the ink`).toBeGreaterThanOrEqual(0.08 * ink.em - 0.5);
+      }
+    });
+  }
+});
+
+test.describe("rejeu au survol (§2.11.2 D, critère 6 bis)", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("chacun des sept titres rejoue son effet une fois, puis revient exactement au repos (1440, souris)", async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await open(page, "/");
+    for (const [selector, effect] of EFFECT_TITLES) {
+      const title = page.locator(selector);
+      await leaveTitles(page);
+      await title.scrollIntoViewIfNeeded();
+      await waitForRest(page, selector);
+      await expect(title).toHaveAttribute("data-accent-replayable", "");
+      const lineBefore = await accentLineHeight(page, selector);
+
+      await enterTitle(page, selector);
+      await expect(title).toHaveAttribute("data-accent-replay", "running");
+      expect(await replays(page, selector), selector).toBe(1);
+      if (effect === "underline") {
+        const during = await replayStateAt(page, selector, 150);
+        const wiped = Number(/^inset\(0px 0px 0px ([\d.]+)%/.exec(during.markClip)?.[1] ?? 0);
+        expect(wiped, `${selector} mark at +150 ms: ${during.markClip}`).toBeGreaterThan(0);
+      } else {
+        const during = await replayStateAt(page, selector, 300);
+        expect(during.words.length).toBeGreaterThan(0);
+        for (const filter of during.words) expect(filter, `${selector} word at +300 ms`).toBe("blur(5px)");
+        expect(Number(during.frameOpacity), `${selector} frame at +300 ms`).toBeGreaterThanOrEqual(0.9);
+        expect(during.accentFilter).toBe("none");
+        expect(during.accentOpacity).toBe("1");
+      }
+
+      // Ends on its own (≤ 1.4 s, safety net 1.6 s), back to the exact rest state.
+      await expect(title).not.toHaveAttribute("data-accent-replay", "running", { timeout: 2_000 });
+      await expect(title).toHaveAttribute("data-accent-played", "");
+      const after = await accentEffectState(page, selector);
+      expectAllFinal(await titleStates(page, selector), `${selector} after the replay`);
+      if (after.frameOpacity !== "absent") expect(after.frameOpacity, `${selector} frame after`).toBe("0");
+      if (after.mark) {
+        expect(after.markClip, `${selector} mark after`).toBe("none");
+        expect(after.markVisible).toBe(true);
+      }
+      expect(await runningAnimations(page, selector), `${selector} animations after`).toBe(0);
+      expect(Math.abs((await accentLineHeight(page, selector)) - lineBefore), `${selector} line box`).toBeLessThanOrEqual(0.5);
+      // The entry is NOT replayed once the replay attribute is gone.
+      await page.waitForTimeout(300);
+      expectAllFinal(await titleStates(page, selector), `${selector} 300 ms after the replay`);
+      expect(await runningAnimations(page, selector)).toBe(0);
+    }
+  });
+
+  test("un passage = au plus un rejeu ; délai de 800 ms après la fin ; rien n'est mis en attente", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await open(page, "/");
+    const selector = "#solution-title";
+    const title = page.locator(selector);
+    await title.scrollIntoViewIfNeeded();
+    await waitForRest(page, selector);
+    await leaveTitles(page);
+
+    // Staying and moving inside the title: one replay only.
+    await enterTitle(page, selector);
+    for (const dx of [-40, 20, 60, -10]) await enterTitle(page, selector, dx);
+    expect(await replays(page, selector)).toBe(1);
+
+    // Out and back in at + 500 ms of the replay: nothing, and nothing queued.
+    await page.waitForTimeout(500);
+    await leaveTitles(page);
+    await enterTitle(page, selector);
+    expect(await replays(page, selector)).toBe(1);
+    await expect(title).not.toHaveAttribute("data-accent-replay", "running", { timeout: 2_000 });
+    // End + 300 ms: still in the cooldown.
+    await leaveTitles(page);
+    await page.waitForTimeout(300);
+    await enterTitle(page, selector);
+    expect(await replays(page, selector)).toBe(1);
+    await expect(title).not.toHaveAttribute("data-accent-replay", "running");
+    // End + ≥ 900 ms: one more replay.
+    await leaveTitles(page);
+    await page.waitForTimeout(650);
+    await enterTitle(page, selector);
+    await expect(title).toHaveAttribute("data-accent-replay", "running");
+    expect(await replays(page, selector)).toBe(2);
+    // Leaving during the replay: it still goes to its end.
+    await leaveTitles(page);
+    await expect(title).not.toHaveAttribute("data-accent-replay", "running", { timeout: 2_000 });
+    expectAllFinal(await titleStates(page, selector), "after a replay left early");
+  });
+
+  test("survol pendant l'entrée : ignoré, et l'entrée n'est pas relancée (hero et section)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: COLD_START });
+    await page.mouse.move(2, HEIGHT / 2);
+    // Hero: hovered while its entry is still running.
+    await page.waitForFunction(() => (document.querySelector("#hero-title")?.getAnimations({ subtree: true }).length ?? 0) > 0);
+    await enterTitle(page, "#hero-title");
+    expect(await replays(page, "#hero-title")).toBe(0);
+    await expect(page.locator("#hero-title")).not.toHaveAttribute("data-accent-played");
+    await waitForRest(page, "#hero-title");
+    expectAllFinal(await titleStates(page, "#hero-title"), "hero after an early hover");
+
+    // Section: hovered 500 ms after its entry; the entry keeps running from where it was.
+    await leaveTitles(page);
+    const selector = "#control-title";
+    await page.locator(selector).scrollIntoViewIfNeeded();
+    await expect(page.locator(`.reveal[data-reveal='entering'] ${selector}`)).toHaveCount(1);
+    await page.waitForTimeout(500);
+    await enterTitle(page, selector);
+    expect(await replays(page, selector)).toBe(0);
+    const times = await page.evaluate(
+      (scope) => (document.querySelector(scope) as HTMLElement).getAnimations({ subtree: true }).map((animation) => Number(animation.currentTime)),
+      selector,
+    );
+    expect(times.length).toBeGreaterThan(0);
+    expect(Math.min(...times), "entry not restarted").toBeGreaterThan(400);
+    await waitForRest(page, selector);
+    expectAllFinal(await titleStates(page, selector), "section after an early hover");
+  });
+
+  test("mouvement réduit : aucun rejeu, aucune animation", async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: "reduce", viewport: { width: 1440, height: HEIGHT } });
+    const page = await context.newPage();
+    await open(page, "/");
+    for (const [selector] of EFFECT_TITLES) {
+      await leaveTitles(page);
+      await page.locator(selector).scrollIntoViewIfNeeded();
+      await enterTitle(page, selector);
+      await page.waitForTimeout(150);
+      expect(await replays(page, selector), selector).toBe(0);
+      expect(await runningAnimations(page, selector), selector).toBe(0);
+    }
+    await context.close();
+  });
+
+  test("tactile (390 × 844, pointeur grossier) : un toucher ne rejoue rien", async ({ browser }) => {
+    test.setTimeout(90_000);
+    const context = await browser.newContext({
+      reducedMotion: "no-preference",
+      viewport: { width: 390, height: 844 },
+      hasTouch: true,
+      isMobile: true,
+    });
+    const page = await context.newPage();
+    await open(page, "/");
+    expect(await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches)).toBe(false);
+    for (const [selector] of EFFECT_TITLES) {
+      await page.locator(selector).scrollIntoViewIfNeeded();
+      await waitForRest(page, selector);
+      const box = (await page.locator(`${selector} [data-accent]`).boundingBox())!;
+      await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+      await page.waitForTimeout(150);
+      expect(await replays(page, selector), selector).toBe(0);
+      expect(await runningAnimations(page, selector), selector).toBe(0);
+    }
+    await context.close();
   });
 });
 

@@ -9,6 +9,9 @@
  *   visible canvas. Camera still during a sequence: it is painted once into
  *   an off-screen cache, and each frame = copy of the cache + impulses + lit
  *   cores. Cobalt exists only there: at rest the canvas holds no cobalt pixel.
+ * - Side edges softened: the rest opacity of a fiber (by its projected middle)
+ *   and of a body (by its centre) × f(u), before the 1/20 quantisation (no
+ *   extra group). See composition.ts.
  * - No shadow blur, no CSS filter, no drop shadow. The only gradient is the
  *   discreet halo of a lit core, at the reference values (ceilings).
  *
@@ -16,6 +19,7 @@
  */
 
 import { nearness, projectInto, type Projector } from "./camera";
+import { EDGE_FADE, edgeFadeAt, fiberRestAlpha } from "./composition";
 import { samplePath, SHAPE_POINTS, type Network } from "./network";
 import { bodyFactor, signalFactor, type QuietZones } from "./quiet";
 import {
@@ -95,8 +99,12 @@ export class NetworkPainter {
   private readonly cacheKey = createRestKey();
   private readonly mainKey = createRestKey();
 
-  constructor(canvas: HTMLCanvasElement | null, palette: Palette = DEFAULT_PALETTE) {
+  /** Opacity lost at the side edges (composition.ts, § 2.11.4 lever 4; fallback 0.15). */
+  private readonly edgeFade: number;
+
+  constructor(canvas: HTMLCanvasElement | null, palette: Palette = DEFAULT_PALETTE, edgeFade = EDGE_FADE) {
     this.palette = palette;
+    this.edgeFade = edgeFade;
     this.main = canvas ? surfaceOf(canvas) : null;
     this.cache = this.main ? createCacheSurface() : null;
     this.inkStyle = rgb(palette.ink);
@@ -232,10 +240,11 @@ export class NetworkPainter {
     let parts = 0;
     for (let f = 0; f < network.fiberCount; f++) {
       const near = nearness(this.nodeScreen[network.fiberOwner[f]! * 4 + 2]!);
-      const alpha = clampRange((0.045 + Math.pow(near, 1.6) * 0.66) * network.fiberAlpha[f]!, 0.025, 0.95);
-      const alphaLevel = Math.max(1, Math.round(alpha * ALPHA_LEVELS));
       const start = network.fiberStart[f]!;
       const last = network.fiberSize[f]! - 1;
+      const middle = start + Math.floor(last / 2);
+      const alpha = fiberRestAlpha(near, network.fiberAlpha[f]!) * edgeFadeAt(screen[middle * 2]!, this.width, this.edgeFade);
+      const alphaLevel = Math.max(1, Math.round(alpha * ALPHA_LEVELS));
       const width = network.fiberWidth[f]!;
       const endWidth = network.fiberEndWidth[f]!;
       const spread = 0.48 + near * 0.62;
@@ -290,7 +299,8 @@ export class NetworkPainter {
     const sy = this.nodeScreen[node * 4 + 1]!;
     const near = nearness(this.nodeScreen[node * 4 + 2]!);
     const size = network.nodeR[node]! * input.projector.size * this.nodeScreen[node * 4 + 3]!;
-    const quiet = input.quietBodies ? bodyFactor(input.zones, sx, sy) : 1;
+    // Side edges softened (rest opacity × f(u) of the centre), quiet zones on top.
+    const quiet = (input.quietBodies ? bodyFactor(input.zones, sx, sy) : 1) * edgeFadeAt(sx, this.width, this.edgeFade);
     const out = this.projected;
     const base = node * SHAPE_POINTS * 3;
     const shape = network.shape;

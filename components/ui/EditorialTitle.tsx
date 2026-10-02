@@ -3,6 +3,7 @@ import { Fragment, type CSSProperties, type ReactNode } from "react";
 import { cn } from "./cn";
 import { accentOverhangEm, findAccent, isAnimatable, splitAccent, tokensOf } from "./editorial-title";
 import styles from "./EditorialTitle.module.css";
+import replayStyles from "./EditorialTitleReplay.module.css";
 
 export type EditorialTitleProps = {
   /** One `h1` per page. */
@@ -24,10 +25,18 @@ export type EditorialTitleProps = {
   reveal: "load" | "in-view" | "none";
   /**
    * Effect of the accented word, landing only (docs/design-system.md §2.11.2):
-   * `underline` (hero), `focus` (problem), `focus-underline` (final panel).
+   * `underline` (hero), `focus` (problem), `focus-underline` (the other
+   * landing section titles and the final panel).
    * Default `none`: the CRM and /estimation keep their rendering.
    */
   accentEffect?: AccentEffect;
+  /**
+   * Replays the effect when a mouse or a pen enters the title (landing only,
+   * §2.11.2 D): sets `data-accent-replayable` when the effect is not `none`.
+   * The page mounts one `AccentReplayController`; this component stays a
+   * Server Component. Default `false`.
+   */
+  accentReplay?: boolean;
   /** Layout only (margins, max width). */
   className?: string;
 };
@@ -40,6 +49,9 @@ const EFFECT_CLASS = {
   focus: styles.effectFocus,
   "focus-underline": styles.effectFocusUnderline,
 } as const;
+
+/** A comma or semicolon right after the accent dips under the baseline: the mark stops at the word (§2.11.2). */
+const DESCENDING_PUNCTUATION = /^[,;]/;
 
 const SIZE_CLASS = {
   poster: styles.poster,
@@ -72,6 +84,7 @@ export function EditorialTitle({
   size,
   reveal,
   accentEffect = "none",
+  accentReplay = false,
   className,
 }: EditorialTitleProps) {
   const mode = isAnimatable(lines) ? reveal : "none";
@@ -80,12 +93,13 @@ export function EditorialTitle({
   const effect: AccentEffect = target ? accentEffect : "none";
   const hasMark = effect === "underline" || effect === "focus-underline";
   const hasFrame = effect === "focus" || effect === "focus-underline";
+  const replayable = accentReplay && effect !== "none";
 
   function word(text: string, line: number, key?: string): ReactNode {
     return (
       <span
         key={key}
-        className={cn(styles.word, animated && styles.focusWord)}
+        className={cn(styles.word, animated && styles.focusWord, replayable && replayStyles.word)}
         style={animated ? ({ "--line": line } as CSSProperties) : undefined}
       >
         {text}
@@ -101,14 +115,24 @@ export function EditorialTitle({
       <span className={styles.nowrap}>
         {before ? word(before, line, "before") : null}
         <span
-          className={cn("title-accent", animated && styles.sharpWord, effect !== "none" && styles.accentHost)}
+          className={cn(
+            "title-accent",
+            animated && styles.sharpWord,
+            effect !== "none" && styles.accentHost,
+            replayable && replayStyles.sharp,
+          )}
           data-accent=""
           style={hasFrame ? ({ "--accent-overhang": `${accentOverhangEm(accented)}em` } as CSSProperties) : undefined}
         >
           {accented}
           {/* Empty ornaments: they add no text and never change the line box. */}
-          {hasFrame ? <span className={styles.frame} data-accent-frame="" /> : null}
-          {hasMark ? <span className={styles.mark} data-accent-mark="" /> : null}
+          {hasFrame ? <span className={cn(styles.frame, replayable && replayStyles.frame)} data-accent-frame="" /> : null}
+          {hasMark ? (
+            <span
+              className={cn(styles.mark, DESCENDING_PUNCTUATION.test(after) && styles.markBeforeDescender, replayable && replayStyles.mark)}
+              data-accent-mark=""
+            />
+          ) : null}
         </span>
         {after ? word(after, line, "after") : null}
       </span>
@@ -128,6 +152,7 @@ export function EditorialTitle({
       )}
       data-title-reveal={mode}
       data-accent-effect={effect === "none" ? undefined : effect}
+      data-accent-replayable={replayable ? "" : undefined}
     >
       <span className="sr-only">{lines.join(" ")}</span>
       <span aria-hidden="true" data-testid="editorial-title-visual">

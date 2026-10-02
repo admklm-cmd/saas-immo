@@ -96,7 +96,9 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   réseau T5–T8 non commencé — § 2.11, plan
   `docs/plans/2026-10-02-landing-motion.md`)** : trois effets du mot accentué (hero : trait
   cobalt ; problème : flou du reste + cadre à 4 coins ; final : les deux), wordmark « Ascend »
-  (`TechWordmark`) dans le panneau final, réseau neuronal 3D sur toute la page à la place de
+  (`TechWordmark`) dans le panneau final — **retiré le 02/10/2026** (lot « finition de la
+  landing », § 2.11.3 bis ; le mot accentué de tous les titres de section reçoit l'effet et se
+  rejoue au survol) —, réseau neuronal 3D sur toute la page à la place de
   l'histoire 2D ci-dessous (*révisé 02/10 — référence utilisateur* : une vingtaine à une
   trentaine de neurones organiques espacés, arbres dendritiques, impulsions qui illuminent les
   cœurs, caméra qui pivote avec le défilement), **aucune animation en boucle** (parcours du hero joué une fois,
@@ -698,7 +700,7 @@ Ces six tokens existent dans `@theme` (`app/globals.css`). Aucun autre. (`--ease
 | `--duration-slow` | 300 ms | `duration-300` | Entrée d'une section entière au chargement : en-tête de page, carte, tableau, état vide |
 | `--ease-standard` | `cubic-bezier(.22,.61,.36,1)` | `ease-standard` | **Toute entrée** : l'élément démarre vite puis se pose. C'est la courbe par défaut du projet |
 | `--ease-exit` | `cubic-bezier(.4,0,1,1)` | `ease-exit` | **Toute sortie** : l'élément part et accélère. Token disponible, **aucun composant ne l'utilise encore** |
-| `--ease-emphasis` | `cubic-bezier(0.16, 1, 0.3, 1)` | `ease-emphasis` | **Uniquement** l'apparition ligne par ligne des titres éditoriaux du site public (`EditorialTitle`, § 2.2.7), le resserrement du cadre de mise au point et le glissement du cadre du wordmark (§ 2.11) : rapide puis se pose longuement. Jamais dans le CRM, jamais pour une réaction à une action |
+| `--ease-emphasis` | `cubic-bezier(0.16, 1, 0.3, 1)` | `ease-emphasis` | **Uniquement** l'apparition ligne par ligne des titres éditoriaux du site public (`EditorialTitle`, § 2.2.7), le resserrement du cadre de mise au point, à l'entrée comme au rejeu au survol (§ 2.11.2) : rapide puis se pose longuement. *(Le glissement du cadre du wordmark a disparu avec lui le 02/10, § 2.11.3.)* Jamais dans le CRM, jamais pour une réaction à une action |
 | `--ease-draw` *(nouveau, lot landing-motion, à créer)* | `cubic-bezier(0.65, 0, 0.35, 1)` | `ease-draw` | **Uniquement** un trait qui se dessine (trait sous le mot accentué, § 2.11.2) : départ et arrivée doux, comme un geste de stylo. Jamais pour une entrée ni une sortie |
 
 > Tailwind v4 n'expose pas d'espace de noms `--duration-*` : on utilise l'utilitaire
@@ -743,9 +745,9 @@ maximale, la durée, un écran concerné.
 | Ouverture d'une fenêtre de confirmation (`Dialog`) | Opacité + `scale(.98)` → `scale(1)` (`animate-settle`), fond flouté fixe | `scale(0.98)` | `--duration-base` | Confirmation du mandat signé (pipeline) |
 | Ouverture d'un panneau ancré ou d'une pastille de confirmation | Opacité + translation de 4 px (`animate-rise-soft`) | 4 px | `--duration-base` | Liste « Changer d'étape » dépliée dans la carte, pastille « dossier déplacé » du pipeline |
 | Apparition d'un titre éditorial (site public seulement) | Lignes : opacité + `translateY(0.2em)` + `filter: blur(8px)` → net ; mot accentué : opacité seule | 0,2 em ; flou 8 px ; ≤ 4 lignes ; une seule fois | 640 ms par ligne, pas de 80 ms (60 ms sous 640 px), `--ease-emphasis` ; mot accentué `--duration-base` | `h1` du hero, `h2` des sections, `h1` de `/estimation` (§ 2.2.7) |
-| Effet du mot accentué (landing seulement, lot landing-motion) | Trait : `clip-path` ; cadre : opacité + `scale` ; reste du titre : `filter: blur()` tenu puis relâché | trait ≤ 0,05 em ; cadre `scale(1.28)` → 1 ; flou 5 px (3 px < 640 px) ; une seule fois | ≤ 2,5 s au total (§ 2.11.2) | `h1` du hero, `h2` « problème » et du panneau final |
-| Wordmark « Ascend » (landing, lot landing-motion) | Canvas 2D : contour pointillé des lettres, cadre de sélection, specks, ressort | glisser ≤ 0,6 em | balayage automatique une fois ≤ 1,6 s ; ensuite seulement au pointeur (§ 2.11.3) | Panneau final |
-| Réseau neuronal 3D (landing, lot landing-motion, révisé 02/10 — référence utilisateur) | Canvas 2D : impulsions le long des fibres, cœurs qui s'illuminent ; caméra qui pivote avec le défilement | lacet ± 0,16 rad, tangage ± 0,055 rad sur toute la page | séquence d'arrivée ≤ 4,8 s ; de section ≤ 3,8 s, une fois chacune ; caméra posée < 1,2 s après le geste ; puis immobile (§ 2.11.4) | Fond de `/` |
+| Effet du mot accentué (landing seulement, lot landing-motion) | Trait : `clip-path` ; cadre : opacité + `scale` ; reste du titre : `filter: blur()` tenu puis relâché | trait ≤ 0,05 em ; cadre `scale(1.28)` → 1 ; flou 5 px (3 px < 640 px) ; une seule fois à l'entrée ; **rejeu au survol** (pointeur fin, mouvement autorisé, ≥ 800 ms après le rejeu précédent) | entrée ≤ 2,5 s ; rejeu ≤ 1,4 s (§ 2.11.2) | Les **sept** titres de `/` : `h1` du hero, `h2` problème, solution, agents, contrôle, résultat, final |
+| ~~Wordmark « Ascend »~~ | **Retiré le 02/10/2026** (§ 2.11.3) | — | — | — |
+| Réseau neuronal 3D (landing, lot landing-motion, révisé 02/10 — référence utilisateur ; composition centrée, bords atténués — finition 02/10) | Canvas 2D : impulsions le long des fibres, cœurs qui s'illuminent ; caméra qui pivote avec le défilement | lacet ± 0,16 rad, tangage ± 0,055 rad sur toute la page | séquence d'arrivée ≤ 4,8 s ; de section ≤ 3,8 s, une fois chacune ; caméra posée < 1,2 s après le geste ; puis immobile (§ 2.11.4) | Fond de `/` |
 | Changement d'état d'une carte (brouillon validé ou refusé) | Opacité, et légère mise à l'échelle | `scale(0.98)` → `scale(1)` | `--duration-base` | File « à valider » *(écran livré ; variante `settle` encore attendue en phase 1)* |
 
 #### 2.5.4 Interdits
@@ -1246,7 +1248,21 @@ titre, quelle que soit la largeur du contenu.
 - `devIndicators: false` dans `next.config.ts` : l'indicateur « N » de `next dev` masquait
   « Se déconnecter » (développement seulement).
 
-### 2.11 Landing en mouvement : effets de titre, wordmark, réseau 3D, zéro boucle
+### 2.11 Landing en mouvement : effets de titre, réseau 3D, zéro boucle
+
+> **Révision « finition de la landing » (02/10/2026, branche `feat/landing-polish`, demande
+> validée par l'utilisateur ; plan `docs/plans/2026-10-02-landing-polish.md`)** — statut :
+> **spécifié**, non implémenté. Quatre changements, `/` seulement :
+> 1. **Wordmark « Ascend » supprimé** (tout le dispositif TechText) : § 2.11.3 marqué retiré,
+>    nouvelle fin du panneau final au § 2.11.3 bis.
+> 2. **Mise au point puis trait cobalt (`focus-underline`) sur les quatre titres qui n'avaient
+>    pas d'effet** : solution (« chemin »), agents (« s'arrête »), contrôle (« décide »),
+>    résultat (« commencer ») — § 2.11.2.
+> 3. **Rejeu de l'effet au survol** sur les sept titres qui ont un effet (hero compris) :
+>    § 2.11.2 D.
+> 4. **Réseau 3D recentré et atténué sur les bords latéraux** : § 2.11.4, « Composition
+>    centrée, bords atténués ».
+> Critères mis à jour : § 2.11.6 et § 2.11.7.
 
 > Statut : **spécifié** le 01/10/2026 par le `web-designer` (demande validée par l'utilisateur,
 > plan `docs/plans/2026-10-02-landing-motion.md`). Les valeurs
@@ -1282,7 +1298,9 @@ titre, quelle que soit la largeur du contenu.
 1. **Aucune boucle sur la landing.** Tout mouvement automatique a une fin, atteinte **en moins
    de 5 s** après son départ, puis l'écran est immobile (testé au pixel, § 2.11.7). Seuls les
    effets déclenchés par l'utilisateur (défilement, pointeur, bouton) peuvent bouger ensuite,
-   et ils s'arrêtent avec son geste.
+   et ils s'arrêtent avec son geste. *Précisé 02/10 (finition)* : le rejeu d'un effet de titre
+   au survol (§ 2.11.2 D) est déclenché par le pointeur et **borné à 1,4 s** ; il va à son
+   terme si le pointeur sort (jamais figé à mi-flou), puis tout est immobile.
 2. **État final = état par défaut** : HTML serveur, sans JavaScript, `prefers-reduced-motion:
    reduce` → état final, net, immobile, à l'instant 0. Jamais d'`opacity: 0` hors de
    `@media (prefers-reduced-motion: no-preference)`.
@@ -1298,12 +1316,46 @@ titre, quelle que soit la largeur du contenu.
 5. **Honnêteté** : rien ne lit un état réel ; aucune animation ne s'active en réponse à une
    action métier. La mention visible « Animations : exemple fictif, simulation. Aucune activité
    en direct. » reste sous l'illustration du hero.
-6. Aucune dépendance npm : CSS et canvas 2D faits main (TrueFocus et TechText de React Bits
-   reposent sur `motion` : ils sont **réinterprétés**, pas importés).
+6. Aucune dépendance npm : CSS et canvas 2D faits main (TrueFocus de React Bits repose sur
+   `motion` : il est **réinterprété**, pas importé). *TechText (wordmark) : retiré le 02/10,
+   plus aucun code adapté de React Bits dans le dépôt.*
 
 #### 2.11.2 Effets du mot accentué (`EditorialTitle` `accentEffect`)
 
-Trois effets, trois titres, aucun autre. Les tokens sont locaux à `EditorialTitle.module.css`.
+Trois effets, **sept titres** (*révisé 02/10 — finition* : « trois titres » au 01/10), aucun
+autre. Les tokens sont locaux à `EditorialTitle.module.css`.
+
+| Titre (`/`) | Composant | Mot | `accentEffect` | Déclencheur d'entrée | Rejeu au survol (D) |
+|---|---|---|---|---|---|
+| Hero | `LandingHero` | main | `underline` (A) | chargement (`reveal="load"`) | oui |
+| Problème | `ProblemHeading` | administratif | `focus` (B) | entrée (`reveal="in-view"`) | oui |
+| Solution | `LandingSolution` → `LandingHeading` | chemin | `focus-underline` (C) — **nouveau** | entrée | oui |
+| Agents | `LandingAgents` → `LandingHeading` | s'arrête | `focus-underline` (C) — **nouveau** | entrée | oui |
+| Contrôle | `LandingControl` → `LandingHeading` | décide | `focus-underline` (C) — **nouveau** | entrée | oui |
+| Résultat | `LandingResult` → `LandingHeading` | commencer | `focus-underline` (C) — **nouveau** | entrée | oui |
+| Final | `LandingFinal` → `LandingHeading` | fictive | `focus-underline` (C) | entrée | oui |
+
+`/estimation`, le CRM et les états vides : `accentEffect="none"`, aucun rejeu (inchangé).
+L'effet C est appliqué **à l'identique** aux quatre nouveaux titres (mêmes durées, même trait
+cobalt conservé au repos — choix de l'utilisateur), joué une fois à l'entrée de la section,
+comme « fictive ». Ces quatre titres sont posés sur le voile `.network-veil-title` (70 %) :
+rien à changer, le flou transitoire est déjà couvert par la règle « Lisibilité » ci-dessous.
+
+**Géométrie à vérifier par mot nouveau** (aucun nouveau token ; contrôle en gros plan à 1440
+et 390, mouvement autorisé, ≈ 0,9 s après l'entrée) :
+
+- « chemin, » : le trait dépasse le mot de +0,06 em à droite ; la virgule qui suit
+  (Bricolage, hors de `.title-accent`) descend sous la ligne de base. Le trait **ne doit pas
+  toucher la virgule**. Si contact mesuré (≥ 1 pixel commun entre l'encre de la virgule et la
+  barre), le débord droit de ce trait passe à 0 (`right: 0`) **pour un mot suivi d'une
+  ponctuation descendante** (`,` `;`) — règle locale, les autres mots gardent +0,06 em.
+- « s'arrête » : l'apostrophe et l'accent circonflexe ne doivent toucher aucune branche du
+  cadre (dégagement ≥ 0,08 em au-dessus de l'encre la plus haute). Si l'encre du « ê » ou de
+  l'apostrophe dépasse `--accent-ink-top`, le haut du cadre se cale sur cette encre.
+- « commencer » (aucune ascendante) : le cadre garde la hauteur commune (haut calé sur les
+  ascendantes) — les sept cadres ont la même proportion ; c'est voulu, ne pas l'ajuster au mot.
+- « décide » : l'accent aigu reste sous les ascendantes (« d ») ; rien à faire, à vérifier.
+- `--accent-overhang` : 0,02 em pour ces quatre mots (aucun ne finit par « f »).
 
 | Token | Valeur ≥ 1024 px | 640–1023 px | < 640 px |
 |---|---|---|---|
@@ -1349,7 +1401,8 @@ Trois effets, trois titres, aucun autre. Les tokens sont locaux à `EditorialTit
   actuel. Le cadre n'existe à l'écran que pendant l'effet.
 - Contraste du cadre sur blanc : 5,4:1 (≥ 3:1 exigé pour un repère graphique).
 
-**C. Mise au point puis trait — `focus-underline`, panneau final** (t = 0 : entrée).
+**C. Mise au point puis trait — `focus-underline`, panneau final, et depuis le 02/10 solution,
+agents, contrôle, résultat** (t = 0 : entrée de la section).
 
 | Élément | Chronologie |
 |---|---|
@@ -1361,8 +1414,9 @@ Trois effets, trois titres, aucun autre. Les tokens sont locaux à `EditorialTit
 
 **Règles des trois effets.**
 
-- CSS seulement, aucun minuteur JavaScript ; déclencheurs existants (chargement pour le hero,
-  `Reveal frame="still"` pour les sections). Un `@keyframes` unique par effet avec des
+- **Entrée** : CSS seulement, aucun minuteur JavaScript ; déclencheurs existants (chargement
+  pour le hero, `Reveal frame="still"` pour les sections). Le rejeu au survol (D) est le seul
+  endroit où un peu de JavaScript intervient (poser / retirer un attribut). Un `@keyframes` unique par effet avec des
   pourcentages calculés depuis les durées ci-dessus est accepté (ex. B, mots non accentués,
   2 340 ms : 0 % `blur(8px)` opacité 0 ; 15 % `blur(5px)` ; 27 % opacité 1, `transform: none` ;
   78 % `blur(5px)` ; 100 % `filter: none`).
@@ -1375,7 +1429,96 @@ Trois effets, trois titres, aucun autre. Les tokens sont locaux à `EditorialTit
 - Lisibilité : hors flou transitoire (≤ 1,9 s tenu), le texte est net ; le mot accentué est net
   **à tout instant** après 220 ms.
 
-#### 2.11.3 Wordmark « Ascend » (`TechWordmark`, d'après TechText de React Bits)
+**D. Rejeu au survol — sept titres de `/`** (*ajouté le 02/10/2026 — finition, demande de
+l'utilisateur*).
+
+*Idée* : le titre réagit quand on le regarde avec la souris ; il rejoue son effet, puis revient
+exactement à son état de repos. Aucune boucle, aucune information nouvelle : c'est une
+réponse à un geste.
+
+| Point | Décision |
+|---|---|
+| Titres concernés | Les sept du tableau ci-dessus. Activation explicite : nouvelle prop `accentReplay` (booléen, défaut `false`) d'`EditorialTitle`, qui pose `data-accent-replayable` sur le `h1`/`h2` **seulement si** l'effet n'est pas `none`. `LandingHeading` la transmet ; `/estimation` et le CRM ne la posent jamais |
+| Zone de survol | La boîte du `h1`/`h2` entier (toutes ses lignes). Elle est ajustée aux mots par l'enveloppe `w-fit` du voile ; le débord fondu du voile (pseudo-élément) **n'en fait pas partie** |
+| Appareils | Uniquement si `(hover: hover) and (pointer: fine)` **et** `(prefers-reduced-motion: no-preference)` sont vraies ; écoutées en direct (un changement de réglage attache ou détache le comportement sans recharger). Événement retenu seulement si `pointerType` est `mouse` ou `pen` (un toucher sur un appareil hybride ne déclenche rien) |
+| Déclencheur | **L'entrée** du pointeur dans le titre (`pointerover` dont le `relatedTarget` est hors du titre). Bouger à l'intérieur ne déclenche rien : un passage = au plus un rejeu |
+| Conditions (toutes) | (1) l'effet d'entrée est terminé : aucune animation `running` dans le titre (`getAnimations({ subtree: true })`) et aucun `Reveal` parent en `hidden` ; (2) aucun rejeu en cours sur ce titre ; (3) **≥ 800 ms** depuis la fin du rejeu précédent de ce titre (`REPLAY_COOLDOWN_MS`). Si une condition manque : rien, et rien n'est mis en attente |
+| Sortie du pointeur pendant le rejeu | Le rejeu va à son terme (≤ 1,4 s) ; jamais d'interruption à mi-flou |
+| État final | **Identique à l'état de repos** : mots nets (`filter: none`, opacité 1, aucun `transform`), cadre invisible (opacité 0), trait complet (sans `clip-path`) pour `underline` et `focus-underline` ; aucune animation restante |
+| Mouvement réduit, tactile, clavier, sans JS | Rien. Le titre reste dans son état de repos. Les titres ne deviennent pas focusables (décor) |
+| Curseur | Inchangé (le titre n'est pas un lien : pas de `cursor: pointer`) |
+| Réseau | Le rejeu ne déclenche aucune séquence du réseau (§ 2.11.4) |
+
+Chronologies du rejeu (t = 0 : entrée du pointeur). **Pas d'arrivée** : aucun mot ne change
+d'opacité ni de position, tous les mots non accentués bougent ensemble (pas de décalage par
+ligne). Propriétés animées : `filter`, `opacity`, `transform`, `clip-path` seulement.
+
+| Effet | Élément | Chronologie | Fin |
+|---|---|---|---|
+| `underline` (hero) | Trait | 0 → 240 ms : effacé de gauche à droite (`inset(0 0 0 0)` → `inset(0 0 0 100%)`, `--ease-exit`) ; 240 → 320 ms : absent ; 320 → 960 ms : redessiné de gauche à droite (`inset(0 100% 0 0)` → `inset(0 0 0 0)`, 640 ms, `--ease-draw`) | **960 ms** |
+| `underline` | Autres mots, mot accentué | Rien | — |
+| `focus` (problème) | Mots non accentués | 0 → 200 ms : flou 0 → `--focus-rest-blur` (`--ease-standard`) ; tenu jusqu'à 900 ms ; 900 → 1 400 ms : flou → 0 (500 ms, `--ease-standard`) | **1 400 ms** |
+| `focus` | Cadre | 0 → 480 ms : opacité 0 → 1, `scale(1.28)` → `scale(1)` (`--ease-emphasis`) ; tenu ; 900 → 1 180 ms : opacité → 0, `scale(1.04)` (`--ease-exit`) | 1 180 ms |
+| `focus-underline` | Mots non accentués | Comme `focus` | **1 400 ms** |
+| `focus-underline` | Cadre | Entrée 0 → 480 ms ; sortie 760 → 1 040 ms (280 ms, `--ease-exit`) | 1 040 ms |
+| `focus-underline` | Trait | 0 → 200 ms : effacé de gauche à droite (`--ease-exit`) ; absent jusqu'à 760 ms ; 760 → 1 400 ms : redessiné (640 ms, `--ease-draw`) — le cadre s'efface pendant que le trait renaît, comme à l'entrée | 1 400 ms |
+| Tous | Mot accentué | Net et opaque **à tout instant** | — |
+
+Pourcentages de `@keyframes` (un `@keyframes` par élément et par effet, durées ci-dessus) :
+mots 1 400 ms — 0 % `filter: blur(0)` ; 14,29 % `blur(var(--focus-rest-blur))` ; 64,29 % idem ;
+100 % `filter: none`. Cadre `focus` 1 180 ms — 0 % opacité 0, `scale(var(--focus-frame-from))` ;
+40,68 % opacité 1, `scale(1)` ; 76,27 % idem ; 100 % opacité 0, `scale(1.04)`. Cadre
+`focus-underline` 1 040 ms — 0 % ; 46,15 % ; 73,08 % ; 100 % (mêmes valeurs). Trait `underline`
+960 ms — 0 % `inset(0 0 0 0 round 999px)` ; 25 % `inset(0 0 0 100% round 999px)` ; 33,33 %
+`inset(0 100% 0 0 round 999px)` (les deux états intermédiaires sont vides : rien ne se voit
+entre 25 et 33 %) ; 100 % `inset(0 0 0 0 round 999px)`. Trait `focus-underline` 1 400 ms — 0 % ;
+14,29 % ; 54,29 % ; 100 % (mêmes valeurs). Easing par segment avec
+`animation-timing-function` dans les images clés, comme à l'entrée.
+
+**Mécanique (contrat, l'implémentation est libre si elle le respecte).**
+
+- Deux attributs sur le `h1`/`h2` : `data-accent-played` (posé au premier rejeu, jamais retiré)
+  et `data-accent-replay="running"` (pendant un rejeu). En CSS :
+  `[data-accent-played] :is(.focusWord, .sharpWord, .frame, .mark) { animation: none }` puis,
+  dans `@media (prefers-reduced-motion: no-preference)`, les animations de rejeu sous
+  `[data-accent-replay="running"]`. **Spécificité** : les sélecteurs d'entrée actuels montent
+  à (0,5,0) (`.reveal[data-reveal="entering"] .inView.effectFocusUnderline .focusWord`) ; les
+  règles « joué » et « rejeu » doivent l'emporter sans `!important` (sélecteur renforcé, ou
+  sélecteurs d'entrée passés sous `:where()`), et « rejeu » doit l'emporter sur « joué ».
+  **Raison** : le `Reveal` reste en
+  `entering` et la classe `.load` reste posée ; sans `data-accent-played`, retirer l'attribut
+  de rejeu remettrait la déclaration d'entrée et **rejouerait l'entrée** (opacité 0, montée). Le
+  passage à `animation: none` est invisible : l'entrée est finie et son état final est l'état
+  par défaut.
+- Fin du rejeu : sur `animationend` de l'élément qui finit en dernier (mots pour `focus` et
+  `focus-underline`, trait pour `underline`), l'attribut `data-accent-replay` est retiré et
+  l'heure de fin notée. Filet de sécurité : minuteur de **1 600 ms** qui retire l'attribut si
+  l'événement n'arrive pas (onglet caché, élément démonté) ; annulé à la fin normale et au
+  démontage.
+- Un seul contrôleur client pour toute la page (ex. `AccentReplayController`, monté une fois
+  dans `app/(marketing)/page.tsx` à l'intérieur de `[data-landing]`), écoute **déléguée** sur
+  la racine de la landing : aucun écouteur par titre, aucun état React, aucun rendu. Les
+  `EditorialTitle` restent des Server Components.
+- Attribut de test : `data-accent-replays` (nombre de rejeux joués depuis le chargement) sur
+  le `h1`/`h2`.
+
+**Accessibilité.** Rien n'est annoncé, le nom accessible ne change pas, aucune information
+n'en dépend ; déclenché par l'utilisateur, ≤ 1,4 s (2.2.2 non concerné) ; désactivé par
+`prefers-reduced-motion` (2.3.3). Aucune modification de la boîte de ligne (écart ≤ 0,5 px,
+même critère qu'à l'entrée).
+
+#### 2.11.3 ~~Wordmark « Ascend » (`TechWordmark`, d'après TechText de React Bits)~~ — RETIRÉ le 02/10/2026
+
+> **RETIRÉ** (demande de l'utilisateur, lot « finition de la landing », 02/10/2026). Le mot
+> « Ascend » du panneau final et **tout** le dispositif TechText disparaissent : composant,
+> moteur, peinture canvas, styles, texte `LANDING_TEXTS.final.wordmark`, test E2E
+> `e2e/landing-wordmark.spec.ts`, notice TechText de `THIRD_PARTY_NOTICES.md`. Nouvelle fin du
+> panneau : § 2.11.3 bis. Rien ne le remplace (aucun autre mot, aucun logo ajouté dans le panneau).
+> Le texte ci-dessous est **conservé comme historique** (mesures, décisions) ; il ne s'applique
+> plus et ne doit pas être réimplémenté. Le nom « Ascend Strategy » reste lu dans le logo de
+> l'en-tête et le pied de page (`BRAND.wordmark`, `e2e/marque.spec.ts` : inchangés).
+
+*Historique (01/10/2026) :*
 
 Fichiers : `components/landing/wordmark/` (`tech-wordmark.ts` pur et testé,
 `TechWordmark.tsx` client, `TechWordmark.module.css`). Texte : `LANDING_TEXTS.final.wordmark` =
@@ -1437,6 +1580,23 @@ sur le « e ») ; le contour dépasse le glyphe HTML de 2,12 px au plus (1,12–
 1,0 px, la largeur visible du trait) ; position des lettres inchangée ; coût d'une image active
 p95 0,20 ms, max 0,30 ms (identique avant / après).
 
+#### 2.11.3 bis Fin du panneau final sans wordmark (02/10/2026 — finition)
+
+| | Avant | Après |
+|---|---|---|
+| Contenu du panneau | titre « Déposez une demande *fictive*… » ; deux boutons ; note ; wordmark « Ascend » | titre ; deux boutons ; note — **la note est le dernier élément** |
+| Titre → boutons | `gap-10` (40 px) | **inchangé** : 40 px |
+| Boutons → note | 40 px (`gap-10` de la grille) | **16 px** : boutons et note forment un groupe (`grid justify-items-start gap-4`) ; la note se lit comme la légende des actions |
+| Après la note | `mt-4` + wordmark (≈ 207 px de haut à 1440) | **rien** : le rembourrage du panneau ferme la carte — 32 px (`p-8`, < 1024 px), 48 px (`lg:p-12`) sous la note |
+| Section | `pt-16 pb-24 lg:pb-36` | inchangé |
+| `@container` sur le panneau | utilisé par la taille du wordmark | **retiré** si plus rien ne s'en sert (vérifier qu'aucune classe `@…` ou `cqi` n'est dans le panneau) |
+
+Hauteur du panneau : ≈ 207 px de moins à 1440, ≈ 160 px à 1024, ≈ 64 px à 390 (le wordmark et
+sa marge), moins 24 px (note rapprochée). Pied de page et rythme de fin de page inchangés.
+Note inchangée mot pour mot : « Prototype de démonstration. Aucune donnée réelle, aucun envoi
+réel. » (`text-xs text-ink-subtle`, garde-fou d'honnêteté). Mobile 390 : boutons empilés si
+nécessaire (`flex-wrap gap-3` inchangé), note dessous à 16 px, alignée à gauche.
+
 #### 2.11.4 Réseau neuronal 3D (évolution de `LivingBackground`) — révisé 02/10 — référence utilisateur
 
 > **Révision du 02/10/2026 (référence utilisateur).** L'utilisateur a fourni le rendu exact
@@ -1494,7 +1654,7 @@ réseau n'est regénéré que si la classe change ; un simple redimensionnement 
 
 | Élément | Règle (référence) |
 |---|---|
-| Position d'un neurone | x ∈ [−1,95 ; 1,95], y ∈ [−1,25 ; 1,25], z ∈ [−0,5 ; 1,5] ; tirage rejeté si un neurone existant est à moins de 0,30 (distance `hypot(dx, dy, 0,4 dz)`), 20 essais |
+| Position d'un neurone | *Révisé 02/10 — finition : voir « Composition centrée, bords atténués » (x large/moyen ± 1,85, z minimal relevé sur les bords).* x ∈ [−1,95 ; 1,95], y ∈ [−1,25 ; 1,25], z ∈ [−0,5 ; 1,5] ; tirage rejeté si un neurone existant est à moins de 0,30 (distance `hypot(dx, dy, 0,4 dz)`), 20 essais |
 | Corps cellulaire | rayon r ∈ [0,011 ; 0,023] ; 14 points, angle `rotation + j/14 × 2π`, distance r × [0,55 ; 1,7], composante y × 0,75 ; contour fermé lissé par des quadratiques passant par les milieux ; noyau : disque de 0,34 × la taille projetée |
 | Branches | 7 à 11 par neurone, réparties sur 360° (± 0,25 rad), longueur [0,25 ; 0,56], épaisseur [0,8 ; 1,65] px ; **un axone** par neurone : direction libre, longueur [0,7 ; 1,2], épaisseur 1,5 px ; récursion sur **2 niveaux** |
 | Tracé d'une branche (marche aléatoire d'angle) | `pas = max(8, arrondi(longueur × 65))` ; à chaque pas : angle += U(−0,28 ; 0,28) + penchant U(±0,045) + 0,095 × sin(0,65 × pas + phase) ; z += U(±0,016) |
@@ -1541,6 +1701,125 @@ réseau n'est regénéré que si la classe change ; un simple redimensionnement 
   12 % de la hauteur. La référence blanchit 19 % en haut et 28 % en bas (jusqu'à 97 %) pour ses
   légendes ; ici les voiles s'en chargent, et le réseau doit rester visible en haut et en bas de
   chaque écran. Seuls dégradés autorisés du réseau : ce calque blanc et le halo des cœurs.
+
+**Composition centrée, bords atténués** (*ajouté le 02/10/2026 — finition, demande de
+l'utilisateur : « centre-le et diminue légèrement des côtés »*).
+
+*Constat chiffré* (copie instrumentée de `network.ts` + `camera.ts`, graine `DEFAULT_SEED`,
+encre relative = Σ opacité × épaisseur × longueur projetée des fibres dans la fenêtre — **pas
+une mesure du produit**) : à 1440 × 900, les neurones **proches** (les plus sombres) du tirage
+sont presque tous sur les bords (x ≈ −1,67 ; −1,64 ; −1,11 ; +1,78 ; +1,84) ; le centre de
+masse horizontal de l'encre est à **0,39 W** en haut de page, 0,45 W au milieu, 0,50 W en bas ;
+les 20 % de gauche portent **28–34 %** de l'encre, les 20 % de droite 15–25 %, les déciles
+centraux 5–6 % chacun. À 1024 × 768 : centre de masse 0,51–0,62 W, 20 % de droite = 27–40 %.
+
+*Décision* : trois leviers, dans cet ordre, toutes classes d'écran sauf mention contraire.
+Aucune nouvelle couleur, aucun nouveau calque, aucun changement de densité totale.
+
+| Levier | Règle | Valeur |
+|---|---|---|
+| 1. Placement moins large | x d'un neurone tiré dans [−X ; X] | **X = 1,85** (large, moyen ; 1,95 avant) ; compact **inchangé** (1,95 : la fenêtre ne montre déjà que ± 0,77 unité) |
+| 2. Pas de neurone proche sur les bords | z minimal dépend de \|x\| : `zMin = −0,5 + 0,6 × smoothstep(1,0 ; X ; abs(x))` ; z tiré dans [zMin ; 1,5] (un seul tirage, comme avant) | au bord, aucun neurone plus proche que z = 0,1 (proximité ≤ 0,69 au lieu de 0,98) ; inchangé pour \|x\| ≤ 1,0. Toutes classes |
+| 3. Recentrage à l'écran | Décalage horizontal `offsetX` ajouté au centre de projection (`centerX = 0,5 W + offsetX`), calculé pour la **pose de référence** (lacet 0, tangage 0,055 = pose du mouvement réduit) : centre de masse de l'encre (fibres, opacité de repos × épaisseur × longueur projetée, segments dans la fenêtre, atténuation du levier 4 comprise) ramené à 0,5 W ; 3 itérations ; plafond **± 10 % de W** | prototype : **+4,9 % W** à 1440 × 900 et 1280 × 800, **−10 % W** (plafond) à 1024 × 768, **−2,7 % W** à 390 × 844 |
+| 4. Atténuation latérale douce | Opacité de repos d'une fibre × `f(u)`, u = distance du **milieu projeté** de la fibre au bord gauche ou droit le plus proche, en fraction de W (u < 0 → 0) ; corps cellulaire (remplissage et noyau) × `f(u)` de son centre projeté. `f(u) = 1 − 0,20 × (1 − smoothstep(0 ; 0,15 ; u))` | **× 0,80 au bord**, rampe douce, **× 1 à partir de 15 % de W** vers l'intérieur. Appliqué avant la quantification au 1/20 (aucun groupe de tracé en plus) |
+
+- **Ce qui ne change pas** : impulsions, traînées, halos et noyaux allumés (cobalt, seulement
+  pendant une séquence ; leurs origines sont déjà dans les 70 % centraux) ; nombre de neurones,
+  de fibres, de points ; épaisseurs ; calque d'atmosphère ; voiles ; zones calmes ; pose liée
+  au défilement (le lacet ± 0,16 rad continue de faire « tourner » la composition : le centre
+  de masse oscille autour du centre, c'est la profondeur qui se lit).
+- **Quand c'est calculé** : `offsetX` à la construction et à chaque re-projection due à un
+  **redimensionnement** (anti-rebond 150 ms existant) — **jamais par image** ni par pose. Coût
+  ≤ 15 ms une fois (3 passes de projection de ≤ 46 000 points), hors images animées. `f(u)` :
+  une multiplication par fibre et par corps lors d'un redessin complet (déjà projeté).
+- **Graine** : inchangée (`DEFAULT_SEED` = 20261069) si les tests de couverture passent ; sinon
+  première graine suivante qui passe espacement + couverture dans les trois classes, reportée
+  ici (même procédure qu'à la passe 2).
+- **Origines des séquences** : règles inchangées, appliquées aux positions projetées (décalage
+  compris).
+
+*Prototype (mêmes outils, valeurs ci-dessus)* — part de l'encre dans les 20 % de gauche | 20 %
+de droite, et centre de masse, pose de référence (haut / bas de page entre parenthèses) :
+
+| Écran | Avant | Après | Centre de masse avant → après |
+|---|---|---|---|
+| 1440 × 900 | 28,1 % \| 20,5 % | **14,0 % \| 13,5 %** | 0,45 (0,39 / 0,50) → **0,50** (0,45 / 0,55) |
+| 1024 × 768 | 14,6 % \| 34,0 % | **17,5 % \| 19,2 %** | 0,57 (0,51 / 0,62) → **0,52** (0,46 / 0,57) |
+| 390 × 844 | 17,9 % \| 21,3 % | **17,9 % \| 18,1 %** | 0,51 (0,48 / 0,53) → **0,51** (0,47 / 0,52) |
+
+Encre relative totale : 1440 **+1 %**, 1024 **+3 %**, 390 **−4 %** (la matière est déplacée vers
+le centre, pas retirée). Les déciles extrêmes (0–10 % et 90–100 %) gardent 4–8 % de l'encre :
+**les bords restent habités**, plus clairs. Grille 3 × 3 à 1440 : 9 cases sur 9 occupées par un
+corps cellulaire à toutes les poses.
+
+*Fourchettes d'encre du tableau de mesures* (`settled`, alpha moyen du canvas) : **inchangées**
+— 1,2–2,2 % (large, moyen), 0,8–2,0 % (compact) ; mesuré avant : 1,54–1,64 % (1440), 1,37–1,49 %
+(1024), 1,24–1,29 % (390). Si une mesure sort de la fourchette, on ne touche pas aux opacités
+globales : on règle d'abord l'atténuation (0,20 → 0,15) puis le levier 2 (0,6 → 0,45), et on
+reporte la valeur ici.
+
+*Contraste* : seuils du paragraphe « Derrière les textes » **inchangés**, voiles **inchangés**
+(70 % titres, 75 % lignes grises du titre « problème », 90 % petits textes). Le recentrage
+rapproche l'encre des titres : tout est **re-mesuré** (même protocole). Si un seuil tombe,
+dans l'ordre : plafond du recentrage 10 % → 6 % de W, puis levier 2 → 0,45 ; **aucun voile
+renforcé** sans validation du `web-designer` (l'utilisateur veut voir le réseau derrière les
+titres).
+
+*Mouvement réduit* : même géométrie, même `offsetX`, même atténuation, pose fixe = pose de
+référence → c'est l'état le mieux centré. *Responsive* : 1440 et 1280 (large) et 1024 (moyen)
+appliquent les quatre leviers ; 390 (compact) applique 2, 3 et 4 (X inchangé).
+
+**Mesures réelles — finition (02/10/2026, `frontend-ux`)** — elles remplacent les chiffres du
+prototype ci-dessus. Code : `components/landing/living/composition.ts` (`edgeFade`,
+`centerOffset`, `inkProfile` ; constantes `EDGE_FADE` 0,20, `EDGE_FADE_BAND` 0,15,
+`CENTER_OFFSET_CAP` 0,10, 3 passes), `network.ts` (`NODE_X_RANGE` 1,85 / 1,85 / 1,95,
+`EDGE_DEPTH_LIFT` 0,6, `minDepthAt`), `camera.ts` (`setProjector(…, offsetX)`), `renderer.ts`
+(f(u) sur fibres par leur milieu projeté et sur corps par leur centre, avant la quantification),
+`LivingEngine.ts` (`offsetX` calculé dans `resize()` seulement ; attribut de test
+`data-center-offset`, px CSS).
+
+- **Graine changée : `DEFAULT_SEED` = 20332770** (20261069 avant). Avec les leviers, 20261069
+  laissait une case vide à 390 × 844 en bas de page (test de couverture 2 × 3). La règle « première
+  graine suivante qui passe espacement + couverture dans les trois classes » ne suffisait pas : les
+  premières graines qui la passent échouent ailleurs (20261166 : encre 2,34 % et 3,69:1 sous
+  « Qualification » à 390 ; 20262738 : bande gauche plus sombre que le centre en haut de page à
+  1440, ratio 1,13 ; 20265792 et 20 autres : **aucune origine éligible pour l'arrivée à 390**, la
+  cascade du téléphone ne jouait plus). Critères de sélection appliqués, dans l'ordre : espacement,
+  couverture (1440 3 × 3 et tuiles 240 px, 1024 3 × 3, 390 2 × 3, p = 0 / 0,5 / 1), n° 7 bis
+  (unitaire, 4 écrans), encre relative proche de la version validée, arrivée jouée dans les trois
+  classes, n° 7 bis E2E, contraste n° 8. Deux graines passent tout : 20309866 et 20332770 ;
+  **20332770 retenue** (encre à 1440 la plus proche de la version validée, 1,64 % contre 1,84 % ;
+  marge des bandes à 1440 0,54 contre 0,69).
+- **Replis** : **aucun** (plafond du recentrage 10 %, levier 2 à 0,6, atténuation 0,20) — tous les
+  seuils de contraste tiennent.
+
+*Composition (unitaire, encre relative des fibres, pose de référence ; haut / bas de page entre
+parenthèses)* — avant = graine 20261069 sans les leviers ; après = graine 20332770, quatre leviers :
+
+| Écran | 20 % gauche \| 20 % droite, avant → après | Déciles extrêmes après | Centre de masse avant → après | `offsetX` |
+|---|---|---|---|---|
+| 1440 × 900 | 28,3 % \| 20,4 % → **13,0 % \| 13,8 %** | 4,4 % \| 4,9 % | 0,449 (0,394 / 0,499) → **0,499** (0,448 / 0,552) | +2,24 % W (+32,3 px) |
+| 1280 × 800 | 28,3 % \| 20,4 % → **13,0 % \| 13,8 %** | 4,4 % \| 4,9 % | 0,449 (0,394 / 0,499) → **0,499** (0,448 / 0,552) | +2,24 % W (+28,7 px) |
+| 1024 × 768 | 14,7 % \| 34,4 % → **15,6 % \| 13,0 %** | 5,5 % \| 3,6 % | 0,565 (0,508 / 0,620) → **0,496** (0,456 / 0,544) | +8,25 % W (+84,5 px) |
+| 390 × 844 | 17,3 % \| 22,1 % → **19,6 % \| 17,2 %** | 8,8 % \| 7,6 % | 0,518 (0,482 / 0,539) → **0,509** (0,484 / 0,539) | −3,85 % W |
+
+Encre relative totale (même mesure) : 1440 20 545 → 21 481 (+5 %), 1024 11 307 → 14 944 (+32 %),
+390 4 352 → 4 230 (−3 %) — l'écart vient de la graine, la densité (neurones, fibres, points)
+est inchangée. En haut de page à 1440, le décile de droite descend à 2,1 % et le décile de gauche
+du bas de page à 2,6 % (le lacet ± 0,16 rad fait tourner la composition) ; à la pose de référence,
+les deux restent ≥ 3 % (critère n° 7 bis).
+
+*Navigateur (Chromium sans interface, Playwright 1.63, DPR 1, serveur de développement)* :
+
+| Mesure | Avant (passe 2) | Après (finition) | Exigence |
+|---|---|---|---|
+| Alpha moyen des 10 % extrêmes / 60 % centraux, `settled`, 1440 | ≈ 1,3 (prototype) | haut de page **0,54** (gauche 1,06 %, droite 0,35 %, centre 1,95 %) ; milieu **0,43** (0,75 / 0,84 / 1,97 %) | ≤ 0,8 |
+| Encre (alpha moyen, `settled`) | 1440 : 1,54–1,64 % ; 1024 : 1,37–1,49 % ; 390 : 1,24–1,29 % | 1440 : **1,61–1,64 %** ; 1280 : **1,82 %** ; 1024 : **1,92 %** ; 390 : **1,20–1,26 %** | 1,2–2,2 % / 0,8–2,0 % |
+| Coût p95 caméra en mouvement / arrivée, 1440 | 1,2–1,6 / 1,6–1,7 ms | **1,0 / 1,9 ms** | ≤ 4 ms |
+| `settled` après le chargement ; salves de section | 5,1–5,9 s ; 2,9–4,0 s | **4,6 s** ; **2,4–3,9 s** | ≤ 6,0 s ; ≤ 4,0 s |
+| Arrivée (cœurs allumés vus) 1440 / 1024 / 390 | — | 3 / 1 / 1 | ≥ 1 |
+| Pixels cobalt au repos et en mouvement réduit | 0 | **0** | 0 |
+| Contraste minimal (même protocole que la passe 2) | 1440 : 9,13 · 4,91 · 3,33 (réduit 3,26) ; 390 : 9,75 · 4,59 · 3,77 (3,76) | 1440 : titres encre **9,34** · petits textes **5,10** · lignes grises **3,37** autorisé, **3,44** réduit (médian 5,69) ; 390 : **9,54** · **4,86** · **3,44** autorisé, **3,37** réduit (médian 5,69) | ≥ 7 · ≥ 4,5 · ≥ 3 (médian ≥ 4,5) |
 
 **Impulsions électriques (valeurs de la référence = plafonds, jamais augmentées).**
 
@@ -1766,9 +2045,9 @@ information en mouvement qui **démarre automatiquement, dure plus de 5 s** et e
 parallèle d'autre contenu. Après ce lot : titre du hero 1,4 s ; parcours 4,7 s ; arrivée du
 réseau 4,8 s (départ 0,9 s après le premier dessin) ; titres de section ≤ 2,5 s ; séquences de
 section ≤ 3,8 s *(révisé 02/10 — référence utilisateur : 2,9 s au 01/10)* ; graphique ≤ 4,9 s ;
-wordmark 1,6 s ; badge 3 s ; icônes < 5 s. La rotation au défilement (et la caméra qui se pose
-en < 1,2 s après l'arrêt du geste) et les effets du wordmark au pointeur sont déclenchés par
-l'utilisateur. Plus rien ne dépasse 5 s : **`MotionToggle`,
+~~wordmark 1,6 s~~ *(wordmark retiré le 02/10)* ; badge 3 s ; icônes < 5 s. La rotation au
+défilement (et la caméra qui se pose en < 1,2 s après l'arrêt du geste) et le **rejeu d'un
+titre au survol (≤ 1,4 s, § 2.11.2 D)** sont déclenchés par l'utilisateur. Plus rien ne dépasse 5 s : **`MotionToggle`,
 `landing-motion.ts`, les sélecteurs `html[data-landing-motion="paused"]` et
 `LANDING_TEXTS.motion` sont supprimés.** Condition : le test « aucune boucle » (§ 2.11.7, n° 1)
 passe ; sinon le bouton reste. Le réglage système `prefers-reduced-motion` reste l'arrêt
@@ -1783,21 +2062,41 @@ global (état final immédiat).
    inchangé ; idem après avoir amené chaque section au centre puis attendu 5 s ;
    `document.getAnimations()` ne contient aucune animation à `iterations` infinie ; aucun
    minuteur du réseau armé (`data-signals="0"`, `data-lit="0"`).
-2. **Durées** : trait du hero complet ≤ 1,45 s ; titres « problème » et final nets (tous les
-   mots `filter: none`) ≤ 2,5 s après l'entrée, cadre à opacité 0 ; parcours dans l'état final
+2. **Durées** : trait du hero complet ≤ 1,45 s ; titres « problème », solution, agents,
+   contrôle, résultat et final nets (tous les mots `filter: none`) ≤ 2,5 s après l'entrée,
+   cadre à opacité 0, trait complet sous « chemin », « s'arrête », « décide », « commencer »
+   et « fictive » ; parcours dans l'état final
    ≤ 5,2 s après le chargement à 1440 ; réseau `settled` ≤ **6,0 s** après le chargement
    (arrivée : départ + 0,9 s, durée ≤ 4,8 s) ; séquence de section `settled` ≤ 4,0 s après
    l'entrée ; caméra posée ≤ 1,2 s après la fin d'un défilement.
 3. **Pendant les effets** (≈ 0,9 s après l'entrée) : mots non accentués `blur(5px)` (3 px sous
    640 px), mot accentué `filter: none` et opacité 1, cadre opacité 1, branches de 16 × 3 px à
-   1440 (12 × 2 px à 390), aucune branche sur un glyphe.
-4. **Mouvement réduit**, sans JS : à l'instant 0, trait présent (hero, final), aucun cadre,
-   aucun flou, parcours final, wordmark en HTML sans canvas, réseau `reduced` sans cobalt.
-5. **Hauteur de ligne** : écart ≤ 0,5 px avec et sans ornements (hero, problème, final ; 1440 et
-   390).
-6. **Wordmark** : `aria-hidden="true"` ; `touch-action` contient `pan-y` ; balayage joué une
-   fois (`idle → sweep → idle`) ; aucune image dessinée en `idle` ; aucun débordement à 1440 /
-   1024 / 390 / 360 ; taille calculée reportée ici.
+   1440 (12 × 2 px à 390), aucune branche sur un glyphe — vérifié aussi sur « chemin »,
+   « s'arrête », « décide », « commencer » ; le trait ne touche pas la virgule de « chemin, »
+   (§ 2.11.2, « Géométrie à vérifier par mot nouveau »).
+4. **Mouvement réduit**, sans JS : à l'instant 0, trait présent (hero, solution, agents,
+   contrôle, résultat, final), aucun cadre, aucun flou, parcours final, réseau `reduced` sans
+   cobalt. *(« wordmark en HTML sans canvas » : retiré le 02/10.)*
+5. **Hauteur de ligne** : écart ≤ 0,5 px avec et sans ornements (les sept titres ; 1440 et 390).
+6. ~~**Wordmark**~~ — *remplacé le 02/10 (wordmark retiré)* : **fin du panneau final** — aucun
+   élément `[data-testid='tech-wordmark']`, aucun canvas dans le panneau, aucune occurrence de
+   `TechWordmark`, `tech-wordmark`, `paint-wordmark`, `wordmark-engine` ni `TechText` dans
+   `app/`, `components/`, `e2e/` et `THIRD_PARTY_NOTICES.md` ; la note « Prototype de
+   démonstration… » est le dernier élément du panneau, 16 px (± 1) sous le bas des boutons,
+   et le bas du panneau est à 32 px (< 1024) / 48 px (≥ 1024) sous la note (± 1) ; aucun
+   débordement à 1440 / 1024 / 390 / 360.
+6 bis. **Rejeu au survol** (§ 2.11.2 D ; 1440 × 900, souris) : pour chacun des sept titres,
+   après la fin de l'entrée, entrer le pointeur → `data-accent-replay="running"`,
+   `data-accent-replays` + 1 ; à + 300 ms (types `focus*`) mots non accentués `blur(5px)`, cadre
+   opacité ≥ 0,9, mot accentué net ; (hero) trait partiellement ou totalement effacé à
+   + 150 ms ; à + 1 600 ms : attribut retiré, mots `filter: none`, opacité 1, cadre opacité 0,
+   trait sans découpe (`underline`, `focus-underline`), `getAnimations({ subtree: true })` vide,
+   boîte de ligne inchangée (≤ 0,5 px). Puis : sortir / rentrer à + 500 ms d'un rejeu → aucun
+   nouveau rejeu ; à fin + 300 ms → aucun ; à fin + 900 ms → un rejeu ; rester et bouger dans
+   le titre → un seul rejeu ; survol pendant l'entrée (hero à 300 ms du chargement, section à
+   500 ms de l'entrée) → ignoré et **l'entrée n'est pas relancée**. Mouvement réduit, et
+   contexte tactile (390 × 844, `hasTouch`, pointeur grossier) : aucun rejeu, aucune animation.
+   Le test « aucune boucle » (n° 1) passe toujours, pointeur hors de la page.
 7. **Réseau** *(révisé 02/10 — référence utilisateur)* : `data-nodes` = 34 / 28 / 20 selon la
    classe ; fibres et points sous les plafonds ; **lecture « neurones espacés, pas un tapis »** :
    distance minimale entre deux neurones > 0,30 (unités monde), chaque case d'une grille 3 × 3
@@ -1809,10 +2108,21 @@ global (état final immédiat).
    `settled` ; capture comparée côte à côte avec la référence (corps irréguliers, arbres
    dendritiques qui s'affinent, liaisons sinueuses, impulsions à reflet et traînée, cœur qui
    s'illumine) : verdict visuel écrit dans l'audit.
+7 bis. **Composition centrée, bords atténués** (*02/10 — finition*, § 2.11.4) — test unitaire
+   (géométrie, pose de référence, encre relative des fibres dans la fenêtre) : centre de masse
+   horizontal **∈ [0,47 ; 0,53] W** à 1440 × 900, 1280 × 800, 1024 × 768, 390 × 844 ; ∈
+   [0,42 ; 0,58] W en haut (p = 0) et en bas (p = 1) de page ; chacune des deux bandes
+   latérales de 20 % porte **≤ 20 %** et ≥ 8 % de l'encre ; chaque décile extrême ≥ 3 % (bords
+   jamais vides) ; `offsetX` ≤ 10 % de W et identique d'un calcul à l'autre (déterministe) ;
+   `f(0) = 0,80`, `f(u ≥ 0,15) = 1`, `f` croissante ; aucun neurone avec z < 0,1 pour
+   \|x\| ≥ X. **E2E** (canvas, `settled`, 1440 × 900, haut et milieu de page) : alpha moyen des
+   deux bandes extrêmes de 10 % ≤ **0,8 ×** l'alpha moyen des 60 % centraux (prototype ≈ 0,4 ;
+   avant ≈ 1,3) ; encre totale dans les fourchettes du n° 7 (inchangées) ; coût p95 ≤ 4 ms
+   inchangé ; contraste n° 8 re-mesuré ; 0 pixel cobalt au repos.
 8. **Contraste** : seuils du § 2.11.4 sur tous les textes hors carte de `/` ; voile de titre
    à 70 % (75 % sous les deux lignes grises du titre « problème »).
-9. **Couleurs** : aucun pixel rouge ; cobalt uniquement sur traits, cadres, impulsions, cœurs,
-   cadre du wordmark ; **en `settled` et en mouvement réduit, aucun pixel cobalt dans le canvas
+9. **Couleurs** : aucun pixel rouge ; cobalt uniquement sur traits, cadres, impulsions, cœurs
+   *(« cadre du wordmark » retiré le 02/10)* ; **en `settled` et en mouvement réduit, aucun pixel cobalt dans le canvas
    du réseau** ; aucun `shadowBlur`, `drop-shadow` ni `filter` dans les fichiers du lot ; seuls
    dégradés : halo des cœurs (valeurs plafonds du § 2.11.4) et calque d'atmosphère blanc.
 10. **Garde-fous** : « Simulation », « Exemple fictif — simulation », « Animations : exemple
@@ -1841,7 +2151,7 @@ global (état final immédiat).
 | `DataList` | `DataList.tsx` | `dl` 1 ou 2 colonnes |
 | `PageHeader` | `PageHeader.tsx` | Fil d'Ariane, **sur-titre** (`overline`, § 3.8), `h1`, description, badges, actions |
 | `Overline` | `Overline.tsx` | Sur-titre `label-mono` précédé du trait cobalt 12 × 2 px (§ 2.2.6, § 3.8) |
-| `EditorialTitle` | `EditorialTitle.tsx` + `.module.css` | Titre-phrase du site public : lignes d'auteur, un mot accentué, apparition ligne par ligne (§ 2.2.7, § 3.8) |
+| `EditorialTitle` | `EditorialTitle.tsx` + `.module.css` | Titre-phrase du site public : lignes d'auteur, un mot accentué, apparition ligne par ligne (§ 2.2.7, § 3.8) ; landing : effet du mot accentué `accentEffect` et rejeu au survol `accentReplay` (§ 2.11.2) |
 | `Select` | `Select.tsx` | `<select>` natif, `<label for>` réel, `id` obligatoire (utilisable en Server Component), survol, désactivé |
 | `Checkbox` | `Checkbox.tsx` (client) | Case de confirmation explicite : toute la zone bordée est le `<label>`, contrôlée, **jamais précochée** ; cochée = cadre noir + fond atténué (jamais la couleur seule), désactivée |
 | `Dialog` | `Dialog.tsx` (client) | Fenêtre modale sur `<dialog>` natif + `showModal()` : titre (`aria-labelledby`), résumé (`aria-describedby`), `aria-modal`, focus piégé par le navigateur, Échap et clic sur le fond pour annuler (`dismissible={false}` pendant une requête), retour du focus (`returnFocusRef`), pied d'actions empilé en mobile |
@@ -2231,7 +2541,8 @@ Component, aucun JavaScript). Seul composant de titre-phrase du site public : il
 | `subtleBefore` | `number?` | Les lignes d'indice < n sont en `ink-subtle` (section « problème » : 2) |
 | `size` | `"poster" \| "statement" \| "page"` | `poster` : `min(var(--text-poster), 14cqi)` en `wdth` 92, à placer dans un conteneur `container-type: inline-size` ; `statement` : `text-statement` ; `page` : `text-title` → `sm:text-hero` → `lg:text-page` |
 | `reveal` | `"load" \| "in-view" \| "none"` | `load` : animation CSS au chargement, `--title-line-delay` 100 ms ; `in-view` : joue sous le `Reveal` englobant (`[data-reveal="entering"]`), délai 0 ; `none` : statique |
-| `accentEffect` *(lot landing-motion, à créer)* | `"none" \| "underline" \| "focus" \| "focus-underline"` | Défaut `"none"` (rendu actuel, CRM et `/estimation` inchangés). `underline` : hero ; `focus` : section « problème » ; `focus-underline` : panneau final. Aucun autre titre. Spécification complète au § 2.11.2 |
+| `accentEffect` *(lot landing-motion, à créer)* | `"none" \| "underline" \| "focus" \| "focus-underline"` | Défaut `"none"` (rendu actuel, CRM et `/estimation` inchangés). `underline` : hero ; `focus` : section « problème » ; `focus-underline` : panneau final, et depuis le 02/10 solution, agents, contrôle, résultat. Aucun autre titre. Spécification complète au § 2.11.2 |
+| `accentReplay` *(02/10 — finition, à créer)* | `boolean?` | Défaut `false`. Si `true` **et** effet ≠ `none` : pose `data-accent-replayable` sur le titre, qui se rejoue au survol (pointeur fin, mouvement autorisé ; § 2.11.2 D). Landing seulement (les sept titres) ; jamais dans le CRM ni sur `/estimation` |
 | `className` | `string?` | Mise en page seulement (marges, largeur max) |
 
 Structure rendue (identique pour tous les modes, pour un seul test d'accessibilité) :

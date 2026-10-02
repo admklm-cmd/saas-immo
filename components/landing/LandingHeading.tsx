@@ -18,8 +18,10 @@ type LandingHeadingProps = {
    * (final call to action), where a veil would draw a lighter box.
    */
   veil?: boolean;
-  /** Effect of the accented word (final panel only, docs/design-system.md §2.11.2). */
+  /** Effect of the accented word (landing section titles, docs/design-system.md §2.11.2). */
   accentEffect?: AccentEffect;
+  /** Replays the effect when a mouse or a pen enters the title (§2.11.2 D). */
+  accentReplay?: boolean;
   className?: string;
 };
 
@@ -40,6 +42,7 @@ export function LandingHeading({
   body,
   veil = true,
   accentEffect,
+  accentReplay = false,
   className,
 }: LandingHeadingProps) {
   // Inside an opaque panel the network is already hidden: no quiet zone.
@@ -60,6 +63,7 @@ export function LandingHeading({
           size="statement"
           reveal="in-view"
           accentEffect={accentEffect}
+          accentReplay={accentReplay}
         />
       </div>
       {body ? (

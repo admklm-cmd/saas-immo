@@ -1,0 +1,148 @@
+/*
+ * Replay of the accented-word effect on hover — landing only
+ * (docs/design-system.md §2.11.2 D). The `AccentReplayController` (client,
+ * one per page) only sets two attributes on a `[data-accent-replayable]`
+ * title; everything that moves is here, in CSS.
+ *
+ * Specificity contract (no `!important`):
+ * - the entry rules of EditorialTitle.module.css sit under `:where()`: (0,1,0);
+ * - « played » (0,3,0) beats them: once a title has been replayed, its entry
+ *   animations are switched off for good. The `Reveal` stays `entering` and
+ *   `.load` stays set, so without it, removing the replay attribute would put
+ *   the entry declaration back and replay the ENTRY (opacity 0, rise). The
+ *   switch is invisible: the entry is over and its final state is the default;
+ * - « replay » (0,4,0) beats « played ».
+ *
+ * No `animation-fill-mode`, no delay: the first and last keyframes are the
+ * rest state, so nothing is left behind when the animation ends.
+ */
+
+[data-accent-replayable][data-accent-played] :is(.word, .sharp, .frame, .mark) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Words (focus, focus-underline): blur together — no arrival, no line step. */
+  [data-accent-replayable][data-accent-replay="running"]:is([data-accent-effect="focus"], [data-accent-effect="focus-underline"]) .word {
+    animation: replay-words 1400ms;
+  }
+
+  [data-accent-replayable][data-accent-replay="running"][data-accent-effect="focus"] .frame {
+    animation: replay-frame-focus 1180ms;
+  }
+
+  [data-accent-replayable][data-accent-replay="running"][data-accent-effect="focus-underline"] .frame {
+    animation: replay-frame-focus-underline 1040ms;
+  }
+
+  [data-accent-replayable][data-accent-replay="running"][data-accent-effect="underline"] .mark {
+    animation: replay-mark-underline 960ms;
+  }
+
+  [data-accent-replayable][data-accent-replay="running"][data-accent-effect="focus-underline"] .mark {
+    animation: replay-mark-focus-underline 1400ms;
+  }
+}
+
+/* Words, 1 400 ms: blur in 200 ms, held to 900 ms, released in 500 ms. */
+@keyframes replay-words {
+  0% {
+    filter: blur(0);
+    animation-timing-function: var(--ease-standard);
+  }
+  14.29% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: linear;
+  }
+  64.29% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: var(--ease-standard);
+  }
+  100% {
+    filter: none;
+  }
+}
+
+/* Frame, focus, 1 180 ms: tightens in 480 ms, holds, fades at 900 ms in 280 ms. */
+@keyframes replay-frame-focus {
+  0% {
+    opacity: 0;
+    transform: scale(var(--focus-frame-from));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  40.68% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  76.27% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: var(--ease-exit);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* Frame, focus-underline, 1 040 ms: tightens in 480 ms, fades at 760 ms in 280 ms. */
+@keyframes replay-frame-focus-underline {
+  0% {
+    opacity: 0;
+    transform: scale(var(--focus-frame-from));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  46.15% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  73.08% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: var(--ease-exit);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* Mark, hero, 960 ms: wiped left to right in 240 ms, absent 80 ms, drawn again
+   in 640 ms. Between 25 % and 33.33 % both insets add up to 100 %: empty. */
+@keyframes replay-mark-underline {
+  0% {
+    clip-path: inset(0 0 0 0 round 999px);
+    animation-timing-function: var(--ease-exit);
+  }
+  25% {
+    clip-path: inset(0 0 0 100% round 999px);
+    animation-timing-function: linear;
+  }
+  33.33% {
+    clip-path: inset(0 100% 0 0 round 999px);
+    animation-timing-function: var(--ease-draw);
+  }
+  100% {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+
+/* Mark, focus-underline, 1 400 ms: wiped in 200 ms, absent to 760 ms, drawn
+   again in 640 ms while the frame fades, as at the entry. */
+@keyframes replay-mark-focus-underline {
+  0% {
+    clip-path: inset(0 0 0 0 round 999px);
+    animation-timing-function: var(--ease-exit);
+  }
+  14.29% {
+    clip-path: inset(0 0 0 100% round 999px);
+    animation-timing-function: linear;
+  }
+  54.29% {
+    clip-path: inset(0 100% 0 0 round 999px);
+    animation-timing-function: var(--ease-draw);
+  }
+  100% {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}

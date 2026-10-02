@@ -84,13 +84,15 @@ export function setProjector(
   width: number,
   height: number,
   screenClass: ScreenClass,
+  /** Shift of the projection centre (CSS px), computed on resize (composition.ts). */
+  offsetX = 0,
 ): Projector {
   projector.cosYaw = Math.cos(yaw);
   projector.sinYaw = Math.sin(yaw);
   projector.cosPitch = Math.cos(pitch);
   projector.sinPitch = Math.sin(pitch);
   projector.size = worldSize(width, height, screenClass);
-  projector.centerX = width * 0.5;
+  projector.centerX = width * 0.5 + offsetX;
   projector.centerY = height * 0.46;
   return projector;
 }

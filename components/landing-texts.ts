@@ -6,8 +6,6 @@
  * prototype: no client, testimonial, price, percentage or result is invented
  * (see `components/landing-texts.test.ts`, which fails on any of them).
  */
-import { BRAND } from "@/components/brand";
-
 export const LANDING_TEXTS = {
   actions: {
     estimation: "Demander une estimation",
@@ -342,8 +340,6 @@ export const LANDING_TEXTS = {
     titleLines: ["Déposez une demande fictive.", "Retrouvez-la", "dans l'espace agence."],
     titleAccent: "fictive",
     note: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
-    /** Decorative wordmark signing the panel (`aria-hidden`, §2.11.3). */
-    wordmark: BRAND.shortName,
   },
 } as const;
 

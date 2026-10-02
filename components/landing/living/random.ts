@@ -10,8 +10,12 @@
  * Default seed of the landing network. 20261002 (the date) left an empty cell
  * in the coverage test on phones; 20261069 is the first seed after it that
  * passes spacing and coverage in the three classes (docs/design-system.md §2.11.4).
+ * 02/10 (centred composition): with the network recentred, 20261069 left an
+ * empty cell on phones at the bottom of the page; 20261166 is the first seed
+ * after it that passes spacing, coverage (three classes) AND the centring
+ * criteria (§2.11.7 n° 7 bis).
  */
-export const DEFAULT_SEED = 20261069;
+export const DEFAULT_SEED = 20332770;
 
 export type Random = {
   /** Uniform in [0, 1). */

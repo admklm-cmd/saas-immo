@@ -130,7 +130,7 @@ export async function measureContrast(page: Page): Promise<LineContrast[]> {
     for (let node = walker.nextNode(); node; node = walker.nextNode()) {
       const text = node.textContent?.trim();
       const element = node.parentElement;
-      if (!text || !element || element.closest(".sr-only, [data-testid='tech-wordmark']")) continue;
+      if (!text || !element || element.closest(".sr-only")) continue;
       if (!element.checkVisibility({ opacityProperty: true, visibilityProperty: true })) continue;
       // A card: an ancestor with a background of opacity ≥ 0.85.
       let card = false;
@@ -231,4 +231,24 @@ export function contrastFailures(results: LineContrast[]): string[] {
     if (fail) failures.push(`${line.role} « ${line.text} » ${line.darkest.toFixed(2)} / ${line.median.toFixed(2)}`);
   }
   return failures;
+}
+
+/**
+ * Mean alpha of the network canvas in vertical bands (docs/design-system.md
+ * §2.11.7 n° 7 bis): the two extreme tenths of the width and the central 60 %.
+ */
+export function canvasBands(page: Page): Promise<{ left: number; right: number; center: number }> {
+  return page.getByTestId("living-background").evaluate((element) => {
+    const canvas = element as HTMLCanvasElement;
+    const context = canvas.getContext("2d");
+    if (!context) return { left: -1, right: -1, center: -1 };
+    const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+    const mean = (x0: number, x1: number) => {
+      let sum = 0;
+      for (let y = 0; y < height; y++) for (let x = x0; x < x1; x++) sum += data[(y * width + x) * 4 + 3]!;
+      return sum / (255 * (x1 - x0) * height);
+    };
+    const tenth = Math.round(width / 10);
+    return { left: mean(0, tenth), right: mean(width - tenth, width), center: mean(Math.round(width * 0.2), Math.round(width * 0.8)) };
+  });
 }
