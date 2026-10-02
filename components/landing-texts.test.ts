@@ -26,6 +26,38 @@ describe("landing copy", () => {
     }
   });
 
+  it("block A: badge, note, guard sentence, cards of the five agents and the two human steps (§2.11.8.3)", () => {
+    const journey = LANDING_TEXTS.journey;
+    expect(journey.note).toBe("Illustration en boucle, exemple fictif. Aucun prospect réel, aucun envoi.");
+    expect(journey.guard.map((segment) => segment.text).join("")).toBe("Les agents préparent. Vous validez le premier message et confirmez le mandat.");
+    expect(journey.guard.filter((segment) => "strong" in segment && segment.strong).map((segment) => segment.text)).toEqual(["validez", "confirmez"]);
+    expect(journey.cursor).toBe("Vous");
+    expect(journey.pills).toEqual({ agent: "Agent", you: "Vous" });
+    expect(journey.cards.map((card) => `${card.name} · ${card.role}`)).toEqual([
+      "Léa · Acquisition",
+      "Hugo · Qualification",
+      "Emma · Relation",
+      "Validation humaine · Conseiller",
+      "Louis · Rendez-vous",
+      "Sarah · Suivi",
+      "Mandat · Conseiller",
+    ]);
+    // Only the advisor checks the human steps; Sarah flags the mandate, never declares it.
+    const cards: readonly { nature: string; lines: readonly { label: string; by: string }[] }[] = journey.cards;
+    for (const card of cards) {
+      for (const line of card.lines) {
+        if (card.nature === "agent") expect(line.by, line.label).not.toBe("you");
+        else expect(line.by, line.label).toBe("you");
+        expect(line.label.length, line.label).toBeLessThanOrEqual(20);
+      }
+    }
+    expect(cards.flatMap((card) => card.lines).filter((line) => line.by === "missing").map((line) => line.label)).toEqual(["Motivation"]);
+    expect(journey.srSummary).toHaveLength(7);
+    expect(journey.dots.item).toBe("Étape {n} sur 7 : {nom}");
+    expect("states" in journey).toBe(false);
+    expect("prospect" in journey).toBe(false);
+  });
+
   it("labels the illustrations as a fictitious simulation", () => {
     expect(LANDING_TEXTS.journey.badge).toMatch(/fictif/i);
     expect(LANDING_TEXTS.journey.badge).toMatch(/simulation/i);

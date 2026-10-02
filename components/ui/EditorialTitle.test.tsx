@@ -218,6 +218,75 @@ describe("EditorialTitle accentReplay (docs/design-system.md §2.11.2 D)", () =>
   });
 });
 
+describe("EditorialTitle accentEffect tech (docs/design-system.md §2.11.8.2)", () => {
+  const CONTROL = ["L'IA prépare.", "Votre équipe décide."];
+  const CONTROL_SENTENCE = CONTROL.join(" ");
+  const renderTech = (props: Partial<Parameters<typeof EditorialTitle>[0]> = {}) =>
+    render(<EditorialTitle as="h2" id="control-title" lines={CONTROL} accent="décide" size="statement" reveal="in-view" accentEffect="tech" {...props} />);
+
+  it("splits the accented word into one span per letter, with no frame nor mark", () => {
+    renderTech({ accentReplay: true });
+    const heading = screen.getByRole("heading", { level: 2, name: CONTROL_SENTENCE });
+    expect(heading.getAttribute("data-accent-effect")).toBe("tech");
+    expect(heading.getAttribute("data-tech-state")).toBe("idle");
+    // Replayable, but by its own island: the CSS replay classes are not set.
+    expect(heading.getAttribute("data-accent-replayable")).toBe("");
+    const accent = heading.querySelector<HTMLElement>("[data-accent]")!;
+    expect(accent.textContent).toBe("décide");
+    expect(accent.className).toContain("title-accent");
+    expect(accent.className).not.toMatch(/accentHost/);
+    const letters = Array.from(accent.querySelectorAll("[data-letter]")).map((node) => node.textContent);
+    expect(letters).toEqual(["d", "é", "c", "i", "d", "e"]);
+    expect(document.querySelectorAll("[data-accent-frame], [data-accent-mark]")).toHaveLength(0);
+    // The word still reads the sentence; nothing is focusable; jsdom: no motion → no canvas yet on first render.
+    const visual = screen.getByTestId("editorial-title-visual");
+    expect(visual.textContent?.replace(/\s+/g, " ").trim()).toBe(CONTROL_SENTENCE);
+    expect(heading.querySelector(".sr-only")?.textContent).toBe(CONTROL_SENTENCE);
+    expect(heading.querySelector("[tabindex]")).toBeNull();
+  });
+
+  it("sets no tech attribute on any other effect", () => {
+    renderTitle({ accentEffect: "focus", accentReplay: true });
+    expect(screen.getByRole("heading", { level: 2 }).hasAttribute("data-tech-state")).toBe(false);
+    expect(document.querySelectorAll("[data-letter]")).toHaveLength(0);
+  });
+
+  it("styles the letters as inline blocks without kerning, hidden only while the canvas paints", () => {
+    const styles = readFileSync(join(process.cwd(), "components/ui/tech-accent/TechAccent.module.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(styles).toMatch(/\.letter\s*\{[^}]*display:\s*inline-block;[^}]*font-kerning:\s*none;/);
+    expect(styles).toMatch(/\.word\[data-painting\] \.letter\s*\{\s*visibility:\s*hidden;/);
+    expect(styles).toMatch(/top:\s*-32px;[\s\S]*left:\s*-32px;[\s\S]*width:\s*calc\(100% \+ 64px\);[\s\S]*height:\s*calc\(100% \+ 76px\);/);
+    expect(styles).toMatch(/pointer-events:\s*none/);
+  });
+});
+
+describe("EditorialTitle tone and align (Lot 2, docs/design-system.md §2.11.8.5)", () => {
+  it("renders exactly as before when tone and align are absent", () => {
+    const { container: before } = renderTitle({ accentEffect: "focus", accentReplay: true, subtleBefore: 2 });
+    const html = before.innerHTML;
+    cleanup();
+    const { container: after } = renderTitle({ accentEffect: "focus", accentReplay: true, subtleBefore: 2, tone: "ink", align: "start" });
+    expect(after.innerHTML).toBe(html);
+    const heading = after.querySelector("h2")!;
+    expect(heading.className).toMatch(/text-ink(\s|$)/);
+    expect(heading.className).not.toMatch(/text-center/);
+    expect(heading.hasAttribute("data-title-color")).toBe(false);
+    expect(heading.hasAttribute("data-title-align")).toBe(false);
+  });
+
+  it("inverse: every word in the inverse ink; center: each line centred", () => {
+    renderTitle({ tone: "inverse", align: "center", subtleBefore: 2 });
+    const heading = screen.getByRole("heading", { level: 2, name: SENTENCE });
+    expect(heading.getAttribute("data-title-color")).toBe("inverse");
+    expect(heading.getAttribute("data-title-align")).toBe("center");
+    expect(heading.className).toMatch(/inverse/);
+    expect(heading.className).not.toMatch(/(^|\s)text-ink(\s|$)/);
+    expect(heading.className).toMatch(/text-center/);
+    const css = readFileSync(join(process.cwd(), "components/ui/EditorialTitle.module.css"), "utf8");
+    expect(css).toMatch(/\.inverse,\s*\.inverse \.subtle,\s*\.inverse :global\(\.title-accent\)\s*\{\s*color:\s*var\(--color-ink-inverse\);/);
+  });
+});
+
 describe("EditorialTitleReplay.module.css (specificity contract, §2.11.2 D)", () => {
   const strip = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, "");
   const base = strip(readFileSync(join(process.cwd(), "components/ui/EditorialTitle.module.css"), "utf8"));

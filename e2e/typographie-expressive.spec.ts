@@ -21,17 +21,20 @@ import { fixtureUser, signIn, type FixtureUserKey } from "./helpers/sign-in";
 
 const COLD_START = 60_000;
 
-/** The seven titles of `/` that carry an accent effect (docs/design-system.md §2.11.2). */
+/**
+ * The three titles of `/` that carry an accent effect, one effect each, never
+ * repeated (docs/design-system.md §2.11.8.2, criterion T1).
+ */
 const EFFECT_TITLES = [
   ["#hero-title", "underline"],
   ["#problem-title", "focus"],
-  ["#solution-title", "focus-underline"],
-  ["#agents-title", "focus-underline"],
-  ["#control-title", "focus-underline"],
-  ["#result-title", "focus-underline"],
-  ["#final-title", "focus-underline"],
+  ["#control-title", "tech"],
 ] as const;
-const FOCUS_TITLES = EFFECT_TITLES.filter(([, effect]) => effect !== "underline");
+/** The four titles without any effect since §2.11.8.2. */
+const PLAIN_TITLES = ["#solution-title", "#agents-title", "#result-title", "#final-title"] as const;
+/** Titles replayed by the CSS controller (the tech title replays itself: e2e/landing-titre-tech.spec.ts). */
+const CSS_REPLAY_TITLES = EFFECT_TITLES.filter(([, effect]) => effect !== "tech");
+const FOCUS_TITLES = EFFECT_TITLES.filter(([, effect]) => effect === "focus");
 const WIDTHS = [1440, 1024, 390, 360] as const;
 const HEIGHT = 900;
 const NAV = APP_TEXTS.nav;
@@ -375,7 +378,7 @@ test.describe("site public", () => {
     });
 
     for (const width of [1440, 390] as const) {
-      test(`mise au point des six titres de section : flou tenu puis tout net (${width} px, §2.11.2 B et C)`, async ({ page }) => {
+      test(`mise au point du titre « problème » : flou tenu puis tout net (${width} px, §2.11.2 B)`, async ({ page }) => {
         test.setTimeout(120_000);
         await page.setViewportSize({ width, height: HEIGHT });
         await open(page, "/");
@@ -395,27 +398,51 @@ test.describe("site public", () => {
           expect(during.accentOpacity).toBe("1");
           expect(during.frameOpacity, `${selector} frame at 0.8 s`).toBe("1");
           expect(during.frameArms.startsWith(arm), during.frameArms).toBe(true);
-          if (effect === "focus-underline") expect(during.markClip).toMatch(/^inset\(0px 100%/);
 
           await freezeAt(page, selector, 2_600);
           const after = await accentEffectState(page, selector);
           for (const filter of after.words) expect(filter, `${selector} word at 2.6 s`).toBe("none");
           expect(after.frameOpacity, `${selector} frame at 2.6 s`).toBe("0");
-          if (effect === "focus-underline") {
-            expect(after.markClip).toBe("none");
-            expect(after.markVisible).toBe(true);
-          } else {
-            expect(after.mark).toBe(false);
-          }
+          expect(after.mark).toBe(false);
         }
       });
     }
   });
 
-  test("effets du mot accentué des sept titres, mouvement réduit : état final à l'instant 0 (trait présent, aucun cadre, aucun flou)", async ({ page }) => {
+  test.describe("un effet par titre (§2.11.8.2, T1)", () => {
+    test.use({ reducedMotion: "no-preference" });
+
+    test("trois titres ont un effet, chacun différent ; solution, agents, résultat, final : aucun ornement, mots nets ≤ 1 s après l'entrée", async ({ page }) => {
+      test.setTimeout(90_000);
+      await page.setViewportSize({ width: 1440, height: HEIGHT });
+      await open(page, "/");
+      const effects = await page.locator("[data-accent-effect]").evaluateAll((nodes) => nodes.map((node) => [`#${node.id}`, node.getAttribute("data-accent-effect")]));
+      expect(effects).toEqual(EFFECT_TITLES.map(([selector, effect]) => [selector, effect]));
+      expect(new Set(effects.map(([, effect]) => effect)).size).toBe(3);
+      for (const selector of PLAIN_TITLES) {
+        const title = page.locator(selector);
+        await expect(title).not.toHaveAttribute("data-accent-effect");
+        await expect(title).not.toHaveAttribute("data-accent-replayable");
+        await expect(title.locator("[data-accent-frame], [data-accent-mark], canvas, [data-letter]")).toHaveCount(0);
+        await title.scrollIntoViewIfNeeded();
+        await expect(page.locator(`.reveal[data-reveal='entering'] ${selector}`)).toHaveCount(1);
+        await page.waitForTimeout(1_000);
+        expectAllFinal(await titleStates(page, selector), `${selector} 1 s after its entry`);
+      }
+    });
+  });
+
+  test("effets du mot accentué des trois titres, mouvement réduit : état final à l'instant 0 (trait présent, aucun cadre, aucun flou, aucun canvas)", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: COLD_START });
     await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
     for (const [selector, effect] of EFFECT_TITLES) {
+      if (effect === "tech") {
+        // The word in plain HTML ink, letter by letter, no canvas (§2.11.8.2).
+        await expect(page.locator(`${selector} [data-letter]`)).toHaveCount(6);
+        await expect(page.locator(`${selector} canvas`)).toHaveCount(0);
+        await expect(page.locator(`${selector} [data-accent-frame], ${selector} [data-accent-mark]`)).toHaveCount(0);
+        continue;
+      }
       const mark = effect !== "focus";
       const state = await accentEffectState(page, selector);
       expect(state.mark, selector).toBe(mark);
@@ -432,7 +459,7 @@ test.describe("site public", () => {
     await expect(page.locator("[data-accent-frame], [data-accent-mark]")).toHaveCount(0);
   });
 
-  test("les ornements ne changent pas la hauteur de ligne des sept titres (écart ≤ 0,5 px, 1440 et 390)", async ({ page }) => {
+  test("les ornements ne changent pas la hauteur de ligne des trois titres (écart ≤ 0,5 px, 1440 et 390)", async ({ page }) => {
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: HEIGHT });
       await open(page, "/");
@@ -440,9 +467,10 @@ test.describe("site public", () => {
         const heights = await page.evaluate((scope) => {
           const accent = document.querySelector<HTMLElement>(`${scope} [data-accent]`) as HTMLElement;
           const line = accent.closest("[data-title-line]") as HTMLElement;
-          const ornaments = Array.from(accent.querySelectorAll<HTMLElement>("[data-accent-frame], [data-accent-mark]"));
+          // Frame and mark; for the tech word, its letter boxes (shown as plain inline text without them).
+          const ornaments = Array.from(accent.querySelectorAll<HTMLElement>("[data-accent-frame], [data-accent-mark], [data-letter]"));
           const measured = line.getBoundingClientRect().height;
-          ornaments.forEach((node) => (node.style.display = "none"));
+          ornaments.forEach((node) => (node.style.display = node.hasAttribute("data-letter") ? "inline" : "none"));
           const plain = line.getBoundingClientRect().height;
           ornaments.forEach((node) => (node.style.display = ""));
           return { with: measured, without: plain, count: ornaments.length };
@@ -453,72 +481,6 @@ test.describe("site public", () => {
     }
   });
 });
-
-/**
- * Ink of the accented word and of the punctuation right after it, every other
- * pixel of the page hidden, ornaments hidden: top of the ink, and how many
- * pixels of the punctuation fall inside the box of the mark (§2.11.2,
- * « Géométrie à vérifier par mot nouveau »).
- */
-async function accentInk(page: Page, selector: string) {
-  const boxes = await page.evaluate((scope) => {
-    const accent = document.querySelector<HTMLElement>(`${scope} [data-accent]`) as HTMLElement;
-    const box = (node: Element | null) => {
-      if (!node) return null;
-      const { left, top, right, bottom } = node.getBoundingClientRect();
-      return { left, top, right, bottom };
-    };
-    return {
-      em: parseFloat(getComputedStyle(accent.closest("h1, h2") as HTMLElement).fontSize),
-      accent: box(accent) as { left: number; top: number; right: number; bottom: number },
-      after: box(accent.nextElementSibling),
-      mark: box(accent.querySelector("[data-accent-mark]")),
-      frame: box(accent.querySelector("[data-accent-frame]")),
-    };
-  }, selector);
-  const style = await page.addStyleTag({
-    content: `body * { visibility: hidden !important; }
-      ${selector} [data-accent], ${selector} [data-accent] + span { visibility: visible !important; }
-      ${selector} [data-accent-mark], ${selector} [data-accent-frame] { visibility: hidden !important; }`,
-  });
-  const shot = await page.screenshot({ animations: "allow" });
-  await style.evaluate((node) => (node as Element).remove());
-  const ink = await page.evaluate(
-    async ({ image, boxes }) => {
-      const bitmap = new Image();
-      bitmap.src = `data:image/png;base64,${image}`;
-      await bitmap.decode();
-      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const context = canvas.getContext("2d")!;
-      context.drawImage(bitmap, 0, 0);
-      const { data, width, height } = context.getImageData(0, 0, bitmap.width, bitmap.height);
-      const inked = (x: number, y: number) => data[(y * width + x) * 4]! < 200;
-      let top = Infinity;
-      const right = boxes.after ? boxes.after.left : boxes.accent.right + 20;
-      for (let y = 0; y < height && top === Infinity; y++) {
-        for (let x = Math.max(0, Math.floor(boxes.accent.left - 20)); x < Math.min(width, Math.ceil(right)); x++) {
-          if (inked(x, y)) {
-            top = y;
-            break;
-          }
-        }
-      }
-      // Pixels of the punctuation (right of the word's box) inside the mark's box.
-      let touching = 0;
-      if (boxes.after && boxes.mark) {
-        for (let y = Math.floor(boxes.mark.top); y < Math.ceil(boxes.mark.bottom); y++) {
-          for (let x = Math.floor(boxes.accent.right - 4); x < Math.ceil(boxes.after.right); x++) {
-            const inside = x + 0.5 >= boxes.mark.left && x + 0.5 <= boxes.mark.right && y + 0.5 >= boxes.mark.top && y + 0.5 <= boxes.mark.bottom;
-            if (inside && inked(x, y)) touching += 1;
-          }
-        }
-      }
-      return { top, touching };
-    },
-    { image: shot.toString("base64"), boxes },
-  );
-  return { ...boxes, ...ink };
-}
 
 /** Waits until the entry of the title has started (Reveal no longer hidden), then until no animation runs in it. */
 async function waitForRest(page: Page, selector: string): Promise<void> {
@@ -583,35 +545,14 @@ async function accentLineHeight(page: Page, selector: string): Promise<number> {
   );
 }
 
-test.describe("géométrie des quatre nouveaux mots (§2.11.2)", () => {
-  test.use({ reducedMotion: "no-preference" });
-
-  for (const width of [1440, 390] as const) {
-    test(`trait sans contact avec la ponctuation (« chemin, »), cadre dégagé de l'encre (« s'arrête », « décide ») (${width} px)`, async ({ page }) => {
-      test.setTimeout(90_000);
-      await page.setViewportSize({ width, height: HEIGHT });
-      await open(page, "/");
-      for (const [selector] of FOCUS_TITLES.filter(([selector]) => selector !== "#problem-title")) {
-        await page.locator(selector).scrollIntoViewIfNeeded();
-        await expect(page.locator(`.reveal[data-reveal='entering'] ${selector}`)).toHaveCount(1);
-        await waitForRest(page, selector);
-        const ink = await accentInk(page, selector);
-        expect(ink.touching, `${selector} @ ${width}: punctuation pixels in the mark`).toBe(0);
-        // The frame (at rest, scale 1) clears the highest ink by ≥ 0.08 em (half a pixel of rounding).
-        expect(ink.top - (ink.frame?.top ?? 0), `${selector} @ ${width}: frame above the ink`).toBeGreaterThanOrEqual(0.08 * ink.em - 0.5);
-      }
-    });
-  }
-});
-
 test.describe("rejeu au survol (§2.11.2 D, critère 6 bis)", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("chacun des sept titres rejoue son effet une fois, puis revient exactement au repos (1440, souris)", async ({ page }) => {
+  test("hero et problème rejouent leur effet une fois, puis reviennent exactement au repos (1440, souris)", async ({ page }) => {
     test.setTimeout(180_000);
     await page.setViewportSize({ width: 1440, height: HEIGHT });
     await open(page, "/");
-    for (const [selector, effect] of EFFECT_TITLES) {
+    for (const [selector, effect] of CSS_REPLAY_TITLES) {
       const title = page.locator(selector);
       await leaveTitles(page);
       await title.scrollIntoViewIfNeeded();
@@ -658,7 +599,7 @@ test.describe("rejeu au survol (§2.11.2 D, critère 6 bis)", () => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 1440, height: HEIGHT });
     await open(page, "/");
-    const selector = "#solution-title";
+    const selector = "#problem-title";
     const title = page.locator(selector);
     await title.scrollIntoViewIfNeeded();
     await waitForRest(page, selector);
@@ -707,7 +648,7 @@ test.describe("rejeu au survol (§2.11.2 D, critère 6 bis)", () => {
 
     // Section: hovered 500 ms after its entry; the entry keeps running from where it was.
     await leaveTitles(page);
-    const selector = "#control-title";
+    const selector = "#problem-title";
     await page.locator(selector).scrollIntoViewIfNeeded();
     await expect(page.locator(`.reveal[data-reveal='entering'] ${selector}`)).toHaveCount(1);
     await page.waitForTimeout(500);

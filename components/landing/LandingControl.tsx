@@ -20,7 +20,7 @@ export function LandingControl() {
           titleLines={TEXTS.titleLines}
           titleAccent={TEXTS.titleAccent}
           body={TEXTS.body}
-          accentEffect="focus-underline"
+          accentEffect="tech"
           accentReplay
         />
       </Reveal>

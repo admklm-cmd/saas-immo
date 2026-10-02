@@ -39,7 +39,6 @@ export const LANDING_TEXTS = {
   journey: {
     badge: "Exemple fictif — simulation",
     title: "Parcours d'un prospect fictif",
-    prospect: "Demande d'estimation reçue pour une maison",
     steps: [
       { actor: "Léa", role: "Acquisition", action: "Source vérifiée, fiche créée", kind: "agent" },
       { actor: "Hugo", role: "Qualification", action: "Bien, secteur, motivation et délai structurés", kind: "agent" },
@@ -49,15 +48,113 @@ export const LANDING_TEXTS = {
       { actor: "Sarah", role: "Suivi", action: "Compte-rendu exploité, suivi du dossier", kind: "agent" },
       { actor: "Mandat", role: "Conseiller", action: "Signature confirmée par un humain", kind: "human" },
     ],
-    states: {
-      waiting: "À venir",
-      active: "En cours",
-      awaiting: "En attente de validation",
-      done: "Terminé",
-      validated: "Validé par un conseiller",
-      confirmed: "Confirmé par un humain",
-    },
-    note: "Illustration jouée une fois. Aucun prospect réel, aucun envoi.",
+    /**
+     * Block A of the hero (docs/design-system.md §2.11.8.3): one card per
+     * agent, plus the two human steps. `by` says who checks a line: an agent,
+     * YOU (the « Vous » cursor, never an agent), or nobody (`missing`: the
+     * information is flagged, never invented). Labels ≤ 20 characters.
+     */
+    cards: [
+      {
+        key: "lea",
+        name: "Léa",
+        role: "Acquisition",
+        nature: "agent",
+        glyph: "lea",
+        lines: [
+          { icon: "search", label: "Source vérifiée", by: "agent" },
+          { icon: "merge", label: "Doublon écarté", by: "agent" },
+          { icon: "contacts", label: "Fiche créée", by: "agent" },
+        ],
+      },
+      {
+        key: "hugo",
+        name: "Hugo",
+        role: "Qualification",
+        nature: "agent",
+        glyph: "hugo",
+        lines: [
+          { icon: "deal", label: "Bien et secteur", by: "agent" },
+          { icon: "clock", label: "Délai du projet", by: "agent" },
+          { icon: "question", label: "Motivation", by: "missing", detail: "à demander" },
+        ],
+      },
+      {
+        key: "emma",
+        name: "Emma",
+        role: "Relation",
+        nature: "agent",
+        glyph: "emma",
+        lines: [
+          { icon: "email", label: "Consentement vérifié", by: "agent" },
+          { icon: "messages", label: "Message préparé", by: "agent" },
+        ],
+      },
+      {
+        key: "review",
+        name: "Validation humaine",
+        role: "Conseiller",
+        nature: "human",
+        glyph: "humanValidation",
+        lines: [
+          { icon: "document", label: "Message relu", by: "you" },
+          { icon: "humanValidation", label: "Message validé", by: "you" },
+        ],
+      },
+      {
+        key: "louis",
+        name: "Louis",
+        role: "Rendez-vous",
+        nature: "agent",
+        glyph: "louis",
+        lines: [
+          { icon: "calendar", label: "Créneau proposé", by: "agent" },
+          { icon: "document", label: "Dossier préparé", by: "agent" },
+        ],
+      },
+      {
+        key: "sarah",
+        name: "Sarah",
+        role: "Suivi",
+        nature: "agent",
+        glyph: "sarah",
+        lines: [
+          { icon: "document", label: "Compte-rendu lu", by: "agent" },
+          { icon: "tasks", label: "Actions créées", by: "agent" },
+          { icon: "mandate", label: "Mandat signalé", by: "agent" },
+        ],
+      },
+      {
+        key: "mandate",
+        name: "Mandat",
+        role: "Conseiller",
+        nature: "outcome",
+        glyph: "mandate",
+        lines: [{ icon: "mandate", label: "Mandat confirmé", by: "you" }],
+      },
+    ],
+    pills: { agent: "Agent", you: "Vous" },
+    cursor: "Vous",
+    /** The guard rail under the action, in segments: the two strong words are set in ink. */
+    guard: [
+      { text: "Les agents préparent. Vous " },
+      { text: "validez", strong: true },
+      { text: " le premier message et " },
+      { text: "confirmez", strong: true },
+      { text: " le mandat." },
+    ],
+    note: "Illustration en boucle, exemple fictif. Aucun prospect réel, aucun envoi.",
+    dots: { label: "Choisir une étape", item: "Étape {n} sur 7 : {nom}" },
+    /** Read instead of the drawing: the final state, one sentence per card, never announced during the loop. */
+    srSummary: [
+      "Léa, acquisition : source vérifiée, doublon écarté, fiche créée.",
+      "Hugo, qualification : bien et secteur, délai du projet ; motivation manquante, à demander.",
+      "Emma, relation : consentement vérifié, message préparé.",
+      "Validation humaine, par vous : message relu, message validé.",
+      "Louis, rendez-vous : créneau proposé, dossier préparé.",
+      "Sarah, suivi : compte-rendu lu, actions créées, mandat signalé.",
+      "Mandat, par vous : mandat confirmé.",
+    ],
   },
 
   problem: {

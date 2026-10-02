@@ -396,3 +396,11 @@
     transform: scale(1.04);
   }
 }
+
+/* `tone="inverse"` (dark panel, docs/design-system.md §2.11.8.5): every word,
+   the subtle lines and the accented word included, in the inverse ink. */
+.inverse,
+.inverse .subtle,
+.inverse :global(.title-accent) {
+  color: var(--color-ink-inverse);
+}

@@ -1,6 +1,7 @@
 import { Fragment, type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "./cn";
+import { TechAccent } from "./tech-accent/TechAccent";
 import { accentOverhangEm, findAccent, isAnimatable, splitAccent, tokensOf } from "./editorial-title";
 import styles from "./EditorialTitle.module.css";
 import replayStyles from "./EditorialTitleReplay.module.css";
@@ -24,9 +25,11 @@ export type EditorialTitleProps = {
    */
   reveal: "load" | "in-view" | "none";
   /**
-   * Effect of the accented word, landing only (docs/design-system.md §2.11.2):
-   * `underline` (hero), `focus` (problem), `focus-underline` (the other
-   * landing section titles and the final panel).
+   * Effect of the accented word, landing only (docs/design-system.md §2.11.2,
+   * §2.11.8.2 — one effect per title, never repeated): `underline` (hero),
+   * `focus` (problem), `tech` (control: the word split into letters, a
+   * client island draws the TechText frame). `focus-underline` stays
+   * available, used by no title of the landing.
    * Default `none`: the CRM and /estimation keep their rendering.
    */
   accentEffect?: AccentEffect;
@@ -37,17 +40,25 @@ export type EditorialTitleProps = {
    * Server Component. Default `false`.
    */
   accentReplay?: boolean;
+  /**
+   * `ink` (default): ink on a light surface. `inverse`: every word, the
+   * accented one included, in `--color-ink-inverse` (dark panel).
+   */
+  tone?: "ink" | "inverse";
+  /** `start` (default) or `center`: each author line centred. */
+  align?: "start" | "center";
   /** Layout only (margins, max width). */
   className?: string;
 };
 
-export type AccentEffect = "none" | "underline" | "focus" | "focus-underline";
+export type AccentEffect = "none" | "underline" | "focus" | "focus-underline" | "tech";
 
 const EFFECT_CLASS = {
   none: undefined,
   underline: styles.effectUnderline,
   focus: styles.effectFocus,
   "focus-underline": styles.effectFocusUnderline,
+  tech: undefined,
 } as const;
 
 /** A comma or semicolon right after the accent dips under the baseline: the mark stops at the word (§2.11.2). */
@@ -85,6 +96,8 @@ export function EditorialTitle({
   reveal,
   accentEffect = "none",
   accentReplay = false,
+  tone = "ink",
+  align = "start",
   className,
 }: EditorialTitleProps) {
   const mode = isAnimatable(lines) ? reveal : "none";
@@ -93,13 +106,16 @@ export function EditorialTitle({
   const effect: AccentEffect = target ? accentEffect : "none";
   const hasMark = effect === "underline" || effect === "focus-underline";
   const hasFrame = effect === "focus" || effect === "focus-underline";
+  const tech = effect === "tech";
   const replayable = accentReplay && effect !== "none";
+  // The CSS replay (AccentReplayController) never touches the tech word: its island owns its replay.
+  const cssReplay = replayable && !tech;
 
   function word(text: string, line: number, key?: string): ReactNode {
     return (
       <span
         key={key}
-        className={cn(styles.word, animated && styles.focusWord, replayable && replayStyles.word)}
+        className={cn(styles.word, animated && styles.focusWord, cssReplay && replayStyles.word)}
         style={animated ? ({ "--line": line } as CSSProperties) : undefined}
       >
         {text}
@@ -118,18 +134,19 @@ export function EditorialTitle({
           className={cn(
             "title-accent",
             animated && styles.sharpWord,
-            effect !== "none" && styles.accentHost,
-            replayable && replayStyles.sharp,
+            effect !== "none" && !tech && styles.accentHost,
+            cssReplay && replayStyles.sharp,
           )}
           data-accent=""
           style={hasFrame ? ({ "--accent-overhang": `${accentOverhangEm(accented)}em` } as CSSProperties) : undefined}
         >
-          {accented}
+          {/* `tech`: one span per letter, and the canvas island (§2.11.8.2). */}
+          {tech ? <TechAccent word={accented} /> : accented}
           {/* Empty ornaments: they add no text and never change the line box. */}
-          {hasFrame ? <span className={cn(styles.frame, replayable && replayStyles.frame)} data-accent-frame="" /> : null}
+          {hasFrame ? <span className={cn(styles.frame, cssReplay && replayStyles.frame)} data-accent-frame="" /> : null}
           {hasMark ? (
             <span
-              className={cn(styles.mark, DESCENDING_PUNCTUATION.test(after) && styles.markBeforeDescender, replayable && replayStyles.mark)}
+              className={cn(styles.mark, DESCENDING_PUNCTUATION.test(after) && styles.markBeforeDescender, cssReplay && replayStyles.mark)}
               data-accent-mark=""
             />
           ) : null}
@@ -143,16 +160,21 @@ export function EditorialTitle({
     <Tag
       id={id}
       className={cn(
-        "font-display font-semibold text-ink",
+        "font-display font-semibold",
+        tone === "inverse" ? styles.inverse : "text-ink",
         styles.title,
         SIZE_CLASS[size],
         REVEAL_CLASS[mode],
         EFFECT_CLASS[effect],
+        align === "center" && "text-center",
         className,
       )}
       data-title-reveal={mode}
       data-accent-effect={effect === "none" ? undefined : effect}
       data-accent-replayable={replayable ? "" : undefined}
+      data-tech-state={tech ? "idle" : undefined}
+      data-title-color={tone === "inverse" ? "inverse" : undefined}
+      data-title-align={align === "center" ? "center" : undefined}
     >
       <span className="sr-only">{lines.join(" ")}</span>
       <span aria-hidden="true" data-testid="editorial-title-visual">

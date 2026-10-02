@@ -4,11 +4,13 @@ import { useEffect } from "react";
 
 import { REPLAY_MEDIA, REPLAY_SAFETY_MS, canReplay } from "./accent-replay";
 
-const TITLE = "[data-accent-replayable]";
+/** The tech title (« décide », §2.11.8.2) owns its replay (TechAccent): never touched here. */
+const TITLE = "[data-accent-replayable]:not([data-accent-effect='tech'])";
 
 /**
  * Hover replay of the accented-word effect of the landing titles
- * (docs/design-system.md §2.11.2 D). One per page, mounted inside
+ * (docs/design-system.md §2.11.2 D; since §2.11.8.2, three titles have an
+ * effect: hero and problem are replayed here, the tech title by its island). One per page, mounted inside
  * `[data-landing]`: one delegated listener on that root, no listener per title,
  * no React state, renders nothing. It only sets attributes; the CSS
  * (`EditorialTitleReplay.module.css`) does the motion:

@@ -15,8 +15,8 @@ import { LivingBackground } from "@/components/landing/living/LivingBackground";
  * (illustration, simulation; docs/design-system.md §2.11.4): bounded
  * sequences of impulses, still at rest; every section carries
  * `data-living-scene`. The content is painted above it and is complete
- * without JavaScript. The seven section titles replay their accent effect
- * when a mouse enters them (§2.11.2 D). No figure, client, testimonial or
+ * without JavaScript. Three titles carry an accent effect, each a different
+ * one (§2.11.8.2), replayed when a mouse enters them (§2.11.2 D). No figure, client, testimonial or
  * price is shown.
  */
 export default function HomePage() {
@@ -32,7 +32,7 @@ export default function HomePage() {
         <LandingControl />
         <LandingResult />
         <LandingFinal />
-        {/* One delegated controller for the hover replay of the seven titles (§2.11.2 D). */}
+        {/* One delegated controller for the hover replay of the three titles (§2.11.2 D; the tech one replays itself). */}
         <AccentReplayController />
       </div>
     </>

@@ -24,7 +24,7 @@ it("presents the hero, the five agents and the human safeguards", () => {
     expect(screen.getByText(fact.body)).toBeDefined();
   }
   expect(screen.getAllByText("Simulation").length).toBeGreaterThan(0);
-  // Hero journey and carousel scene: both say they are a fictitious simulation.
+  // Block A of the hero and carousel scene: both say they are a fictitious simulation.
   expect(screen.getAllByText(LANDING_TEXTS.journey.badge).length).toBeGreaterThanOrEqual(2);
 });
 
@@ -46,18 +46,22 @@ it("offers both public estimation and agency access, and no floating contact but
   expect(screen.queryByRole("link", { name: /whatsapp|contact/i })).toBeNull();
 });
 
-it("makes exactly the seven landing titles replayable on hover, each with its effect (§2.11.2)", () => {
+it("gives three titles one effect each, never repeated, replayable on hover; the four others none (§2.11.8.2, T1)", () => {
   const { container } = render(<HomePage />);
   const titles = Array.from(container.querySelectorAll("[data-accent-replayable]"));
   expect(titles.map((title) => [title.id, title.getAttribute("data-accent-effect")])).toEqual([
     ["hero-title", "underline"],
     ["problem-title", "focus"],
-    ["solution-title", "focus-underline"],
-    ["agents-title", "focus-underline"],
-    ["control-title", "focus-underline"],
-    ["result-title", "focus-underline"],
-    ["final-title", "focus-underline"],
+    ["control-title", "tech"],
   ]);
+  for (const id of ["solution-title", "agents-title", "result-title", "final-title"]) {
+    const title = container.querySelector(`#${id}`)!;
+    expect(title.hasAttribute("data-accent-effect"), id).toBe(false);
+    expect(title.querySelectorAll("[data-accent-frame], [data-accent-mark], canvas, [data-letter]"), id).toHaveLength(0);
+  }
+  // Exactly one element of the page may loop: block A of the hero (§2.11.8.1 n° 3).
+  expect(container.querySelectorAll("[data-loop]")).toHaveLength(1);
+  expect(container.querySelector("[data-loop]")?.getAttribute("data-testid")).toBe("hero-ecosystem");
   // The final panel ends on its note, no canvas inside it (§2.11.3 bis).
   const actions = screen.getByTestId("final-actions");
   expect(actions.lastElementChild?.textContent).toBe(LANDING_TEXTS.final.note);

@@ -70,6 +70,11 @@ sans reprendre leurs contenus, compositions ou effets propriétaires.
   attente ». Sans JavaScript : Léa ouverte, sa scène dans le HTML serveur. Données
   fictives La Ciotat / Cassis, aucune personne réelle, aucun chiffre présenté comme
   statistique.
+- **Modèles MIG / Striker (02/10/2026, soir, § 2.11.8)** : hero recomposé (texte en deux
+  colonnes, puis bloc A pleine largeur : cartes d'agents qui se cochent, curseur « Vous » qui
+  coche les deux décisions humaines, en boucle) ; solution = grille de 5 tuiles (feuille de
+  route, courbe, équipe, compte-rendu, garde-fous) ; panneau final noir, titre centré,
+  carrousel des 7 étapes à visuels animés. Trois effets de titre seulement, chacun unique.
 - Le récit suit le travail réel de Léa, Hugo, Emma, Louis puis Sarah.
 - Les preuves restent vérifiables dans le prototype : cinq rôles bornés, validation
   humaine, journalisation et simulation. Aucun logo client, chiffre commercial ou
@@ -1250,6 +1255,14 @@ titre, quelle que soit la largeur du contenu.
 
 ### 2.11 Landing en mouvement : effets de titre, réseau 3D, zéro boucle
 
+> **Révision « modèles MIG / Striker » (02/10/2026, soir — demande validée ; plan
+> `docs/plans/2026-10-02-landing-modeles.md`)** — statut : **Lot 1 implémenté** (effets uniques, bloc A), Lot 2 (blocs B, C) spécifié.
+> Un effet de titre n'est jamais répété (hero `underline`, problème `focus`, contrôle
+> **`tech`**, les autres sans effet) ; bloc A « Vous » dans l'écosystème des agents à la place
+> de `HeroJourney` (**seule boucle** de la page) ; bloc B, grille de 5 tuiles à la place des
+> 7 cartes de la solution ; bloc C, panneau final sombre avec carrousel des 7 étapes. Tout est
+> au **§ 2.11.8**, qui prime sur les passages contraires ci-dessous.
+
 > **Révision « finition de la landing » (02/10/2026, branche `feat/landing-polish`, demande
 > validée par l'utilisateur ; plan `docs/plans/2026-10-02-landing-polish.md`)** — statut :
 > **spécifié**, non implémenté. Quatre changements, `/` seulement :
@@ -1295,7 +1308,9 @@ titre, quelle que soit la largeur du contenu.
 
 #### 2.11.1 Règles communes
 
-1. **Aucune boucle sur la landing.** Tout mouvement automatique a une fin, atteinte **en moins
+1. **Aucune boucle sur la landing** — *exception unique depuis le 02/10 (soir) : le bloc A du
+   hero, en boucle par décision de l'utilisateur, en pause hors écran et onglet caché, § 2.11.8.3*.
+   Tout mouvement automatique a une fin, atteinte **en moins
    de 5 s** après son départ, puis l'écran est immobile (testé au pixel, § 2.11.7). Seuls les
    effets déclenchés par l'utilisateur (défilement, pointeur, bouton) peuvent bouger ensuite,
    et ils s'arrêtent avec son geste. *Précisé 02/10 (finition)* : le rejeu d'un effet de titre
@@ -1317,10 +1332,17 @@ titre, quelle que soit la largeur du contenu.
    action métier. La mention visible « Animations : exemple fictif, simulation. Aucune activité
    en direct. » reste sous l'illustration du hero.
 6. Aucune dépendance npm : CSS et canvas 2D faits main (TrueFocus de React Bits repose sur
-   `motion` : il est **réinterprété**, pas importé). *TechText (wordmark) : retiré le 02/10,
-   plus aucun code adapté de React Bits dans le dépôt.*
+   `motion` : il est **réinterprété**, pas importé). *TechText (wordmark) : retiré le 02/10 ;
+   revenu le 02/10 (soir) comme effet `tech` du seul mot « décide »
+   (`components/ui/tech-accent/`, notice dans `THIRD_PARTY_NOTICES.md`, § 2.11.8.2).*
 
 #### 2.11.2 Effets du mot accentué (`EditorialTitle` `accentEffect`)
+
+> **Remplacé en partie le 02/10/2026 (soir), § 2.11.8.2** : un effet par titre, jamais
+> répété — hero `underline`, problème `focus`, contrôle **`tech`** ; solution, agents,
+> résultat et final **sans effet ni rejeu**. Le tableau ci-dessous et les mentions
+> « sept titres » sont l'historique ; les définitions A, B, C et le mécanisme D restent la
+> référence pour les effets conservés.
 
 Trois effets, **sept titres** (*révisé 02/10 — finition* : « trois titres » au 01/10), aucun
 autre. Les tokens sont locaux à `EditorialTitle.module.css`.
@@ -1509,6 +1531,11 @@ même critère qu'à l'entrée).
 
 #### 2.11.3 ~~Wordmark « Ascend » (`TechWordmark`, d'après TechText de React Bits)~~ — RETIRÉ le 02/10/2026
 
+> **02/10/2026 (soir)** : le wordmark reste retiré, mais **l'effet TechText revient comme effet
+> du mot « décide »** (titre de la section contrôle), § 2.11.8.2. Les valeurs ci-dessous
+> (cadre, poignées, étiquette, specks, ressort) servent de référence à cette adaptation ; la
+> notice TechText revient dans `THIRD_PARTY_NOTICES.md`.
+
 > **RETIRÉ** (demande de l'utilisateur, lot « finition de la landing », 02/10/2026). Le mot
 > « Ascend » du panneau final et **tout** le dispositif TechText disparaissent : composant,
 > moteur, peinture canvas, styles, texte `LANDING_TEXTS.final.wordmark`, test E2E
@@ -1581,6 +1608,10 @@ sur le « e ») ; le contour dépasse le glyphe HTML de 2,12 px au plus (1,12–
 p95 0,20 ms, max 0,30 ms (identique avant / après).
 
 #### 2.11.3 bis Fin du panneau final sans wordmark (02/10/2026 — finition)
+
+> **Remplacé le 02/10/2026 (soir)** par le panneau sombre « processus » (bloc C,
+> § 2.11.8.5) : titre centré, paragraphe, actions, note **centrés**, puis carrousel. Le tableau
+> ci-dessous est l'historique.
 
 | | Avant | Après |
 |---|---|---|
@@ -2022,6 +2053,9 @@ mouvement réduit ; comparaison côte à côte avec la démo à 1440 et 390).
 
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
+> **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule
+> exception). Badge et graphique : inchangés.
+
 - **`HeroJourney`** : séquence **sans** image de remise à zéro finale ni modulo. Durées : départ
   (tout « en attente ») **300 ms** ; chaque agent **420 ms** ; validation humaine : attente
   **1 000 ms** puis validée **300 ms** ; mandat : attente **700 ms** puis confirmé (état final)
@@ -2054,6 +2088,9 @@ passe ; sinon le bouton reste. Le réglage système `prefers-reduced-motion` res
 global (état final immédiat).
 
 #### 2.11.7 Critères d'audit mesurables
+
+> **02/10/2026 (soir)** : les critères 1 (exception du bloc A), 2, 3, 4, 6 bis (trois titres),
+> 6 et 10 (panneau final, notes) sont complétés ou remplacés par le § 2.11.8.6.
 
 1. **Aucune boucle** (1440 × 900 et 390 × 844, mouvement autorisé, pointeur hors de la page) :
    7 s après le chargement, (a) **aucun appel à `requestAnimationFrame`** pendant une fenêtre
@@ -2130,6 +2167,473 @@ global (état final immédiat).
     note finale, validation humaine et mandat confirmé par un humain : présents et lisibles.
 11. **Non-régression du CRM** : `e2e/particules.spec.ts`, `e2e/voiles-lisibilite.spec.ts`,
     `e2e/premier-regard.spec.ts` passent ; badge « Simulation » toujours animé dans le CRM.
+
+#### 2.11.8 Révision « modèles MIG / Striker » (02/10/2026, soir) — effets uniques, blocs A, B, C
+
+> Statut : **spécifié** le 02/10/2026 par le `web-designer`, demande **validée** par l'utilisateur
+> (source : `docs/references/2026-10-02-modeles-mig-striker.md`, capture du modèle C fournie).
+> Plan : `docs/plans/2026-10-02-landing-modeles.md` (deux lots indépendants). Branche
+> `feat/landing-polish`. Périmètre : **`/` seulement**. Inchangés : réseau de fond (§ 2.11.4),
+> voiles (`.particle-veil`, `.network-veil-title`), CRM, `/estimation`, sections problème,
+> agents, résultat (sauf l'effet de leur titre). Aucune dépendance npm (ni Swiper, ni GSAP, ni
+> `motion`) : CSS, SVG, DOM et canvas 2D faits main.
+>
+> **Ce paragraphe prime** sur les passages contraires du § 2.11 (règle 1 du § 2.11.1, tableau
+> du § 2.11.2, § 2.11.3 et 2.11.3 bis, `HeroJourney` du § 2.11.5, critères 1, 2, 3, 4, 6, 6 bis
+> du § 2.11.7), qui portent un renvoi ici.
+>
+> **Avancement Lot 1 (02/10/2026, `frontend-ux`) — implémenté et testé** : effets uniques
+> (`tech` sur « décide », props `tone` / `align`) et bloc A. Fichiers : `components/ui/tech-accent/`
+> (`TechAccent.tsx`, `TechAccent.module.css`, `tech-accent.ts`, `paint-tech-accent.ts`,
+> `tech-accent-engine.ts`), `components/landing/ecosystem/` (`HeroEcosystem.tsx`,
+> `ecosystem-timeline.ts`, `EcosystemCard.tsx`, `CursorYou.tsx`, `ConvergingLines.tsx`,
+> `ecosystem.module.css`) ; `HeroJourney` et `journey-timeline` supprimés. **Mesures réelles**
+> (Chromium, 1440 × 900) : « décide » 150,84 px découpé en lettres = 150,84 px en texte continu
+> (écart 0) ; balayage démarré **+ 770 ms** après l'entrée, repos **+ 2 296 ms** ; coût d'une
+> image active 0,0–0,3 ms (première image 1,8 ms, mesure des lettres comprise) ; lettre « e »
+> peinte = lettre HTML (≤ 1 px sur les quatre bords) ; cycle du bloc A **9 798 ms** (ordonnanceur
+> sans dérive : chaque pas part de l'heure idéale de fin du précédent) ; bande 1 du hero : bas à
+> **526 px**, haut des cartes à **662 px** (< 900, critère A1). **Écarts à la spécification**
+> (signalés, à valider à l'audit) : (1) pastille « Agent » / « Vous » posée sur la **deuxième
+> ligne de l'en-tête**, à droite du rôle — à 216 px, « Validation humaine » était tronqué à côté
+> de la pastille ; (2) fondu des bords (`mask-image` 24 px) **sous 1024 px seulement** — à ≥ 1024
+> rien n'est dessous, et le fondu effaçait la moitié de l'étiquette « Vous » du curseur posé sur
+> le Mandat ; (3) lignes convergentes **mesurées côté client** : absentes du HTML sans
+> JavaScript (décor ; tout le reste de la figure y est) ; (4) carrousel : la dernière carte ne
+> peut pas être centrée avec le rembourrage de 24 px, le point l'amène entièrement en vue ;
+> (5) tactile : le balayage d'arrivée de « décide » joue aussi (une fois), puis plus rien
+> (« aucun canvas » du critère T3 lu comme « canvas vide, aucun rejeu ») ; (6) coche : petit SVG
+> local reprenant la géométrie de l'icône `check` (trait blanc tracé, `pathLength`) ; (7) deux
+> curseurs « Vous » : un fixe dans la case du Mandat (HTML serveur, mouvement réduit), un mobile
+> dans la piste (mouvement autorisé). **Correctif annexe** (`app/globals.css`) : le voile 75 %
+> des lignes grises du titre « problème » n'agrandit plus la zone défilable du `h2` (778 → 722 px
+> à 1440, 398 → 342 px à 390) — positionnement par ancre (`anchor-name`, sous `@supports`),
+> pixels identiques avant / après (captures comparées à 1440 et 390).
+
+##### 2.11.8.1 Règles de l'utilisateur, traduites
+
+1. **Un effet de titre n'apparaît qu'une fois sur `/`.** Trois titres ont un effet, chacun
+   différent ; les quatre autres n'en ont **aucun** (ni cadre, ni trait, ni flou tenu, ni rejeu).
+2. **Les animations nouvelles vivent seulement dans les blocs A, B, C.** Rien d'autre n'est
+   ajouté.
+3. **Bloc A en boucle** (seule exception à la règle « aucune boucle », § 2.11.1 n° 1) : pause
+   hors écran et onglet caché, mouvement réduit = état final fixe. **B et C** : joués à
+   l'arrivée et à l'interaction, bornés, jamais en boucle, **aucun défilement automatique**.
+4. **Couleurs** : noir, blanc, gris ; cobalt `--color-accent` `#2457ff` en micro-accent
+   (actif, curseur « Vous », progression, cible) ; **aucun rouge** (aucun point
+   « enregistrement » rouge, aucune cible rouge du modèle C). Aucune photo, aucune personne
+   réelle, aucun chiffre présenté comme une statistique. Tout exemple porte « Simulation » /
+   « Exemple fictif ».
+5. On reproduit la **composition, le rythme et le mouvement** des modèles (≈ 90 %), jamais leur
+   code, leurs images, leurs textes ; rien n'est chargé depuis leurs serveurs.
+
+##### 2.11.8.2 Effets de titre : trois titres, trois effets
+
+| Titre (`/`) | Mot | Effet | Rejeu au survol | Décision |
+|---|---|---|---|---|
+| Hero (`h1`) | main | `underline` (A, § 2.11.2) | oui (§ 2.11.2 D) | **inchangé** |
+| Problème | administratif | `focus` (B, § 2.11.2) | oui | **inchangé** |
+| Contrôle | décide | **`tech`** — nouveau, ci-dessous | oui (variante tech) | **nouveau** (remplace `focus-underline`) |
+| Solution | chemin | aucun (`none`) | non | retiré |
+| Agents | s'arrête | aucun | non | retiré |
+| Résultat | commencer | aucun | non | retiré |
+| Final (bloc C) | fictive | aucun ; **titre centré, blanc sur le panneau noir** | non | retiré |
+
+- Les titres sans effet gardent leur **typographie** (§ 2.2 : Bricolage 600, mot accentué en
+  Instrument Serif italique) et leur **apparition ligne par ligne** du § 2.2.7 (arrivée de base
+  commune à tous les titres, pas un effet du mot accentué). *À confirmer par l'utilisateur à
+  l'audit — voir « À transmettre » du rapport.*
+- `focus-underline` n'est plus utilisé sur `/` : le code reste dans `EditorialTitle` (testé,
+  réutilisable), aucun titre ne le pose.
+- Le rejeu au survol (§ 2.11.2 D) ne concerne plus que **hero, problème, contrôle**. Les
+  quatre autres titres ne portent ni `accentReplay`, ni `data-accent-replayable`.
+
+**Pourquoi « décide » reçoit l'effet tech.** L'effet TechText est un **outil de sélection** :
+cadre à poignées, étiquette de mesure, lettre qu'on attrape. C'est le geste d'un humain qui
+prend la main sur un objet — exactement le sens de « Votre équipe *décide* ». Placé ailleurs
+(« chemin », « commencer »), il serait décoratif. Second argument : la section contrôle n'a pas
+d'autre animation (cartes des garde-fous statiques), alors que solution (bloc B) et final
+(bloc C) en reçoivent : le mouvement est réparti sur la page au lieu de s'empiler. Le titre est
+court (deux lignes), le mot est en fin de titre : l'étiquette de mesure se pose **sous** la
+lettre sans recouvrir une autre ligne.
+
+**Effet `tech` sur « décide »** (d'après TechText de React Bits, déjà adapté le 01/10 pour le
+wordmark — historique au § 2.11.3 ; code récupérable par
+`git show f83805c^:components/landing/wordmark/<fichier>` : `tech-wordmark.ts`,
+`paint-wordmark.ts`, `wordmark-engine.ts`, `TechWordmark.tsx`, `TechWordmark.module.css` et
+leurs tests). Le titre **reste du texte HTML** : nom accessible inchangé (« L'IA prépare. Votre
+équipe décide. », copie `sr-only` existante) ; tout l'effet est décoratif (`aria-hidden`).
+
+| Paramètre | Valeur | Note |
+|---|---|---|
+| Lettres | le mot accentué découpé en `span` `inline-block` (d · é · c · i · d · e), `font-kerning: none` sur ces `span` seulement | Instrument Serif italique 400, `--color-ink`. Largeur du mot : écart ≤ 2 px avec le rendu actuel ; boîte de ligne : écart ≤ 0,5 px (critère § 2.2.5) |
+| Taille | celle du titre (`text-statement` : 64 / 60 / 36 px à 1440 / 1024 / 390) | Aucun agrandissement |
+| Boîte d'une lettre | **encre** mesurée (`measureText` : `actualBoundingBox*`) sur la police lue dans le `span` (`getComputedStyle`), après `document.fonts.ready` | L'italique déborde de sa boîte : on cadre l'encre, pas la boîte CSS |
+| Cadre | rectangle cobalt 1 px autour de l'encre + 4 px ; 4 poignées carrées 5 × 5 px (fond blanc, trait cobalt 1 px) ; glissement de lettre en lettre 160 ms, `--ease-emphasis` | Valeurs du § 2.11.3 |
+| Étiquette | Geist Mono 11 px 500, « d  28 × 46 » (lettre, largeur × hauteur de l'encre en px CSS arrondis), **blanc sur cobalt** (5,4:1), rayon 4 px, marge 2 × 6 px, posée **6 px sous** le cadre, alignée sur son bord gauche | Sous le cadre : « décide » est sur la dernière ligne, il n'y a pas de place au-dessus (interlignage 1) ; sous le mot, 24 px libres jusqu'au paragraphe |
+| Contour pointillé | tiret 4 / espace 2 / trait 1,5 px CSS, **contour extérieur seul** (technique `destination-out` du § 2.11.3) ; portée 0,75 em autour du pointeur, adoucie sur 35 % | Couleur encre |
+| Specks | 10 (≥ 768 px, pointeur fin) ; 6 (compact) ; carrés 2–4 px, moitié cobalt (0,9), moitié encre (0,5), dans la boîte de la lettre élargie de 0,25 em, graine fixe ; 2 clignotements de 360 ms, décalage 40 ms, au changement de lettre seulement | — |
+| Glisser une lettre | souris et stylet seulement ; déplacement plafonné à 0,6 em (frein progressif) ; au relâcher, ressort `k` 220, amortissement 22 : retour < 0,5 px en ≤ 700 ms, dépassement ≤ 6 px ; Échap = relâcher | Valeurs du § 2.11.3 |
+| Canvas | `position: absolute` dans `.title-accent`, débord 32 px en haut, 32 px à gauche et à droite, **44 px en bas** (étiquette) ; `pointer-events: none` ; DPR plafonné à 2 ; **vide au repos** (aucune boucle `requestAnimationFrame`) | Les `span` passent en `visibility: hidden` seulement pendant un état actif ; écart lettre HTML / lettre peinte ≤ 1 px |
+
+| Situation | Comportement |
+|---|---|
+| Sans JS, avant hydratation, mouvement réduit | Le mot en HTML, plein, encre, immobile. **Aucun canvas monté**, aucun écouteur |
+| Arrivée (une fois) | Déclencheur : le `Reveal` de la section passe en `entering` (titre ≥ 60 % visible) ; **délai 760 ms** (les deux lignes du titre sont arrivées à ≈ 700 ms ; le mot accentué est net dès 220 ms). Le cadre se pose sur « d » (160 ms), glisse d → é → c → i → d → e (160 ms + 60 ms d'arrêt par lettre), la zone de contour suit le cadre, specks au changement de lettre ; après le « e », le cadre s'efface en 200 ms. **Durée ≤ 1 600 ms** → fin ≤ 2 360 ms après l'entrée, puis repos |
+| Rejeu au survol | Mêmes conditions que le § 2.11.2 D (souris ou stylet, `(hover: hover) and (pointer: fine)`, mouvement autorisé, arrivée terminée, aucun rejeu en cours, ≥ 800 ms depuis le précédent, entrée du pointeur dans la boîte du `h2`). Effet : **le balayage rejoue**, sans délai, ≤ 1 600 ms ; `data-accent-replay="running"` pendant le balayage, `data-accent-replays` + 1 |
+| Pointeur sur le mot | Dès que le pointeur est à moins de la portée d'une lettre du mot, le **suivi** prend la main (le balayage en cours s'arrête là où il est, le cadre glisse en 160 ms vers la lettre la plus proche) : lettres dans la portée en contour pointillé, cadre + étiquette sur la plus proche. Pointeur immobile 600 ms → plus de speck. Le pointeur quitte le `h2` → retour au plein en 200 ms, canvas vidé, repos |
+| Tactile, pointeur grossier, clavier | Rien après l'arrivée (pas de rejeu, pas de toucher qui montre le cadre). `touch-action` du titre inchangé : **le défilement n'est jamais bloqué**. Le titre n'est pas focusable |
+| Onglet caché pendant un état actif | Arrêt, retour au repos au retour sur l'onglet |
+
+- Attributs de test sur le `h2` : `data-accent-effect="tech"`, `data-tech-state`
+  (`idle` | `sweep` | `follow` | `drag` | `spring`), `data-accent-replays`.
+- Contrôleur : le comportement est porté par un îlot client unique dans le mot (ex.
+  `TechAccent`) ; `AccentReplayController` **ignore** `[data-accent-effect="tech"]` (pas de
+  double rejeu). `EditorialTitle` reste un Server Component.
+- Coût : ≤ 2 ms par image active (mesuré 0,20–0,30 ms pour le wordmark le 01/10).
+- Notice : la section « React Bits — TechText » revient dans `THIRD_PARTY_NOTICES.md` (texte
+  de licence MIT + Commons Clause recopié **à l'identique** de `git show
+  f83805c^:THIRD_PARTY_NOTICES.md`), « Adapted in » mis à jour vers les nouveaux fichiers, et
+  l'en-tête de chaque fichier adapté reprend la mention « Adapted from React Bits — TechText ».
+
+##### 2.11.8.3 Bloc A — « Vous » dans l'écosystème des agents (remplace `HeroJourney`)
+
+**Idée unique** : cinq agents préparent, **vous** cochez les deux décisions. **En cinq
+secondes** : des cartes d'agents se cochent toutes seules, puis un curseur « Vous » vient cocher
+la validation du premier message, puis celle du mandat. **Scène** : rangée de cartes de travail
+(modèle MIG « écosystème »), lignes fines qui convergent vers l'action « Demander une
+estimation ». **Texte restant** : une phrase de garde-fou et la mention de simulation.
+
+**Place et recomposition du hero.** La rangée a besoin de toute la largeur : elle ne tient pas
+dans la colonne droite du hero (≈ 560 px). Le hero devient deux bandes dans la même `section`
+(`data-living-scene="hero"`, `aria-labelledby="hero-title"`) :
+
+| Bande | ≥ 1024 px | < 1024 px |
+|---|---|---|
+| 1. Texte | Grille **inchangée** `lg:grid-cols-[1.08fr_0.92fr]`, `lg:items-end`, `gap-16`. Colonne gauche : étiquette inclinée + `h1` (colonne `@container` **identique** : taille du poster inchangée, 84,7 px à 1440). Colonne droite : sous-titre, deux actions, bloc « Ce que le prototype fait réellement » (même ordre, mêmes voiles, mêmes classes ; preuves en `sm:grid-cols-2`) | Une colonne, ordre inchangé : étiquette, titre, sous-titre, actions, preuves |
+| 2. Bloc A | Pleine largeur de fenêtre (sort du `max-w-7xl` : `w-screen` centré, la racine `[data-landing]` est déjà en `overflow-x-clip`), `mt-20` (1024–1439 : `mt-16`) | `mt-14`, carrousel |
+
+`min-h-[calc(100dvh-4.5rem)]` est retiré du hero (la hauteur suit le contenu) ; rembourrages
+`pt-14 lg:pt-20` inchangés, bas `pb-16 lg:pb-24`. À 1440 × 900, le haut des cartes doit être
+visible sans défiler (bas de la bande 1 ≈ 560 px ; critère n° A1).
+
+**Anatomie (≥ 1440 px, 6 colonnes).**
+
+```
+            [Simulation] Exemple fictif — simulation
+ ┌Léa──────┐            ┌Valid.───┐
+ │ ▢ ▢ ▢   │ ┌Emma────┐ │ ◯ ◯     │ ┌Louis───┐            ┌Mandat──┐
+ └─────────┘ │ ▢ ▢    │ └─────────┘ │ ▢ ▢    │ ┌Sarah───┐ │ ◯      │
+ ┌Hugo─────┐ └────────┘             └────────┘ │ ▢ ▢ ▢  │ └────────┘
+ │ ▢ ▢ ┄   │                                   └────────┘
+ └─────────┘        ╲   ╲    │    ╱   ╱   ╱   (lignes à 7 %)
+                     [ Demander une estimation → ]
+             Les agents préparent. Vous validez … confirmez …
+     Illustration en boucle, exemple fictif. Aucun prospect réel, aucun envoi.
+```
+
+| Élément | Valeurs |
+|---|---|
+| Légende (au-dessus) | Centrée : `SimulationBadge` + « Exemple fictif — simulation » (`text-xs font-medium text-ink-muted`), `gap-2`, 24 px au-dessus des cartes. Sur un voile `.particle-veil-tight` (texte sur le réseau) |
+| Rangée | Colonnes de **216 px**, espacement **16 px**, centrées : 6 × 216 + 5 × 16 = **1 376 px** (marge ≥ 32 px à 1440). Colonne 1 = Léa au-dessus de Hugo (empilées, `gap-4`) ; puis Emma, Validation humaine, Louis, Sarah, Mandat. **Décalages verticaux** (marge haute, pas de `transform`, pour que les lignes mesurent juste) : 0 / 40 / 12 / 56 / 20 / 64 px. Bords de la fenêtre : `mask-image` en fondu sur les 24 px extérieurs (aucun contenu dessous) |
+| Carte (agent) | `bg-surface` opaque (`data-network-cover`), bord 1 px `--color-line`, **rayon 24 px** (`rounded-xl`), `shadow-raised`, rembourrage 10 px. En-tête 40 px : tuile `AgentAppIcon` `kind="agent"` `size="sm"` (28 px, carré sombre) + prénom (14 px, 500, `ink`) au-dessus du rôle (12 px, `ink-subtle`) + à droite pastille « Agent » (11 px 500, `ink-subtle` sur `surface-sunken`, rayon 999, 2 × 8 px, 5,2:1) |
+| Carte (humaine) | Même boîte **+ double contour** : `outline: 1px solid var(--color-ink)` à `outline-offset: 3px` en plus du bord (la forme dit « humain », § 1.1). Tuile `AgentAppIcon` `kind="human"` (cercle à double contour, glyphe `humanValidation`) ; Mandat : `kind="outcome"`, glyphe `mandate`. Pastille « Vous » (11 px 600, `ink`, bord 1 px `ink`) + **case ronde 10 px** à droite dans la pastille : vide, puis pleine encre quand toutes les lignes de la carte sont cochées |
+| Ligne de tâche | Pilule bordée : hauteur 36 px, rayon 999, bord 1 px `--color-line`, rembourrage 0 10 px, `gap-2` ; icône `Icon` `sm` 14 px **`dimmed`** (gris, immobile : pas de pluie d'accents cobalt) ; libellé 13 px 500 `ink`, une ligne, `truncate` ; case à droite. Lignes espacées de 6 px |
+| Case agent | Carré 16 × 16, rayon 4, bord 1,5 px `--color-line-strong` ; cochée : fond `--color-inverse`, coche blanche (glyphe `check` 12 px) |
+| Case humaine | **Rond** 18 px, double contour (anneau 1,5 px `ink` + anneau extérieur 1 px `ink` à 2 px) ; cochée : disque `--color-inverse`, coche blanche. Forme ≠ case agent : la différence ne repose pas sur la couleur |
+| Ligne « manquante » (Hugo) | Pilule en **pointillé** `--color-line-strong`, libellé « Motivation » + « à demander » (12 px `ink-subtle`), case carrée en pointillé, **jamais cochée** |
+| Carte active | Anneau cobalt 1 px par-dessus le bord (pseudo-élément, opacité 0 → 1 en 220 ms, `--ease-standard`) pendant que ses lignes se cochent |
+| Curseur « Vous » | Flèche SVG 20 × 20 pleine `--color-accent`, contour blanc 1,5 px ; étiquette « Vous » (Geist 12 px 600, blanc sur cobalt, 5,4:1, rayon 999, 2 × 8 px) décalée de (14 ; 16) px de la pointe. Position de repos (« parc ») : 24 px sous et 16 px à gauche de la première case de « Validation humaine » — le conseiller **attend** pendant que les agents travaillent |
+| Lignes convergentes | SVG sous la rangée, hauteur **112 px**, une ligne par colonne : du bas de la colonne (+ 8 px) au haut du bouton, courbe `M xᵢ,y₀ C xᵢ,y₀+0,55h  x_c,y₁−0,55h  x_c,y₁`, trait 1 px `--color-ink` à **opacité 0,07**, `vector-effect: non-scaling-stroke`. Recalculées au redimensionnement (`ResizeObserver`), jamais animées |
+| Action | `ButtonLink` `primary` `lg` « Demander une estimation » (`LANDING_TEXTS.actions.estimation`), `arrow="forward"`, centré, vers `/estimation` |
+| Carte de texte | 16 px sous le bouton, centrée, `max-w-[22rem]`, `bg-surface`, bord 1 px `line`, rayon 16 px, rembourrage 12 × 16, `text-sm text-ink-muted text-center` : « Les agents préparent. Vous **validez** le premier message et **confirmez** le mandat. » — les deux mots en gras sont en `text-ink font-medium` |
+| Note | 12 px sous la carte, centrée, `text-xs text-ink-subtle`, sur voile serré : « Illustration en boucle, exemple fictif. Aucun prospect réel, aucun envoi. » ; puis la mention existante `hero.illustrationNote` (« Animations : exemple fictif, simulation. Aucune activité en direct. »), inchangée, à 4 px |
+
+**Contenu exact des cartes** (`LANDING_TEXTS.journey.cards`, icônes de `components/icons/`) :
+
+| Carte | Tuile (glyphe, nature) | Lignes (icône · libellé · qui coche) |
+|---|---|---|
+| Léa · Acquisition | `lea`, agent | `search` · Source vérifiée · agent ; `merge` · Doublon écarté · agent ; `contacts` · Fiche créée · agent |
+| Hugo · Qualification | `hugo`, agent | `deal` · Bien et secteur · agent ; `clock` · Délai du projet · agent ; `question` · Motivation — à demander · **manquante** |
+| Emma · Relation | `emma`, agent | `email` · Consentement vérifié · agent ; `messages` · Message préparé · agent |
+| Validation humaine · Conseiller | `humanValidation`, humain | `document` · Message relu · **Vous** ; `humanValidation` · Message validé · **Vous** |
+| Louis · Rendez-vous | `louis`, agent | `calendar` · Créneau proposé · agent ; `document` · Dossier préparé · agent |
+| Sarah · Suivi | `sarah`, agent | `document` · Compte-rendu lu · agent ; `tasks` · Actions créées · agent ; `mandate` · Mandat signalé · agent |
+| Mandat · Conseiller | `mandate`, aboutissement | `mandate` · Mandat confirmé · **Vous** |
+
+Règle métier visible : **aucune case humaine n'est jamais cochée sans le curseur « Vous »**, et
+Sarah « signale » le mandat sans le déclarer.
+
+**Boucle — chronologie d'un cycle (9 800 ms).** Un seul ordonnanceur à minuteurs
+(`setTimeout`), **aucun `requestAnimationFrame`**, aucune animation CSS infinie : chaque pas
+pose un état, les transitions CSS font le mouvement (`transform`, `opacity` seulement). Coche
+d'une case : fond opacité 0 → 1 et `scale(0.6)` → `scale(1)` en 200 ms `--ease-emphasis`, puis
+coche tracée (`stroke-dashoffset` 1 → 0) en 160 ms, délai 60 ms. Cadence agent : une case toutes
+les **280 ms**.
+
+| t (ms) | Événement |
+|---|---|
+| 0 → 240 | **Remise à zéro** : toutes les coches s'effacent ensemble (opacité → 0, `scale(0.6)`, 240 ms, `--ease-exit`) ; pastilles « Vous » vidées |
+| 0 → 900 | Le curseur revient de la case du Mandat au parc (900 ms, `--ease-emphasis`) |
+| 900 / 1 180 / 1 460 | Léa coche ses 3 lignes (anneau actif 900 → 1 740) |
+| 1 740 / 2 020 | Hugo coche 2 lignes ; **2 300** : la case « Motivation » trace son pointillé (200 ms) et reste vide (anneau 1 740 → 2 580) |
+| 2 580 / 2 860 | Emma coche 2 lignes (anneau 2 580 → 3 140) |
+| 3 140 → 3 620 | Validation humaine active ; le curseur glisse du parc à la case 1 (480 ms, `--ease-emphasis`) |
+| 3 620 → 3 740 | Clic : curseur `scale(0.88)` → 1, case `scale(0.92)` → 1 (120 ms) ; coche à 3 700 |
+| 3 860 → 4 140 | Glisse vers la case 2 (280 ms) ; clic 4 140 → 4 260, coche à 4 220 ; pastille « Vous » pleine ; anneau éteint à 4 500 |
+| 4 500 / 4 780 | Louis coche 2 lignes (anneau 4 500 → 5 060) |
+| 5 060 / 5 340 / 5 620 | Sarah coche 3 lignes (anneau 5 060 → 5 900) |
+| 5 900 → 6 620 | Mandat actif ; le curseur glisse jusqu'à sa case (720 ms, `--ease-emphasis`) |
+| 6 620 → 6 740 | Clic, coche à 6 700 ; pastille « Vous » pleine |
+| 6 740 → 9 800 | **Tenue de l'état final** (3 060 ms), anneau du Mandat éteint à 7 200 ; puis cycle suivant |
+
+Le déplacement du curseur est un **FLIP** : position de la case cible mesurée
+(`getBoundingClientRect`, relative à la piste), `transform: translate(x, y)` avec transition ;
+recalcul au redimensionnement (le curseur saute à sa position, sans transition).
+
+| Situation | Comportement |
+|---|---|
+| HTML serveur, sans JS | **État final** : toutes les cases agent cochées, « Motivation — à demander » vide en pointillé, deux cases « Vous » cochées, Mandat confirmé, curseur posé sur la case du Mandat, aucun anneau |
+| Mouvement réduit | Même état final, immobile, **aucun minuteur** (`data-loop-state="reduced"`) ; bascule en direct si le réglage change (saut à l'état final) |
+| Lecture | Démarre quand la figure est visible à **≥ 25 %** (`IntersectionObserver`), par une remise à zéro ; `data-loop-state="playing"`, `data-loop-cycles` = nombre de cycles commencés |
+| Hors écran (< 25 %) ou onglet caché | **Pause** : le pas en cours finit sa transition (≤ 900 ms), plus aucun minuteur armé ; `data-loop-state="paused"`. Reprise au même pas quand la condition revient |
+| Survol, clic, clavier dans la figure | La boucle ne réagit pas (illustration) ; le bouton et le lien restent utilisables à tout instant |
+
+**Accessibilité.** `figure` avec `aria-labelledby` vers un titre `sr-only` « Parcours d'un
+prospect fictif » ; la partie dessinée (cartes, cases, curseur, lignes) est `aria-hidden` ; une
+liste `sr-only` **statique** décrit l'état final, une phrase par carte (ex. « Léa,
+acquisition : source vérifiée, doublon écarté, fiche créée. », « Hugo, qualification : bien et
+secteur, délai du projet ; motivation manquante, à demander. », « Validation humaine, par
+vous : message relu, message validé. », « Mandat, par vous : mandat confirmé. »). Rien n'est
+annoncé pendant la boucle. Le mouvement démarre automatiquement et dure plus de 5 s : **WCAG
+2.2.2** est respecté par la pause hors écran **et** parce que l'information est complète sans
+lui (liste statique, état final serveur) ; *décision de l'utilisateur, consignée.* L'arrêt
+global reste `prefers-reduced-motion`. Contrastes : libellés `ink` 17,7:1 ; rôles `ink-subtle`
+5,7:1 ; étiquette « Vous » 5,4:1 ; cases et curseur ≥ 3:1.
+
+**Responsive.**
+
+| Largeur | Composition |
+|---|---|
+| ≥ 1440 | 6 colonnes (ci-dessus) |
+| 1024–1439 | **4 colonnes empilées** de 216 px, `gap-4` : [Léa / Hugo] [Emma / Validation] [Louis / Sarah] [Mandat] ; décalages 0 / 32 / 12 / 48 px ; 4 × 216 + 3 × 16 = 912 px. Lignes : une par colonne |
+| < 1024 | **Carrousel** horizontal natif : `overflow-x: auto`, `scroll-snap-type: x mandatory`, une carte par diapositive (`snap-center`), largeur `min(264px, 76vw)` (640–1023 : 240 px), `gap-3`, rembourrage de piste 24 px, la carte suivante dépasse. Aucun décalage vertical. Lignes convergentes **masquées** ; bouton pleine largeur `max-w-80` centré. **Pagination à points** sous la piste : 7 boutons, cible 24 × 24 px, point 6 px `line-strong`, actif = pilule 20 × 6 px `ink` (transition de largeur via `scaleX`, 240 ms) ; `aria-label` « Étape 1 sur 7 : Léa » … ; clic = défilement vers la carte (`behavior: smooth`, instantané en mouvement réduit). **Aucun défilement automatique** : la boucle coche les cases à leur place, le curseur vit dans le repère de la piste (il est hors vue quand sa carte n'est pas affichée) |
+| 390 / 360 | Idem < 1024 ; aucun débordement du document ; libellés sur une ligne (`truncate`, libellés ≤ 20 caractères) |
+
+##### 2.11.8.4 Bloc B — grille « partenaire » de la solution (remplace les 7 cartes)
+
+**Idée unique** : un dossier suit un chemin connu, entre des agents bornés et des garde-fous
+réels. **En cinq secondes** : une feuille de route en zigzag, une courbe qui monte, une équipe
+autour de « Vous », un compte-rendu, deux grands chiffres vrais. Le titre de la section, son
+sur-titre et son paragraphe restent (`LandingHeading`, **sans effet**, § 2.11.8.2).
+
+**Grille.** `mt-14`, `display: grid`, `gap-4` (16 px). ≥ 1024 : `grid-cols-3`, deux rangées ;
+tuile 1 en `row-span-2` (colonne 1), tuiles 2 et 3 en colonne 2 (haut, bas), tuiles 4 et 5 en
+colonne 3. 640–1023 : `grid-cols-2` ; tuile 1 `row-span-2` à gauche, 2 et 3 à droite, puis 4 et
+5 côte à côte. < 640 : une colonne, ordre 1 → 5.
+
+**Tuile (commune).** `bg-surface` opaque (`data-network-cover`), bord 1 px `--color-line`,
+**rayon 24 px**, `shadow-subtle`, rembourrage 8 px. **Cadre du visuel** : `bg-surface-muted`
+(#fafafa), bord 1 px `line`, rayon 16 px, `overflow: hidden`, hauteur 200 px (tuiles 2–5) ;
+tuile 1 : remplit la hauteur disponible, minimum 456 px (≥ 1024), 400 px (< 1024). **Texte**
+sous le cadre, rembourrage 16 px 16 px 12 px : ligne icône `Icon` `sm` 16 px (encre + accent
+cobalt, histoire au survol de la tuile) + titre **Geist 16 px 500** `ink` ; paragraphe 14 px /
+1,55 `ink-muted`, 2 lignes au plus à 1440. Étiquette de simulation **dans le cadre**, en haut à
+gauche (12 px) : `SimulationBadge` + « Exemple fictif » (tuiles 1 à 4) ; la tuile 5 décrit des
+règles réelles : pas d'étiquette.
+
+| N° | Titre (icône) | Paragraphe | Visuel |
+|---|---|---|---|
+| 1 | **Un seul chemin** (`pipeline`) | « Sept étapes, un responsable chacune. Le dossier attend la validation humaine. » | **Feuille de route** : les 7 étapes de `solution.rail` en **zigzag** (impaires à gauche, paires à droite, largeur 70 % du cadre), chacune = petite carte blanche rayon 12, bord `line`, hauteur 52 px, rembourrage 8 × 10 : tuile `AgentAppIcon` `sm` (agent / humain / aboutissement) + pastille mono « 01 » 11 px `ink-subtle` + libellé 13 px 500 + responsable 12 px `ink-subtle`. Reliées par un **sentier pointillé** SVG courbe passant par les centres (trait 1,5 px `ink` à 0,35, `stroke-dasharray: 2 5`, bouts ronds). **Étape 04 « Validation humaine »** : carte en pointillé `line-strong`, tuile grisée, mention « En attente de vous » avec un point cobalt 6 px (seul cobalt de la tuile). Étapes au-delà (05–07) à opacité 0,55 (pas encore atteintes) ; la dernière est **coupée par le bas** (masque en fondu sur les 72 px inférieurs). Espacement vertical 12 px |
+| 2 | **Un dossier qui avance** (`growth`) | « Chaque étape du pipeline, du nouveau contact au mandat signé. » | **Carte graphique** : en-tête « Progression — dossier fictif » 12 px 500 ; courbe SVG montante passant par 6 points en x réguliers (étapes réelles `PIPELINE_STAGE_LABELS` sauf « Perdu » : Nouveau, Qualifié, Chaud, RDV planifié, Estimation faite, Mandat signé, libellés 10 px `ink-subtle` sous l'axe, les 2 extrêmes seulement sous 640 px) ; **aucune valeur en y**, aucun axe chiffré ; trait 1,5 px `ink` ; aire **dégradé gris** `rgb(24 24 27 / 0.08)` → 0 (pas de couleur) ; point final « Mandat signé » = rond double contour (humain) |
+| 3 | **Cinq agents, un conseiller** (`aiAgent`) | « Chaque agent prépare sa part. Vous gardez la décision. » | **Équipe** : au centre, carte nette 136 × 152 px (blanche, rayon 16, bord `line`, `shadow-raised`) : `AgentAppIcon` `md` `kind="human"` + « Vous » 14 px 600 + « Conseiller · décide » 12 px `ink-subtle`. Autour, sur une ellipse (rayons 44 % × 38 % du cadre), les **5 tuiles d'agents** `AgentAppIcon` `sm` + prénom 11 px `ink-muted`, opacité 0,7 (« côtés atténués » du modèle), reliées au centre par des traits 1 px `ink` à 0,08. **Aucune photo** |
+| 4 | **Le compte-rendu, exploité** (`document`) | « Sarah transforme la visite en prochaines actions, à valider. » | **Rapport** : feuille blanche 70 % × 80 % du cadre, rayon 10, bord `line`, légèrement tournée de −2°, 6 lignes en **grille de points** (fond `radial-gradient` points 1,5 px `ink` à 0,25, pas de 6 px, découpé en barres de largeurs 92 / 78 / 85 / 60 / 88 / 40 %). Carte superposée en bas à droite (rayon 12, `shadow-raised`) : `SimulationBadge` (au lieu de « Enregistrement », **aucun point rouge**) + « Compte-rendu · Sarah » 12 px 500 + « 3 actions prêtes » 12 px `ink-subtle` |
+| 5 | **Des garde-fous réels** (`humanValidation`) | « Vérifiés par le serveur à chaque action, pas seulement affichés. » | **Carte chiffres** : deux grands nombres côte à côte, **Bricolage 600, 56 px, interlignage 1, `-0.03em`**, `tabular-nums` : « 0 » / légende « envoi réel dans ce prototype » ; « 2 » / « validations humaines obligatoires » (légendes 12 px `ink-muted`, 2 lignes max) ; séparateur vertical 1 px `line`. Dessous, filet 1 px `line`, puis deux lignes libellé / valeur (13 px, libellé `ink-muted`, valeur `ink` 500, alignée à droite) : « Premier contact et mandat » / « Validés par un humain » ; « Coupe-circuit » / « Un clic » |
+
+Les chiffres de la tuile 5 sont des **règles vraies du prototype** (aucun envoi réel ; deux
+validations humaines obligatoires : premier contact, mandat — `CLAUDE.md`) ; aucun autre
+chiffre dans le bloc.
+
+**Mouvement (une fois à l'entrée, aucun rejeu automatique).** Déclencheur : chaque tuile entre à
+≥ 35 % visible (le `Reveal` existant ou un observateur par grille). Arrivée des tuiles :
+opacité 0 → 1, `translateY(16px)` → 0, 560 ms `--ease-emphasis`, décalage 80 ms dans l'ordre
+1 → 5 (≥ 1024 : ordre de colonne). Puis, dans le visuel (t = 0 : arrivée de la tuile) :
+
+| Tuile | Chronologie | Fin |
+|---|---|---|
+| 1 | Sentier révélé de haut en bas (`clip-path: inset(0 0 100% 0)` → `inset(0)`, 1 400 ms, `--ease-draw`, départ 200 ms) ; cartes d'étape opacité 0 → 1 + `translateY(8px)` → 0, 320 ms, décalage 120 ms (01 à 200 ms … 07 à 920 ms) ; point cobalt de l'étape 04 : opacité 0 → 1 à 1 200 ms (200 ms) | ≤ 1 600 ms |
+| 2 | Courbe tracée (`pathLength=1`, `stroke-dashoffset` 1 → 0, 1 200 ms, `--ease-draw`, départ 200 ms) ; points d'étape apparaissent quand la courbe les atteint (opacité, 160 ms) ; aire : opacité 0 → 1, 600 ms, départ 800 ms | ≤ 1 400 ms |
+| 3 | Carte centrale `scale(0.96)` → 1 + opacité, 400 ms ; tuiles d'agents partent du centre vers leur place (`translate` depuis le centre, 480 ms `--ease-emphasis`, décalage 70 ms) ; traits révélés (opacité 0 → 0,08, 300 ms) | ≤ 1 100 ms |
+| 4 | Lignes de points révélées de gauche à droite (`clip-path`, 360 ms chacune, décalage 90 ms) ; carte superposée `translateY(12px)` → 0 + opacité, 320 ms, départ 800 ms | ≤ 1 200 ms |
+| 5 | Nombres : opacité + `translateY(8px)` → 0, 400 ms, décalage 120 ms (pas de compteur qui défile) ; lignes du bas : opacité, 300 ms, départ 400 ms | ≤ 800 ms |
+
+**Interaction (pointeur fin seulement)** : survol d'une tuile → la tuile monte de 2 px
+(`translateY(-2px)`) et passe à `shadow-raised`, 240 ms `--ease-standard` ; l'icône du titre
+joue son histoire une fois (§ 2.8, conteneur `[data-icon-trigger]`). Aucun lien, aucun focus
+(les tuiles ne sont pas des contrôles). **Mouvement réduit, sans JS** : état final immédiat,
+aucune transition. **Accessibilité** : `ul` de 5 `li` ; chaque visuel est `role="img"` avec un
+`aria-label` court (ex. tuile 1 : « Feuille de route fictive : sept étapes, la validation
+humaine attend le conseiller » ; tuile 2 : « Courbe fictive d'un dossier, de Nouveau à Mandat
+signé, sans valeurs » ; tuile 3 : « Cinq agents autour du conseiller » ; tuile 4 : « Compte-rendu
+fictif exploité par Sarah, simulation » ; tuile 5 : pas de `role="img"`, le texte est lu
+tel quel). Contrastes : textes ≥ 4,5:1 (`ink-subtle` 5,7:1 sur blanc, 5,5:1 sur #fafafa).
+
+##### 2.11.8.5 Bloc C — panneau final « processus » (remplace le panneau de `LandingFinal`)
+
+**Idée unique** : déposez une demande, elle suivra ces sept étapes. **En cinq secondes** : un
+grand panneau noir, le titre centré, l'action, puis une carte d'étape au centre d'un carrousel
+qui montre l'étape en train de se faire. **Panneau sombre retenu** : c'est le seul aplat noir de
+la page, il clôt le récit (le noir est la couleur de l'action principale dans la DA) et le
+modèle en tire son impact ; contrastes AA mesurables ci-dessous.
+
+**Panneau.** La section sort du `max-w-7xl` : `w-full`, marges latérales 16 px (≥ 640 px) /
+8 px (< 640), `pt-16 pb-24 lg:pb-36` inchangés. Panneau `bg-inverse` `#0a0a0b`, **rayon 32 px**
+(`rounded-2xl` ; 24 px < 640), aucune bordure, aucune ombre, `overflow: hidden`,
+`data-network-cover`. Rembourrage haut 96 px (≥ 1024) / 64 px, bas 56 px / 40 px. Contenu
+textuel centré, `max-w-[60rem]` (titre) et `max-w-[36rem]` (paragraphe).
+
+**Grille de fond** (décor, `aria-hidden`, sous le carrousel et la rangée des flèches) : lignes
+1 px `rgb(255 255 255 / 0.07)` — verticales alignées sur les **interstices** des cartes du
+carrousel (pas = largeur de carte + espacement, centrées sur la carte active), deux
+horizontales au haut et au bas de la bande des cartes (− 16 / + 16 px) ; fondu en haut sur
+64 px (`mask-image`). Fixe : elle ne suit pas le défilement de la piste.
+
+| Élément | Valeurs |
+|---|---|
+| Titre | `h2#final-title`, lignes d'auteur **inchangées** (« Déposez une demande *fictive*. / Retrouvez-la / dans l'espace agence. »), `text-statement`, **centré** (`text-align: center`, chaque ligne centrée), couleur `--color-ink-inverse` `#fafafa` (mot accentué compris), **aucun effet**, apparition ligne par ligne conservée (§ 2.2.7) |
+| Paragraphe (nouveau) | 20 px sous le titre, `text-lede` centré, `--color-ink-inverse-muted` `#a8a8b0` : « Sept étapes, de la demande au mandat. Deux restent toujours humaines. » |
+| Actions | 32 px sous le paragraphe, centrées, `flex-wrap gap-3` : « Demander une estimation » = bouton **clair** (variante `light` : fond `#fafafa`, texte `#0a0a0b`, survol fond `#e4e4e9`, flèche `arrowRight` dans un carré 22 px rayon 6, bord 1 px `rgb(10 10 11 / 0.16)`) ; « Espace agence » = variante `outline-light` (transparent, texte `#fafafa`, bord 1 px `rgb(255 255 255 / 0.24)`, survol fond `rgb(255 255 255 / 0.08)`). Hauteur `lg` actuelle. Focus : anneau cobalt 2 px, décalage 2 px (3,7:1 sur le noir) |
+| Note | 16 px sous les actions, centrée, `text-xs` `#a8a8b0` (7,4:1), mot pour mot : « Prototype de démonstration. Aucune donnée réelle, aucun envoi réel. » |
+| Flèches | 56 px sous la note, centrées, `gap-2` : deux pilules **56 × 44 px**, rayon 999, fond `rgb(255 255 255 / 0.06)`, bord 1 px `rgb(255 255 255 / 0.12)`, chevron 16 px `#fafafa` (`arrowLeft` / `arrowRight`) ; survol fond 0,12 ; désactivée (début / fin) : `aria-disabled="true"`, opacité 0,4, reste focusable. `aria-label` « Étape précédente » / « Étape suivante » |
+| Piste | 32 px sous les flèches, pleine largeur du panneau. Cartes **380 px** (1024–1439 : 340 ; < 1024 : `min(300px, 100% − 48px)`), espacement **20 px**, carte active **centrée** (rembourrage de piste `calc(50% − carte/2)`, `scroll-snap-align: center`) ; pas de bouclage (la première et la dernière se centrent aussi). Bords du panneau : fondu `mask-image` sur 12 % de chaque côté |
+| Étiquette de simulation | 24 px sous la piste, centrée : `SimulationBadge` **variante sombre** (fond `#fafafa`, texte `#0a0a0b`) + « Exemple fictif — simulation » 12 px `#a8a8b0` |
+| Progression | 16 px dessous, centrée : barre **240 px** (< 640 : 160 px) × 2 px, rail `rgb(255 255 255 / 0.12)`, remplissage `--color-accent` (3,7:1), `transform: scaleX((i+1)/7)` origine gauche, 420 ms `--ease-emphasis` ; à droite, 12 px, pourcentage **Geist Mono 12 px `tabular-nums` `#a8a8b0`** : 14 % · 29 % · 43 % · 57 % · 71 % · 86 % · 100 % (calculé, `Math.round`, espace fine insécable avant « % ») |
+
+**Carte d'étape.** Fond `rgb(255 255 255 / 0.03)` (≈ #131315), bord 1 px
+`rgb(255 255 255 / 0.10)`, **rayon 24 px**, rembourrage 24 px (< 640 : 20), hauteur commune
+(la plus haute). Haut : pastille mono « ÉTAPE N°1 » (Geist Mono 11 px 500 capitales,
+`#d4d4d8` sur `rgb(255 255 255 / 0.08)`, rayon 8, 4 × 8 px ; 11,3:1). **Visuel animé** :
+332 × 260 px (< 640 : 100 % × 220). Bas : icône `Icon` `sm` 16 px `currentColor`
+`#fafafa` + titre **Geist 16 px 600** `#fafafa` (« Demande reçue · Léa ») ; paragraphe 14 px /
+1,55 `#a8a8b0` (7,8:1), 3 lignes au plus. **Étapes humaines (04, 07)** : double contour (bord
++ `outline: 1px solid rgb(255 255 255 / 0.22)` à `outline-offset: -6px`) et pastille
+« ÉTAPE N°4 · HUMAINE ». **Carte active** : opacité 1, net, `scale(1)`. **Autres** : opacité
+0,45, `filter: blur(2px)`, `scale(0.96)` ; transition 320 ms `--ease-standard`.
+
+**Contenu exact des 7 cartes** (`LANDING_TEXTS.final.steps`) :
+
+| N° | Titre | Paragraphe | Visuel (étiquette pendant → après) |
+|---|---|---|---|
+| 1 | Demande reçue · Léa (`lea`) | « La source est vérifiée, les doublons écartés, une fiche propre est créée. » | **Radar** : 3 cercles pointillés (r 40 / 80 / 120 px, 1 px blanc 0,14, `2 4`), secteur de balayage `conic-gradient` blanc 0,14 → 0 sur 70°, **un tour** (0 → 360°, 1 600 ms, `--ease-standard`) puis fondu 240 ms ; deux cibles (points blancs 6 px à 0,5 : « Formulaire du site », « Appel reçu ») deviennent un anneau cobalt 10 px quand le secteur les touche (≈ 30 % et 62 %) ; à 1 900 ms elles **fusionnent** (320 ms, `--ease-emphasis`) en un seul point cobalt + pastille « 1 fiche ». Étiquette : « Vérification de la source… » → (fondu croisé à 2 200 ms) « Source vérifiée » |
+| 2 | Qualification · Hugo (`hugo`) | « Bien, secteur, motivation et délai structurés. Ce qui manque est signalé, jamais inventé. » | 4 rangées libellé (12 px `#a8a8b0`) + barre 8 px rayon 4 blanche 0,16 qui se remplit (`scaleX`, 360 ms `--ease-emphasis`, décalage 140 ms) puis valeur 13 px `#fafafa` : Bien « T3 avec terrasse », Secteur « Cassis », Délai « Avant l'été » ; **Motivation** : contour pointillé tracé (300 ms, départ 1 000) + « Manquante — signalée ». Étiquette : « Structuration du projet… » → « Motivation à demander » |
+| 3 | Relance préparée · Emma (`emma`) | « Un premier message adapté au dossier, consentement vérifié. Rien n'est envoyé. » | Mini e-mail : « E-mail · Brouillon », objet « Votre demande d'estimation à Cassis », 3 barres de texte écrites de gauche à droite (`clip-path`, 400 ms, décalage 160 ms), puce « Consentement vérifié » avec coche cobalt (1 200 ms), pied « Se désinscrire » souligné 11 px. Étiquette : « Rédaction du brouillon… » → « Brouillon prêt · rien n'est envoyé » |
+| 4 | Validation humaine · Vous (`humanValidation`) | « Le conseiller relit, modifie, valide ou refuse. Sans lui, aucun premier contact ne part. » | Message + trois boutons factices « Modifier », « Refuser », « Valider » ; le **curseur « Vous »** du bloc A (même dessin) glisse du coin bas-droit au bouton « Valider » (560 ms, `--ease-emphasis`), clic (120 ms), le bouton devient plein clair avec coche. Étiquette : « En attente de votre décision… » → « Validé par un humain » |
+| 5 | Rendez-vous · Louis (`louis`) | « Un créneau d'estimation libre est proposé, jamais réservé deux fois. » | 3 créneaux : « 9 h 30 · Déjà réservé » (texte barré, fond hachuré blanc 0,06), « 11 h 00 », « 15 h 30 · Libre » ; un anneau cobalt descend, passe sur 9 h 30 sans s'y poser et se pose sur 11 h 00 (480 ms) + mention « Proposé au vendeur ». Étiquette : « Recherche d'un créneau libre… » → « Créneau proposé » |
+| 6 | Suivi · Sarah (`sarah`) | « Le compte-rendu de visite devient des prochaines actions, à valider. » | Feuille de compte-rendu (lignes en grille de points blancs 0,2) ; 3 lignes d'action apparaissent l'une après l'autre (opacité + `translateY(8px)`, 280 ms, décalage 160 ms) : « Avis de valeur — après validation », « Relance — si consentement valide », « Étape : estimation faite ». Étiquette : « Lecture du compte-rendu… » → « Prochaines actions prêtes » |
+| 7 | Mandat · Vous (`mandate`) | « La signature est confirmée par le conseiller. Jamais déclarée par un agent IA. » | Mini pipeline (étapes réelles, `PIPELINE_STAGE_LABELS` sans « Perdu ») : un point avance de Nouveau à Estimation faite (160 ms par pas) et **s'arrête** ; « Mandat signé » en pointillé « À confirmer » ; le curseur « Vous » clique « Confirmer » (même geste que la carte 4) ; le nœud devient disque plein blanc à double contour. Étiquette : « Confirmation humaine requise… » → « Mandat confirmé par un humain » |
+
+Étiquette du visuel : pastille centrée en haut du visuel, 12 px 500, `#e4e4e9` sur
+`rgb(255 255 255 / 0.08)`, bord 1 px `rgb(255 255 255 / 0.12)`, rayon 999, 4 × 10 px ; « … »
+pendant l'animation, texte final ensuite. Aucun rouge (les cibles du modèle sont cobalt ou
+blanches).
+
+**Mouvement.** Chaque visuel joue **une fois** quand sa carte devient active (≤ 2 400 ms,
+`transform` / `opacity` / `clip-path` / `stroke-dashoffset`), puis reste sur son état final ;
+redevenir active **par une action de l'utilisateur** le rejoue (borné, déclenché par un geste).
+La carte 1 joue quand le carrousel entre à ≥ 50 % visible, une fois. Rien ne défile ni ne
+change tout seul. Visuels marqués `data-visual-state` (`idle` | `playing` | `done`).
+
+| Interaction | Comportement |
+|---|---|
+| Flèches | ± 1 carte ; glissement de la piste par la physique existante (`useTrackPhysics`, `GLIDE_TAU_MS` 140) |
+| Glisser (souris) | Inertie et aimantation de `useTrackPhysics` (`DRAG_THRESHOLD_PX` 6, `MOMENTUM_TAU_MS` 325) ; un glisser n'active pas de clic |
+| Tactile, stylet | Défilement **natif** + `scroll-snap` (inertie de la plateforme) ; `touch-action: pan-x pan-y` : le défilement vertical de la page n'est jamais bloqué |
+| Clavier | La piste est focusable (`tabIndex=0`, anneau cobalt) : ← / → ± 1, Origine / Fin = première / dernière ; les flèches sont des `button`. Ordre de tabulation : actions → flèches → piste |
+| Clic sur une carte voisine | Elle devient active |
+| Fin d'un défilement | Carte active = la plus proche du centre ; flèches, progression, pourcentage et annonce mis à jour |
+| Mouvement réduit | Visuels **statiques à l'état final**, déplacements instantanés (aucun glissement), atténuation conservée sans transition |
+
+**Accessibilité.** Conteneur `role="region"`, `aria-roledescription="carrousel"`,
+`aria-label` « Les sept étapes d'un dossier ». Chaque carte : `role="group"`,
+`aria-roledescription="étape"`, `aria-label` « Étape 2 sur 7 : Qualification · Hugo ». Les
+cartes **non actives** sont `aria-hidden="true"` (rien de focusable dedans ; elles restent
+cliquables). Région `aria-live="polite"` `sr-only` : « Étape 2 sur 7 : Qualification · Hugo.
+<paragraphe> » à chaque changement par l'utilisateur (jamais au chargement). Visuels
+`aria-hidden` (le titre et le paragraphe portent le sens). Progression : `role="progressbar"`
+non requis (c'est une position) — barre `aria-hidden`, le pourcentage visible est doublé
+d'un texte `sr-only` « Étape 2 sur 7 ». Contrastes mesurés à reporter : titre 19,3:1,
+paragraphe 7,4:1, texte de carte 7,8:1, pastille 11,3:1, flèches ≥ 3:1 (contour), remplissage
+3,7:1. Le texte flouté des cartes voisines est un **état inactif décoratif** (masqué aux
+technologies d'assistance, atteint en une action) — compromis consigné.
+
+**Responsive.** 1440 : carte active + deux voisines entières visibles et des bords tronqués.
+1024 : cartes 340 px, une voisine de chaque côté. 390 / 360 : cartes `min(300px, 100% − 48px)`,
+la voisine dépasse de ≈ 24 px ; titre `text-statement` 36 px centré (lignes d'auteur sur une
+ligne visuelle ou repliées sans débordement) ; actions empilées si nécessaire, centrées ;
+flèches 56 × 44 (cibles ≥ 44 px) ; aucun débordement du document.
+
+##### 2.11.8.6 Critères d'acceptation (audit de l'utilisateur, tests)
+
+**Titres.**
+- T1. Exactement **trois** titres de `/` ont un effet : `h1` (`underline`), problème
+  (`focus`), contrôle (`data-accent-effect="tech"`). Solution, agents, résultat, final : aucun
+  `[data-accent-frame]`, `[data-accent-mark]`, canvas ou `data-accent-replayable` ; mots
+  `filter: none` ≤ 1 s après leur entrée.
+- T2. « décide » : balayage démarré 760 ms (± 100) après l'entrée, `data-tech-state` revenu
+  à `idle` ≤ 2 400 ms après l'entrée ; au repos canvas vide (0 pixel non transparent) et
+  lettres HTML visibles ; lettres peintes = lettres HTML (≤ 1 px) ; étiquette sous le cadre, ne
+  recouvre aucun autre texte ; nom accessible du `h2` inchangé ; boîte de ligne ≤ 0,5 px.
+- T3. Rejeu au survol : le § 2.11.7 n° 6 bis s'applique aux **trois** titres (pour « décide »,
+  « effet rejoué » = `data-tech-state="sweep"` à + 100 ms et `idle` ≤ + 1 700 ms si le pointeur
+  est sorti) ; glisser une lettre de 80 px → déplacement plafonné à 0,6 em, retour < 0,5 px en
+  ≤ 700 ms ; tactile et mouvement réduit : aucun canvas, aucun rejeu.
+- T4. `THIRD_PARTY_NOTICES.md` contient la section TechText (licence à l'identique) et cite
+  les nouveaux fichiers.
+
+**Bloc A.**
+- A1. 1440 × 900 : le haut des cartes est dans la première fenêtre ; 6 colonnes ; marges ≥
+  32 px ; 1024 : 4 colonnes ; 390 / 360 : carrousel à points, aucun débordement du document.
+- A2. HTML serveur et mouvement réduit = état final : 13 lignes agent dont **12 cochées** et
+  1 manquante en pointillé (« Motivation »), **3 cases « Vous » cochées**, 2 pastilles
+  « Vous » pleines, curseur sur la case du Mandat, aucun anneau actif.
+- A3. Boucle : `data-loop-state="playing"` à l'écran ; `data-loop-cycles` passe de 1 à 2 en
+  9,8 s (± 0,3) ; **0 appel à `requestAnimationFrame`** dû au bloc ; aucune animation à
+  itérations infinies ; une case « Vous » ne passe à cochée **qu'après** que le curseur y est
+  arrivé (positions comparées à ± 4 px).
+- A4. Pause : section « problème » au centre → `data-loop-state="paused"` ≤ 1 s et aucun
+  changement de pixel dans la figure ensuite ; onglet caché (événement `visibilitychange`
+  simulé) → `paused` ; retour → `playing`, reprise au même pas.
+- A5. Textes : badge « Simulation », « Exemple fictif — simulation », carte de texte, note
+  « … Aucun prospect réel, aucun envoi. » et `hero.illustrationNote` visibles ; liste `sr-only`
+  présente ; bouton → `/estimation`.
+
+**Bloc B.**
+- B1. 5 tuiles ; ≥ 1024 trois colonnes, tuile 1 sur deux rangées ; 640–1023 deux colonnes ;
+  < 640 une ; aucun débordement à 1440 / 1024 / 390 / 360.
+- B2. Toutes les animations du bloc finies ≤ 2 000 ms après l'entrée de la dernière tuile
+  (`getAnimations` vide) ; mouvement réduit : état final à l'instant 0.
+- B3. Étiquettes « Exemple fictif » sur les tuiles 1–4, aucune sur la 5 ; aucun chiffre hors
+  tuile 5 ; aucun pixel rouge ; un seul point cobalt dans la tuile 1.
+
+**Bloc C.**
+- C1. Panneau `#0a0a0b`, rayon 32 px (24 < 640) ; titre centré (centre de chaque ligne = centre
+  du panneau ± 2 px), blanc, sans effet ; paragraphe, deux actions, note dans cet ordre ;
+  contrastes du § 2.11.8.5 mesurés (calcul sur couleurs calculées).
+- C2. Au chargement de la section : carte 1 active, « 14 % », flèche précédente
+  `aria-disabled` ; « Étape suivante » → carte 2 active, « 29 % », annonce `aria-live` ;
+  → / ← sur la piste, Origine / Fin ; glisser souris de 200 px vers la gauche → carte suivante ;
+  clic sur une voisine → active.
+- C3. **Aucun défilement automatique** : 10 s sans interaction → carte active inchangée ;
+  visuel de la carte active `done` ≤ 2 600 ms après activation ; aucune boucle (§ 2.11.7 n° 1
+  vert sur `final`).
+- C4. Mouvement réduit : tous les visuels `done` à l'instant 0, aucun glissement.
+- C5. 390 / 360 : carte ≤ largeur − 48 px, flèches ≥ 44 × 44, aucun débordement.
+
+**Page entière.** § 2.11.7 n° 1 (« aucune boucle ») passe **avec l'exception unique du bloc
+A** : les captures masquent `[data-loop="allowed"]` (seul élément portant cet attribut), le
+compteur `requestAnimationFrame` reste exigé à zéro (le bloc n'en utilise pas), la liste des
+animations infinies reste exigée vide. Réseau, voiles, CRM (`particules`,
+`voiles-lisibilite`, `premier-regard`) : non régressés.
 
 ## 3. Composants (`components/ui/`)
 

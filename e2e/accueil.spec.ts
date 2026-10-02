@@ -7,16 +7,17 @@ import { signIn } from "./helpers/sign-in";
 
 /**
  * Public home page: the hero (title revealed line then word, tilted tag, black
- * then light action), the fictitious journey labelled as a simulation, and the
- * neural network behind the page, which follows the section in view.
+ * then light action), block A « Vous » in the ecosystem of the agents labelled
+ * as a simulation (docs/design-system.md §2.11.8.3), and the neural network
+ * behind the page, which follows the section in view.
  *
  * The suite runs in reduced motion (playwright.config.ts): everything is in its
  * final state at once. One group opts back into real motion to check that the
- * neural network plays its arrival, rests and follows the sections, that the
- * journey plays once then stays still, and that the Simulation badge plays one
- * cycle on / only (docs/design-system.md §2.11.4, §2.11.5). The network is
- * covered in depth by e2e/landing-reseau.spec.ts, the whole page « no loop »
- * by e2e/landing-sans-boucle.spec.ts.
+ * neural network plays its arrival, rests and follows the sections, that block
+ * A plays its loop on screen, and that the Simulation badge plays one cycle on
+ * / only (§2.11.4, §2.11.5). Block A is covered in depth by
+ * e2e/landing-ecosysteme.spec.ts, the network by e2e/landing-reseau.spec.ts,
+ * the whole page « no loop » (block A excepted) by e2e/landing-sans-boucle.spec.ts.
  */
 
 const COLD_START = 60_000;
@@ -31,29 +32,47 @@ async function openHome(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
 }
 
-test("accueil : titre, étiquette, deux actions et parcours fictif étiqueté simulation", async ({ page }) => {
+/** Boxes of block A: who checks them, and whether they are checked. */
+async function ecosystemBoxes(page: Page) {
+  return page.getByTestId("hero-ecosystem").locator("[data-check]").evaluateAll((nodes) =>
+    nodes.map((node) => ({ by: node.getAttribute("data-check"), checked: node.getAttribute("data-checked") === "true" })),
+  );
+}
+
+/** Final state of block A (§2.11.8.6 A2): 12 agent boxes checked, Motivation empty, 3 « you » boxes checked. */
+function expectFinalBoxes(boxes: Awaited<ReturnType<typeof ecosystemBoxes>>) {
+  expect(boxes.filter((box) => box.by === "agent" && box.checked)).toHaveLength(12);
+  expect(boxes.filter((box) => box.by === "missing")).toEqual([{ by: "missing", checked: false }]);
+  expect(boxes.filter((box) => box.by === "you" && box.checked)).toHaveLength(3);
+}
+
+test("accueil : titre, étiquette, deux actions et bloc « Vous » étiqueté simulation", async ({ page }) => {
   await openHome(page);
   const main = page.locator("main");
 
   await expect(page.getByTestId("hero-tag")).toHaveText(HERO.tag);
   await expect(page.getByTestId("hero-tag")).toHaveCSS("text-transform", "uppercase");
 
-  const hero = page.locator("section[data-living-scene='hero']");
+  // Band 1 of the hero (block A carries its own estimation action, checked below).
+  const hero = page.getByTestId("hero-band");
   const estimation = hero.getByRole("link", { name: LANDING_TEXTS.actions.estimation });
   const signIn = hero.getByRole("link", { name: LANDING_TEXTS.actions.signIn });
   await expect(estimation).toHaveAttribute("href", "/estimation");
   await expect(signIn).toHaveAttribute("href", "/connexion");
 
   // The illustration says what it is, with the Simulation badge next to it.
-  const journey = page.getByTestId("hero-journey");
-  await expect(journey.getByTestId("hero-journey-label")).toContainText(JOURNEY.badge);
-  await expect(journey.getByTestId("hero-journey-label")).toContainText("Simulation");
+  const ecosystem = page.getByTestId("hero-ecosystem");
+  await expect(ecosystem.getByTestId("hero-ecosystem-label")).toContainText(JOURNEY.badge);
+  await expect(ecosystem.getByTestId("hero-ecosystem-label")).toContainText("Simulation");
+  await expect(ecosystem).toContainText(JOURNEY.note);
   await expect(main).toContainText(HERO.illustrationNote);
+  // The guard rails stay readable (§2.11.7 n° 10).
+  await expect(page.getByTestId("ecosystem-guard")).toHaveText("Les agents préparent. Vous validez le premier message et confirmez le mandat.");
+  await expect(ecosystem.getByRole("link", { name: LANDING_TEXTS.actions.estimation })).toHaveAttribute("href", "/estimation");
 
-  // Reduced motion: the final state at once, no pause button (§2.11.6).
-  const steps = journey.getByRole("listitem");
-  await expect(steps).toHaveCount(JOURNEY.steps.length);
-  for (const step of await steps.all()) await expect(step).toHaveAttribute("data-state", "done");
+  // Reduced motion: the final state at once, still, no pause button (§2.11.6).
+  await expect(ecosystem).toHaveAttribute("data-loop-state", "reduced");
+  expectFinalBoxes(await ecosystemBoxes(page));
   await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
   await expect(page.getByTestId("living-background")).toHaveAttribute("data-motion", "reduced");
 
@@ -142,10 +161,9 @@ test("cas dégradé : sans JavaScript, tout le contenu reste lisible", async ({ 
   const page = await context.newPage();
   await openHome(page);
   await expect(page.getByTestId("hero-tag")).toBeVisible();
-  await expect(page.getByTestId("hero-journey")).toContainText(JOURNEY.badge);
-  for (const step of await page.getByTestId("hero-journey").getByRole("listitem").all()) {
-    await expect(step).toHaveAttribute("data-state", "done");
-  }
+  await expect(page.getByTestId("hero-ecosystem")).toContainText(JOURNEY.badge);
+  expectFinalBoxes(await ecosystemBoxes(page));
+  await expect(page.getByTestId("ecosystem-cursor-still")).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: LANDING_TEXTS.control.title })).toBeVisible();
   // Carousel: the first step and its scene are in the server HTML; the chart is complete.
   await expect(page.getByTestId("agents-panel").getByTestId("agent-scene")).toHaveAttribute("data-step", "lea");
@@ -218,25 +236,19 @@ test.describe("avec animations", () => {
     await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
   });
 
-  test("parcours du hero : joué une fois jusqu'au mandat, puis immobile (§2.11.5)", async ({ page }) => {
+  test("bloc A : joue sa boucle à l'écran, les agents d'abord, puis « Vous » (§2.11.8.3)", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
-    const journey = page.getByTestId("hero-journey");
-    const steps = journey.getByRole("listitem");
-    const states = () => steps.evaluateAll((items) => items.map((item) => item.getAttribute("data-state")));
-
-    // It really plays: a human validation is awaited at some point.
-    await expect(journey).toHaveAttribute("data-playback", /playing|played/);
-    await expect.poll(async () => (await states()).includes("awaiting"), { timeout: 5_000, intervals: [50] }).toBe(true);
-
-    // Then the final state (≤ 5.2 s after load at 1440), and it no longer changes.
-    await expect(journey).toHaveAttribute("data-playback", "played", { timeout: 5_200 });
-    const final = await states();
-    expect(final.every((state) => state === "done")).toBe(true);
-    await expect(journey).toContainText(JOURNEY.states.confirmed);
-    await page.waitForTimeout(3_000);
-    expect(await states()).toEqual(final);
-    await expect(journey).toHaveAttribute("data-playback", "played");
+    const ecosystem = page.getByTestId("hero-ecosystem");
+    await expect(ecosystem).toHaveAttribute("data-loop-state", "playing");
+    await expect(ecosystem).toHaveAttribute("data-loop-cycles", "1");
+    // The agents check their boxes first; a human box only later.
+    await expect
+      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "agent" && box.checked).length, { timeout: 4_000, intervals: [50] })
+      .toBeGreaterThanOrEqual(7);
+    await expect
+      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "you" && box.checked).length, { timeout: 6_000, intervals: [50] })
+      .toBe(3);
     await expect(page.locator("main")).toContainText(JOURNEY.note);
   });
 
@@ -247,13 +259,13 @@ test.describe("avec animations", () => {
       page.locator(selector).first().evaluate((node) =>
         node.getAnimations().map((animation) => (animation.effect?.getComputedTiming().iterations ?? 0) as number),
       );
-    const badge = page.getByTestId("hero-journey").locator(".simulation-badge");
+    const badge = page.getByTestId("hero-ecosystem").locator(".simulation-badge");
     await expect(badge).toContainText("Simulation");
-    expect(await iterations("[data-testid='hero-journey'] .simulation-badge")).toEqual([1]);
-    expect(await iterations("[data-testid='hero-journey'] .simulation-dot")).toEqual([1]);
+    expect(await iterations("[data-testid='hero-ecosystem'] .simulation-badge")).toEqual([1]);
+    expect(await iterations("[data-testid='hero-ecosystem'] .simulation-dot")).toEqual([1]);
     // After its cycle (3 s), nothing is left running on the badge; the word stays.
     await page.waitForTimeout(3_300);
-    expect(await iterations("[data-testid='hero-journey'] .simulation-badge")).toEqual([]);
+    expect(await iterations("[data-testid='hero-ecosystem'] .simulation-badge")).toEqual([]);
     await expect(badge).toContainText("Simulation");
 
     // The signed-in space keeps its badge unchanged.

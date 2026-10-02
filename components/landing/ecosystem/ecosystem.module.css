@@ -1,0 +1,594 @@
+/*
+ * Block A of the hero — « Vous » in the ecosystem of the agents
+ * (docs/design-system.md §2.11.8.3). Final state by default: every rule that
+ * hides or moves something only exists for a state set by JavaScript
+ * (`data-checked="false"`, `data-active`, `data-pressed`). Transitions only
+ * (`transform`, `opacity`), never an infinite animation; none at all under
+ * reduced motion.
+ *
+ * Layouts: ≥ 1440 px six columns of 216 px; 1024–1439 four stacked columns;
+ * < 1024 a native horizontal carousel (scroll-snap) with dots. The column and
+ * group wrappers switch to `display: contents` when they are not the column.
+ */
+
+.figure {
+  --eco-col: 216px;
+  --eco-gap: 16px;
+  --eco-lines: 112px;
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ legend */
+
+.legend {
+  display: flex;
+  justify-content: center;
+  padding-inline: 24px;
+}
+
+/* ------------------------------------------------------------------- stage */
+
+.stage {
+  position: relative;
+  margin-top: 24px;
+}
+
+/* Wide layouts: the row is centred, nothing sits under its edges. */
+.viewport {
+  padding-block: 8px 24px;
+}
+
+.track {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--eco-gap);
+}
+
+.col,
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--eco-gap);
+  width: var(--eco-col);
+  flex: none;
+}
+
+/* ≥ 1440: six columns; the groups dissolve, each column takes its offset. */
+@media (width >= 90rem) {
+  .group {
+    display: contents;
+  }
+
+  .colEmma {
+    margin-top: 40px;
+  }
+
+  .colReview {
+    margin-top: 12px;
+  }
+
+  .colLouis {
+    margin-top: 56px;
+  }
+
+  .colSarah {
+    margin-top: 20px;
+  }
+
+  .colMandate {
+    margin-top: 64px;
+  }
+}
+
+/* 1024–1439: four columns — [Léa / Hugo] [Emma / Validation] [Louis / Sarah] [Mandat]. */
+@media (64rem <= width < 90rem) {
+  .group .col {
+    display: contents;
+  }
+
+  .groupB {
+    margin-top: 32px;
+  }
+
+  .groupC {
+    margin-top: 12px;
+  }
+
+  .colMandate {
+    margin-top: 48px;
+  }
+}
+
+/* < 1024: a carousel, one card per slide, the next one peeking out. */
+@media (width < 64rem) {
+  .viewport {
+    padding-block: 0;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+    mask-image: linear-gradient(to right, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  }
+
+  .track {
+    justify-content: flex-start;
+    gap: 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding: 8px 24px 32px;
+    scroll-padding-inline: 24px;
+  }
+
+  .track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .col,
+  .group {
+    display: contents;
+  }
+
+  .card {
+    flex: none;
+    width: min(264px, 76vw);
+    scroll-snap-align: center;
+  }
+}
+
+@media (40rem <= width < 64rem) {
+  .card {
+    width: 240px;
+  }
+}
+
+/* -------------------------------------------------------------------- card */
+
+.card {
+  position: relative;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  padding: 10px;
+}
+
+/* A human step: a second contour — the shape says « human » (§1.1). */
+.card[data-nature="human"],
+.card[data-nature="outcome"] {
+  outline: 1px solid var(--color-ink);
+  outline-offset: 3px;
+}
+
+/* The card being worked on: a cobalt ring over the border. */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border: 1px solid var(--color-accent);
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card[data-active]::after {
+  opacity: 1;
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 2px 8px;
+}
+
+.cardName {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  line-height: 1.25;
+}
+
+.cardTitle {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardRole {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--color-ink-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.pillAgent {
+  background-color: var(--color-surface-sunken);
+  font-weight: 500;
+  color: var(--color-ink-subtle);
+}
+
+.pillYou {
+  border: 1px solid var(--color-ink);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+/* The round box of the pill: full when every line of the card is yours. */
+.pillDot {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+}
+
+.pillDot::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background-color: var(--color-ink);
+}
+
+.pillYou:not([data-full]) .pillDot::after {
+  opacity: 0;
+}
+
+/* ------------------------------------------------------------------- lines */
+
+.lines {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 0 10px;
+}
+
+.line[data-missing] {
+  border-style: dashed;
+  border-color: var(--color-line-strong);
+}
+
+.lineLabel {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lineDetail {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-ink-subtle);
+}
+
+/* --------------------------------------------------------------------- box */
+
+.box {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+}
+
+/* An agent: a square. */
+.boxAgent {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--color-line-strong);
+  border-radius: 4px;
+}
+
+/* You: a round box, double ring — never the same shape as an agent's. */
+.boxYou {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 999px;
+  outline: 1px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* The missing information: a dashed square, never checked; traced once per cycle. */
+.box[data-check="missing"] {
+  border-color: transparent;
+}
+
+.box[data-check="missing"]::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border: 1.5px dashed var(--color-ink-subtle);
+  border-radius: inherit;
+}
+
+.box[data-traced="false"]::before {
+  opacity: 0;
+}
+
+.boxFill {
+  position: absolute;
+  inset: -1.5px;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background-color: var(--color-inverse);
+}
+
+.checkMark path {
+  fill: none;
+  stroke: var(--color-ink-inverse);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+.box[data-checked="false"] .boxFill {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.box[data-checked="false"] .checkMark path {
+  stroke-dashoffset: 1;
+}
+
+/* ------------------------------------------------------------------ cursor */
+
+.cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.cursorBody {
+  display: block;
+  transform-origin: 0 0;
+}
+
+.cursor[data-pressed] .cursorBody {
+  transform: scale(0.88);
+}
+
+.cursorArrow {
+  display: block;
+  /* The tip of the arrow (1.5 ; 1.5) sits on the origin of the element. */
+  margin: -1.5px 0 0 -1.5px;
+}
+
+.cursorArrow path {
+  fill: var(--color-accent);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.cursorLabel {
+  position: absolute;
+  top: 16px;
+  left: 14px;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--color-ink-inverse);
+  white-space: nowrap;
+}
+
+/* Server HTML and reduced motion: the still cursor sits on the box of the mandate. */
+.cursorStill {
+  top: 50%;
+  left: 50%;
+}
+
+.figure[data-cursor-mode="live"] .cursorStill {
+  display: none;
+}
+
+.cursorLive {
+  will-change: transform;
+}
+
+/* -------------------------------------------------------- converging lines */
+
+.convergingLines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.convergingLines path {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-opacity: 0.07;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ------------------------------------------------------------ dots, action */
+
+.dots {
+  display: none;
+}
+
+.action {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin-top: var(--eco-lines);
+  padding-inline: 24px;
+}
+
+@media (width < 64rem) {
+  .convergingLines {
+    display: none;
+  }
+
+  .dots {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-top: 4px;
+  }
+
+  .dot {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border-radius: 999px;
+  }
+
+  .dot:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 0;
+  }
+
+  .dotMark {
+    width: 20px;
+    height: 6px;
+    border-radius: 999px;
+    background-color: var(--color-line-strong);
+    transform: scaleX(0.3);
+  }
+
+  .dot[aria-current] .dotMark {
+    background-color: var(--color-ink);
+    transform: none;
+  }
+
+  .action {
+    margin-top: 24px;
+  }
+
+  .actionButton {
+    width: 100%;
+    max-width: 20rem;
+  }
+}
+
+/* ------------------------------------------------------------ text, notes */
+
+.guard {
+  margin: 16px auto 0;
+  max-width: 22rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
+.notes {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding-inline: 24px;
+  text-align: center;
+}
+
+/* ------------------------------------------------------------------ motion */
+
+@media (prefers-reduced-motion: no-preference) {
+  .card::after {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  /* Checked: the fill grows in (200 ms), then the check is traced (160 ms, +60 ms). */
+  .boxFill {
+    transition:
+      opacity 200ms var(--ease-emphasis),
+      transform 200ms var(--ease-emphasis);
+  }
+
+  .checkMark path {
+    transition: stroke-dashoffset 160ms var(--ease-standard) 60ms;
+  }
+
+  /* The reset: every check fades out together (240 ms). */
+  .box[data-checked="false"] .boxFill {
+    transition:
+      opacity 240ms var(--ease-exit),
+      transform 240ms var(--ease-exit);
+  }
+
+  .box[data-checked="false"] .checkMark path {
+    transition: none;
+  }
+
+  .box[data-check="missing"]::before {
+    transition: opacity 200ms var(--ease-standard);
+  }
+
+  .box[data-pressed] {
+    transform: scale(0.92);
+  }
+
+  .box {
+    transition: transform 60ms var(--ease-standard);
+  }
+
+  .cursorBody {
+    transition: transform 60ms var(--ease-standard);
+  }
+
+  .pillDot::after {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .dotMark {
+    transition:
+      transform var(--duration-interactive) var(--ease-standard),
+      background-color var(--duration-interactive) var(--ease-standard);
+  }
+}

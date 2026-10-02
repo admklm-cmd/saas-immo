@@ -32,8 +32,6 @@ export function LandingFinal() {
             titleLines={TEXTS.titleLines}
             titleAccent={TEXTS.titleAccent}
             veil={false}
-            accentEffect="focus-underline"
-            accentReplay
           />
           <div className="grid justify-items-start gap-4" data-testid="final-actions">
             <div className="flex flex-wrap gap-3">
