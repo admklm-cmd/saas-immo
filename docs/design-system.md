@@ -2270,13 +2270,18 @@ global (état final immédiat).
 > attend `entering` (« pas `hidden` » était vrai avant l'hydratation : course révélée par
 > l'îlot client du bloc C, 2 échecs sur 6 avant correctif, 6 sur 6 réussis après) ;
 > `Badge` reçoit un ton `solid-light` (`cn` ne fusionne pas les classes Tailwind).
+>
+> **Lot 3 (03/10/2026) — spécifié, à implémenter** : retours de l'audit de l'utilisateur —
+> bloc A ordonné, bloc B sans texte, titre contrôle centré, section contrôle en deux tuiles
+> animées. Voir **§ 2.11.8.7**, qui prime sur les passages qu'il cite.
 
 ##### 2.11.8.1 Règles de l'utilisateur, traduites
 
 1. **Un effet de titre n'apparaît qu'une fois sur `/`.** Trois titres ont un effet, chacun
    différent ; les quatre autres n'en ont **aucun** (ni cadre, ni trait, ni flou tenu, ni rejeu).
 2. **Les animations nouvelles vivent seulement dans les blocs A, B, C.** Rien d'autre n'est
-   ajouté.
+   ajouté. *Exception décidée par l'utilisateur le 03/10 : les deux tuiles de la section
+   contrôle (§ 2.11.8.7 L3-D), jouées une fois.*
 3. **Bloc A en boucle** (seule exception à la règle « aucune boucle », § 2.11.1 n° 1) : pause
    hors écran et onglet caché, mouvement réduit = état final fixe. **B et C** : joués à
    l'arrivée et à l'interaction, bornés, jamais en boucle, **aucun défilement automatique**.
@@ -2318,6 +2323,11 @@ d'autre animation (cartes des garde-fous statiques), alors que solution (bloc B)
 court (deux lignes), le mot est en fin de titre : l'étiquette de mesure se pose **sous** la
 lettre sans recouvrir une autre ligne.
 
+> **Lot 3 (03/10)** : le titre contrôle est **centré** (sur-titre et paragraphe aussi), effet
+> `tech` conservé ; la section contrôle reçoit deux tuiles animées (une fois) à la place des
+> cartes statiques — le « second argument » ci-dessus ne tient plus, le premier suffit.
+> **§ 2.11.8.7 L3-C, L3-D.**
+
 **Effet `tech` sur « décide »** (d'après TechText de React Bits, déjà adapté le 01/10 pour le
 wordmark — historique au § 2.11.3 ; code récupérable par
 `git show f83805c^:components/landing/wordmark/<fichier>` : `tech-wordmark.ts`,
@@ -2358,6 +2368,10 @@ leurs tests). Le titre **reste du texte HTML** : nom accessible inchangé (« L'
   l'en-tête de chaque fichier adapté reprend la mention « Adapted from React Bits — TechText ».
 
 ##### 2.11.8.3 Bloc A — « Vous » dans l'écosystème des agents (remplace `HeroJourney`)
+
+> **Révisé au Lot 3 (03/10)** : rangée, colonnes, décalages, intérieur des cartes, parc du
+> curseur, lignes convergentes et 1024–1439 remplacés par le **§ 2.11.8.7 L3-A** (bloc
+> ordonné). Chronologie et contrat de boucle ci-dessous : inchangés.
 
 **Idée unique** : cinq agents préparent, **vous** cochez les deux décisions. **En cinq
 secondes** : des cartes d'agents se cochent toutes seules, puis un curseur « Vous » vient cocher
@@ -2482,6 +2496,10 @@ global reste `prefers-reduced-motion`. Contrastes : libellés `ink` 17,7:1 ; rô
 | 390 / 360 | Idem < 1024 ; aucun débordement du document ; libellés sur une ligne (`truncate`, libellés ≤ 20 caractères) |
 
 ##### 2.11.8.4 Bloc B — grille « partenaire » de la solution (remplace les 7 cartes)
+
+> **Révisé au Lot 3 (03/10)** : le texte sous les cadres (icône, titre, paragraphe) n'est plus
+> affiché — illustrations seules, noms accessibles conservés, cadres agrandis : **§ 2.11.8.7
+> L3-B**. Les titres et paragraphes du tableau ci-dessous restent les textes `sr-only`.
 
 **Idée unique** : un dossier suit un chemin connu, entre des agents bornés et des garde-fous
 réels. **En cinq secondes** : une feuille de route en zigzag, une courbe qui monte, une équipe
@@ -2695,6 +2713,426 @@ A** : les captures masquent `[data-loop="allowed"]` (seul élément portant cet 
 compteur `requestAnimationFrame` reste exigé à zéro (le bloc n'en utilise pas), la liste des
 animations infinies reste exigée vide. Réseau, voiles, CRM (`particules`,
 `voiles-lisibilite`, `premier-regard`) : non régressés.
+
+##### 2.11.8.7 Lot 3 — retours de l'audit de l'utilisateur (03/10/2026)
+
+> Statut : **implémenté et testé** le 03/10/2026 par `frontend-ux` (voir « Avancement » en fin de
+> paragraphe : mesures réelles et écarts) ; **spécifié** le 03/10/2026 par le `web-designer` ; demande **validée** par
+> l'utilisateur (source : `docs/references/2026-10-02-modeles-mig-striker.md`, section
+> « Retours de l'utilisateur après son audit (03/10) », points 1 à 4). Plan :
+> `docs/plans/2026-10-02-landing-modeles.md`, **Lot 3** (un seul lot). Implémentation :
+> `frontend-ux`. Audit : l'utilisateur.
+>
+> **Ce paragraphe prime** sur : § 2.11.8.3 (rangée, colonnes, décalages verticaux, parc du
+> curseur, responsive 1024–1439, libellé « Consentement vérifié ») ; § 2.11.8.4 (texte sous les
+> visuels, hauteur des cadres, histoire de l'icône au survol) ; § 2.11.8.2 (alignement du titre
+> contrôle, second argument « la section contrôle n'a pas d'autre animation ») ; § 2.11.8.1
+> n° 2 (« animations seulement dans A, B, C ») : **la section contrôle reçoit deux tuiles
+> animées, décision de l'utilisateur du 03/10** ; elles jouent **une fois** (pas de boucle,
+> § 2.11.8.1 n° 3 inchangé : le bloc A reste la seule boucle).
+> Inchangés : chronologie du bloc A (9 800 ms, 15 coches, `ecosystem-timeline.ts`), visuels du
+> bloc B, bloc C, effet `tech` de « décide », réseau, voiles, CRM, `/estimation`.
+
+###### L3-A. Bloc A ordonné
+
+**Idée** : les sept cartes se lisent comme une phrase, de gauche à droite, sur **une même ligne
+de base**. Plus aucune colonne empilée, plus aucun décalage vertical. Le parcours (Léa → Hugo →
+Emma → Validation → Louis → Sarah → Mandat) est l'ordre **visuel** et l'ordre des coches.
+
+| Largeur | Composition |
+|---|---|
+| ≥ 1440 | **Une rangée de 7 cartes**, grille `repeat(7, 186px)`, espacement **12 px** : 7 × 186 + 6 × 12 = **1 374 px**, centrée (marge 33 px à 1440). Ordre : Léa, Hugo, Emma, Validation humaine, Louis, Sarah, Mandat. **Tous les hauts alignés** (aucune marge haute), **toutes les cartes de la même hauteur** (celle de la plus haute, `align-items: stretch` / `grid-auto-rows: 1fr`), contenu calé en haut : les en-têtes et les lignes de rang n sont à la même hauteur d'une carte à l'autre |
+| 1024–1439 | **Deux rangées régulières**, grille de 8 demi-colonnes `repeat(8, 100px)`, espacement 16 px (largeur 912 px, centrée), chaque carte sur 2 demi-colonnes (= **216 px**). Rangée 1 : Léa (1–2), Hugo (3–4), Emma (5–6), Validation humaine (7–8). Rangée 2 : Louis (2–3), Sarah (4–5), Mandat (6–7) — rangée **centrée** sous la première (décalage d'une demi-carte, 116 px). Espacement entre rangées 16 px. Toutes les cartes de la même hauteur. Ordre de lecture = ordre des coches (rangée 1 de gauche à droite, puis rangée 2) |
+| < 1024 | Carrousel **inchangé** (§ 2.11.8.3), mais toutes les cartes de la **même hauteur** (piste `align-items: stretch`) |
+
+**Carte, intérieur resserré (toutes largeurs, pour que tout tienne dans 186 px)** : rembourrage
+de carte **8 px** (au lieu de 10) ; ligne de tâche : rembourrage `0 8px` (au lieu de 10),
+espacement interne **6 px** (au lieu de 8) ; le reste du § 2.11.8.3 inchangé (en-tête 40 px,
+tuile 28 px, prénom 14 px 500, rôle 12 px + pastille sur la 2ᵉ ligne, lignes de 36 px espacées
+de 6 px, cases 16 / 18 px). Place du libellé à 186 px : **110 px** (case agent), 108 px (case
+« Vous »). Mesures réelles (Geist 13 px 500, Chromium, 03/10) : libellé le plus long
+« Message préparé » 105,4 px → tient.
+
+**Textes changés (`LANDING_TEXTS.journey.cards`)** :
+- Emma, ligne 1 : « Consentement vérifié » (129,9 px, tronqué même à 216 px) → **« Consentement »**.
+  La case cochée dit « vérifié » ; `journey.srSummary` garde « consentement vérifié » (inchangé).
+- Hugo, ligne « manquante » : libellé et détail **empilés** dans la pilule de 36 px :
+  « Motivation » (13 px 500, interligne 14 px, `ink`) au-dessus de « à demander » (11 px 400,
+  interligne 13 px, `ink-subtle`, 5,5:1 sur blanc). Pilule et case en pointillé inchangées.
+  Aucune autre ligne n'est empilée.
+
+**Curseur « Vous », trajet simple** (chronologie, durées et courbes du § 2.11.8.3
+**inchangées**) :
+- **Parc** : pointe au **centre horizontal de la carte « Validation humaine », 20 px sous son
+  bord bas** (au lieu de « 24 px sous et 16 px à gauche de la première case »). À ≥ 1440 le parc
+  est dans l'espace des lignes convergentes, sous la 4ᵉ carte ; à 1024–1439 sous la carte
+  Validation (fin de la rangée 1), dans l'espace libre à droite de la carte Mandat (pointe
+  8 px à droite de son bord, étiquette sur le vide) ; sous 1024, dans le rembourrage bas de
+  la piste (32 px).
+- Trajet : parc → case 1 de Validation (montée verticale) → case 2 (descente de 42 px) → case
+  du Mandat (≥ 1440 : glissement **horizontal** de 3 cartes, les cases étant à la même hauteur ;
+  1024–1439 : diagonale vers la rangée 2) → retour au parc à la remise à zéro. Aucun autre
+  arrêt, aucun détour.
+
+**Lignes convergentes** : ≥ 1440, **7 lignes**, une par carte (du milieu du bas de chaque carte
++ 8 px au haut du bouton) — toutes partent de la même hauteur, le faisceau est symétrique ;
+1024–1439 : **3 lignes**, depuis les cartes de la rangée 2 ; < 1024 : masquées (inchangé).
+Calcul, trait, opacité 0,07 : inchangés.
+
+**Inchangé** : badge, légende, bouton, carte de texte, notes, liste `sr-only`, contrat
+`data-loop="allowed"` / `data-loop-state` / `data-loop-cycles` / `data-step` / `data-check` /
+`data-checked`, pause hors écran (< 25 %) et onglet caché, mouvement réduit = état final,
+**aucun `requestAnimationFrame`**, aucune animation infinie, anneau cobalt, coche.
+
+###### L3-B. Bloc B : illustrations seules
+
+- Sous chaque cadre : **plus aucun texte visible** (ni icône, ni titre, ni paragraphe). La
+  tuile = rebord blanc 8 px + cadre du visuel. Le titre, le sur-titre et le paragraphe de la
+  **section** restent.
+- **Nom accessible conservé** : chaque tuile devient `article` avec `aria-labelledby` vers un
+  `h3` **`sr-only`** contenant le titre actuel (`solution.tiles.*.title`) ; le paragraphe actuel
+  (`*.body`) reste dans le DOM en `p.sr-only` juste après le `h3`. Les `role="img"` et leurs
+  `aria-label` (tuiles 1–4) et le texte lu de la tuile 5 : **inchangés**. Le `ul` / `li` reste.
+- **Badges conservés** : `SimulationBadge` + « Exemple fictif » dans le cadre, tuiles 1 à 4 ;
+  aucun sur la 5 (inchangé).
+- **Cadres** (le texte ne donne plus la hauteur) : tuiles 2 à 5, cadre `flex: 1`, hauteur
+  **min. 232 px** (≥ 1024) / **220 px** (< 1024), il remplit la tuile étirée par la grille ;
+  tuile 1 : remplit les deux rangées (min. 456 / 400 inchangés ; à ≥ 1024 elle mesure 2 × 250 −
+  2 ≈ 498 px). La tuile 5 grandit toujours avec son texte. Si `container-type: size` des
+  visuels 2–4 ne résout plus ses unités avec une hauteur `flex`, hauteur **fixe 232 / 220 px**
+  pour 2–4 (à signaler).
+- Survol (pointeur fin) : montée de 2 px + `shadow-raised` conservées ; **plus d'histoire
+  d'icône** (l'icône n'est plus affichée : retirer `data-icon-trigger`).
+- Grille, ordre, arrivée, chronologies des visuels : inchangés (§ 2.11.8.4).
+
+###### L3-C. Titre de la section contrôle centré
+
+`LandingControl` passe `align="center"` à `LandingHeading` : **sur-titre, titre et paragraphe
+centrés** sur l'axe de la section. Correction nécessaire dans `LandingHeading` : en mode centré,
+le bloc du sur-titre (`w-fit`) reçoit aussi `mx-auto` (aujourd'hui seul le titre et le
+paragraphe le reçoivent ; le panneau final n'a pas de sur-titre, il est inchangé). Chaque ligne
+du titre est centrée (`text-align: center`, `data-title-align="center"`). L'effet `tech` de
+« décide » est **conservé tel quel** (délai 760 ms, cadre, étiquette **sous** le cadre alignée
+sur son bord gauche, rejeu au survol, glisser de lettre) ; il suit la position centrée du mot
+(mesure sur le `span`, rien à changer). Voiles : inchangés (`w-fit`, centrés).
+
+###### L3-D. Section contrôle : deux tuiles animées (remplacent les 6 cartes)
+
+**Idée unique** : l'IA prépare, un humain décide — montré deux fois : **qui** décide
+(organigramme), **quand** (frise d'un dossier). **En cinq secondes** : à gauche, « Vous »
+(badge vérifié) relié à l'espace agence d'où partent les cinq agents ; à droite, une tête de
+lecture parcourt un dossier fictif, s'arrête sur un bloc cobalt en pointillé, le curseur
+« Vous » le valide, puis le dossier s'arrête de nouveau devant le mandat. **Texte restant** :
+une légende par tuile, avec les garde-fous.
+
+Pas de second sur-titre « // … // » : le sur-titre de la section (« Le contrôle reste humain »)
+tient ce rôle.
+
+**Grille.** 56 px sous l'en-tête (`mt-14`). `ul` de 2 `li`. **≥ 1280** : 2 colonnes égales,
+espacement 16 px (tuiles de 584 px à 1280 et 1440). **640–1279** : 1 colonne, tuiles
+`max-w-[45rem]` (720 px) centrées, espacement 16 px. **< 640** : 1 colonne pleine largeur.
+**Séparateurs fins (≥ 1280 seulement)** : trois filets verticaux décoratifs (`aria-hidden`),
+1 px `rgb(10 10 11 / 0.06)`, à 8 px à gauche de la grille, au milieu de l'espacement central,
+à 8 px à droite de la grille ; ils dépassent de 48 px en haut et en bas des tuiles avec un
+fondu `mask-image` sur ces 48 px ; sous les tuiles (z-index), immobiles.
+
+**Tuile (commune).** `article` ; `bg-surface` opaque (`data-network-cover`), bord 1 px
+`--color-line`, **rayon 24 px**, `shadow-subtle`, rembourrage 8 px ; les deux tuiles ont la
+même hauteur (grille étirée). **Cadre du visuel** : `bg-surface-muted`, bord 1 px `line`,
+rayon 16 px, `overflow: hidden`, hauteur **312 px** (≥ 640) / **320 px** (< 640), visuel
+`role="img"` + `aria-label`. **Légende** sous le cadre, rembourrage 20 px 20 px 16 px :
+- `h3` **Geist 16 px 500** `ink` ;
+- paragraphe 14 px / 1,55 `ink-muted`, 4 px dessous, une phrase ;
+- liste des **garde-fous** : 12 px dessous, filet haut 1 px `line` puis 12 px ; `ul` de 3
+  `li`, espacement 8 px ; chaque `li` = icône `check` 14 px (encre, sans animation) + texte
+  13 px / 1,5 : **nom** en `ink` 500, puis « — » et la phrase en `ink-muted`. Textes = les six
+  `control.facts` actuels, **mot pour mot**, répartis 3 + 3.
+
+Arrivée des tuiles : comme le bloc B (opacité 0 → 1, `translateY(16px)` → 0, 560 ms
+`--ease-emphasis`, décalage 80 ms, une fois, `Reveal frame="still"` par tuile). Survol
+(pointeur fin, mouvement autorisé) : montée de 2 px + `shadow-raised`, 240 ms. Ce ne sont pas
+des contrôles : aucun focus, aucun lien.
+
+**Emplacement exact des six garde-fous retirés des cartes**
+
+| Garde-fou (`control.facts`) | Légende | Dans le visuel |
+|---|---|---|
+| Premier contact — « Toujours relu et validé par un conseiller avant tout envoi. » | Tuile 1, ligne 1 | Frise, piste « Vous » : bloc cobalt en pointillé « 1er contact » que le curseur « Vous » valide (→ « Validé ») |
+| Mandat signé — « Toujours confirmé par un humain, jamais déclaré par un agent. » | Tuile 1, ligne 2 | Frise, piste « Vous » : bloc « Mandat » cobalt en pointillé, **toujours en attente** à la fin ; fiche « Mandat · à confirmer par vous » |
+| Coupe-circuit — « Suspend les cinq agents de l'agence d'un seul clic. » | Tuile 1, ligne 3 | Organigramme : pastille « Coupe-circuit » (cadenas) sous le nœud « Espace agence », d'où partent les cinq agents |
+| Consentement — « Vérifié canal par canal avant toute action externe. » | Tuile 2, ligne 1 | Frise, piste « Emma » : premier bloc « Consentement » avec coche, **avant** tout message |
+| Refus ou reprise en main — « Les relances s'arrêtent immédiatement. » | Tuile 2, ligne 2 | Frise : bloc hachuré « Arrêtée » sur la piste Emma, **aligné** sous le bloc « Visite » de la piste « Vous » (le conseiller a repris la main) |
+| Information manquante — « Signalée comme manquante, jamais inventée. » | Tuile 2, ligne 3 | Frise, piste « Agents » : bloc en pointillé gris « Manquante » après Hugo ; fiche « Motivation manquante · signalée » |
+
+Chaque garde-fou est donc **écrit** (légende, toutes largeurs, sans JS, mouvement réduit) et
+**montré** (visuel). Ordre des légendes : tuile 1 = facts 0, 1, 3 ; tuile 2 = facts 2, 4, 5
+(champ `tile` ajouté à chaque fact, ordre du tableau `facts` inchangé).
+
+**Tuile 1 — organigramme** (Server Component, mouvement CSS sous le `Reveal`).
+
+Scène de taille **fixe** centrée dans le cadre (aucune mesure JS) : **518 × 264 px** (≥ 640),
+**286 × 288 px** (< 640). Lignes en **SVG** de la même taille, sans mise à l'échelle,
+trait 1 px **`--color-line-strong`** (#d2d2d8 ≈ encre à 15 % sur #fafafa, **opaque** pour que
+les segments communs ne s'assombrissent pas), bouts ronds, `pathLength="1"`.
+
+Coordonnées (origine en haut à gauche de la scène) :
+
+| Élément | ≥ 640 (518 × 264) | < 640 (286 × 288) |
+|---|---|---|
+| Avatar « Vous » | `AgentAppIcon` `kind="human"` `size="lg"` (56), glyphe `humanValidation`, centre (48 ; 132) | `size="md"` (40), centre (52 ; 40) |
+| Badge vérifié | disque 18 px `--color-accent`, coche blanche (géométrie de l'icône `check`, 10 px, trait 2), anneau 2 px `surface`, centre (68 ; 152) | 16 px, centre (67 ; 55) |
+| Libellés | « Vous » 13 px 600 `ink`, haut 168 ; « Conseiller » 12 px `ink-subtle`, haut 186 ; centrés sur x 48 | haut 66 et 82, centrés sur x 52 |
+| Ligne Vous → nœud | `M84 132 H152` | `M52 102 V126` |
+| Nœud « Espace agence » | carte x 160–288, y 80–184 (128 × 104), blanche, rayon 16, bord `line`, `shadow-subtle`, contenu centré : `AgentAppIcon` `kind="neutral"` `md` glyphe `dashboard`, 8 px, « Espace agence » 13 px 500 `ink`, « Ascend Strategy » 12 px `ink-subtle`. **Aucune photo** | x 4–100, y 132–220 (96 × 88) : tuile `sm`, « Espace agence » 12 px 500, « Ascend » 11 px `ink-subtle` |
+| Pastille « Coupe-circuit » | centrée sur x 224, y 196–220 : pilule 24 px, bord 1 px `line-strong`, fond `surface`, 0 8 px, icône `lock` 12 px + « Coupe-circuit » 11 px 500 `ink` (16,1:1) | centrée sur x 52, y 232–256 |
+| Tronc | `M288 132 H320` | `M100 176 H124` |
+| Branches (5, depuis le point de jonction, coudes rayon 8) | `M320 132 V36 Q320 28 328 28 H352` ; `M320 132 V88 Q320 80 328 80 H352` ; `M320 132 H352` ; `M320 132 V176 Q320 184 328 184 H352` ; `M320 132 V228 Q320 236 328 236 H352` | jonction (124 ; 176), extrémités y 40 / 92 / 144 / 196 / 248, x 148, même dessin |
+| Rôles (5) | lignes de 40 px centrées sur y 28 / 80 / 132 / 184 / 236 : **pastille ronde blanche 36 px** (x 352–388, bord 1 px `line`, `shadow-subtle`) avec l'icône de l'agent `Icon` 18 px (`lea`, `hugo`, `emma`, `louis`, `sarah` ; encre + un accent cobalt, immobile), puis à 10 px : prénom 13 px 500 `ink` au-dessus du rôle 12 px `ink-subtle` (Acquisition, Qualification, Relation, Rendez-vous, Suivi) | pastille 32 px (x 148–180), texte à x 188 |
+
+Mouvement (une fois, t = 0 à l'entrée du `Reveal` de la tuile ; animations CSS `backwards`
+seulement, comme le bloc B : l'état final est le style par défaut) :
+
+| Élément | Propriétés | Durée, courbe | Départ |
+|---|---|---|---|
+| Groupe « Vous » | opacité 0 → 1, `translateX(-12px)` → 0, `filter: blur(6px)` → 0 | 420 ms `--ease-emphasis` | 240 ms |
+| Badge vérifié | opacité, `scale(0.4)` → 1 | 240 ms `--ease-emphasis` | 560 ms |
+| Ligne Vous → nœud | `stroke-dashoffset` 1 → 0 | 320 ms `--ease-draw` | 520 ms |
+| Nœud + pastille coupe-circuit | opacité, `translateX(-8px)` → 0, flou 6 → 0 (pastille : `translateY(4px)`, sans flou) | 400 ms (pastille 240) | 720 ms (pastille 1 120) |
+| Tronc + 5 branches | `stroke-dashoffset` 1 → 0, toutes ensemble depuis la jonction | 480 ms `--ease-draw` | 1 000 ms |
+| Rôle i (0 → 4) | opacité, `translateX(10px)` → 0, flou 6 → 0 | 360 ms `--ease-emphasis` | 1 160 + 90 × i ms |
+
+Fin ≤ **1 880 ms** après l'entrée. Le flou ne joue qu'à l'arrivée (une fois), jamais au repos.
+
+Nom accessible du visuel (`aria-label`) : « Organigramme : vous, conseiller vérifié, relié à
+l'espace agence ; de là partent cinq agents, Léa, Hugo, Emma, Louis et Sarah ; un coupe-circuit
+suspend les cinq. »
+
+**Tuile 2 — frise d'un dossier fictif** (îlot client `ControlTimeline`, chronologie pure
+`control-timeline.ts`).
+
+Adaptation du modèle « montage multi-format » : à la place de l'image, une **mini-fiche** ;
+graduation **J0 … J10** ; trois pistes de blocs arrondis ; une **tête de lecture** ; trois
+**curseurs étiquetés** « Léa », « Emma », « Vous » ; blocs **cobalt en pointillé** = décision
+humaine en attente (orange du modèle → cobalt).
+
+Disposition dans le cadre (rembourrage 16 px ; ordonnées depuis le haut du cadre) :
+
+| Élément | Valeurs |
+|---|---|
+| Étiquette | en haut à gauche, à 12 px : `SimulationBadge` + « Exemple fictif » (12 px 500 `ink-muted`) — même composant que le bloc B |
+| Mini-fiche | haut 44, gauche / droite 16, hauteur 52, blanche, rayon 12, bord `line`, `shadow-subtle`, rembourrage 0 12 px, `gap-3` : `AgentAppIcon` `kind="neutral"` `sm` glyphe `deal` ; « Dossier fictif · T3, Cassis » 13 px 500 `ink` au-dessus de l'**état** 12 px `ink-muted` (6,9:1 sur blanc), qui change avec la tête de lecture (fondu enchaîné 160 ms) |
+| Gouttière des pistes | 52 px (< 640 : 44) à gauche de la zone de temps : « Agents » et « Emma » 11 px 500 `ink-muted`, « Vous » 11 px 600 `ink`, alignés à gauche, centrés sur leur piste |
+| Zone de temps | de la gouttière au bord droit − 16 px (≈ 482 px à 1280 / 1440 ; 618 px à 1024 ; 258 px à 390 ; 218 px à 360). Jour d en x = d / 10 de sa largeur (positions en %, aucune mesure) |
+| Graduation | haut 112 : « J0 », « J2 », « J4 », « J6 », « J8 », « J10 » en Geist Mono 11 px `ink-subtle` `tabular-nums` (J0 calé à gauche, J10 à droite, les autres centrés) ; filet de base 1 px `line` à y 134 ; repères 6 px aux jours pairs, 3 px aux impairs, 1 px `line-strong` |
+| Pistes | 3 rangées de 32 px, espacement 10 px (< 640 : 8) : « Agents » y 146, « Emma » y 188, « Vous » y 230 |
+| Bloc | hauteur 24 centrée dans sa piste, rayon 8, rembourrage 0 6 px, libellé 11 px 500 sur une ligne (`overflow: hidden`, `text-overflow: clip`) ; **libellés affichés seulement si la zone de temps ≥ 440 px** (requête de conteneur) — en dessous, blocs sans texte, le sens est porté par la gouttière, les curseurs, la fiche et la légende |
+| Tête de lecture | trait vertical 1 px `ink` de y 110 au bas de la piste « Vous » + 8 ; triangle plein `ink` 9 × 6, pointe en bas, posé sur y 104–110 ; position = jour courant |
+| Curseur agent (« Léa », « Emma ») | flèche 16 × 16 pleine `ink`, contour blanc 1,5 px ; étiquette 11 px 600 **blanc sur `inverse`** (19,8:1), rayon 999, 2 × 6 px, décalée de (12 ; 12) de la pointe |
+| Curseur « Vous » | `CursorYou` du bloc A (flèche cobalt 20 px, étiquette blanc sur cobalt 5,4:1) — seul curseur cobalt |
+
+Blocs (jours de début et de fin ; tous des données d'illustration, **exemple fictif**) :
+
+| Piste | Bloc | Jours | Style | Libellé (≥ 440 px) |
+|---|---|---|---|---|
+| Agents | Léa | 0 – 1,2 | fond `surface-sunken`, bord 1 px `line`, texte `ink-muted` (6,2:1) | Léa |
+| Agents | Hugo | 1,3 – 2,7 | idem | Hugo |
+| Agents | Manquante | 2,8 – 4,3 | **pointillé** 1 px `ink-subtle`, fond transparent, texte `ink-subtle` (5,5:1) | Manquante |
+| Agents | Louis | 4,9 – 6,1 | gris | Louis |
+| Agents | Sarah | 7,4 – 8,4 | gris | Sarah |
+| Emma | Consentement | 1,0 – 3,2 (écart n° 2, Avancement) | gris + icône `check` 10 px `ink` avant le texte | Consentement |
+| Emma | Relance | 4,9 – 6,0 | gris | Relance |
+| Emma | Arrêtée | 6,2 – 7,4 | **hachures** `repeating-linear-gradient(135deg, rgb(10 10 11 / 0.10) 0 1px, transparent 1px 5px)`, bord 1 px `line-strong`, texte `ink-muted` | Arrêtée |
+| Vous | 1er contact | 3,3 – 4,8 | **en attente** : pointillé 1,5 px `--color-accent`, fond `--color-accent-soft`, texte `--color-accent-strong` 600 (6,6:1) → **validé** : fond et bord `--color-inverse`, texte blanc 600 + coche 10 px | 1er contact → Validé |
+| Vous | Visite | 6,2 – 7,2 | gris, texte `ink` 500 | Visite |
+| Vous | Mandat | 8,6 – 10 | **en attente** (pointillé cobalt), **le reste** à la fin | Mandat |
+
+La différence « humain en attente » / « agent » ne repose pas sur la couleur : pointillé +
+piste « Vous » + libellé + fiche ; « manquante » = pointillé gris + libellé ; « arrêtée » =
+hachures + libellé.
+
+**Décision : la frise joue UNE FOIS** (pas de boucle). Raisons : (1) le bloc A reste la seule
+boucle de la page (§ 2.11.8.1 n° 3), contrat testé (`[data-loop]` unique) ; (2) la frise se
+termine sur une **attente humaine** (mandat à confirmer) : la rejouer en boucle ferait croire
+que la décision se prend toute seule ; (3) WCAG 2.2.2 sans pause à prévoir. **Aucun
+`data-loop`** sur la frise ; `e2e/landing-sans-boucle.spec.ts` **inchangé** (il exige toujours
+un seul `[data-loop]`, et la section contrôle immobile 5 s après centrage : la frise finit
+≤ 4 160 ms après l'entrée). *Si l'utilisateur veut la boucle plus tard* : `data-loop="allowed"`
+sur la frise, l'assertion « un seul `[data-loop]` » devient « exactement 2, `hero-ecosystem` et
+`control-timeline` », masque des captures étendu aux deux, pause hors écran / onglet caché et
+mouvement réduit comme le bloc A — non retenu ici.
+
+Chronologie (vitesse de la tête de lecture **280 ms par jour**, mouvement `linear` : c'est du
+temps ; un seul minuteur `setTimeout` armé à la fois, **aucun `requestAnimationFrame`**,
+transitions CSS `transform` / `opacity` seulement ; t = 0 = départ) :
+
+| t (ms) | Événement | État de la fiche |
+|---|---|---|
+| 0 | Tête de lecture J0 → J3,3 (924 ms, `linear`). Bloc Léa apparaît. Curseur « Léa » de J0 à J1,2 sur la piste Agents (336 ms `linear`) puis reste | « Demande reçue · Léa » |
+| 336 | Bloc Consentement ; curseur « Emma » apparaît à J1,2 (opacité 160 ms) puis glisse à J3,2 (560 ms `linear`) | — |
+| 364 | Bloc Hugo | « Qualification · Hugo » |
+| 784 | Bloc Manquante | « Motivation manquante · signalée » |
+| 924 | **La tête s'arrête à J3,3.** Bloc « 1er contact » apparaît en attente | « Premier contact · en attente de vous » |
+| 924 → 1 404 | Curseur « Vous » : du parc (pointe à J1,0, 2 px sous la piste Vous) au centre du bloc (480 ms `--ease-emphasis`) | — |
+| 1 524 → 1 644 | Clic : curseur `scale(0.88)` 60 ms puis retour 60 ms, bloc `scale(0.96)` → 1 | — |
+| 1 584 → 1 784 | Le bloc passe à **Validé** (fond encre, fondu enchaîné 200 ms) | « Premier contact · validé par vous » |
+| 1 824 | La tête repart : J3,3 → J8,6 (1 484 ms, `linear`) | — |
+| 2 272 | Blocs Louis et Relance ; curseur « Emma » glisse de J3,2 à J6,0 (308 ms `--ease-emphasis`) puis reste | « Créneau proposé · Louis » |
+| 2 636 | Blocs Visite et Arrêtée ; curseur « Vous » glisse au centre de Visite (320 ms `--ease-emphasis`) | « Visite · relances arrêtées » |
+| 2 972 | Bloc Sarah | « Suivi · Sarah » |
+| 3 308 | **La tête s'arrête à J8,6.** Bloc Mandat en attente ; curseur « Vous » glisse sous le bloc (pointe à J9,3, 2 px sous la piste ; 400 ms `--ease-emphasis`) et **ne clique pas** | « Mandat · à confirmer par vous » |
+| 3 760 | `data-visual-state="done"` | — |
+
+Apparition d'un bloc : opacité 0 → 1 et `scaleX(0.6)` → 1 (origine gauche), 240 ms
+`--ease-emphasis` (blocs « en attente » : `scale(0.92)` → 1, 200 ms).
+
+| Situation | Comportement |
+|---|---|
+| HTML serveur, sans JS, mouvement réduit | **État final** : tous les blocs, « 1er contact » **validé**, « Mandat » **en attente**, tête à J8,6, « Léa » à J1,2, « Emma » à J6,0, « Vous » sous Mandat, fiche « Mandat · à confirmer par vous » ; `data-visual-state="done"`, aucun minuteur. Bascule de réglage en direct : saut à l'état final |
+| Mouvement autorisé, après hydratation, cadre pas encore vu | État **initial** (`idle`) : tête à J0, aucun bloc, « Léa » à J0, « Emma » masquée, « Vous » au parc, fiche « Demande reçue · Léa » |
+| Déclencheur | Cadre visible à **≥ 50 %** (`IntersectionObserver`) → départ **400 ms** plus tard (la tuile a fini d'arriver) ; une fois par chargement ; `data-visual-state="playing"`. Fin ≤ 4 160 ms après le déclencheur |
+| Cadre déjà visible à l'hydratation | Même chose (état initial puis départ) |
+| Hors écran ou onglet caché pendant la lecture | La lecture continue jusqu'au bout (bornée à 3,8 s) puis plus rien |
+| Survol, clic, clavier | Rien (illustration, pas de rejeu) |
+
+Attributs de test : `data-testid="control-timeline"`, `data-visual-state` (`idle` | `playing`
+| `done`), `data-step` ; chaque bloc `data-block` (clé) et `data-shown` ; bloc « 1er contact »
+`data-decision="pending|validated"`, bloc Mandat `data-decision="pending"` ; tête
+`data-testid="control-playhead"` avec `data-day`.
+
+Nom accessible du visuel (`aria-label`, figé, jamais annoncé pendant la lecture) : « Frise d'un
+dossier fictif sur dix jours, simulation : Léa crée la fiche, Emma vérifie le consentement,
+Hugo signale une motivation manquante ; le premier contact attend votre validation, vous le
+validez ; après votre visite, les relances sont arrêtées ; le mandat attend votre
+confirmation. » La partie dessinée est `aria-hidden` sous le `role="img"`.
+
+**Textes exacts** (`LANDING_TEXTS.control`, clés ajoutées ; `kicker`, `title*`, `body`
+inchangés ; `facts` inchangés + champ `tile: "team" | "timeline"`) :
+
+| Clé | Texte |
+|---|---|
+| `tiles.team.title` | Un conseiller, cinq agents |
+| `tiles.team.body` | Chaque agent prépare sa part. La décision reste à votre équipe. |
+| `tiles.team.you` / `youRole` | Vous / Conseiller |
+| `tiles.team.hub` / `hubSub` / `hubSubShort` | Espace agence / Ascend Strategy / Ascend |
+| `tiles.team.killSwitch` | Coupe-circuit |
+| `tiles.team.agents` | Léa · Acquisition ; Hugo · Qualification ; Emma · Relation ; Louis · Rendez-vous ; Sarah · Suivi (prénom, rôle, glyphe) |
+| `tiles.team.visualLabel` | (phrase de l'organigramme ci-dessus) |
+| `tiles.timeline.title` | Le dossier attend votre décision |
+| `tiles.timeline.body` | Un dossier fictif sur dix jours : il s'arrête à chaque étape humaine. |
+| `tiles.timeline.fictive` | Exemple fictif |
+| `tiles.timeline.file` | Dossier fictif · T3, Cassis |
+| `tiles.timeline.tracks` | Agents / Emma / Vous |
+| `tiles.timeline.cursors` | Léa / Emma / Vous |
+| `tiles.timeline.days` | J0, J2, J4, J6, J8, J10 |
+| `tiles.timeline.blocks` | Léa, Hugo, Manquante, Louis, Sarah, Consentement, Relance, Arrêtée, 1er contact, Validé, Visite, Mandat |
+| `tiles.timeline.states` | Demande reçue · Léa ; Qualification · Hugo ; Motivation manquante · signalée ; Premier contact · en attente de vous ; Premier contact · validé par vous ; Créneau proposé · Louis ; Visite · relances arrêtées ; Suivi · Sarah ; Mandat · à confirmer par vous |
+| `tiles.timeline.visualLabel` | (phrase de la frise ci-dessus) |
+
+**Responsive.** 1440 / 1280 : deux tuiles côte à côte, séparateurs, libellés des blocs
+visibles. 1024 : une colonne de 720 px centrée, organigramme centré dans son cadre, frise
+large (zone de temps 618 px). 390 / 360 : une colonne, scène d'organigramme 286 × 288, frise
+sans libellés de blocs (curseurs étiquetés, gouttière, fiche et légende visibles), légendes
+pleine largeur, **aucun débordement du document**, aucun défilement horizontal dans les cadres.
+
+**Accessibilité.** Ordre de lecture : `h2` → tuile 1 (`h3`, paragraphe, garde-fous) → tuile 2
+(idem) ; visuels `role="img"` nommés, contenu dessiné `aria-hidden`. Les six garde-fous sont du
+texte réel (légendes), lisibles sans animation et sans JS. Contrastes : légendes `ink` 17,7:1 /
+`ink-muted` 6,9:1 sur blanc ; fiche `ink-muted` 6,9:1 ; blocs gris `ink-muted` sur
+`surface-sunken` 6,2:1 ; « Manquante » 5,5:1 ; « 1er contact » / « Mandat » `accent-strong`
+sur `accent-soft` 6,6:1 ; étiquettes des curseurs 19,8:1 et 5,4:1 ; badge vérifié, traits,
+pointillés : décor ou doublés d'un libellé. **Aucun rouge, aucun orange.**
+
+###### L3-E. Critères d'acceptation (Lot 3)
+
+**Bloc A.**
+- L3-A1. 1440 × 900 : 7 cartes de **186 px**, **un seul haut** (écart ≤ 0,5 px) et **une seule
+  hauteur** (écart ≤ 0,5 px), ordre gauche → droite = `journey.cards`, marges ≥ 32 px, 7 lignes
+  convergentes, haut des cartes < 900. 1024 : cartes de 216 px, deux rangées (4 + 3), rangée 2
+  centrée (± 1 px), même hauteur pour les 7, 3 lignes. 390 / 360 : carrousel, cartes de même
+  hauteur, aucun débordement.
+- L3-A2. À 1440 et 1024, aucun libellé tronqué (`scrollWidth ≤ clientWidth`) ; la ligne
+  « Motivation / à demander » est la seule sur deux lignes.
+- L3-A3. Les instants d'une coche sont croissants de gauche à droite (≥ 1440) et dans l'ordre de
+  lecture (1024) ; A2–A5 du § 2.11.8.6 restent verts (état final, boucle 9,8 s, pause, textes).
+- L3-A4. Curseur au parc : pointe à ± 4 px du centre horizontal de la carte Validation et 20 px
+  (± 4) sous son bord bas ; à ≥ 1440 le trajet Validation case 2 → Mandat a un écart vertical
+  ≤ 44 px (même ligne de cases ± la hauteur d'une ligne).
+
+**Bloc B.**
+- L3-B1. Aucun texte visible hors des cadres dans `solution-grid` (tout nœud texte visible est
+  dans un `[data-testid='solution-visual']`) ; 5 `h3` `sr-only` avec les titres ; 4 visuels
+  `role="img"` nommés ; badges « Simulation · Exemple fictif » tuiles 1–4, aucun tuile 5.
+- L3-B2. Aucun cadre vide ni tronqué à 1440 / 1024 / 390 / 360 (tuile 5 : texte entier) ; B1–B3
+  du § 2.11.8.6 verts.
+
+**Titre contrôle.**
+- L3-C1. Centre du sur-titre, de chaque ligne du titre et du paragraphe = centre de la section
+  ± 2 px (1440, 1024, 390) ; T2 et T3 du § 2.11.8.6 verts (balayage, étiquette sous le cadre et
+  au-dessus du paragraphe, rejeu, glisser).
+
+**Section contrôle.**
+- L3-D1. Aucune des six anciennes cartes ; 2 tuiles ; ≥ 1280 deux colonnes et 3 séparateurs ;
+  < 1280 une colonne (≤ 720 px) ; rayon de tuile 24 px.
+- L3-D2. Les six `control.facts` (nom + phrase) visibles en texte, 3 par tuile, dans l'ordre
+  du tableau ci-dessus, **y compris** sans JS et en mouvement réduit.
+- L3-D3. Organigramme : 5 rôles avec icônes des agents, badge vérifié, pastille
+  « Coupe-circuit » ; animations finies ≤ 2 000 ms après l'entrée (`getAnimations()` vide dans
+  la tuile) ; mouvement réduit : état final à l'instant 0.
+- L3-D4. Frise : `data-visual-state` `idle` → `playing` → `done` ≤ 4 200 ms après le
+  déclencheur ; « 1er contact » passe à `validated` **après** l'arrivée du curseur « Vous »
+  (± 4 px) ; Mandat reste `pending` ; tête `data-day="8.6"` à la fin ; 10 s plus tard rien n'a
+  changé ; **0 appel `requestAnimationFrame`** dû à la section ; aucune animation infinie ;
+  `[data-loop]` toujours **unique** (bloc A).
+- L3-D5. Mouvement réduit / sans JS : frise `done` à l'instant 0 avec l'état final décrit.
+- L3-D6. Badge « Simulation » + « Exemple fictif » dans le cadre de la frise ; aucun pixel
+  rouge ni orange dans la section ; libellés des blocs visibles et non tronqués à 1440 / 1280 /
+  1024, absents sous 440 px de zone de temps.
+- L3-D7. `e2e/landing-sans-boucle.spec.ts` vert **sans modification** (section `controle`
+  immobile 5 s après centrage).
+
+###### Avancement du Lot 3 (03/10/2026, `frontend-ux`)
+
+**Fait** : L3-A (grille 7 × 186 / 8 demi-colonnes, ligne manquante empilée, parc au centre de la
+carte Validation, lignes de la dernière rangée), L3-B (illustrations seules, `h3` / `p` en
+`sr-only`, cadres `flex: 1`), L3-C (titre centré, `mx-auto` du sur-titre), L3-D
+(`components/landing/control/` : `ControlTile`, `TeamChartVisual`, `ControlTimeline`,
+`control-timeline.ts` pur, `control.module.css`, `control-team.module.css`,
+`control-timeline.module.css` ; clé `control.tiles` + `facts[].tile`). Aucune dépendance, aucune
+image, aucun `requestAnimationFrame`, aucun rouge ni orange.
+
+**Mesures réelles (Chromium, serveur de dev)** :
+- Bloc A : hauteur commune des cartes **183,5 px** (1440 et 1024) ; haut des cartes à 662 px
+  (1440 × 900) ; libellé le plus large 108 px (1440) / 138 px (1024), aucun tronqué ; parc :
+  écart horizontal 0,0 px, 20,0 px sous la carte (1440 et 1024) ; Validation case 2 → Mandat :
+  42 px d'écart vertical à 1440.
+- Bloc B : cadres 498 / 232 / 232 / 232 / 232 px (1440, 1024), 400 / 220 / 220 / 220 / 220
+  (390), tuile 5 à 231 px à 360 (elle grandit avec son texte). Les unités de conteneur des
+  visuels 2–4 se résolvent avec la hauteur `flex` : **pas** de repli en hauteur fixe.
+- Contrôle : zone de temps 480 px (1440, 1280), 616 px (1024), 246 px (390), 216 px (360) ;
+  libellés des blocs (Geist 11 px) : Léa 18,6 · Hugo 27,0 · Manquante 58,3 · Louis 27,3 ·
+  Sarah 30,0 · Consentement (avec coche) 88,6 · Relance 41,7 · Arrêtée 38,1 · 1er contact 45,7 ·
+  Visite 28,9 · Mandat 39,9 px. Fin réelle de la frise : **3 768 ms** après le départ ;
+  organigramme : animations finies ≈ **1,9 s** après l'entrée de la tuile ; curseur « Vous » au
+  centre du bloc « 1er contact » au moment de la validation (écart 0,0 / 0,0 px).
+
+**Écarts à la spec (assumés, à valider à l'audit)** :
+1. Blocs de la frise : rembourrage **0 4 px** (au lieu de 0 6) — à 48 px par jour, « Relance »
+   (41,7 px) et « Manquante » (58,3 px) étaient coupés avec 6 px ; libellé « Validé » posé à 4 px.
+2. Bloc « Consentement » : **J1,0 – J3,2** (au lieu de J1,2 – J3,2) — coche + libellé = 88,6 px,
+   ne tenait pas dans 2 jours. Le curseur « Emma » apparaît toujours à J1,2.
+3. Curseur « Vous » sous le Mandat (J9,3) : son étiquette passe **à gauche** de la flèche
+   (sinon elle sortait du cadre à 1440 et à 390). `CursorYou.tsx` n'est pas modifié : règle CSS
+   locale de `control-timeline.module.css`.
+4. Curseur « Emma » : apparition à 336 ms (fondu 160 ms), **puis** glissement de 560 ms à partir
+   de 496 ms (pas simultané), fin à 1 056 ms.
+5. Séparateurs : `div` décoratif hors de la liste (le `ul` garde exactement 2 `li`).
+6. `e2e/landing-titre-tech.spec.ts` (T3) : avec le titre centré, le cadre du mot n'est entièrement
+   cobalt que 50 à 200 ms après le passage à `follow` ; l'assertion « frame drawn » attend
+   désormais (sondage ≤ 500 ms) au lieu de lire la même image. Aucun changement de
+   `components/ui/tech-accent/**`.
+7. L3-D4 « 0 `requestAnimationFrame` dû à la section » : mesuré en excluant les appels du réseau
+   de fond (`LivingEngine`, qui suit le défilement) ; l'unicité de `[data-loop]` et
+   `landing-sans-boucle` (inchangé) restent verts.
 
 ## 3. Composants (`components/ui/`)
 

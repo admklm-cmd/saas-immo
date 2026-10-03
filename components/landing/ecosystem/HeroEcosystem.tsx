@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
-import { cn } from "@/components/ui/cn";
 
 import { ConvergingLines, type ConvergingColumn } from "./ConvergingLines";
 import { CursorYou } from "./CursorYou";
@@ -47,7 +46,8 @@ function useMotionWelcome(): boolean {
 }
 
 /**
- * Block A of the hero (docs/design-system.md §2.11.8.3): five agents check
+ * Block A of the hero (docs/design-system.md §2.11.8.3, ordered by §2.11.8.7
+ * L3-A: one row of seven cards ≥ 1440, two regular rows 1024–1439): five agents check
  * their own work, then the « Vous » cursor — the advisor — checks the two
  * human decisions (first message, mandate). Labelled « Exemple fictif —
  * simulation »; it reads no real data and claims no activity.
@@ -224,19 +224,10 @@ export function HeroEcosystem() {
       <div ref={stageRef} className={styles.stage}>
         <div className={styles.viewport} aria-hidden="true">
           <div ref={trackRef} className={styles.track} onScroll={onTrackScroll} data-testid="ecosystem-track">
-            <div className={cn(styles.col, styles.colLea)}>
-              {card(0)}
-              {card(1)}
-            </div>
-            <div className={cn(styles.group, styles.groupB)}>
-              <div className={cn(styles.col, styles.colEmma)}>{card(2)}</div>
-              <div className={cn(styles.col, styles.colReview)}>{card(3)}</div>
-            </div>
-            <div className={cn(styles.group, styles.groupC)}>
-              <div className={cn(styles.col, styles.colLouis)}>{card(4)}</div>
-              <div className={cn(styles.col, styles.colSarah)}>{card(5)}</div>
-            </div>
-            <div className={cn(styles.col, styles.colMandate)}>{card(6, true)}</div>
+            {/* DOM order = reading order = order of the checks (§2.11.8.7 L3-A); the grid places them. */}
+            {CARDS.map((entry, index) => (
+              <Fragment key={entry.key}>{card(index, index === CARDS.length - 1)}</Fragment>
+            ))}
             {motion ? <CursorYou ref={cursorRef} label={TEXTS.cursor} pressed={frame.pressed} className={styles.cursorLive} testId="ecosystem-cursor" /> : null}
           </div>
         </div>

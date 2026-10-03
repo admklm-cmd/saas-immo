@@ -45,6 +45,32 @@ describe("LandingSolution — block B (§2.11.8.4)", () => {
     ]);
   });
 
+  it("shows illustrations only: titles and paragraphs kept for screen readers (§2.11.8.7 L3-B)", () => {
+    render(<LandingSolution />);
+    const grid = screen.getByTestId("solution-grid");
+    const tiles = Array.from(grid.querySelectorAll<HTMLElement>("li[data-tile]"));
+    const bodies = [TEXTS.tiles.roadmap, TEXTS.tiles.progress, TEXTS.tiles.team, TEXTS.tiles.report, TEXTS.tiles.guards];
+    tiles.forEach((tile, index) => {
+      const article = tile.querySelector("article")!;
+      const heading = tile.querySelector("h3")!;
+      expect(heading.className).toContain("sr-only");
+      expect(heading.id).toBe(`solution-tile-${index + 1}-title`);
+      expect(article.getAttribute("aria-labelledby")).toBe(heading.id);
+      const paragraph = heading.nextElementSibling!;
+      expect(paragraph.tagName).toBe("P");
+      expect(paragraph.className).toContain("sr-only");
+      expect(paragraph.textContent).toBe(bodies[index]!.body);
+      expect(tile.querySelector("[data-icon-trigger]")).toBeNull();
+    });
+    // Every text node of the grid is inside a frame, or visually hidden.
+    const walker = document.createTreeWalker(grid, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.textContent?.trim()) continue;
+      const parent = node.parentElement!;
+      expect(Boolean(parent.closest("[data-testid='solution-visual']") || parent.closest(".sr-only")), node.textContent).toBe(true);
+    }
+  });
+
   it("labels tiles 1 to 4 « Simulation · Exemple fictif », never tile 5 (real rules)", () => {
     render(<LandingSolution />);
     const tiles = Array.from(screen.getByTestId("solution-grid").querySelectorAll<HTMLElement>("li[data-tile]"));

@@ -52,6 +52,9 @@ describe("landing copy", () => {
       }
     }
     expect(cards.flatMap((card) => card.lines).filter((line) => line.by === "missing").map((line) => line.label)).toEqual(["Motivation"]);
+    // §2.11.8.7 L3-A: « Consentement » fits a card of 186 px; the checked box says « vérifié ».
+    expect(journey.cards[2]!.lines[0]!.label).toBe("Consentement");
+    expect(journey.srSummary.join(" ")).toContain("consentement vérifié");
     expect(journey.srSummary).toHaveLength(7);
     expect(journey.dots.item).toBe("Étape {n} sur 7 : {nom}");
     expect("states" in journey).toBe(false);
@@ -112,6 +115,31 @@ describe("landing copy", () => {
       expect(step.done.length, step.key).toBeGreaterThan(0);
     }
     expect(JSON.stringify(final)).not.toMatch(/%/);
+  });
+
+  it("control: the six facts unchanged, split 3 + 3 between the two tiles (§2.11.8.7 L3-D)", () => {
+    const control = LANDING_TEXTS.control;
+    expect(control.facts.map((fact) => fact.title)).toEqual([
+      "Premier contact",
+      "Mandat signé",
+      "Consentement",
+      "Coupe-circuit",
+      "Refus ou reprise en main",
+      "Information manquante",
+    ]);
+    expect(control.facts.map((fact) => fact.tile)).toEqual(["team", "team", "timeline", "team", "timeline", "timeline"]);
+    expect(control.tiles.team.title).toBe("Un conseiller, cinq agents");
+    expect(control.tiles.team.agents.map((agent) => `${agent.name} · ${agent.role}`)).toEqual([
+      "Léa · Acquisition",
+      "Hugo · Qualification",
+      "Emma · Relation",
+      "Louis · Rendez-vous",
+      "Sarah · Suivi",
+    ]);
+    expect(control.tiles.timeline.title).toBe("Le dossier attend votre décision");
+    expect(control.tiles.timeline.days).toEqual(["J0", "J2", "J4", "J6", "J8", "J10"]);
+    expect(control.tiles.timeline.states).toHaveLength(9);
+    expect(control.tiles.timeline.visualLabel).toMatch(/simulation/);
   });
 
   it("labels the illustrations as a fictitious simulation", () => {

@@ -86,7 +86,7 @@ export const LANDING_TEXTS = {
         nature: "agent",
         glyph: "emma",
         lines: [
-          { icon: "email", label: "Consentement vérifié", by: "agent" },
+          { icon: "email", label: "Consentement", by: "agent" },
           { icon: "messages", label: "Message préparé", by: "agent" },
         ],
       },
@@ -460,14 +460,78 @@ export const LANDING_TEXTS = {
     titleLines: ["L'IA prépare.", "Votre équipe décide."],
     titleAccent: "décide",
     body: "Les garde-fous sont vérifiés par le serveur à chaque action, pas seulement affichés à l'écran.",
+    /**
+     * The six guard rails, word for word. Since §2.11.8.7 L3-D they are the
+     * legends of the two tiles (`tile`): written as text at every width, with
+     * no JavaScript and under reduced motion, and shown again in the visuals.
+     */
     facts: [
-      { title: "Premier contact", body: "Toujours relu et validé par un conseiller avant tout envoi." },
-      { title: "Mandat signé", body: "Toujours confirmé par un humain, jamais déclaré par un agent." },
-      { title: "Consentement", body: "Vérifié canal par canal avant toute action externe." },
-      { title: "Coupe-circuit", body: "Suspend les cinq agents de l'agence d'un seul clic." },
-      { title: "Refus ou reprise en main", body: "Les relances s'arrêtent immédiatement." },
-      { title: "Information manquante", body: "Signalée comme manquante, jamais inventée." },
+      { title: "Premier contact", body: "Toujours relu et validé par un conseiller avant tout envoi.", tile: "team" },
+      { title: "Mandat signé", body: "Toujours confirmé par un humain, jamais déclaré par un agent.", tile: "team" },
+      { title: "Consentement", body: "Vérifié canal par canal avant toute action externe.", tile: "timeline" },
+      { title: "Coupe-circuit", body: "Suspend les cinq agents de l'agence d'un seul clic.", tile: "team" },
+      { title: "Refus ou reprise en main", body: "Les relances s'arrêtent immédiatement.", tile: "timeline" },
+      { title: "Information manquante", body: "Signalée comme manquante, jamais inventée.", tile: "timeline" },
     ],
+    /** The two animated tiles of the section (docs/design-system.md §2.11.8.7 L3-D). */
+    tiles: {
+      team: {
+        title: "Un conseiller, cinq agents",
+        body: "Chaque agent prépare sa part. La décision reste à votre équipe.",
+        you: "Vous",
+        youRole: "Conseiller",
+        hub: "Espace agence",
+        hubSub: "Ascend Strategy",
+        hubSubShort: "Ascend",
+        killSwitch: "Coupe-circuit",
+        agents: [
+          { name: "Léa", role: "Acquisition", glyph: "lea" },
+          { name: "Hugo", role: "Qualification", glyph: "hugo" },
+          { name: "Emma", role: "Relation", glyph: "emma" },
+          { name: "Louis", role: "Rendez-vous", glyph: "louis" },
+          { name: "Sarah", role: "Suivi", glyph: "sarah" },
+        ],
+        visualLabel:
+          "Organigramme : vous, conseiller vérifié, relié à l'espace agence ; de là partent cinq agents, Léa, Hugo, Emma, Louis et Sarah ; un coupe-circuit suspend les cinq.",
+      },
+      timeline: {
+        title: "Le dossier attend votre décision",
+        body: "Un dossier fictif sur dix jours : il s'arrête à chaque étape humaine.",
+        fictive: "Exemple fictif",
+        file: "Dossier fictif · T3, Cassis",
+        tracks: { agents: "Agents", emma: "Emma", you: "Vous" },
+        cursors: { lea: "Léa", emma: "Emma", you: "Vous" },
+        days: ["J0", "J2", "J4", "J6", "J8", "J10"],
+        blocks: {
+          lea: "Léa",
+          hugo: "Hugo",
+          missing: "Manquante",
+          louis: "Louis",
+          sarah: "Sarah",
+          consent: "Consentement",
+          followUp: "Relance",
+          stopped: "Arrêtée",
+          firstContact: "1er contact",
+          validated: "Validé",
+          visit: "Visite",
+          mandate: "Mandat",
+        },
+        /** The state line of the file card, in the order of the playback (nine states). */
+        states: [
+          "Demande reçue · Léa",
+          "Qualification · Hugo",
+          "Motivation manquante · signalée",
+          "Premier contact · en attente de vous",
+          "Premier contact · validé par vous",
+          "Créneau proposé · Louis",
+          "Visite · relances arrêtées",
+          "Suivi · Sarah",
+          "Mandat · à confirmer par vous",
+        ],
+        visualLabel:
+          "Frise d'un dossier fictif sur dix jours, simulation : Léa crée la fiche, Emma vérifie le consentement, Hugo signale une motivation manquante ; le premier contact attend votre validation, vous le validez ; après votre visite, les relances sont arrêtées ; le mandat attend votre confirmation.",
+      },
+    },
   },
 
   result: {

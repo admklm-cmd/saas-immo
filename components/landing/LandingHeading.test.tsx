@@ -60,6 +60,22 @@ describe("LandingHeading veil", () => {
     expect(centred.firstElementChild!.className).toContain("text-center");
   });
 
+  it("centres the overline block in the centred mode only (§2.11.8.7 L3-C)", () => {
+    const start = document.createElement("div");
+    start.innerHTML = renderToStaticMarkup(<LandingHeading id="t" kicker="Le contrôle" titleLines={FINAL.titleLines} titleAccent={FINAL.titleAccent} />);
+    const startOverline = start.querySelector("[data-testid='overline']")!.parentElement!;
+    expect(startOverline.className).toContain("w-fit");
+    expect(startOverline.className).not.toContain("mx-auto");
+
+    const centred = document.createElement("div");
+    centred.innerHTML = renderToStaticMarkup(
+      <LandingHeading id="t" kicker="Le contrôle" titleLines={FINAL.titleLines} titleAccent={FINAL.titleAccent} align="center" />,
+    );
+    const overline = centred.querySelector("[data-testid='overline']")!.parentElement!;
+    expect(overline.className).toContain("w-fit");
+    expect(overline.className).toContain("mx-auto");
+  });
+
   it("has no veil inside the opaque final panel, which keeps its prototype note", () => {
     const html = renderToStaticMarkup(<LandingFinal />);
     expect(html).not.toContain("particle-veil");

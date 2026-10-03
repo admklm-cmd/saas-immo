@@ -257,7 +257,9 @@ test.describe("titre « décide » : effet tech (1440, souris)", () => {
     await page.mouse.move(cx, cy, { steps: 4 });
     await expect(title).toHaveAttribute("data-tech-state", /follow|sweep/);
     await expect(title).toHaveAttribute("data-tech-state", "follow", { timeout: 1_000 });
-    expect((await canvasInk(page)).cobaltTop, "frame drawn").not.toBeNull();
+    // Centred title (§2.11.8.7 L3-C): the frame reaches full cobalt a few frames after the
+    // switch to `follow` (measured between 50 and 200 ms at 1440), not on the same frame.
+    await expect.poll(async () => (await canvasInk(page)).cobaltTop, { message: "frame drawn", timeout: 500, intervals: [16] }).not.toBeNull();
 
     // Drag « c » 80 px to the right: capped at 0.6 em.
     await page.mouse.down();

@@ -40,19 +40,19 @@ export function LandingSolution() {
       </Reveal>
 
       <ul className={styles.grid} data-testid="solution-grid">
-        <SolutionTile index={1} icon="pipeline" title={TILES.roadmap.title} body={TILES.roadmap.body} visualLabel={TILES.roadmap.visualLabel} fictive tall>
+        <SolutionTile index={1} title={TILES.roadmap.title} body={TILES.roadmap.body} visualLabel={TILES.roadmap.visualLabel} fictive tall>
           <RoadmapVisual />
         </SolutionTile>
-        <SolutionTile index={2} icon="growth" title={TILES.progress.title} body={TILES.progress.body} visualLabel={TILES.progress.visualLabel} fictive>
+        <SolutionTile index={2} title={TILES.progress.title} body={TILES.progress.body} visualLabel={TILES.progress.visualLabel} fictive>
           <ProgressVisual />
         </SolutionTile>
-        <SolutionTile index={3} icon="aiAgent" title={TILES.team.title} body={TILES.team.body} visualLabel={TILES.team.visualLabel} fictive>
+        <SolutionTile index={3} title={TILES.team.title} body={TILES.team.body} visualLabel={TILES.team.visualLabel} fictive>
           <TeamVisual />
         </SolutionTile>
-        <SolutionTile index={4} icon="document" title={TILES.report.title} body={TILES.report.body} visualLabel={TILES.report.visualLabel} fictive>
+        <SolutionTile index={4} title={TILES.report.title} body={TILES.report.body} visualLabel={TILES.report.visualLabel} fictive>
           <ReportVisual />
         </SolutionTile>
-        <SolutionTile index={5} icon="humanValidation" title={TILES.guards.title} body={TILES.guards.body} visualLabel={null} fictive={false} fluid>
+        <SolutionTile index={5} title={TILES.guards.title} body={TILES.guards.body} visualLabel={null} fictive={false} fluid>
           <GuardsVisual />
         </SolutionTile>
       </ul>

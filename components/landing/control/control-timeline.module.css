@@ -1,0 +1,420 @@
+/*
+ * Tile 2 of the control section — the timeline of a fictitious dossier
+ * (docs/design-system.md §2.11.8.7 L3-D). Ordinates from the top of the frame;
+ * days are percentages of the time zone (no measure). Motion: CSS transitions
+ * on `transform` and `opacity` only, driven by the steps of
+ * `ControlTimelinePlayer`; none in the idle state and under reduced motion.
+ */
+
+.timeline {
+  --track-agents: 146px;
+  --track-emma: 188px;
+  --track-you: 230px;
+  --gutter: 52px;
+  position: absolute;
+  inset: 0;
+}
+
+@media (width < 40rem) {
+  .timeline {
+    --track-emma: 186px;
+    --track-you: 226px;
+    --gutter: 44px;
+  }
+}
+
+.drawing {
+  position: absolute;
+  inset: 0;
+}
+
+/* --- The file card (replaces the video of the model) ---------------------------- */
+.file {
+  position: absolute;
+  top: 44px;
+  right: 16px;
+  left: 16px;
+  display: flex;
+  height: 52px;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  padding: 0 12px;
+}
+
+.fileText {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.fileName {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The nine states share one cell: a cross-fade of 160 ms. */
+.fileStates {
+  display: grid;
+}
+
+.fileState {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 160ms var(--ease-standard);
+}
+
+.fileState[data-active] {
+  opacity: 1;
+}
+
+/* --- Gutter (track names) --------------------------------------------------------- */
+.gutter {
+  position: absolute;
+  left: 16px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 32px;
+  color: var(--color-ink-muted);
+}
+
+.gutterYou {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.trackAgents {
+  top: var(--track-agents);
+}
+
+.trackEmma {
+  top: var(--track-emma);
+}
+
+.trackYou {
+  top: var(--track-you);
+}
+
+/* --- Time zone: from the gutter to the right edge − 16 px ------------------------------ */
+.zone {
+  position: absolute;
+  top: 0;
+  right: 16px;
+  bottom: 0;
+  left: calc(16px + var(--gutter));
+  container-type: inline-size;
+}
+
+.dayLabel {
+  position: absolute;
+  top: 112px;
+  left: calc(var(--day) * 10%);
+  translate: -50% 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-subtle);
+}
+
+.dayLabel[data-edge="start"] {
+  translate: 0 0;
+}
+
+.dayLabel[data-edge="end"] {
+  translate: -100% 0;
+}
+
+.baseline {
+  position: absolute;
+  top: 134px;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background-color: var(--color-line);
+}
+
+.tick {
+  position: absolute;
+  top: 131px;
+  left: calc(var(--day) * 10%);
+  width: 1px;
+  height: 3px;
+  background-color: var(--color-line-strong);
+}
+
+.tick[data-even] {
+  top: 128px;
+  height: 6px;
+}
+
+/* --- Blocks ------------------------------------------------------------------------- */
+.block {
+  position: absolute;
+  left: calc(var(--from) * 10%);
+  display: flex;
+  width: calc((var(--to) - var(--from)) * 10%);
+  height: 24px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface-sunken);
+  padding: 0 4px;
+  color: var(--color-ink-muted);
+  transform-origin: left center;
+  transition:
+    opacity 240ms var(--ease-emphasis),
+    transform 240ms var(--ease-emphasis);
+}
+
+.track-agents {
+  top: calc(var(--track-agents) + 4px);
+}
+
+.track-emma {
+  top: calc(var(--track-emma) + 4px);
+}
+
+.track-you {
+  top: calc(var(--track-you) + 4px);
+}
+
+.block[data-shown="false"] {
+  opacity: 0;
+  transform: scaleX(0.6);
+}
+
+.block[data-style="missing"] {
+  border: 1px dashed var(--color-ink-subtle);
+  background-color: transparent;
+  color: var(--color-ink-subtle);
+}
+
+.block[data-style="stopped"] {
+  border-color: var(--color-line-strong);
+  background-image: repeating-linear-gradient(135deg, rgb(10 10 11 / 0.1) 0 1px, transparent 1px 5px);
+  background-color: transparent;
+}
+
+.block[data-style="human"] {
+  color: var(--color-ink);
+}
+
+/* A human decision: dotted cobalt while it waits; validated: ink fill, white text (cross-fade). */
+.block[data-decision] {
+  border: 0;
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+  transform-origin: center;
+  transition:
+    opacity 200ms var(--ease-emphasis),
+    transform 200ms var(--ease-emphasis);
+}
+
+.block[data-decision]::before {
+  position: absolute;
+  inset: 0;
+  border: 1.5px dashed var(--color-accent);
+  border-radius: inherit;
+  content: "";
+  transition: opacity 200ms var(--ease-standard);
+}
+
+.block[data-decision][data-shown="false"] {
+  transform: scale(0.92);
+}
+
+.block[data-decision][data-pressed] {
+  transform: scale(0.96);
+  transition-duration: 60ms;
+}
+
+.validatedFill {
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-inverse);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-standard);
+}
+
+.block[data-decision="validated"]::before,
+.block[data-decision="validated"] .pendingLabel {
+  opacity: 0;
+}
+
+.block[data-decision="validated"] .validatedFill,
+.block[data-decision="validated"] .validatedLabel {
+  opacity: 1;
+}
+
+.blockLabel.validatedLabel {
+  position: absolute;
+  left: 4px;
+  color: var(--color-ink-inverse);
+  opacity: 0;
+}
+
+.pendingLabel,
+.blockLabel.validatedLabel {
+  font-weight: 600;
+  transition: opacity 200ms var(--ease-standard);
+}
+
+/* Labels only when the time zone is wide enough (≥ 440 px); below, the gutter, cursors, card and legend carry the meaning. */
+.blockLabel {
+  position: relative;
+  display: none;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.blockLabel.pendingLabel,
+.blockLabel.validatedLabel {
+  font-weight: 600;
+}
+
+@container (width >= 440px) {
+  .blockLabel {
+    display: inline-flex;
+  }
+}
+
+.blockIcon {
+  flex: none;
+}
+
+/* --- Moving layers: full width of the zone, moved by `--day` tenths of it ------------- */
+.axis {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0;
+  pointer-events: none;
+  transform: translate(calc(var(--day) * 10%), var(--y, 0px));
+  transition-property: transform;
+}
+
+.playhead {
+  z-index: 2;
+}
+
+.playheadMark {
+  position: absolute;
+  top: 110px;
+  left: -0.5px;
+  width: 1px;
+  height: calc(var(--track-you) + 40px - 110px);
+  background-color: var(--color-ink);
+}
+
+.playheadMark::before {
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  border-top: 6px solid var(--color-ink);
+  border-right: 4.5px solid transparent;
+  border-left: 4.5px solid transparent;
+  content: "";
+}
+
+.cursorAgents {
+  --y: calc(var(--track-agents) + 16px);
+  z-index: 3;
+}
+
+.cursorEmma {
+  --y: calc(var(--track-emma) + 16px);
+  z-index: 3;
+}
+
+.cursorYou {
+  --y: calc(var(--track-you) + 34px);
+  z-index: 4;
+}
+
+.cursorYou[data-target="firstContact"],
+.cursorYou[data-target="visit"] {
+  --y: calc(var(--track-you) + 16px);
+}
+
+.agentCursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: opacity 160ms var(--ease-standard);
+}
+
+.cursorEmma[data-visible="false"] .agentCursor {
+  opacity: 0;
+}
+
+.agentCursor svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: -1.5px 0 0 -1.5px;
+}
+
+.agentCursor path {
+  fill: var(--color-ink);
+  stroke: var(--color-surface);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.agentLabel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  border-radius: 999px;
+  background-color: var(--color-inverse);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+  color: var(--color-ink-inverse);
+  white-space: nowrap;
+}
+
+/* --- No motion: before the start, and under reduced motion ------------------------- */
+.timeline[data-visual-state="idle"] *,
+.timeline[data-visual-state="idle"] *::before {
+  transition-property: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline *,
+  .timeline *::before {
+    transition-property: none;
+  }
+}
+
+/*
+ * Under the mandate (J9.3, near the right edge), the « Vous » label of the
+ * reused cursor would leave the frame: it moves to the left of the arrow
+ * (structure of `CursorYou`: body > arrow + label; the component is not changed).
+ */
+.cursorYou[data-target="mandate"] > span > span > span {
+  right: 6px;
+  left: auto;
+}

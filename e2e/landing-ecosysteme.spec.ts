@@ -61,35 +61,91 @@ function expectFinal(all: Awaited<ReturnType<typeof boxes>>) {
   expect(all.filter((box) => box.by === "you").map((box) => box.checked)).toEqual([true, true, true]);
 }
 
-test.describe("bloc A : composition (A1)", () => {
-  for (const viewport of [
-    { width: 1440, height: 900, columns: 6, lines: 6 },
-    { width: 1024, height: 768, columns: 4, lines: 4 },
-  ]) {
-    test(`${viewport.width} px : ${viewport.columns} colonnes, ${viewport.lines} lignes convergentes, marges, aucun débordement`, async ({ page }) => {
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+/** Every card: its key and its box (L3-A1). */
+async function cards(page: Page) {
+  return page.locator(`${FIGURE} [data-card]`).evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const rect = node.getBoundingClientRect();
+      return { key: node.getAttribute("data-card"), left: rect.left, top: rect.top, width: rect.width, height: rect.height, right: rect.right };
+    }),
+  );
+}
+
+const CARD_KEYS = JOURNEY.cards.map((card) => card.key);
+
+test.describe("bloc A : composition ordonnée (L3-A1, L3-A2)", () => {
+  test("1440 px : une rangée de 7 cartes de 186 px, un seul haut, une seule hauteur, 7 lignes", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    await expect(page.locator(`${FIGURE} [data-testid='ecosystem-lines'] path`)).toHaveCount(7);
+    const all = await cards(page);
+    expect(all.map((card) => card.key)).toEqual(CARD_KEYS);
+    expect([...all].sort((a, b) => a.left - b.left).map((card) => card.key), "left → right = order of the cards").toEqual(CARD_KEYS);
+    for (const card of all) expect(Math.abs(card.width - 186), `${card.key} width`).toBeLessThanOrEqual(0.5);
+    const tops = all.map((card) => card.top);
+    const heights = all.map((card) => card.height);
+    expect(Math.max(...tops) - Math.min(...tops), "one top").toBeLessThanOrEqual(0.5);
+    expect(Math.max(...heights) - Math.min(...heights), "one height").toBeLessThanOrEqual(0.5);
+    const geometry = await layout(page);
+    expect(geometry.top, `cards top ${geometry.top}`).toBeLessThan(900);
+    expect(geometry.left).toBeGreaterThanOrEqual(32);
+    expect(1440 - geometry.right).toBeGreaterThanOrEqual(32);
+    expect(geometry.linesShown).toBe(true);
+    expect(geometry.dots).toBe(0);
+    expect(geometry.scrolls).toBe(false);
+    expect(geometry.overflow).toBeLessThanOrEqual(0);
+    console.log(`bloc A 1440: card height ${heights[0]!.toFixed(1)} px, cards top ${Math.round(geometry.top)} px`);
+  });
+
+  test("1024 px : 7 cartes de 216 px en 4 + 3, rangée 2 centrée, même hauteur, 3 lignes", async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openHome(page);
+    await expect(page.locator(`${FIGURE} [data-testid='ecosystem-lines'] path`)).toHaveCount(3);
+    const all = await cards(page);
+    expect(all.map((card) => card.key)).toEqual(CARD_KEYS);
+    for (const card of all) expect(Math.abs(card.width - 216), `${card.key} width`).toBeLessThanOrEqual(0.5);
+    const rowOne = all.slice(0, 4);
+    const rowTwo = all.slice(4);
+    for (const row of [rowOne, rowTwo]) {
+      const tops = row.map((card) => card.top);
+      expect(Math.max(...tops) - Math.min(...tops)).toBeLessThanOrEqual(0.5);
+    }
+    expect(rowTwo[0]!.top).toBeGreaterThan(rowOne[0]!.top + rowOne[0]!.height);
+    const centre = (row: typeof all) => (Math.min(...row.map((card) => card.left)) + Math.max(...row.map((card) => card.right))) / 2;
+    expect(Math.abs(centre(rowOne) - centre(rowTwo)), "row 2 centred").toBeLessThanOrEqual(1);
+    const heights = all.map((card) => card.height);
+    expect(Math.max(...heights) - Math.min(...heights), "one height").toBeLessThanOrEqual(0.5);
+    const geometry = await layout(page);
+    expect(geometry.scrolls).toBe(false);
+    expect(geometry.overflow).toBeLessThanOrEqual(0);
+    console.log(`bloc A 1024: card height ${heights[0]!.toFixed(1)} px`);
+  });
+
+  for (const width of [1440, 1024]) {
+    test(`${width} px : aucun libellé tronqué, seule « Motivation / à demander » sur deux lignes (L3-A2)`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
       await openHome(page);
-      await expect(page.locator(`${FIGURE} [data-testid='ecosystem-lines'] path`)).toHaveCount(viewport.lines);
-      const geometry = await layout(page);
-      expect(geometry.columns).toBe(viewport.columns);
-      expect(geometry.widths).toEqual([216]);
-      expect(geometry.linesShown).toBe(true);
-      expect(geometry.dots).toBe(0);
-      expect(geometry.scrolls).toBe(false);
-      expect(geometry.overflow).toBeLessThanOrEqual(0);
-      if (viewport.width === 1440) {
-        // The top of the cards is in the first window; ≥ 32 px of margin on each side.
-        expect(geometry.top, `cards top ${geometry.top}`).toBeLessThan(viewport.height);
-        expect(geometry.left).toBeGreaterThanOrEqual(32);
-        expect(viewport.width - geometry.right).toBeGreaterThanOrEqual(32);
-        const band = await page.getByTestId("hero-band").boundingBox();
-        console.log(`hero 1440 × 900: band 1 bottom ${Math.round(band!.y + band!.height)} px, cards top ${Math.round(geometry.top)} px`);
-      }
+      const labels = await page.locator(`${FIGURE} [data-check]`).evaluateAll((nodes) =>
+        nodes.map((node) => {
+          const label = node.previousElementSibling as HTMLElement;
+          const parts = label.hasAttribute("data-stacked") ? (Array.from(label.children) as HTMLElement[]) : [label];
+          return {
+            key: node.getAttribute("data-case"),
+            text: label.textContent,
+            clipped: parts.some((part) => part.scrollWidth > part.clientWidth + 0.5),
+            stacked: label.hasAttribute("data-stacked"),
+            width: Math.max(...parts.map((part) => part.scrollWidth)),
+          };
+        }),
+      );
+      expect(labels.filter((label) => label.clipped).map((label) => label.text)).toEqual([]);
+      expect(labels.filter((label) => label.stacked).map((label) => label.key)).toEqual(["1:2"]);
+      console.log(`bloc A ${width}: widest label ${Math.max(...labels.map((label) => label.width))} px`);
     });
   }
 
   for (const width of [390, 360]) {
-    test(`${width} px : carrousel à points, aucun débordement du document`, async ({ page }) => {
+    test(`${width} px : carrousel à points, cartes de même hauteur, aucun débordement du document`, async ({ page }) => {
       await page.setViewportSize({ width, height: 844 });
       await openHome(page);
       const figure = page.locator(FIGURE);
@@ -99,10 +155,13 @@ test.describe("bloc A : composition (A1)", () => {
       expect(geometry.dots).toBe(7);
       expect(geometry.linesShown).toBe(false);
       expect(geometry.overflow).toBeLessThanOrEqual(0);
-      // Labels hold on one line.
+      const heights = (await cards(page)).map((card) => card.height);
+      expect(Math.max(...heights) - Math.min(...heights), "one height").toBeLessThanOrEqual(0.5);
+      // Labels hold on one line (the stacked missing line aside).
       const wrapped = await page.locator(`${FIGURE} [data-check]`).evaluateAll((nodes) =>
         nodes.filter((node) => {
           const label = node.previousElementSibling as HTMLElement;
+          if (label.hasAttribute("data-stacked")) return false;
           return label.scrollWidth > label.clientWidth + 1 || label.getBoundingClientRect().height > 22;
         }).length,
       );
@@ -125,6 +184,40 @@ test.describe("bloc A : composition (A1)", () => {
       expect(shown.right).toBeGreaterThanOrEqual(23);
       expect(shown.end).toBe(true);
       expect((await layout(page)).overflow).toBeLessThanOrEqual(0);
+    });
+  }
+});
+
+test.describe("bloc A : trajet simple du curseur (L3-A4)", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  for (const width of [1440, 1024]) {
+    test(`${width} px : parc au centre de « Validation humaine », 20 px sous la carte`, async ({ page }) => {
+      test.setTimeout(60_000);
+      await page.setViewportSize({ width, height: 900 });
+      await openHome(page);
+      const figure = page.locator(FIGURE);
+      await expect(figure).toHaveAttribute("data-loop-state", "playing");
+      // The cursor is parked from 900 ms to 3 140 ms of the cycle; Hugo's second box is checked at 2 020 ms.
+      await expect(figure.locator("[data-case='1:1']")).toHaveAttribute("data-checked", "true", { timeout: 12_000 });
+      await page.waitForTimeout(150);
+      const park = await page.evaluate((selector) => {
+        const node = document.querySelector<HTMLElement>(selector)!;
+        const cursor = node.querySelector<HTMLElement>("[data-testid='ecosystem-cursor']")!.getBoundingClientRect();
+        const card = node.querySelector<HTMLElement>("[data-card='review']")!.getBoundingClientRect();
+        const box = (key: string) => node.querySelector<HTMLElement>(`[data-case='${key}']`)!.getBoundingClientRect();
+        const second = box("3:1");
+        const mandate = box("6:0");
+        return {
+          dx: cursor.left - (card.left + card.width / 2),
+          dy: cursor.top - card.bottom,
+          drop: Math.abs(mandate.top + mandate.height / 2 - (second.top + second.height / 2)),
+        };
+      }, FIGURE);
+      console.log(`bloc A ${width}: park dx ${park.dx.toFixed(1)} dy ${park.dy.toFixed(1)}, validation 2 → mandate ${park.drop.toFixed(1)} px`);
+      expect(Math.abs(park.dx)).toBeLessThanOrEqual(4);
+      expect(Math.abs(park.dy - 20)).toBeLessThanOrEqual(4);
+      if (width === 1440) expect(park.drop).toBeLessThanOrEqual(44);
     });
   }
 });

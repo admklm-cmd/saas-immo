@@ -109,6 +109,65 @@ test.describe("bloc B — grille de la solution", () => {
     await expect(tiles.nth(0)).toContainText(TEXTS.tiles.roadmap.pending);
   });
 
+  test("L3-B1 : illustrations seules — aucun texte visible hors des cadres, titres et paragraphes en sr-only", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const grid = page.getByTestId("solution-grid");
+    const outside = await grid.evaluate((node) => {
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+      const found: string[] = [];
+      for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+        if (!text.textContent?.trim()) continue;
+        const parent = text.parentElement!;
+        if (parent.closest(".sr-only") || parent.closest("[data-testid='solution-visual']")) continue;
+        const range = document.createRange();
+        range.selectNodeContents(text);
+        const box = range.getBoundingClientRect();
+        if (box.width > 1 && box.height > 1) found.push(text.textContent.trim());
+      }
+      return found;
+    });
+    expect(outside).toEqual([]);
+    const headings = grid.locator("h3");
+    await expect(headings).toHaveText([
+      TEXTS.tiles.roadmap.title,
+      TEXTS.tiles.progress.title,
+      TEXTS.tiles.team.title,
+      TEXTS.tiles.report.title,
+      TEXTS.tiles.guards.title,
+    ]);
+    for (const className of await headings.evaluateAll((nodes) => nodes.map((heading) => heading.className))) expect(className).toContain("sr-only");
+    await expect(grid.getByRole("article", { name: TEXTS.tiles.roadmap.title })).toHaveCount(1);
+    await expect(grid.getByRole("img")).toHaveCount(4);
+    await expect(grid.getByTestId("solution-fictive")).toHaveCount(4);
+  });
+
+  test("L3-B2 : aucun cadre vide ni tronqué à 1440, 1024, 390 et 360 (tuile 5 : texte entier)", async ({ page }) => {
+    test.setTimeout(120_000);
+    for (const width of [1440, 1024, 390, 360]) {
+      await page.setViewportSize({ width, height: 900 });
+      await openHome(page);
+      await page.getByTestId("solution-grid").scrollIntoViewIfNeeded();
+      const frames = await page.getByTestId("solution-visual").evaluateAll((nodes) =>
+        nodes.map((frame) => {
+          const box = frame.getBoundingClientRect();
+          const drawn = Array.from(frame.querySelectorAll<HTMLElement>("*")).filter((child) => {
+            const rect = child.getBoundingClientRect();
+            return rect.width > 4 && rect.height > 4;
+          }).length;
+          return { h: Math.round(box.height), drawn, clipped: frame.scrollHeight > frame.clientHeight + 1 };
+        }),
+      );
+      const min = width >= 1024 ? 232 : 220;
+      frames.forEach((frame, index) => {
+        expect(frame.h, `${width}: frame ${index + 1} height`).toBeGreaterThanOrEqual(index === 0 ? (width >= 1024 ? 456 : 400) : min);
+        expect(frame.drawn, `${width}: frame ${index + 1} drawn`).toBeGreaterThan(2);
+      });
+      expect(frames[4]!.clipped, `${width}: tile 5 whole`).toBe(false);
+      console.log(`bloc B ${width}: frame heights ${frames.map((frame) => frame.h).join(" / ")}`);
+    }
+  });
+
   test("B3 : aucun pixel rouge dans la grille (1440, après l'arrivée)", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 1200 });
     await openHome(page);

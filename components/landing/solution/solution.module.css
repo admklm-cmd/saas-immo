@@ -1,7 +1,8 @@
 /*
  * Block B — the « partner » grid of the solution (docs/design-system.md
- * §2.11.8.4): five white tiles, a framed visual on top of each. Tile 1 runs on
- * two rows. The final state is the default: the arrival is a CSS animation
+ * §2.11.8.4, §2.11.8.7 L3-B): five white tiles, each ONE framed visual and no
+ * visible text (the title and paragraph are `sr-only`). Tile 1 runs on two
+ * rows; the frames of tiles 2–5 fill their tile (min. 232 px ≥ 1024, 220 px). The final state is the default: the arrival is a CSS animation
  * filled BACKWARDS only, played once when the tile's `Reveal` enters, so the
  * page holds no running or lingering animation afterwards (criterion B2) and
  * the hover lift is never overridden by a finished animation.
@@ -86,7 +87,8 @@
 
 .frame {
   position: relative;
-  height: 200px;
+  flex: 1;
+  min-height: 220px;
   overflow: hidden;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-lg);
@@ -95,9 +97,13 @@
   container-type: size;
 }
 
+@media (min-width: 1024px) {
+  .frame {
+    min-height: 232px;
+  }
+}
+
 .tall .frame {
-  flex: 1;
-  height: auto;
   min-height: 400px;
 }
 
@@ -115,8 +121,6 @@
 /* Tile 5: real text, never clipped — the frame grows with it. */
 .fluid {
   display: flex;
-  height: auto;
-  min-height: 200px;
   container-type: inline-size;
 }
 
@@ -142,34 +146,6 @@
   line-height: 1rem;
   font-weight: 500;
   color: var(--color-ink-muted);
-}
-
-.text {
-  padding: 1rem 1rem 0.75rem;
-}
-
-.title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.375rem;
-  font-weight: 500;
-  color: var(--color-ink);
-}
-
-.icon {
-  flex: none;
-}
-
-.body {
-  margin: 0.25rem 0 0;
-  max-width: 44ch;
-  font-size: 0.875rem;
-  line-height: 1.55;
-  color: var(--color-ink-muted);
-  text-wrap: pretty;
 }
 
 /* --- Hover (fine pointer, motion allowed): 2 px up, raised shadow ----------------- */

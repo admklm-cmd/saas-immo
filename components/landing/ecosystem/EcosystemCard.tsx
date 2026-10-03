@@ -90,10 +90,15 @@ export function EcosystemCard({
           return (
             <li key={key} className={styles.line} data-missing={missing ? "" : undefined}>
               <Icon name={line.icon} px={14} dimmed />
-              <span className={styles.lineLabel}>
-                {line.label}
-                {line.detail ? <span className={styles.lineDetail}> {line.detail}</span> : null}
-              </span>
+              {line.detail ? (
+                // The missing line only: label over detail (§2.11.8.7 L3-A), both kept whole at 186 px.
+                <span className={cn(styles.lineLabel, styles.lineStacked)} data-stacked="">
+                  <span>{line.label}</span>
+                  <span className={styles.lineDetail}>{line.detail}</span>
+                </span>
+              ) : (
+                <span className={styles.lineLabel}>{line.label}</span>
+              )}
               <span
                 className={cn(styles.box, line.by === "you" ? styles.boxYou : styles.boxAgent)}
                 data-case={key}

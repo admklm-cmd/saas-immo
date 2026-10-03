@@ -1,34 +1,39 @@
 /**
- * DOM measures of block A (docs/design-system.md §2.11.8.3): where the « Vous »
- * cursor points, and where the converging lines start and end. Read-only
- * (`getBoundingClientRect`), called on a step change or a resize — never on
- * every frame.
+ * DOM measures of block A (docs/design-system.md §2.11.8.3, §2.11.8.7 L3-A):
+ * where the « Vous » cursor points, and where the converging lines start and
+ * end. Read-only (`getBoundingClientRect`), called on a step change or a
+ * resize — never on every frame.
  */
 
 import type { ConvergingColumn } from "./ConvergingLines";
 import { checkKey, type CursorTarget } from "./ecosystem-timeline";
 
-/** The parked cursor waits 24 px under and 16 px left of the first box of « Validation humaine ». */
-const PARK = { card: 3, line: 0, dx: -16, dy: 24 } as const;
-/** The lines start this far under their column, px. */
+/** The parked cursor waits at the horizontal centre of « Validation humaine », 20 px under its bottom edge (L3-A). */
+const PARK = { card: "review", dy: 20 } as const;
+/** The lines start this far under their card, px. */
 const LINE_GAP_PX = 8;
+/** Two cards whose tops differ by less than this share a row, px. */
+const ROW_TOLERANCE_PX = 1;
 
 /** Tip of the cursor for a target, in the coordinates of the track (its scrolled content). */
 export function cursorPoint(track: HTMLElement, target: CursorTarget): { x: number; y: number } | null {
-  const ref = target === "park" ? { card: PARK.card, line: PARK.line } : target;
-  const box = track.querySelector<HTMLElement>(`[data-case="${checkKey(ref)}"]`);
-  if (!box) return null;
+  const node =
+    target === "park"
+      ? track.querySelector<HTMLElement>(`[data-card="${PARK.card}"]`)
+      : track.querySelector<HTMLElement>(`[data-case="${checkKey(target)}"]`);
+  if (!node) return null;
   const frame = track.getBoundingClientRect();
-  const rect = box.getBoundingClientRect();
+  const rect = node.getBoundingClientRect();
   const ox = track.scrollLeft - frame.left - track.clientLeft;
   const oy = track.scrollTop - frame.top - track.clientTop;
-  if (target === "park") return { x: rect.left + ox + PARK.dx, y: rect.bottom + oy + PARK.dy };
+  if (target === "park") return { x: rect.left + rect.width / 2 + ox, y: rect.bottom + oy + PARK.dy };
   return { x: rect.left + rect.width / 2 + ox, y: rect.top + rect.height / 2 + oy };
 }
 
 /**
- * One line per column of cards (cards sharing their left edge), from under
- * its lowest card to the top of the action, in the coordinates of the stage.
+ * One line per card of the LAST row (≥ 1440: the seven cards; 1024–1439: the
+ * three of row 2), from the middle of its bottom edge + 8 px to the top of the
+ * action, in the coordinates of the stage.
  */
 export function convergingGeometry(
   stage: HTMLElement,
@@ -36,16 +41,14 @@ export function convergingGeometry(
   action: HTMLElement,
 ): { columns: ConvergingColumn[]; target: { x: number; y: number } } {
   const origin = stage.getBoundingClientRect();
-  const byColumn = new Map<number, { x: number; bottom: number }>();
-  for (const card of Array.from(track.querySelectorAll<HTMLElement>("[data-card]"))) {
-    const rect = card.getBoundingClientRect();
-    const key = Math.round(rect.left);
-    const column = byColumn.get(key);
-    byColumn.set(key, { x: rect.left + rect.width / 2 - origin.left, bottom: Math.max(column?.bottom ?? 0, rect.bottom - origin.top) });
-  }
+  const rects = Array.from(track.querySelectorAll<HTMLElement>("[data-card]")).map((card) => card.getBoundingClientRect());
+  const lastTop = Math.max(...rects.map((rect) => rect.top));
   const button = action.firstElementChild?.getBoundingClientRect() ?? action.getBoundingClientRect();
   return {
-    columns: [...byColumn.values()].sort((a, b) => a.x - b.x).map((column) => ({ x: column.x, y: column.bottom + LINE_GAP_PX })),
+    columns: rects
+      .filter((rect) => lastTop - rect.top < ROW_TOLERANCE_PX)
+      .map((rect) => ({ x: rect.left + rect.width / 2 - origin.left, y: rect.bottom - origin.top + LINE_GAP_PX }))
+      .sort((a, b) => a.x - b.x),
     target: { x: button.left + button.width / 2 - origin.left, y: button.top - origin.top },
   };
 }

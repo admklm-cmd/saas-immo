@@ -6,14 +6,13 @@
  * (`transform`, `opacity`), never an infinite animation; none at all under
  * reduced motion.
  *
- * Layouts: ≥ 1440 px six columns of 216 px; 1024–1439 four stacked columns;
- * < 1024 a native horizontal carousel (scroll-snap) with dots. The column and
- * group wrappers switch to `display: contents` when they are not the column.
+ * Layouts (§2.11.8.7 L3-A, ordered): ≥ 1440 px one row of seven cards of
+ * 186 px; 1024–1439 two regular rows (4 + 3, the second centred) on a grid of
+ * eight half-columns; < 1024 a native horizontal carousel (scroll-snap) with
+ * dots. Every card of a layout has the same height, its content set at the top.
  */
 
 .figure {
-  --eco-col: 216px;
-  --eco-gap: 16px;
   --eco-lines: 112px;
   margin: 0;
 }
@@ -33,71 +32,41 @@
   margin-top: 24px;
 }
 
-/* Wide layouts: the row is centred, nothing sits under its edges. */
+/* Wide layouts: the rows are centred, nothing sits under their edges. */
 .viewport {
   padding-block: 8px 24px;
 }
 
+/* DOM order = Léa, Hugo, Emma, Validation, Louis, Sarah, Mandat: the order of the checks. */
 .track {
   position: relative;
-  display: flex;
-  align-items: flex-start;
+  display: grid;
   justify-content: center;
-  gap: var(--eco-gap);
+  align-items: stretch;
 }
 
-.col,
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--eco-gap);
-  width: var(--eco-col);
-  flex: none;
-}
-
-/* ≥ 1440: six columns; the groups dissolve, each column takes its offset. */
+/* ≥ 1440: one row, 7 × 186 + 6 × 12 = 1 374 px; same top, same height. */
 @media (width >= 90rem) {
-  .group {
-    display: contents;
-  }
-
-  .colEmma {
-    margin-top: 40px;
-  }
-
-  .colReview {
-    margin-top: 12px;
-  }
-
-  .colLouis {
-    margin-top: 56px;
-  }
-
-  .colSarah {
-    margin-top: 20px;
-  }
-
-  .colMandate {
-    margin-top: 64px;
+  .track {
+    grid-template-columns: repeat(7, 186px);
+    gap: 12px;
   }
 }
 
-/* 1024–1439: four columns — [Léa / Hugo] [Emma / Validation] [Louis / Sarah] [Mandat]. */
+/* 1024–1439: eight half-columns of 100 px, each card on two; row 2 centred under row 1. */
 @media (64rem <= width < 90rem) {
-  .group .col {
-    display: contents;
+  .track {
+    grid-template-columns: repeat(8, 100px);
+    grid-auto-rows: 1fr;
+    gap: 16px;
   }
 
-  .groupB {
-    margin-top: 32px;
+  .card {
+    grid-column: span 2;
   }
 
-  .groupC {
-    margin-top: 12px;
-  }
-
-  .colMandate {
-    margin-top: 48px;
+  .card[data-card="louis"] {
+    grid-column: 2 / span 2;
   }
 }
 
@@ -110,23 +79,21 @@
   }
 
   .track {
+    display: flex;
     justify-content: flex-start;
     gap: 12px;
     overflow-x: auto;
+    overflow-y: hidden;
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    padding: 8px 24px 32px;
+    /* Bottom: room for the parked cursor and its label, 20 px under the cards (L3-A). */
+    padding: 8px 24px 56px;
     scroll-padding-inline: 24px;
   }
 
   .track::-webkit-scrollbar {
     display: none;
-  }
-
-  .col,
-  .group {
-    display: contents;
   }
 
   .card {
@@ -150,7 +117,7 @@
   border-radius: var(--radius-xl);
   background-color: var(--color-surface);
   box-shadow: var(--shadow-raised);
-  padding: 10px;
+  padding: 8px;
 }
 
 /* A human step: a second contour — the shape says « human » (§1.1). */
@@ -271,11 +238,11 @@
 .line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   height: 36px;
   border: 1px solid var(--color-line);
   border-radius: 999px;
-  padding: 0 10px;
+  padding: 0 8px;
 }
 
 .line[data-missing] {
@@ -294,10 +261,19 @@
   white-space: nowrap;
 }
 
+/* The missing line: label and detail stacked in the 36 px pill (13 / 14 px over 11 / 13 px). */
+.lineStacked {
+  display: grid;
+  line-height: 14px;
+}
+
 .lineDetail {
-  font-size: 12px;
+  overflow: hidden;
+  font-size: 11px;
   font-weight: 400;
+  line-height: 13px;
   color: var(--color-ink-subtle);
+  text-overflow: ellipsis;
 }
 
 /* --------------------------------------------------------------------- box */

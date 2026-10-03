@@ -24,7 +24,7 @@ type LandingHeadingProps = {
   accentReplay?: boolean;
   /** Ink of the title: `inverse` on the near-black final panel (§2.11.8.5). Default `ink`. */
   tone?: "ink" | "inverse";
-  /** `center`: the title and its paragraph centred (final panel, §2.11.8.5). Default `start`. */
+  /** `center`: the overline, the title and its paragraph centred (final panel §2.11.8.5, control §2.11.8.7 L3-C). Default `start`. */
   align?: "start" | "center";
   className?: string;
 };
@@ -57,7 +57,7 @@ export function LandingHeading({
   return (
     <div className={cn("max-w-5xl", centered && "mx-auto text-center", className)}>
       {kicker ? (
-        <div className={cn(veil && "particle-veil particle-veil-tight", "w-fit")} data-network-quiet={quiet}>
+        <div className={cn(veil && "particle-veil particle-veil-tight", "w-fit", centered && "mx-auto")} data-network-quiet={quiet}>
           <Overline>{kicker}</Overline>
         </div>
       ) : null}
