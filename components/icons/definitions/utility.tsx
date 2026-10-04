@@ -26,6 +26,18 @@ export const UTILITY_ICONS = {
     ink: <Line d="M19.5 12h-14" width={STROKE.line} />,
     accent: <Line d="M10.6 6.6 5.2 12l5.4 5.4" width={STROKE.line} />,
   },
+  /**
+   * Replay — « Rejouer les animations » of the landing (docs/design-system.md
+   * §2.11.8.8 L4-D): an arc of 300°, open at the top right, round ends, and a
+   * solid arrow head at its end. Same stroke and ends as `arrowLeft`; never
+   * rotates on click.
+   */
+  replay: {
+    tone: "ink",
+    animated: false,
+    ink: <Line d="M18.06 8.5A7 7 0 1 1 12 5" width={STROKE.line} />,
+    accent: <Blob d="M15.6 5 10.9 1.7v6.6z" />,
+  },
   arrowDown: {
     tone: "ink",
     animated: false,

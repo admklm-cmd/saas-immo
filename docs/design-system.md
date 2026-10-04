@@ -397,6 +397,10 @@ le chiffre de `SituationStrip` passe de 24 à 28 px avec `text-section` (aucun d
 
 #### 2.2.5 Le mot accentué (variante A, partout où il existe)
 
+> **Lot 4 (04/10/2026), § 2.11.8.8 L4-C** : sur `/` **seulement**, le mot accentué reprend la
+> police de son titre (Bricolage 600, droit, même taille) — classe `title-accent-plain`, prop
+> `accentFace="title"`. `/estimation` et les états vides du CRM gardent la règle ci-dessous.
+
 **Où** : le `h1` du hero, les `h2` des six autres sections de la landing, le `h1` de
 `/estimation`, et **huit états vides** du CRM (§ 2.2.9). **Nulle part ailleurs** : jamais dans
 un `h1` du CRM, une carte, un bouton, un label, un badge, un tableau, une alerte, un garde-fou,
@@ -2274,6 +2278,13 @@ global (état final immédiat).
 > **Lot 3 (03/10/2026) — spécifié, à implémenter** : retours de l'audit de l'utilisateur —
 > bloc A ordonné, bloc B sans texte, titre contrôle centré, section contrôle en deux tuiles
 > animées. Voir **§ 2.11.8.7**, qui prime sur les passages qu'il cite.
+>
+> **Lot 4 (04/10/2026) — spécifié, à implémenter** : bloc A en trois blocs à tuiles
+> d'application colorées, cycle de 24 s ; section ROI (4 widgets animés, chiffres sourcés /
+> hypothèses) à la place de la section résultat ; mot accentué dans la police du titre sur `/`,
+> rejeu au survol ou au toucher de n'importe quel mot ; bouton « Rejouer les animations » ;
+> `animejs` 4.x autorisé pour la section ROI. Voir **§ 2.11.8.8**, qui prime sur les passages
+> qu'il cite (dont § 2.11.8.7 L3-A).
 
 ##### 2.11.8.1 Règles de l'utilisateur, traduites
 
@@ -2372,6 +2383,11 @@ leurs tests). Le titre **reste du texte HTML** : nom accessible inchangé (« L'
 > **Révisé au Lot 3 (03/10)** : rangée, colonnes, décalages, intérieur des cartes, parc du
 > curseur, lignes convergentes et 1024–1439 remplacés par le **§ 2.11.8.7 L3-A** (bloc
 > ordonné). Chronologie et contrat de boucle ci-dessous : inchangés.
+>
+> **Révisé au Lot 4 (04/10)** : les sept cartes deviennent **trois blocs** (Acquisition,
+> Validation humaine, Suivi) à tuiles d'application colorées, et le cycle passe à **24 000 ms**
+> — **§ 2.11.8.8 L4-A** prime sur ce paragraphe et sur L3-A. Contrat de boucle (pause, mouvement
+> réduit, état final serveur, aucun `requestAnimationFrame`) : inchangé.
 
 **Idée unique** : cinq agents préparent, **vous** cochez les deux décisions. **En cinq
 secondes** : des cartes d'agents se cochent toutes seules, puis un curseur « Vous » vient cocher
@@ -3134,6 +3150,642 @@ image, aucun `requestAnimationFrame`, aucun rouge ni orange.
    de fond (`LivingEngine`, qui suit le défilement) ; l'unicité de `[data-loop]` et
    `landing-sans-boucle` (inchangé) restent verts.
 
+##### 2.11.8.8 Lot 4 — retours de l'utilisateur (04/10/2026) : trois blocs lents, ROI, titres, rejeu
+
+> Statut : **implémenté et testé** le 04/10/2026 par `frontend-ux` (voir « Avancement du Lot 4 » en fin de paragraphe) ; **spécifié** le 04/10/2026 par le `web-designer` ; demande **validée** par
+> l'utilisateur (source : `docs/references/2026-10-02-modeles-mig-striker.md`, section
+> « Retours de l'utilisateur (04/10) — Lot 4 », points 1 à 6 ; chiffres :
+> `docs/recherche-roi-agences.md`). Plan : `docs/plans/2026-10-02-landing-modeles.md`,
+> **Lot 4** (un seul lot). Implémentation : `frontend-ux`. Audit : l'utilisateur.
+>
+> **Ce paragraphe prime** sur : § 2.11.8.3 et § 2.11.8.7 L3-A (sept cartes, chronologie de
+> 9 800 ms, carrousel à 7 points) ; § 2.11.8.1 n° 2 (« animations seulement dans A, B, C » :
+> la section ROI reçoit des widgets animés, décision de l'utilisateur du 04/10) et n° 4
+> (couleurs : **exception** des tuiles d'application du bloc A, et seulement elles) ;
+> § 2.11.8.2 (police du mot accentué sur `/`, rejeu au toucher) ; § 2.2.5 (sur `/` seulement :
+> le mot accentué n'est plus en Instrument Serif italique) ; § 2.11.2 D (rejeu au survol :
+> déclenché par un mot, et aussi au toucher) ; § 2.11.1 n° 1 et § 2.11.6 (un bouton
+> « Rejouer les animations » existe, différent du `MotionToggle` retiré) ; règle « aucune
+> dépendance » du § 2.11.8 : **`animejs` 4.x autorisé**, là où le L4-E le dit.
+> **Inchangés** : réseau de fond et voiles (`components/landing/living/**`, `.particle-veil`,
+> `.network-veil-title`) — l'utilisateur le retravaillera plus tard ; bloc B ; bloc C
+> (`components/landing/process/**`, sauf l'abonnement au rejeu, L4-D) ; section contrôle
+> (sauf l'abonnement au rejeu) ; section problème et agents ; CRM ; `/estimation` (son `h1`
+> garde l'Instrument Serif italique) ; les états vides du CRM (idem) ; `[data-loop]` unique
+> (bloc A) ; `e2e/landing-sans-boucle.spec.ts` **sans modification**.
+
+###### L4-A. Bloc A : trois blocs, tuiles d'application, rythme lent
+
+**Idée unique** (inchangée) : les agents préparent, **vous** cochez les décisions. **En cinq
+secondes** : trois grands blocs, chacun marqué d'une tuile colorée façon icône d'application ;
+le premier se coche tout seul, puis le curseur « Vous » coche le bloc du milieu ; plus loin dans
+le cycle, il y revient pour le mandat. **Texte restant** : nom du bloc, membres, libellés des
+lignes, phrase de garde-fou, mentions de simulation.
+
+**Trois blocs** (`LANDING_TEXTS.journey.blocks`, ordre DOM = ordre visuel = ordre de lecture) :
+
+| Bloc | Membres (sous-titre) | Tuile (glyphe, couleur) | Groupes et lignes (icône · libellé · qui coche) |
+|---|---|---|---|
+| **Acquisition** | Léa · Hugo · Emma | `leads`, **orange** | **Léa** (`lea`) : `search` Source vérifiée · agent ; `merge` Doublon écarté · agent ; `contacts` Fiche créée · agent — **Hugo** (`hugo`) : `deal` Bien et secteur · agent ; `clock` Délai du projet · agent ; `question` Motivation / à demander · **manquante** — **Emma** (`emma`) : `email` Consentement · agent ; `messages` Message préparé · agent |
+| **Validation humaine** | Vous · Conseiller | `humanValidation`, **violet** | **Premier message** : `document` Message relu · **Vous** ; `humanValidation` Message validé · **Vous** — **Mandat** : `mandate` Mandat confirmé · **Vous** |
+| **Suivi** | Louis · Sarah | `pipeline`, **vert** | **Louis** (`louis`) : `calendar` Créneau proposé · agent ; `document` Dossier préparé · agent — **Sarah** (`sarah`) : `document` Compte-rendu lu · agent ; `tasks` Actions créées · agent ; `mandate` Mandat signalé · agent |
+
+Mêmes 16 lignes qu'avant, regroupées : **12 cases agent, 1 manquante, 3 « Vous »** (les
+assertions A2 du § 2.11.8.6 restent vraies). Règles métier visibles inchangées : aucune case
+« Vous » n'est cochée sans le curseur ; Sarah **signale** le mandat (bloc Suivi), seul « Vous »
+le **confirme** (bloc Validation) ; la motivation manquante n'est jamais cochée.
+
+**Tuile d'application (`AppTile`, nouveau, réservé au bloc A).** Seul endroit du site où la
+couleur dépasse noir / blanc / gris / cobalt. Tokens **locaux** (déclarés dans le module CSS du
+bloc A, jamais dans `@theme`, jamais réutilisés ailleurs — test de garde) :
+
+| Token | Haut du dégradé | Bas du dégradé | Blanc sur le haut | Blanc sur le bas |
+|---|---|---|---|---|
+| `--app-tile-orange` | `#E8600E` | `#CF4F08` | **3,44:1** | 4,40:1 |
+| `--app-tile-violet` | `#7A5CFA` | `#5B3FE0` | **4,43:1** | 6,50:1 |
+| `--app-tile-green` | `#1E9E5A` | `#127A45` | **3,45:1** | 5,39:1 |
+
+(Calcul WCAG sur ces valeurs, 04/10 ; minimum exigé 3:1, élément graphique. La tuile contre
+la carte blanche : ≥ 3,44:1, son contour se voit sans bordure.)
+
+| Propriété | ≥ 1024 | < 1024 |
+|---|---|---|
+| Côté | **64 px** | **56 px** |
+| Rayon | 22,5 % du côté : **14 px** | **13 px** |
+| Fond | `linear-gradient(180deg, haut, bas)` | idem |
+| Relief | `box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), inset 0 -1px 0 rgb(0 0 0 / 0.10), 0 1px 2px rgb(10 10 11 / 0.10), 0 6px 14px -6px rgb(10 10 11 / 0.22)` — ombre **neutre**, jamais colorée (pas de glow) | idem |
+| Glyphe | `Icon` `size="sm"` `px={36}`, centré | `px={32}` |
+| Peinture du glyphe | **tout en blanc** : `color: #fff` ; couche `accent` en `currentColor` (blanc) ; couche `glass` blanc à 55 % ; marques `[data-on-accent]` (coche de `humanValidation`) en `stroke` = couleur du **bas** du dégradé, pour rester découpées dans le disque blanc. **Aucun point cobalt**, aucun dégradé indigo → violet | idem |
+| Attributs | `span` `aria-hidden`, `data-app-tile`, `data-tone="orange|violet|green"` | idem |
+
+Pourquoi l'accent devient blanc au lieu de disparaître : le glyphe reste entier (la coche de
+`humanValidation` porte le sens « validé ») et il n'y a plus de point bleu. Si l'utilisateur
+préfère l'accent **retiré** (le petit point absent, pas seulement blanc), une seule règle :
+`[data-app-tile] [data-part="accent"] { display: none }` sauf `humanValidation` (voir « À
+transmettre »).
+
+Animation de la tuile : quand son bloc devient actif (anneau cobalt), le glyphe joue **son
+histoire une fois** (`animate` de l'`Icon` `sm`, mécanisme existant) ; rien au repos, rien en
+mouvement réduit.
+
+**Bloc (carte).** `article`-like `div` (la figure reste `aria-hidden` dans sa partie dessinée),
+`bg-surface` opaque (`data-network-cover`), bord 1 px `--color-line`, **rayon 28 px**,
+`shadow-raised`, rembourrage **20 px** (≥ 1024) / **16 px** (< 1024).
+- En-tête (hauteur = tuile) : tuile, 14 px, puis colonne : nom **Geist 18 px 600** `ink`
+  (« Acquisition », « Validation humaine », « Suivi ») au-dessus des membres 13 px 400
+  `ink-subtle` ; à droite, alignée en haut : pastille « Agents » (blocs agents ; 11 px 500
+  `ink-subtle` sur `surface-sunken`, rayon 999, 2 × 8 px) ou « Vous » (bloc humain ; 11 px
+  600 `ink`, bord 1 px `ink`, case ronde 10 px qui se remplit quand les **trois** lignes
+  « Vous » sont cochées).
+- Corps, 16 px sous l'en-tête : **groupes**. Blocs agents ≥ 1024 : groupes **côte à côte**
+  (colonnes égales, espacement 12 px). Bloc humain : groupes **empilés**, séparés par un filet
+  1 px `line` avec 12 px de part et d'autre. < 1024 : groupes toujours empilés, espacement
+  14 px.
+- En-tête de groupe (20 px, 8 px au-dessus des lignes) : agents = `Icon` `sm` 14 px du
+  prénom (encre + accent cobalt, immobile — **ce ne sont pas des tuiles d'application**) +
+  prénom 13 px 600 `ink` ; humain = libellé « Premier message » / « Mandat » en
+  `label` (11 px 600, capitales, interlettrage 0,06 em, `ink-subtle`).
+- Lignes, cases, ligne manquante empilée, anneau cobalt du bloc actif, double contour du bloc
+  humain (`outline` 1 px `ink` à 3 px) : **valeurs du § 2.11.8.3 / L3-A inchangées**
+  (pilule 36 px, rembourrage `0 8px`, espacement 6 px, icône 14 px `dimmed`, libellé 13 px 500,
+  case agent 16 px carrée, case « Vous » ronde 18 px à double anneau).
+
+**Composition.**
+
+| Largeur | Disposition |
+|---|---|
+| ≥ 1440 | Une rangée de **trois blocs de largeurs différentes** : Acquisition **600 px**, Validation humaine **300 px**, Suivi **420 px** ; espacement **24 px** ; total **1 368 px**, centré (marges 36 px). **Alignement souple** : marges hautes **0 / 28 / 12 px** (pas de `transform`, pour que les mesures restent justes). Hauteurs naturelles (aucun étirement) : ≈ 268 / 307 / 268 px — les bas ne s'alignent pas, c'est voulu. Groupes : Acquisition 3 colonnes de ≈ 179 px, Suivi 2 colonnes de 184 px |
+| 1024–1439 | Grille de **912 px** centrée : colonnes **600 px** et **288 px**, espacement 24 px, rangées espacées de 20 px. Acquisition : rangée 1, colonne 1. Validation humaine : colonne 2, **rangées 1 et 2** (`align-self: start`), marge haute 28 px. Suivi : rangée 2, colonne 1, largeur **456 px**, calé **à droite** (`justify-self: end`) — décalage de 144 px sous l'Acquisition. Ordre de lecture = ordre DOM |
+| < 1024 | **Carrousel** natif inchangé dans son principe (§ 2.11.8.3 : `scroll-snap`, aucun défilement automatique, curseur dans le repère de la piste) avec **3 diapositives** de largeur `min(340px, 86vw)` (640–1023 : 360 px), espacement 12 px, rembourrage de piste 24 px ; **hauteurs naturelles, alignées en haut** (`align-items: start`). **3 points** de pagination (cible 24 × 24) ; `aria-label` « Bloc {n} sur 3 : {nom} » |
+| 390 / 360 | Idem < 1024 ; à 360, diapositive 310 px, intérieur 278 px : tous les libellés sur une ligne (le plus long, « Message préparé », ≈ 105 px, tient) ; aucun débordement du document |
+
+Place du libellé (≥ 1440, la plus serrée : colonne de 179 px) : 179 − 16 (rembourrage) − 14
+(icône) − 2 × 6 (espacements) − 16 (case) = **121 px** ; « Message préparé » ≈ 105,4 px tient.
+
+**Curseur « Vous ».** Composant `CursorYou` inchangé. **Parc** : pointe au centre horizontal
+du bloc Validation humaine, **20 px sous son bord bas** (≥ 1024 ; à 1024–1439, dans la colonne
+de droite sous le bloc) ; < 1024 : dans le rembourrage bas de la piste (32 px). Trajet : parc →
+« Message relu » → « Message validé » → **retour au parc** → (Suivi travaille) → « Mandat
+confirmé » → parc à la remise à zéro. Toujours **dans le bloc Validation** : trajets courts,
+verticaux.
+
+**Lignes convergentes** : ≥ 1440, **3** (une par bloc, du milieu du bas + 8 px vers le haut du
+bouton) ; 1024–1439, **2** (bas de Suivi et bas de Validation) ; < 1024 masquées. Trait,
+opacité 0,07, calcul : inchangés.
+
+**Rythme : cycle de 24 000 ms (× 2,45 par rapport à 9 800 ms).** Même ordonnanceur
+(`EcosystemLoop` : `setTimeout` seulement, **aucun `requestAnimationFrame`**, aucune animation
+CSS infinie, aucune utilisation d'anime.js — voir L4-E). Cadence d'une case agent :
+**700 ms** (au lieu de 280). Coche : fond opacité 0 → 1 et `scale(0.6)` → 1 en **400 ms**
+`--ease-emphasis`, puis trait de coche tracé en **320 ms** avec **120 ms** de délai. Clic du
+curseur : `scale(0.88)` **150 ms** puis retour **150 ms** (case `scale(0.92)`). Anneau actif :
+fondu **440 ms**.
+
+| t (ms) | Événement |
+|---|---|
+| 0 → 600 | **Remise à zéro** : toutes les coches s'effacent ensemble (600 ms, `--ease-exit`) ; pastille « Vous » vidée |
+| 0 → 1 400 | Le curseur revient de « Mandat confirmé » au parc (1 400 ms, `--ease-emphasis`) |
+| 1 600 → 7 200 | Acquisition active (anneau ; la tuile orange joue son histoire à 1 600) |
+| 1 600 / 2 300 / 3 000 | Léa : Source vérifiée, Doublon écarté, Fiche créée |
+| 3 700 / 4 400 | Hugo : Bien et secteur, Délai du projet ; **5 100** : « Motivation » trace son pointillé (400 ms) et reste vide |
+| 5 800 / 6 500 | Emma : Consentement, Message préparé |
+| 7 200 → 10 400 | Validation humaine active (tuile violette : histoire à 7 200) |
+| 7 400 → 8 600 | Curseur : parc → case « Message relu » (1 200 ms, `--ease-emphasis`) |
+| 8 600 → 8 900 | Clic ; coche à **8 750** |
+| 9 100 → 9 700 | Glisse vers « Message validé » (600 ms) ; clic 9 700 → 10 000 ; coche à **9 850** |
+| 10 200 → 11 200 | Le curseur retourne au parc (1 000 ms) |
+| 10 800 → 14 400 | Suivi actif (tuile verte : histoire à 10 800) |
+| 11 000 / 11 700 | Louis : Créneau proposé, Dossier préparé |
+| 12 400 / 13 100 / 13 800 | Sarah : Compte-rendu lu, Actions créées, **Mandat signalé** |
+| 14 400 → 17 000 | Validation humaine active de nouveau (pas de nouvelle histoire de tuile) |
+| 14 600 → 15 800 | Curseur : parc → « Mandat confirmé » (1 200 ms) |
+| 15 800 → 16 100 | Clic ; coche à **15 950** ; pastille « Vous » pleine |
+| 16 100 → 24 000 | **Tenue de l'état final** (7 900 ms) ; puis cycle suivant |
+
+Constantes exportées (`ecosystem-timeline.ts`) : `CYCLE_MS = 24000`, `AGENT_CADENCE_MS = 700`,
+`MISSING_TRACE_AT = 5100`, `CHECKS` (15 instants ci-dessus), `RINGS` (4 plages : bloc 0
+1 600–7 200, bloc 1 7 200–10 400, bloc 2 10 800–14 400, bloc 1 14 400–17 000), `CURSOR_MOVES`.
+`ECOSYSTEM_LAYOUT` devient une liste de blocs → groupes → `CheckBy`.
+
+**Inchangé** : contrat `data-loop="allowed"`, `data-loop-state` (`playing` | `paused` |
+`reduced`), `data-loop-cycles`, `data-step`, `data-check`, `data-checked` ; lecture à ≥ 25 %
+visible ; pause hors écran et onglet caché (le pas en cours finit sa transition, ≤ 1 400 ms) ;
+HTML serveur et mouvement réduit = **état final** (15 cases dans leur état final, curseur sur
+« Mandat confirmé », aucun anneau, aucun minuteur) ; badge, légende « Exemple fictif —
+simulation », bouton « Demander une estimation », carte de garde-fou, notes.
+
+**Accessibilité.** `figure` + titre `sr-only` « Parcours d'un prospect fictif » inchangés ;
+liste `sr-only` statique, **trois phrases** (`journey.srSummary`) :
+- « Acquisition, par Léa, Hugo et Emma : source vérifiée, doublon écarté, fiche créée ; bien et
+  secteur, délai du projet, motivation manquante, à demander ; consentement vérifié, message
+  préparé. »
+- « Validation humaine, par vous : premier message relu puis validé ; mandat confirmé. »
+- « Suivi, par Louis et Sarah : créneau proposé, dossier préparé ; compte-rendu lu, actions
+  créées, mandat signalé. »
+La couleur des tuiles ne porte aucun sens seule : nom du bloc, pastille « Agents » / « Vous »,
+double contour et cases rondes disent « humain ». Contrastes du texte inchangés.
+
+**Textes (`LANDING_TEXTS.journey`)** : `cards` → **`blocks`** (structure du tableau ci-dessus :
+`key`, `name`, `members`, `nature` `agents|human`, `glyph`, `tone`, `groups[]` avec `agent` +
+`glyph` ou `label`, et `lines[]` `{ icon, label, by, detail? }`) ; `pills` : `{ agents:
+"Agents", you: "Vous" }` ; `dots.item` : « Bloc {n} sur 3 : {nom} » ; `srSummary` : les trois
+phrases. `badge`, `title`, `guard`, `note`, `cursor` inchangés. Libellés ≤ 20 caractères.
+
+###### L4-B. Section ROI (remplace le contenu de la section « résultat »)
+
+**Idée unique** : vos délais ont un coût mesurable, une partie peut se regagner — en ordres de
+grandeur honnêtes. **En cinq secondes** : quatre widgets, chacun un grand chiffre qui se pose,
+une petite scène (barres, entonnoir, frise), et une étiquette qui dit si le chiffre est
+**sourcé**, une **hypothèse** ou un **potentiel estimé**. **Texte restant** : titres courts,
+légendes d'une ligne, mentions de source, avertissement général.
+
+**Section.** `LandingResult.tsx` garde son nom de fichier, sa `section`
+(`aria-labelledby="result-title"`, **`data-living-scene="resultat"`** — le réseau de fond en
+dépend, il ne change pas), ses rembourrages. Supprimés : le cadre « Étapes du pipeline », la
+liste des étapes, la note « Perdu », les trois encarts (`outcomes`) ; les imports
+`PIPELINE_STAGE_LABELS` / `PIPELINE_STAGES` disparaissent du fichier (les domaines ne
+changent pas).
+
+**En-tête** (`LandingHeading`, **sans effet**, aligné à gauche comme aujourd'hui) :
+- sur-titre : **« ROI »** ;
+- titre (une phrase) : **« Ce que vos délais coûtent, et ce que l'agence peut regagner. »**,
+  lignes d'auteur `["Ce que vos délais coûtent,", "et ce que l'agence", "peut regagner."]`,
+  mot accentué `regagner` (même police que le titre, L4-C ; il arrive net en premier comme sur
+  les autres titres sans effet ; **ni `accentEffect`, ni `accentReplay`**) ;
+- paragraphe : « Des ordres de grandeur, calculés à partir d'études publiques et d'hypothèses
+  que vous pouvez ajuster. »
+
+**Légende des étiquettes** (24 px sous l'en-tête, une ligne, `flex-wrap`, espacement 16 px) :
+trois paires « étiquette + explication » (12 px `ink-muted`) : [Source] chiffre publié ·
+[Hypothèse] valeur par défaut, à ajuster · [Potentiel estimé] calcul arrondi.
+
+**Trois étiquettes, distinctes sans la couleur** (composant `RoiTag`, 11 px, hauteur 20 px,
+rayon 999, 0 8 px) :
+
+| Étiquette | Forme | Texte | Où |
+|---|---|---|---|
+| **Source** | bord **plein** 1 px `ink`, fond `surface` | « Source » 600 `ink` (17,7:1) | à côté de chaque chiffre publié |
+| **Hypothèse** | bord **pointillé** 1 px `ink-subtle`, fond transparent | « Hypothèse » 500 `ink-muted` (6,9:1) | à côté de chaque valeur par défaut non sourcée ; la valeur elle-même est **soulignée en pointillé** (1 px `ink-subtle`, décalage 3 px) |
+| **Potentiel estimé** | sans bord, fond `surface-sunken` | « Potentiel estimé » 600 `ink` | au-dessus de chaque résultat calculé ; le résultat commence par « ≈ » |
+| (complément) **Étude américaine** | bord plein 1 px `line-strong` | « Étude américaine » 500 `ink-muted` | collée à « Source » quand l'étude est américaine (widgets 1 et 4, repère du widget 3) |
+
+**Grille.** 40 px sous la légende. `ul` de 4 `li` (DOM et lecture : W1, W3, W2, W4).
+
+| Largeur | Disposition |
+|---|---|
+| ≥ 1280 | 12 colonnes, espacement 16 px. Rangée 1 : **W1** (col. 1–5) + **W3** (col. 6–12). Rangée 2 : **W2** (col. 1–7) + **W4** (col. 8–12). Tuiles étirées par rangée, contenu calé en haut. Damier de tailles : chaque rangée a une grande et une petite tuile |
+| 1024–1279 | 2 colonnes égales, même ordre |
+| 640–1023 | 1 colonne, `max-w-[45rem]` centrée |
+| < 640 | 1 colonne pleine largeur |
+
+**Tuile ROI (commune, `RoiWidget`).** `article` `aria-labelledby` vers son `h3` ; `bg-surface`
+opaque (`data-network-cover`), bord 1 px `line`, **rayon 24 px**, `shadow-subtle`, rembourrage
+**24 px** (< 640 : 20 px). De haut en bas :
+1. ligne d'en-tête : sur-titre `label` (« Réactivité », « Mandats », « Temps », « Relance ») ;
+   à droite, les étiquettes de provenance du chiffre principal ;
+2. `h3` **Geist 18 px 600** `ink`, 8 px dessous ;
+3. **chiffre principal**, 20 px dessous : Geist Mono **48 px** (< 640 : 40 px) 600 `ink`,
+   `tabular-nums`, interlignage 1 ; légende d'une phrase dessous, 14 px / 1,5 `ink-muted`,
+   `max-w-[32ch]` ;
+4. **scène** (propre au widget), 20 px dessous ;
+5. **réglages** (W2, W3 seulement), 20 px dessous ;
+6. **hypothèses fixes** (W2, W3) : liste de lignes « valeur + libellé + étiquette »,
+   13 px, valeur Geist Mono 500 `ink`, libellé `ink-muted` ;
+7. **mention de source**, 16 px dessous, filet haut 1 px `line` puis 12 px : 12 px / 1,5
+   `ink-subtle` (5,7:1), texte exact ci-dessous.
+
+Survol : aucun (ce ne sont pas des liens). Les curseurs sont les seuls contrôles.
+
+**Avertissement général** (32 px sous la grille, centré, `max-w-[60ch]`, 13 px / 1,55
+`ink-muted`, sur `.particle-veil-tight`) : « Chiffres indicatifs, issus d'études publiques
+(souvent américaines ou anciennes) et d'hypothèses modifiables. Ils ne constituent pas une
+promesse de résultat. »
+
+**W1 — « Chaque minute compte »** (sur-titre « Réactivité » ; aucun calcul ; sources A1, A4).
+
+| Élément | Valeur |
+|---|---|
+| Chiffre principal | **« ×21 »** + [Source] [Étude américaine] ; légende : « de chances de qualifier un lead rappelé en 5 minutes plutôt qu'en 30 minutes. » |
+| Scène | deux barres horizontales, hauteur 10 px, rayon 999, sur une piste `surface-sunken` : « 5 min » (libellé 12 px Geist Mono `ink`, 48 px à gauche) barre **pleine largeur** `ink` ; « 30 min » barre de **1/21 de la piste** (min. 8 px), `line-strong`. À droite de chaque barre : « ×21 » / « ×1 » (12 px Mono `ink-muted`) |
+| Ligne secondaire | 16 px dessous : « ×7 » (Geist Mono 24 px 600 `ink`) + « en tentant le contact dans l'heure plutôt qu'une heure plus tard. » (14 px `ink-muted`) + [Source] |
+| Mention | « Études américaines tous secteurs : MIT/InsideSales 2007 ; Harvard Business Review 2011. Non spécifiques à l'immobilier français. » |
+
+**W2 — « Le temps qui vous échappe »** (sur-titre « Temps » ; sources B1 + hypothèses).
+
+| Élément | Valeur |
+|---|---|
+| Chiffre principal | [Potentiel estimé] **« ≈ 270 h »** ; légende : « regagnables par an sur l'administratif. » |
+| Scène | une barre 12 px (piste `surface-sunken`, rayon 999) = **heures d'administratif par an** (pleine) ; la part **regagnable** est remplie en `ink` depuis la gauche (largeur = part automatisable), le reste `line-strong`. Sous la barre, 12 px Mono : à gauche « 900 h d'administratif par an », à droite « ≈ 10 800 € de temps valorisé par an » |
+| Réglages | « Négociateurs » : 1 – 15, pas 1, **défaut 4** [Hypothèse] ; « Heures d'administratif par semaine et par négociateur » : 2 – 10, pas 1, **défaut 5** [Hypothèse] (valeur réglable ; 5 h = milieu de la fourchette publiée) avec repère [Source] « étude : 4 à 6 h » (12 px `ink-subtle`) |
+| Hypothèses fixes | « 45 semaines travaillées par an » [Hypothèse] ; « 30 % du temps administratif automatisable » [Hypothèse] ; « 40 € de coût horaire chargé » [Hypothèse] |
+| Calcul | heures/an = négociateurs × heures × 45 ; regagnables = heures/an × 0,30 ; valeur = regagnables × 40 |
+| Arrondis | heures à la **dizaine** ; euros à la **centaine** ; « ≈ » devant les deux résultats calculés (pas devant les heures/an, produit exact d'entrées) |
+| Mention | « Temps administratif : étude La Boîte Immo, 629 professionnels, 2017. Part automatisable, nombre de négociateurs et coût horaire : hypothèses. » |
+
+**W3 — « Les mandats qui partent ailleurs »** (sur-titre « Mandats » ; sources D1, D4 + hypothèses).
+
+| Élément | Valeur |
+|---|---|
+| Chiffre principal | [Potentiel estimé] **« ≈ 51 000 € HT »** ; légende : « d'honoraires potentiellement manqués par an. » |
+| Scène | **entonnoir en 4 étapes**, une rangée (≥ 640) ou une colonne (< 640) de pastilles reliées par un trait 1 px `line-strong` : « 480 demandes par an » → « 72 traitées trop tard » → « ≈ 5,8 mandats » → « ≈ 3,5 ventes ». Chaque pastille : nombre Geist Mono 20 px 600 `ink` au-dessus du libellé 12 px `ink-muted` ; la dernière a un bord 1 px `ink` |
+| Réglages | « Demandes vendeurs par mois » : 10 – 100, pas 5, **défaut 40** [Hypothèse] ; « Part traitée trop tard ou sans suivi » : 5 – 30 %, pas 1, **défaut 15 %** [Hypothèse] avec repère « audit américain : 23 % sans réponse » + [Étude américaine] |
+| Hypothèses fixes | « 8 % des demandes deviennent un mandat » [Hypothèse] ; « 60 % des mandats aboutissent à une vente » [Hypothèse] ; « 367 000 € — prix médian d'un appartement à La Ciotat (DVF 2025) » [Source] ; « 4 % HT — honoraires moyens (FNAIM 2016) » [Source] |
+| Calcul | demandes/an = demandes/mois × 12 ; trop tard = demandes/an × part ; mandats = trop tard × 0,08 ; ventes = mandats × 0,60 ; honoraires = ventes × 367 000 × 0,04 |
+| Arrondis | demandes et « trop tard » : entiers ; mandats et ventes : **1 décimale** (virgule) ; euros : au **millier** |
+| Mention | « Prix médian : données DVF La Ciotat 2025. Honoraires : moyenne FNAIM 2016 (4 % HT). Volumes et taux de transformation : hypothèses à ajuster à votre agence. » |
+
+**W4 — « La relance qui fait la différence »** (sur-titre « Relance » ; source C1, aucun calcul).
+
+| Élément | Valeur |
+|---|---|
+| Chiffre principal | **« 93 % »** + [Source] [Étude américaine] ; légende : « des leads convertis avaient été joints au plus tard au 6ᵉ appel. » |
+| Scène | **frise de 6 contacts** : 6 disques 28 px (bord 1 px `line-strong`, fond `surface`) reliés par un trait 1 px `line-strong`, numérotés 1 à 6 (Geist Mono 11 px `ink-muted`) sous chaque disque ; dans les disques, une icône `sm` 14 px `dimmed` qui **alterne les canaux** : `email`, `messages`, `phone`, `email`, `messages`, `phone`. À l'état final les 6 disques sont **pleins `ink`**, icône blanche ; le 6ᵉ porte un anneau extérieur 1 px `ink` à 3 px |
+| Ligne de message | « Un suivi régulier et multicanal, toujours avec le consentement du contact. » (14 px `ink-muted`) |
+| Mention | « Étude Velocify (éditeur, États-Unis, environ 3,5 millions de leads). En France, les appels ne sont permis qu'avec consentement, du lundi au vendredi (10h-13h, 14h-20h) et 4 fois par mois maximum. » |
+
+La frise ne recommande pas « six appels » : canaux alternés + phrase de consentement + mention
+légale (`docs/recherche-roi-agences.md` § 3, widget 4).
+
+**Curseurs (`RoiSlider`).** `input type="range"` natif, `label` visible au-dessus (13 px 500
+`ink`) avec la valeur à droite dans un `output` (Geist Mono 13 px 600 `ink`, `tabular-nums`) ;
+`aria-valuetext` avec l'unité (« 4 négociateurs », « 5 heures par semaine », « 40 demandes
+par mois », « 15 pour cent ») ; hauteur de la zone cliquable **44 px** ; piste 4 px rayon 999,
+partie remplie `ink`, reste `line-strong` (variable `--fill`) ; poignée **20 px** ronde
+`surface`, bord 1,5 px `ink`, `shadow-subtle` ; survol (pointeur fin) : poignée `scale(1.1)`
+160 ms ; focus visible : anneau cobalt 2 px à 2 px (`--color-accent`, focus du produit) ;
+clavier natif (flèches = un pas, Début / Fin = bornes). Un lien-bouton texte « Valeurs par
+défaut » (13 px 500 `ink-muted`, souligné, cible 44 px de haut) apparaît sous les réglages
+**seulement** si une valeur diffère du défaut ; il remet les défauts.
+Aucune valeur n'est enregistrée ni envoyée (état local du composant, rien en URL).
+
+**Lecteurs d'écran.** Chaque chiffre animé est `aria-hidden` ; à côté, un `span.sr-only`
+contient **toujours** la valeur finale arrondie avec son unité (« environ 270 heures par
+an »). Zone de résultat de W2 et W3 : `aria-live="polite"`, mise à jour **500 ms** après le
+dernier changement de curseur (une phrase : « Potentiel estimé : environ 270 heures et
+10 800 euros par an. » / « Potentiel estimé : environ 51 000 euros hors taxes par an. »).
+Rien n'est annoncé pendant l'arrivée.
+
+**Mouvement (joué à l'arrivée, une fois ; jamais en boucle).** Chaque widget : sa tuile
+arrive par le `Reveal frame="still"` existant (opacité + `translateY(16px)`, 560 ms, décalage
+80 ms) ; son îlot démarre quand la tuile est visible à **≥ 40 %** (`IntersectionObserver`),
+**240 ms** plus tard. Chronologies (t = 0 au départ ; anime.js, voir L4-E) :
+
+| Widget | Séquence | Fin |
+|---|---|---|
+| W1 | 0 → 900 : « ×21 » compte de 1 à 21 (`outExpo`, entiers) ; 100 → 800 : barre « 5 min » `scaleX` 0 → 1 (origine gauche, `outQuart`) ; 300 → 900 : barre « 30 min » 0 → 1 ; 900 → 1 220 : ligne « ×7 » opacité 0 → 1 et `translateY(6px)` → 0 (`outQuad`), le 7 compte de 1 à 7 | **1 220 ms** |
+| W2 | 0 → 600 : barre totale `scaleX` 0 → 1 (`outQuart`) ; 500 → 1 100 : part regagnable 0 → sa largeur ; 0 → 1 300 : « ≈ 270 h » compte de 0 (affichage arrondi à la dizaine à chaque image, `outExpo`) ; 600 → 1 300 : « 900 h » et « ≈ 10 800 € » comptent | **1 300 ms** |
+| W3 | pastilles de l'entonnoir : opacité 0 → 1, `translateX(8px)` → 0, 280 ms `outQuad`, décalage **140 ms** (0, 140, 280, 420) ; le trait de liaison se trace `scaleX` 0 → 1 de 0 à 700 ; nombres des pastilles comptent avec leur pastille ; 300 → 1 600 : « ≈ 51 000 € HT » compte (au millier à chaque image, `outExpo`) | **1 600 ms** |
+| W4 | disques 1 → 6 : remplissage `ink` (opacité du fond 0 → 1 + `scale(0.6)` → 1, 280 ms `outQuad` — aucun rebond), décalage **160 ms** (0 … 800) ; le trait de liaison se trace de 0 à 960 ; 960 → 1 120 : anneau du 6ᵉ, opacité 0 → 1 ; 0 → 1 000 : « 93 % » compte de 0 à 93 | **1 120 ms** |
+
+Toutes les fins ≤ 1 600 ms après le départ, donc ≤ **1 840 ms** après le passage à 40 %. Après
+la fin : **aucune** image demandée (`requestAnimationFrame` à zéro), aucune animation en
+cours — la section est immobile bien avant les 5 s de `landing-sans-boucle`.
+
+Changement d'un curseur : chaque nombre concerné passe de sa valeur affichée à la nouvelle en
+**320 ms** `outQuad` (anime.js ; un nouveau changement **annule** l'animation en cours et
+repart de la valeur affichée) ; barres et largeurs en transition CSS 240 ms
+`--ease-standard`. Aucun délai artificiel, aucune valeur intermédiaire annoncée.
+
+| Situation | Comportement |
+|---|---|
+| HTML serveur, sans JS | Valeurs **par défaut finales** (×21, ×7, ≈ 270 h, 900 h, ≈ 10 800 €, entonnoir 480 → 72 → ≈ 5,8 → ≈ 3,5, ≈ 51 000 € HT, 93 %, 6 disques pleins). Curseurs rendus mais **désactivés** (`disabled`) avec la note 12 px « Réglages disponibles avec JavaScript. » ; tout le reste est lisible |
+| Mouvement réduit | État final immédiat, aucun comptage ; changement de curseur = nouvelle valeur **instantanée** |
+| Mouvement autorisé, hydraté, widget pas encore vu | État **armé** : nombres à 0 (W1 : 1), barres à 0, pastilles et disques invisibles. `data-roi-state="armed"` |
+| Lecture | `playing` puis `done` ; une fois par chargement (sauf « Rejouer les animations », L4-D) |
+| Hors écran / onglet caché pendant la lecture | La lecture finit (bornée à 1,6 s) |
+| Valeurs changées par l'utilisateur puis « Rejouer » | Les valeurs de l'utilisateur sont **gardées** ; l'arrivée rejoue jusqu'à ces valeurs |
+
+Attributs de test : `data-testid="roi"` (section), `roi-grid`, `roi-widget` (× 4, avec
+`data-widget="speed|mandates|time|followup"`), `data-roi-state` (`armed` | `playing` |
+`done`), chaque chiffre `data-roi-value` (valeur finale **non arrondie** pour les tests),
+chaque étiquette `data-roi-tag="source|hypothesis|estimate|us"`.
+
+**Logique pure** : `components/landing/roi/roi-model.ts` — défauts, bornes, pas, calculs,
+arrondis, format `Intl.NumberFormat("fr-FR")` (espace fine insécable des milliers, virgule
+décimale), aucun DOM. Valeurs attendues aux défauts : W2 900 h, 270 h, 10 800 € ; W3 480, 72,
+5,76 → « 5,8 », 3,456 → « 3,5 », 50 734 € → « 51 000 € HT » ; bornes : W2 maximum 2 030 h /
+81 000 € (15 × 10 × 45 × 0,3 = 2 025 → 2 030), W3 maximum ≈ 254 000 € HT.
+
+**Textes** : nouvelle clé `LANDING_TEXTS.roi` (remplace `result` ; `kicker`, `title`,
+`titleLines`, `titleAccent`, `body`, `legend`, `tags`, `disclaimer`, `widgets.{speed,
+mandates, time, followup}` avec `kicker`, `title`, `caption`, libellés, `note` — **textes
+exacts ci-dessus**, aucun « vous gagnerez », aucun « garanti »). Le test « claims no figure »
+de `landing-texts.test.ts` **exclut la clé `roi`** et un test dédié la contrôle (L4-F).
+
+###### L4-C. Titres : mot accentué dans la police du titre, rejeu au survol ou au toucher
+
+**Police.** Sur `/` uniquement, le mot accentué **reprend exactement la typographie de sa
+ligne** : `font-family`, `font-weight` (600), `font-style: normal`, `font-size: 1em`,
+`letter-spacing`, `font-variation-settings` (le `wdth 92` du hero compris) et `line-height`
+**hérités**. Implémentation attendue : prop `accentFace?: "serif" | "title"` d'`EditorialTitle`
+(défaut `"serif"` → `/estimation` et les états vides du CRM **inchangés**) ; `LandingHero`,
+`LandingHeading` (donc toutes les sections) et le titre final passent `"title"`, qui pose la
+classe `title-accent-plain` (`@layer utilities` : `font: inherit; letter-spacing: inherit;
+font-variation-settings: inherit; line-height: inherit; font-style: normal`) en plus de
+`.title-accent`. `data-accent-face="title"` sur le `h1` / `h2` (tests).
+
+Conséquences à recaler (mesurées sur Bricolage 600, à 1440 et 390, reportées ici à
+l'avancement) :
+- **Trait de « main »** (`underline`) : `--accent-baseline`, `--accent-ink-top`,
+  `--accent-ink-bottom` re-mesurés sur la police du titre (hero : `wdth 92`) ; le trait reste
+  0,08–0,12 em sous la ligne de base, de −0,02 em à +0,02 em autour de l'encre (plus de
+  débord italique : `right: -0.02em`).
+- **Cadre de « administratif »** (`focus`) : `accentOverhangEm` renvoie **0** en police
+  titre (aucun débord italique) ; les quatre coins encadrent l'encre droite.
+- **« décide »** (`tech`) : les lettres sont mesurées sur la police lue dans le `span` (rien à
+  changer dans le principe) ; `font-kerning: none` sur les lettres : écart de largeur du mot
+  ≤ 2 px avec le mot en texte continu (critère T2 inchangé) ; le canvas peint en Bricolage 600.
+- Boîte de ligne : écart ≤ 0,5 px avec la ligne sans `.title-accent` (critère § 2.2.5).
+- Les titres **sans effet** (solution, agents, ROI, final) : le mot accentué n'a plus aucune
+  différence visuelle au repos — seul son arrivée « net en premier » (§ 2.2.7) subsiste. C'est
+  la conséquence directe de la demande.
+
+**Rejeu sur n'importe quel mot (hero « main », problème « administratif », contrôle
+« décide »).**
+
+| Pointeur | Déclencheur | Conditions (garde-fous existants) |
+|---|---|---|
+| Souris, stylet (`(hover: hover) and (pointer: fine)`) | Le pointeur **entre sur un mot** du titre (`[data-title-word]`, posé sur chaque mot visuel, mot accentué compris) alors qu'il **venait de l'extérieur du titre** (le titre est « réarmé » à la sortie du `h1`/`h2`, `pointerleave`). Passer d'un mot à l'autre ou dans les espaces ne rejoue pas | Mouvement autorisé ; arrivée terminée (aucune animation d'entrée en cours, `Reveal` non `hidden`) ; aucun rejeu en cours ; **≥ 800 ms** depuis la fin du précédent ; sinon rien, rien en attente |
+| Toucher (`pointerType === "touch"`, tout appareil) | **Toucher bref** sur un mot : `pointerdown` puis `pointerup` du même pointeur, déplacement ≤ **10 px**, durée ≤ **600 ms**, aucun `pointercancel` (un défilement commencé annule). Écouteurs **passifs**, jamais de `preventDefault` : le défilement n'est **jamais** bloqué ; `touch-action` du titre inchangé | Mêmes conditions |
+| Clavier | Rien (les titres ne sont pas focusables ; le bouton L4-D rejoue tout) | — |
+
+Effet rejoué : hero et problème = leur rejeu CSS actuel (§ 2.11.2 D) ; « décide » = **le
+balayage** (≤ 1 600 ms). Au toucher, « décide » ne passe **jamais** en suivi ni en glisser
+(pas de cadre qui suit le doigt). Attributs inchangés : `data-accent-replay="running"`,
+`data-accent-replays` + 1, `data-tech-state="sweep"`.
+
+Logique pure dans `components/landing/accent-replay.ts` : `isReplayPointer` accepte
+`"touch"` pour le chemin « toucher » ; nouvelle `isTap({ dx, dy, duration, cancelled })` ;
+`canReplay` inchangée pour le reste. `AccentReplayController` gère hero et problème (survol +
+toucher, délégation sur `[data-landing]`) ; `TechAccent` gère « décide » avec les mêmes
+fonctions (survol d'un mot = rejeu du balayage ; le suivi existant quand le pointeur s'approche
+du mot reste). Le contrôleur s'attache dès que le mouvement est autorisé (plus seulement avec
+un pointeur fin) ; chaque chemin vérifie son `pointerType`.
+
+###### L4-D. Bouton « Rejouer les animations »
+
+**Rôle** : relancer, sans recharger ni bouger la page, **toutes** les animations d'arrivée de
+`/` comme au premier chargement. Le réseau de fond est **exclu** (L4 n° 6).
+
+**Contenu relancé** :
+
+| Élément | Après le clic |
+|---|---|
+| Titres (7) | Arrivée ligne par ligne rejouée ; les trois effets (trait, mise au point, balayage tech) rejouent leur arrivée ; `data-accent-played` retiré |
+| `Reveal` de la page | Repassent à `hidden` instantanément, puis `entering` dès qu'ils sont à l'écran (ceux à l'écran : immédiatement ; les autres : à leur arrivée en défilant) |
+| Bloc A | Le cycle repart à t = 0 (remise à zéro) s'il est à l'écran ; sinon au retour à l'écran |
+| Bloc B | Visuels rejoués (CSS sous leur `Reveal`) |
+| Section problème, agents | Leurs arrivées (graphique « joué une fois », badges) rejouées |
+| Section contrôle | Organigramme (CSS sous `Reveal`) ; frise remise à `idle` puis rejouée à ≥ 50 % |
+| Section ROI | Widgets remis à `armed` puis rejoués à ≥ 40 % ; **valeurs de l'utilisateur gardées** |
+| Bloc C | Carrousel ramené à l'étape 1 (**instantané**, sans glissement), visuels remis à leur état armé puis rejoués |
+| Badge « Simulation » (cycle unique) | Rejoue son cycle |
+| Réseau de fond | **Rien** |
+
+Contrat : `components/landing/replay/replay-bus.ts` — `REPLAY_EVENT =
+"ascend:replay-animations"`, `requestReplay()` (événement sur `document`), `onReplay(cb)` →
+fonction de désabonnement ; `[data-landing]` porte `data-replay-generation` (0, puis + 1 par
+rejeu). Chaque îlot s'abonne et revient à son **état armé** ; rien d'autre ne change (défilement,
+focus, valeurs saisies). `Reveal` s'abonne de façon générique (aucun effet hors de `/`, où
+personne n'émet l'événement). Un rejeu pendant une animation l'annule et repart de l'état
+initial (pas de mélange).
+
+**Bouton (`ReplayAnimationsButton`, îlot client).**
+
+| Propriété | ≥ 640 | < 640 |
+|---|---|---|
+| Position | `position: fixed`, **bas gauche** : `left: 24px`, `bottom: 24px` | `left: 16px`, `bottom: max(16px, env(safe-area-inset-bottom) + 12px)` |
+| Forme | pilule **36 px** de haut, rembourrage 0 14 px 0 12 px, `gap-2` | **rond 44 × 44**, icône seule |
+| Contenu | icône `replay` 14 px + « Rejouer les animations » (Geist 13 px 500) | icône 18 px ; texte en `sr-only` |
+| Style | fond `rgb(255 255 255 / 0.86)` + `backdrop-filter: blur(12px) saturate(140%)`, bord 1 px `line`, `shadow-subtle` ; texte et icône `ink-muted` (6,9:1) | idem |
+| Survol (pointeur fin) | texte et icône `ink`, bord `line-strong`, 160 ms | — |
+| Appui | `scale(0.97)` 120 ms | idem |
+| Focus visible | anneau cobalt 2 px à 2 px (focus du produit) | idem |
+| Plan | `z-index` au-dessus du contenu (`z-40`), sous l'en-tête et toute boîte de dialogue | idem |
+
+- Nom accessible : « Rejouer les animations » (texte visible ≥ 640, `sr-only` en dessous ;
+  pas de `title`). `type="button"`.
+- Après un clic : `aria-disabled="true"` pendant **1 200 ms** (un clic de plus ne fait rien),
+  puis réactivé ; une zone `sr-only` `aria-live="polite"` annonce « Animations relancées. ».
+  Le focus reste sur le bouton.
+- Ordre de tabulation : dernier élément de `[data-landing]` (après le panneau final, avant le
+  pied de page) — on le trouve à la fin de la lecture, il ne s'intercale pas.
+- Apparition : rendu **après hydratation** seulement (sans JS il ne ferait rien : absent du
+  HTML serveur) ; opacité 0 → 1 en 240 ms, une fois.
+- **Mouvement réduit : bouton absent** (non rendu ; bascule en direct si le réglage change).
+  Raison : rien ne bouge, un bouton désactivé serait du bruit.
+- Icône **`replay`** : nouveau glyphe **utilitaire** de la famille (`definitions/utility.tsx`,
+  `tone: "ink"`, `animated: false`) : arc de cercle de 300° ouvert en haut à droite, trait 2
+  de la grille 24 × 24, bouts ronds, pointe de flèche pleine à l'extrémité — même épaisseur
+  et mêmes bouts que `arrowLeft`. Aucune rotation au clic.
+- Ne masque aucun contenu essentiel : à 390, il recouvre au plus 44 × 44 px du coin bas gauche
+  pendant le défilement ; jamais au-dessus d'un bouton fixe (il n'y en a pas d'autre sur `/`).
+
+`data-testid="landing-replay"`.
+
+###### L4-E. anime.js : où il sert, où le CSS suffit
+
+`animejs` **4.x** (MIT ; version à figer dans `package.json`, sans `^`), importé **seulement**
+dans les îlots clients de la section ROI (`components/landing/roi/**`). Notice MIT dans
+`THIRD_PARTY_NOTICES.md` (texte de licence recopié du paquet).
+
+| Usage | Outil | Pourquoi |
+|---|---|---|
+| Comptage des chiffres ROI (arrivée et changement de curseur), séquences des 4 widgets (`createTimeline`, `stagger`) | **anime.js** | Interpolation de nombres avec arrondi par image (`utils.round`, `modifier`), annulation propre d'un comptage en cours, une timeline par widget ; le CSS ne sait pas compter |
+| Bloc A (coches, curseur, anneaux, tuiles) | **CSS + `setTimeout`** (existant) | Le bloc A tourne en boucle à l'écran pendant les tests « aucune boucle » : il doit rester à **0 `requestAnimationFrame`** ; anime.js tourne sur `requestAnimationFrame` |
+| Titres, `Reveal`, blocs B et C, section contrôle | **CSS / îlots existants** | Déjà faits, mesurés, testés |
+| Rejeu global (L4-D) | **Événement DOM** | Aucun mouvement propre |
+
+Exigences : moteur d'anime.js **à l'arrêt** quand aucune animation n'est active (comportement
+par défaut de la 4.x : plus de tête active → plus d'image demandée ; vérifié par le test L4-F) ;
+`revert()` / annulation au démontage ; aucun appel en mouvement réduit ; seulement
+`transform`, `opacity` et texte des nombres.
+
+###### L4-F. Critères d'acceptation (Lot 4)
+
+**Bloc A.**
+- L4-A1. 1440 × 900 : 3 blocs de **600 / 300 / 420 px** (± 1), espacement 24, marges hautes
+  0 / 28 / 12 (± 1), centrés (± 1 px) ; 3 lignes convergentes ; haut des blocs < 900.
+  1024 : grille 912 px, Validation en colonne de droite, Suivi 456 px calé à droite sous
+  l'Acquisition ; 2 lignes. 390 / 360 : carrousel de 3, 3 points, aucun débordement.
+- L4-A2. Aucun libellé tronqué à 1440 / 1024 / 390 / 360 (sauf la ligne manquante, empilée).
+- L4-A3. 3 tuiles `[data-app-tile]` : glyphes `leads`, `humanValidation`, `pipeline` ;
+  `data-tone` orange / violet / green ; **aucun pixel cobalt** dans une tuile ; couleur
+  calculée du glyphe = blanc ; contraste blanc / haut du dégradé ≥ 3:1. Hors des tuiles, les
+  trois couleurs n'apparaissent **nulle part** sur `/` (test de garde CSS + capture).
+- L4-A4. Cycle mesuré **24 000 ms** (± 150) ; 15 coches, dans l'ordre du tableau ; « Message
+  relu », « Message validé », « Mandat confirmé » cochés **après** l'arrivée du curseur
+  (± 4 px) ; « Mandat confirmé » après « Mandat signalé » ; 0 `requestAnimationFrame` dû au
+  bloc ; aucune animation infinie ; pause hors écran / onglet caché, reprise au même pas ;
+  mouvement réduit et sans JS = état final.
+- L4-A5. `srSummary` : 3 phrases exactes ; `figure` nommée ; points « Bloc n sur 3 : … ».
+
+**ROI.**
+- L4-B1. Plus de « Étapes du pipeline », de liste d'étapes ni d'encarts ; sur-titre « ROI »,
+  titre exact, `data-accent-effect` **absent**, aucun `data-accent-replayable` ; 4 widgets
+  dans l'ordre W1, W3, W2, W4 ; disposition par largeur (1440, 1280, 1024, 390, 360) ;
+  aucun débordement.
+- L4-B2. Valeurs par défaut affichées (HTML serveur **et** après l'arrivée) : ×21, ×7,
+  ≈ 270 h, 900 h, ≈ 10 800 €, 480, 72, ≈ 5,8, ≈ 3,5, ≈ 51 000 € HT, 93 %.
+- L4-B3. Chaque chiffre publié porte `data-roi-tag="source"`, chaque défaut non sourcé
+  `hypothesis`, chaque résultat calculé `estimate` ; W1, W4 et le repère « 23 % » portent
+  `us` ; les quatre mentions et l'avertissement général présents **mot pour mot** ; aucune
+  occurrence de « garanti », « vous gagnerez ».
+- L4-B4. Curseurs : nom accessible, `aria-valuetext` avec unité, flèches clavier changent la
+  valeur et le résultat (ex. W2 négociateurs 4 → 5 : 270 → 340 h ; 10 800 → 13 500 €) ;
+  « Valeurs par défaut » n'existe que si une valeur diffère ; annonce `aria-live` après
+  500 ms ; focus cobalt visible ; cible ≥ 44 px de haut.
+- L4-B5. Arrivée : `armed` → `playing` → `done` ≤ **1 900 ms** après 40 % visible ;
+  10 s plus tard, rien n'a changé ; **0 `requestAnimationFrame`** pendant 2 s une fois `done`
+  (anime.js à l'arrêt) ; aucune animation infinie. Mouvement réduit / sans JS : `done` à
+  l'instant 0, valeurs finales ; sans JS : curseurs `disabled` + note.
+- L4-B6. `e2e/landing-sans-boucle.spec.ts` vert **sans modification** (section `resultat`
+  immobile 5 s après centrage, un seul `[data-loop]`).
+
+**Titres.**
+- L4-C1. Sur `/`, les 7 mots accentués : famille calculée = celle du titre (Bricolage
+  Grotesque), `font-style: normal`, graisse 600, taille = taille du titre (ratio 1,000 ± 0,005) ;
+  `/estimation` et les états vides du CRM : **toujours** Instrument Serif italique.
+- L4-C2. Boîte de ligne ≤ 0,5 px d'écart ; trait de « main » sous l'encre (0,08–0,12 em sous
+  la ligne de base) ; cadre de « administratif » centré sur l'encre (± 1 px) ; « décide » :
+  lettres peintes = lettres HTML (≤ 1 px), largeur ≤ 2 px d'écart.
+- L4-C3. Souris (1440) : entrer sur le **premier** mot de chaque titre à effet rejoue l'effet
+  (`data-accent-replays` + 1) ; passer d'un mot à l'autre ne rejoue pas ; délai 800 ms ;
+  rien pendant l'entrée.
+- L4-C4. Toucher (390 × 844, `hasTouch`, pointeur grossier) : un toucher bref sur un mot
+  quelconque des 3 titres rejoue l'effet ; un glisser vertical de 200 px commencé sur un mot
+  **défile la page** et ne rejoue rien ; « décide » au toucher : `sweep` puis `idle`, jamais
+  `follow` ni `drag`.
+- L4-C5. Mouvement réduit : aucun rejeu (survol ni toucher), aucun canvas.
+
+**Bouton de rejeu.**
+- L4-D1. Présent (mouvement autorisé, après hydratation), fixe en bas à gauche (24 / 16 px),
+  nom accessible « Rejouer les animations », focus visible, pilule 36 px ≥ 640, rond 44 × 44
+  < 640 ; absent sans JS et en mouvement réduit.
+- L4-D2. Clic avec la section ROI à l'écran : widgets `armed` puis `done` de nouveau, valeurs
+  saisies conservées ; `data-replay-generation` + 1 ; `window.scrollY` inchangé (± 1 px) ;
+  le bloc A repart (`data-step` revient au début) ; titres à l'écran rejouent leur arrivée ;
+  le réseau de fond ne reçoit aucune séquence (compteur d'images du réseau inchangé hors
+  défilement).
+- L4-D3. Clic, puis défilement vers le bloc C : carrousel à l'étape 1, visuel de la carte 1
+  rejoué ; section contrôle : frise rejouée.
+- L4-D4. Second clic pendant 1 200 ms : ignoré ; annonce « Animations relancées. ».
+
+**Garde-fous.** Badges « Simulation » / « Exemple fictif » inchangés ; aucun rouge ; le seul
+orange de `/` est la tuile Acquisition ; aucun chiffre ROI sans étiquette ; avertissement
+général visible sans JS.
+
+###### Avancement du Lot 4 (04/10/2026, `frontend-ux`)
+
+> Statut : **implémenté et testé** (tests réellement exécutés, voir ci-dessous) — à auditer par
+> l'utilisateur. Dépendance : `animejs` **4.5.0** figée (MIT, notice dans
+> `THIRD_PARTY_NOTICES.md`), importée seulement sous `components/landing/roi/` (test de garde
+> `components/landing/lot4-guards.test.ts`).
+
+**Fichiers.** Titres : `EditorialTitle.tsx` (`accentFace`, `data-title-word`),
+`editorial-title.ts`, `EditorialTitle.module.css` (géométrie police titre), `globals.css`
+(`.title-accent-plain`), `accent-replay.ts` (`isTap`, `isHoverPointer`, `TITLE_WORD`),
+`AccentReplayController.tsx`, `tech-accent/TechAccent.tsx`. Bloc A : `ecosystem/`
+(`EcosystemBlock.tsx` remplace `EcosystemCard.tsx`, `AppTile.tsx` + `app-tile.module.css`,
+`ecosystem-timeline.ts` avec `restart()`, `ecosystem-geometry.ts`, `ecosystem.module.css`,
+`HeroEcosystem.tsx`). ROI : `LandingResult.tsx`, `roi/` (`roi-model.ts`, `roi-motion.ts` — seul
+importeur d'anime.js —, `use-roi-arrival.ts`, `RoiWidget`, `RoiTag`, `RoiNumber`,
+`RoiSlider`, `RoiSettings`, `SpeedWidget`, `MandatesWidget`, `TimeWidget`,
+`FollowupWidget`, `roi.module.css`). Rejeu : `replay/replay-bus.ts`,
+`replay/ReplayAnimationsButton.tsx` + `replay.module.css`, glyphe `replay`
+(`icons/definitions/utility.tsx`), abonnements dans `Reveal.tsx`, `ControlTimeline.tsx`,
+`ProcessCarousel.tsx` (abonnement seul). Textes : `landing-texts.ts` (`journey.blocks`,
+`roi`, `replay`).
+
+**Mesures réelles (Chromium, 04/10).**
+- Bloc A 1440 : largeurs 600 / 300 / 420, marges hautes 0 / 28 / 12, centré (36 px de chaque
+  côté), haut des blocs à 662 px ; hauteurs **270 / 317,5 / 270 px** (spec ≈ 268 / 307 / 268).
+  1024 : 600 / 288 / 456, grille 912 px ; hauteurs 270 / 335,1 / 270. Parc du curseur :
+  dx 0, dy 20,0 px à 1440 et 1024. Cycle mesuré **23 998 ms** ; 0 `requestAnimationFrame`
+  pendant la boucle.
+- ROI, fin d'arrivée après le passage à 40 % : W1 +1 481 ms, W3 **+1 863 ms**, W2 +1 565 ms,
+  W4 +1 383 ms (critère ≤ 1 900 ms) ; départ à +255–260 ms ; 0 `requestAnimationFrame`
+  pendant 2 s une fois `done` ; rien ne change 10 s après.
+- Police titre (Bricolage 600) : ligne de base à 0,935 em du haut de la boîte de contenu,
+  encre des hampes à 0,216 em, bas de l'encre à 0,95 em ; trait de « main » 0,094 em sous la
+  ligne de base, de −0,02 em à +0,02 em autour de la boîte ; cadre 0,08 em au-dessus des
+  hampes, 0,04 em sous l'encre, débord italique 0. « décide » : largeur lettres séparées
+  183,16 px contre 183,25 px en texte continu ; boîte de ligne ≤ 0,5 px (test vert) ;
+  balayage d'arrivée +766 ms, repos +2 290 ms après l'entrée.
+
+**Écarts à la spec (assumés, à valider).**
+1. Hauteur de « Validation humaine » : 317,5 px (et non ≈ 307) — à 300 px de large, le nom
+   passe sur deux lignes à côté de la pastille « Vous » (dans la hauteur de la tuile) et
+   l'estimation de la spec ne comptait pas le filet + 2 × 12 px entre les groupes. À 288 px
+   (1024), « Vous · Conseiller » passe aussi sur deux lignes (335 px).
+2. Tuiles ROI : `Reveal` existant **en mode mouvement** (`frame="move"` : 12 px, 550 ms,
+   décalage 110 ms) — la spec cite `frame="still"` mais décrit un mouvement (16 px, 560 ms,
+   80 ms) ; aucun nouveau réglage de `Reveal` n'a été créé.
+3. Unités des grands chiffres (« ≈ », « € HT », « h », « % ») à 0,5 em, encre atténuée :
+   sans cela « ≈ 51 000 € HT » en Geist Mono 40 px déborde à 360 px.
+4. Curseur « Heures d'administratif… » : [Hypothèse] (valeur réglable 2 – 10 h, et non une
+   donnée publiée) ; seul son repère « étude : 4 à 6 h » porte [Source] (audit sécurité Lot 4).
+5. Carrousel < 1024 : rembourrage bas de piste gardé à 56 px (et non 32) pour ne pas couper
+   l'étiquette « Vous » du curseur garé.
+6. Ligne de liaison de l'entonnoir W3 sous 640 px : verticale (`scaleY`), la colonne
+   remplaçant la rangée.
+7. Le bouton de rejeu stoppe aussi une glissade en cours du carrousel du bloc C (événement
+   `wheel` que la piste écoute déjà) avant de revenir à l'étape 1.
+8. `data-step` du bloc A après un rejeu hors écran : « final » (état armé, aucun minuteur),
+   puis `0` au retour à l'écran (cycle + 1).
+
+**Tests réellement exécutés (04/10).** `npx tsc --noEmit` : 0 erreur. `npm run lint` :
+0 problème. `npx vitest run --project unit` : 163 fichiers, **1 581 tests verts**. E2E
+(config temporaire sans `globalSetup` — Supabase local arrêté) : `landing-ecosysteme` 13/13,
+`landing-roi` 12/12, `landing-rejeu` 6/6, `typographie-expressive` (site public) 20/20,
+`landing-titre-tech` 5/5, `accueil` 9/10, `landing-sans-boucle` 2/2 (inchangé),
+`landing-agents`, `-controle`, `-final`, `-probleme`, `-reseau`, `-solution` 65/65,
+`icones` / `marque` / `particules` (site public) 7/7. **Non exécutables** ici (connexion à
+l'espace agence ou base requise, Supabase local arrêté) : 1 test d'`accueil` (badge dans
+l'espace agence), les tests connectés d'`icones`, `marque`, `particules`,
+`voiles-lisibilite`, `premier-regard`, `estimation` et la partie « espace connecté » de
+`typographie-expressive` — échec à la connexion (`/connexion`), sans rapport avec la landing.
+
 ## 3. Composants (`components/ui/`)
 
 | Composant | Fichier | États |
@@ -3143,7 +3795,7 @@ image, aucun `requestAnimationFrame`, aucun rouge ni orange.
 | `Card` | `Card.tsx` | En-tête optionnel (titre, description, actions), ton `default` / `inverse`, `headingLevel` 2 ou 3. Les actions (badge, lien court) restent **sur la ligne du titre** à toutes les largeurs ; la description passe dessous, pleine largeur — elle ne repousse jamais un badge sur une ligne à part |
 | `LogoSymbol` | `LogoSymbol.tsx` | Symbole seul, `sm` / `md` / `lg` ; nommé par défaut, silencieux avec `label={null}` ; inversion par `currentColor` (§ 2.7) |
 | `Logo` | `Logo.tsx` | Verrouillage complet (symbole + nom sur deux lignes), `sm` / `md` ; un seul nom accessible (§ 2.7.2) |
-| `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge ; `frame="still"` : le bloc ne bouge pas, seul le déclencheur `data-reveal` sert (titres éditoriaux, § 3.8) |
+| `Reveal` | `Reveal.tsx` | Contenu visible par défaut ; entrée dans la fenêtre avec `rise-soft` ; mouvement réduit et absence d'`IntersectionObserver` pris en charge ; `frame="still"` : le bloc ne bouge pas, seul le déclencheur `data-reveal` sert (titres éditoriaux, § 3.8) ; « Rejouer les animations » (`/` seulement, § 2.11.8.8 L4-D) : retour à `hidden` puis `entering` |
 | `Badge` | `Badge.tsx` | `neutral`, `outline`, `solid`, `solid-light` (même emphase sur fond quasi noir), `dashed` (information absente) |
 | `PipelineStageBadge` | `PipelineStageBadge.tsx` | 7 étapes ; barre de 6 points pour la progression, `perdu` en pointillés, `mandat_signé` en plein noir |
 | `SimulationBadge` | `SimulationBadge.tsx` | Unique, toujours visible, toujours accompagné du mot « Simulation » ; `surface="dark"` (panneau noir de la landing, § 2.11.8.5) : pastille claire, texte encre — défaut `light` inchangé, jamais utilisé dans le CRM |

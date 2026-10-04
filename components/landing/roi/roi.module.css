@@ -1,0 +1,764 @@
+/*
+ * ROI section of the landing (docs/design-system.md §2.11.8.8 L4-B).
+ * Final state by default (server HTML, no JavaScript, reduced motion): every
+ * rule that hides something only exists for `[data-roi-state="armed"]`, set
+ * by JavaScript once hydrated with motion welcome. During `playing`, anime.js
+ * writes the start values inline before the first frame and removes them at
+ * the end (roi-motion.ts): the final state below takes over. Black, white,
+ * grey; cobalt only for the focus ring.
+ */
+
+/* ----------------------------------------------------------------- legend */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 24px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
+/* ------------------------------------------------------------------- grid */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin: 40px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The Reveal wrapper stretches with its cell: tiles of a row share a height. */
+.cell {
+  display: flex;
+  min-width: 0;
+}
+
+.cell > :global(.reveal) {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (40rem <= width < 64rem) {
+  .grid {
+    max-width: 45rem;
+    margin-inline: auto;
+  }
+}
+
+@media (64rem <= width < 80rem) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ≥ 1280: twelve columns; each row pairs a large and a small tile (W1 5 + W3 7, W2 7 + W4 5). */
+@media (width >= 80rem) {
+  .grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .cell[data-span="5"] {
+    grid-column: span 5;
+  }
+
+  .cell[data-span="7"] {
+    grid-column: span 7;
+  }
+}
+
+.disclaimer {
+  margin: 32px auto 0;
+  max-width: 60ch;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-ink-muted);
+}
+
+/* ------------------------------------------------------------------- tile */
+
+.tile {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 24px;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  padding: 24px;
+}
+
+@media (width < 40rem) {
+  .tile {
+    padding: 20px;
+  }
+}
+
+.tileHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kicker {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+}
+
+.title {
+  margin-top: 8px;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.note {
+  margin-top: auto;
+  border-top: 1px solid var(--color-line);
+  padding-top: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-subtle);
+}
+
+/* The note keeps 16 px from the content above it, at the bottom of the tile. */
+.body {
+  padding-bottom: 16px;
+}
+
+/* -------------------------------------------------------------------- tags */
+
+.tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.tag[data-roi-tag="source"] {
+  border-color: var(--color-ink);
+  background-color: var(--color-surface);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.tag[data-roi-tag="hypothesis"] {
+  border-style: dashed;
+  border-color: var(--color-ink-subtle);
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+.tag[data-roi-tag="estimate"] {
+  background-color: var(--color-surface-sunken);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.tag[data-roi-tag="us"] {
+  border-color: var(--color-line-strong);
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+/* A default value that is only a hypothesis: underlined with dots. */
+.hypothesisValue {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--color-ink-subtle);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* ----------------------------------------------------------------- figures */
+
+.figure {
+  margin-top: 20px;
+}
+
+.number {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.numberVisual {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.1em;
+}
+
+.number-main {
+  font-size: 48px;
+  letter-spacing: -0.02em;
+}
+
+@media (width < 40rem) {
+  .number-main {
+    font-size: 40px;
+  }
+}
+
+.number-secondary {
+  font-size: 24px;
+}
+
+.number-inline {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.number-step {
+  font-size: 20px;
+}
+
+/* « ≈ », « € HT », « h », « % »: set smaller, so the figure fits 360 px. */
+.unit {
+  font-size: 0.5em;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--color-ink-muted);
+}
+
+.number-inline .unit,
+.number-step .unit {
+  font-size: 1em;
+}
+
+.number-inline .numberVisual {
+  gap: 0.35em;
+}
+
+/* In a legend, the words around the figure are text, not figures. */
+.number-inline .unit {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.caption {
+  margin-top: 8px;
+  max-width: 32ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
+.scene {
+  margin-top: 20px;
+}
+
+/* ------------------------------------------------------------ W1, bars */
+
+.barRow {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 8px;
+}
+
+.barRow + .barRow {
+  margin-top: 10px;
+}
+
+.barLabel,
+.barRatio {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.barLabel {
+  color: var(--color-ink);
+}
+
+.barRatio {
+  text-align: right;
+  color: var(--color-ink-muted);
+}
+
+.barTrack {
+  position: relative;
+  display: block;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--color-surface-sunken);
+}
+
+.barFast,
+.barSlow {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+.barFast {
+  width: 100%;
+  background-color: var(--color-ink);
+}
+
+/* 1/21 of the track, never under 8 px. */
+.barSlow {
+  width: max(8px, calc(100% / 21));
+  background-color: var(--color-line-strong);
+}
+
+.secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 16px;
+}
+
+.secondaryCaption {
+  flex: 1 1 18rem;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
+/* ------------------------------------------------------------- W2, time */
+
+.timeTrack {
+  position: relative;
+  display: block;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background-color: var(--color-surface-sunken);
+}
+
+.timeTotal,
+.timePart {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+.timeTotal {
+  width: 100%;
+  background-color: var(--color-line-strong);
+}
+
+.timePart {
+  background-color: var(--color-ink);
+}
+
+.timeLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-top: 8px;
+}
+
+.timeLegend .number {
+  color: var(--color-ink-muted);
+}
+
+/* ---------------------------------------------------------- W3, funnel */
+
+.scene[data-roi-scene="funnel"] {
+  position: relative;
+}
+
+.funnel {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The link between the steps: a hairline through their middle. */
+.funnelLine {
+  position: absolute;
+  top: 50%;
+  right: 12.5%;
+  left: 12.5%;
+  height: 1px;
+  background-color: var(--color-line-strong);
+  transform-origin: left center;
+}
+
+.funnelStep {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  background-color: var(--color-surface);
+  padding: 10px 12px;
+}
+
+.funnelStep[data-last] {
+  border-color: var(--color-ink);
+}
+
+.funnelLabel {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+  text-wrap: balance;
+}
+
+@media (width < 40rem) {
+  .funnel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .funnelLine {
+    top: 12px;
+    bottom: 12px;
+    left: 24px;
+    right: auto;
+    width: 1px;
+    height: auto;
+    transform-origin: center top;
+  }
+
+  .funnelStep {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 10px;
+  }
+}
+
+/* ------------------------------------------------------- W4, follow-up */
+
+.contacts {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+}
+
+.contactsLine {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  left: 14px;
+  height: 1px;
+  background-color: var(--color-line-strong);
+  transform-origin: left center;
+}
+
+.contact {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.disc {
+  position: relative;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+}
+
+.discFill {
+  position: absolute;
+  inset: -1px;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background-color: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+
+/* White glyph on the ink disc: the accent too (no cobalt dot here). */
+.discFill :global(svg[data-icon]) [data-part] {
+  color: var(--color-ink-inverse);
+}
+
+.discRing {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid var(--color-ink);
+  border-radius: 999px;
+}
+
+.contactIndex {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--color-ink-muted);
+}
+
+.message {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+
+/* -------------------------------------------------------------- settings */
+
+.settings {
+  display: grid;
+  gap: 4px;
+  margin-top: 20px;
+}
+
+.slider {
+  display: grid;
+}
+
+.sliderHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.sliderLabel {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+
+.sliderValue {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.range {
+  --fill: 50%;
+  width: 100%;
+  height: 44px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range:focus-visible {
+  outline: none;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-ink) var(--fill), var(--color-line-strong) var(--fill));
+}
+
+.range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-ink) var(--fill), var(--color-line-strong) var(--fill));
+}
+
+.range::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  appearance: none;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+.range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+/* Focus of the product: a cobalt ring, 2 px, 2 px away. */
+.range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-accent);
+}
+
+.range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--color-accent);
+}
+
+.range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.benchmark {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: -6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-subtle);
+}
+
+.noScript {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-ink-subtle);
+}
+
+.reset {
+  justify-self: start;
+  min-height: 44px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-ink-muted);
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.reset:hover {
+  color: var(--color-ink);
+}
+
+.reset:focus-visible {
+  border-radius: 6px;
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.fixed {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fixedItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.fixedValue {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.fixedLabel {
+  color: var(--color-ink-muted);
+}
+
+/* ------------------------------------------------------------------ motion */
+
+/* Armed (hydrated, motion welcome, not seen yet): the start of every arrival. */
+.body[data-roi-state="armed"] :is(.barFast, .barSlow, .timeTotal, .timePart, .funnelLine, .contactsLine) {
+  transform: scaleX(0);
+}
+
+.body[data-roi-state="armed"] .secondary {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.body[data-roi-state="armed"] .funnelStep {
+  opacity: 0;
+  transform: translateX(8px);
+}
+
+.body[data-roi-state="armed"] .discFill {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.body[data-roi-state="armed"] .discRing {
+  opacity: 0;
+}
+
+@media (width < 40rem) {
+  .body[data-roi-state="armed"] .funnelLine {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) and (hover: hover) and (pointer: fine) {
+  .range::-webkit-slider-thumb {
+    transition: transform 160ms var(--ease-standard);
+  }
+
+  .range:hover::-webkit-slider-thumb {
+    transform: scale(1.1);
+  }
+
+  .range::-moz-range-thumb {
+    transition: transform 160ms var(--ease-standard);
+  }
+
+  .range:hover::-moz-range-thumb {
+    transform: scale(1.1);
+  }
+}

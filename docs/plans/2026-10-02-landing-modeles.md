@@ -6,6 +6,9 @@ Spécification : `docs/design-system.md` **§ 2.11.8** (2.11.8.1 règles, 2.11.8
 2.11.8.3 bloc A, 2.11.8.4 bloc B, 2.11.8.5 bloc C, 2.11.8.6 critères). Renvois posés dans § 1.1,
 § 2.11, § 2.11.1, § 2.11.2, § 2.11.3, § 2.11.3 bis, § 2.11.5, § 2.11.7.
 
+**Lot 4 (04/10/2026) — implémenté et testé** (`frontend-ux`, 04/10/2026 ; mesures, écarts et tests : `docs/design-system.md` § 2.11.8.8 « Avancement du Lot 4 ») — à auditer par l'utilisateur ; spec `docs/design-system.md` **§ 2.11.8.8** ;
+brief « Lot 4 » en fin de ce document.
+
 **Lot 3 (03/10/2026) — implémenté et testé** (`frontend-ux`, 03/10/2026 ; avancement, mesures et écarts : `docs/design-system.md` § 2.11.8.7 « Avancement ») — à auditer par l'utilisateur : retours de l'audit de l'utilisateur
 (`docs/references/2026-10-02-modeles-mig-striker.md`, section « Retours … (03/10) ») ; spec
 `docs/design-system.md` **§ 2.11.8.7** ; brief en fin de ce document.
@@ -317,3 +320,159 @@ signaler), `THIRD_PARTY_NOTICES.md`.
   mouvement réduit). Mesures réelles (hauteur commune des cartes A, fin réelle de la frise et
   de l'organigramme, largeur des libellés de blocs) et écarts reportés dans
   `docs/design-system.md` § 2.11.8.7, pas corrigés en silence.
+
+---
+
+## Lot 4 — retours de l'utilisateur (04/10) : trois blocs lents, ROI, titres, rejeu
+
+Spécification : `docs/design-system.md` **§ 2.11.8.8** (L4-A à L4-F). Demande **validée**
+(`docs/references/2026-10-02-modeles-mig-striker.md`, « Retours … (04/10) — Lot 4 ») ;
+chiffres : `docs/recherche-roi-agences.md`. Un seul lot, sur l'état actuel de
+`feat/landing-polish`. Pas de push, pas de nouvelle branche, aucune donnée, aucune requête.
+**Une seule dépendance autorisée : `animejs` 4.x** (MIT), version figée.
+
+**Ordre** : L4-T0 (dépendance) → L4-T1 (titres) → L4-T2 (bloc A) → L4-T3 (ROI) → L4-T4
+(rejeu) → tests → captures → mesures reportées au § 2.11.8.8 (« Avancement »).
+
+### L4-T0 — Dépendance
+
+- `npm install animejs@4.5.0 --save-exact` (dernière 4.x vérifiée le 04/10 ; pas de `^`).
+  Section « anime.js » (texte MIT du paquet, à l'identique) dans `THIRD_PARTY_NOTICES.md`.
+  Import **uniquement** sous `components/landing/roi/**` (test de garde : aucun autre fichier
+  n'importe `animejs`).
+
+### L4-T1 — Titres (§ 2.11.8.8 L4-C)
+
+- `components/ui/EditorialTitle.tsx` : prop `accentFace?: "serif" | "title"` (défaut
+  `"serif"`) → classe `title-accent-plain` + `data-accent-face="title"` ; `data-title-word`
+  sur chaque `span` de mot visuel (mot accentué compris) ; `accentOverhangEm` → 0 en police
+  titre (`editorial-title.ts`).
+- `app/globals.css` : classe `title-accent-plain` (`@layer utilities`, après
+  `.title-accent`). Rien d'autre dans ce fichier.
+- `EditorialTitle.module.css` : `--accent-baseline`, `--accent-ink-top`,
+  `--accent-ink-bottom` et décalages du trait / du cadre re-mesurés pour la police titre, sous
+  `[data-accent-face="title"]` (les valeurs serif restent pour `/estimation`).
+- `LandingHero.tsx`, `LandingHeading.tsx`, `LandingFinal.tsx` : `accentFace="title"`.
+- `components/landing/accent-replay.ts` : `isTap`, chemin « toucher » ;
+  `AccentReplayController.tsx` : déclenchement par mot (`[data-title-word]`, réarmement au
+  `pointerleave` du titre) + toucher bref (écouteurs passifs, jamais `preventDefault`) ;
+  attaché dès que le mouvement est autorisé.
+- `components/ui/tech-accent/**` : même déclenchement (survol d'un mot depuis l'extérieur ;
+  toucher bref → balayage seul, jamais `follow` / `drag` au toucher), en réutilisant
+  `accent-replay.ts`.
+- **Ne pas toucher** : `EmptyState`, `/estimation`, les polices chargées (Instrument Serif
+  reste utilisée par le CRM et `/estimation`).
+
+### L4-T2 — Bloc A (§ 2.11.8.8 L4-A)
+
+- `components/landing-texts.ts`, clé `journey` : `cards` → `blocks` (structure et textes
+  exacts du § 2.11.8.8), `pills`, `dots.item`, `srSummary` (3 phrases). `steps` inchangé.
+- `components/landing/ecosystem/` :
+  - `ecosystem-timeline.ts` : `CYCLE_MS = 24000`, `AGENT_CADENCE_MS = 700`,
+    `MISSING_TRACE_AT = 5100`, `CHECKS`, `RINGS`, `CURSOR_MOVES` du tableau ; disposition en
+    blocs → groupes → lignes ; `EcosystemLoop` inchangé dans son principe (`setTimeout`
+    seulement) ;
+  - `EcosystemCard.tsx` → bloc à groupes (ou nouveau `EcosystemBlock.tsx`, l'ancien
+    supprimé) ;
+  - nouveau `AppTile.tsx` (+ `app-tile.module.css`) : tokens `--app-tile-orange|violet|green`
+    **locaux à ce module**, peinture blanche du glyphe, `[data-on-accent]` à la couleur du bas
+    du dégradé ;
+  - `ecosystem-geometry.ts` : parc sous le bloc Validation, 3 / 2 lignes convergentes ;
+  - `ecosystem.module.css` : compositions ≥ 1440 / 1024–1439 / < 1024, durées des coches
+    (400 / 320 / 120 ms), appui 150 + 150 ms, anneau 440 ms ;
+  - `HeroEcosystem.tsx` : 3 points, histoire de la tuile au début de l'anneau, abonnement au
+    rejeu (L4-T4) ;
+  - `CursorYou.tsx`, `ConvergingLines.tsx` : réutilisés **sans modification**.
+- **Interdit dans le bloc A** : anime.js, `requestAnimationFrame`, animation CSS infinie.
+
+### L4-T3 — Section ROI (§ 2.11.8.8 L4-B)
+
+- `components/landing/LandingResult.tsx` : en-tête ROI + légende + grille + avertissement ;
+  garde `section`, `aria-labelledby="result-title"`, `data-living-scene="resultat"` ; retire
+  le cadre pipeline, les encarts et les imports `features/**`.
+- Nouveau `components/landing/roi/` : `roi-model.ts` (**pur** : défauts, bornes, pas,
+  calculs, arrondis, format fr-FR), `RoiWidget.tsx` (tuile), `RoiTag.tsx`, `RoiSlider.tsx`,
+  `RoiNumber.tsx` (nombre animé `aria-hidden` + `sr-only` final), `SpeedWidget.tsx`,
+  `MandatesWidget.tsx`, `TimeWidget.tsx`, `FollowupWidget.tsx`, `use-roi-arrival.ts`
+  (IntersectionObserver ≥ 40 %, + 240 ms, état `armed|playing|done`, mouvement réduit,
+  rejeu), `roi.module.css`. Server Components là où rien ne bouge (en-tête, mentions, cadre de
+  tuile) ; îlots clients pour les nombres, scènes et curseurs.
+- `components/landing-texts.ts` : clé `result` → `roi` (textes exacts du § 2.11.8.8).
+- `Reveal` existant pour l'arrivée des tuiles. Aucune valeur enregistrée, aucune requête.
+
+### L4-T4 — Rejeu global (§ 2.11.8.8 L4-D)
+
+- Nouveaux `components/landing/replay/replay-bus.ts` et
+  `components/landing/replay/ReplayAnimationsButton.tsx` (îlot client, monté dans
+  `app/(marketing)/page.tsx` en dernier contenu de `[data-landing]`, avant
+  `AccentReplayController`).
+- Nouveau glyphe utilitaire `replay` dans `components/icons/definitions/utility.tsx`
+  (`tone: "ink"`, `animated: false`) ; mettre à jour `Icon.test.tsx` / `e2e/icones.spec.ts`
+  s'ils comptent les glyphes.
+- Abonnements (retour à l'état armé, rien d'autre) : `components/ui/Reveal.tsx` (générique),
+  `AccentReplayController` (titres `reveal="load"` : `getAnimations` → `cancel()` /
+  `play()` ; retrait de `data-accent-played`), `TechAccent`, `HeroEcosystem`, îlots des
+  sections problème et agents qui jouent une arrivée, `ControlTimeline`, `ProcessCarousel` /
+  visuels du bloc C (retour **instantané** à l'étape 1), ROI, `SimulationBadge` (cycle
+  unique). **Réseau de fond : aucun abonnement.**
+- Dans `components/landing/process/**` et `components/landing/control/**` : **seulement**
+  l'abonnement au rejeu.
+
+### L4 — ne pas toucher
+
+CRM (`app/(app)/**`, `features/**`), `/estimation`, `components/landing/living/**` (fond :
+« ne pas toucher »), voiles, `components/landing/solution/**` (CSS sous `Reveal` : rien à
+faire), `components/landing/process/**` et `control/**` hors abonnement au rejeu,
+`CursorYou.tsx`, `ConvergingLines.tsx`, `EmptyState`, `e2e/landing-sans-boucle.spec.ts`.
+
+### L4 — tests
+
+- Unitaires (Vitest) :
+  - `ecosystem-timeline.test.ts` : réécrit (cycle 24 000, 15 instants, ordre Acquisition →
+    Validation (2) → Suivi → Validation (1), cases « Vous » cochées après l'arrivée du
+    curseur, « Mandat confirmé » après « Mandat signalé », manquante jamais cochée, pause /
+    reprise, état final = HTML serveur).
+  - `roi-model.test.ts` (nouveau) : défauts (900 / 270 / 10 800 ; 480 / 72 / 5,8 / 3,5 /
+    51 000), bornes (2 030 h / 81 000 € ; ≈ 254 000 €), arrondis, format fr-FR, négociateurs
+    5 → 340 h / 13 500 €.
+  - `accent-replay.test.ts` : `isTap` (10 px, 600 ms, annulation), `touch` accepté.
+  - `replay-bus.test.ts` (nouveau) ; `Reveal.test.tsx` : retour à `hidden` puis `entering`
+    au rejeu.
+  - `EditorialTitle.test.tsx` : `accentFace="title"` → classe et attribut, `data-title-word`
+    sur chaque mot, `serif` par défaut.
+  - `landing-texts.test.ts` : bloc A (`blocks`, 12 / 1 / 3, `srSummary` 3 phrases, libellés
+    ≤ 20) ; « claims no figure » et « no ROI » **hors clé `roi`** ; nouveau test ROI : textes
+    exacts des 4 mentions et de l'avertissement, aucun « garanti » / « vous gagnerez », chaque
+    valeur affichée a un `kind` (`source` | `hypothesis` | `estimate`).
+  - Gardes : `animejs` importé seulement sous `components/landing/roi/**` ; tokens
+    `--app-tile-*` présents dans un seul fichier CSS.
+  - `app/(marketing)/page.test.tsx`, `LandingHero.test.tsx` : verts (adapter les lectures de
+    `journey.cards` / `result`).
+- E2E (Playwright) :
+  - `e2e/landing-ecosysteme.spec.ts` : réécrit selon L4-A1 à L4-A5 (1440 / 1024 / 390 / 360,
+    boucle de 24 s — un cycle complet, délai du test ajusté —, pause, mouvement réduit, sans
+    JS).
+  - `e2e/typographie-expressive.spec.ts` : landing → mot accentué en Bricolage droit (L4-C1,
+    C2) ; `/estimation` et états vides → serif italique (inchangé) ; le test « tactile : un
+    toucher ne rejoue rien » est **remplacé** par L4-C4 ; ajout L4-C3.
+  - `e2e/landing-titre-tech.spec.ts` : police titre (T2 recalé) ; test tactile remplacé par
+    « toucher bref → `sweep`, jamais `follow` / `drag`, la page défile » ; survol d'un autre
+    mot du titre → balayage.
+  - `e2e/accueil.spec.ts` : la garde « aucun % ni € » **exclut `[data-testid='roi']`** ;
+    lectures du bloc A adaptées (3 blocs, 15 cases).
+  - `e2e/landing-roi.spec.ts` (nouveau) : L4-B1 à L4-B5 à 1440 / 1280 / 1024 / 390 / 360,
+    mouvement réduit, sans JS, clavier sur les curseurs, `aria-live`.
+  - `e2e/landing-rejeu.spec.ts` (nouveau) : L4-D1 à L4-D4.
+  - `e2e/landing-sans-boucle.spec.ts` : **inchangé**, vert (bouton fixe immobile ; ROI
+    immobile 5 s après centrage ; anime.js à l'arrêt).
+  - Verts sans changement attendu : `landing-solution`, `landing-controle`, `landing-final`,
+    `landing-agents`, `landing-reseau`, `particules`, `voiles-lisibilite`, `premier-regard`,
+    `estimation`, `icones` (sauf comptage de glyphes).
+- Fini quand : `npm run lint`, `npx tsc --noEmit`, `npx vitest run` et les E2E ci-dessus
+  verts ; captures 1440 / 1024 / 390 / 360 : hero (bloc A au repos, pendant une coche
+  « Vous », état final), section ROI (pendant l'arrivée ≈ 0,6 s, à la fin, après un
+  changement de curseur, mouvement réduit), un titre à effet pendant un rejeu au toucher
+  (390), le bouton de rejeu (≥ 640 et < 640, focus visible). Mesures réelles (largeurs et
+  hauteurs des trois blocs, cycle mesuré, fins réelles des 4 widgets,
+  `requestAnimationFrame` après `done`, géométrie du trait / du cadre en police titre) et
+  écarts reportés dans `docs/design-system.md` § 2.11.8.8, pas corrigés en silence.

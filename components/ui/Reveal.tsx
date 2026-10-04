@@ -1,6 +1,8 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+
+import { onReplay } from "@/components/landing/replay/replay-bus";
 
 type RevealState = "visible" | "hidden" | "entering";
 
@@ -16,6 +18,11 @@ const MAX_INDEX = 5;
  * `frame="still"`: the block itself never moves nor fades; `data-reveal` still
  * goes `hidden` → `entering` and only triggers the editorial title inside it
  * (docs/design-system.md §3.8: one movement per block).
+ *
+ * « Rejouer les animations » (§2.11.8.8 L4-D): on a replay of the landing,
+ * the block goes back to `hidden` at once, then `entering` as soon as it is
+ * in view again (immediately when it already is). Nobody emits the replay
+ * outside `/`, so the CRM and /estimation never see it.
  */
 export function Reveal({
   children,
@@ -28,6 +35,9 @@ export function Reveal({
 }) {
   const elementRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<RevealState>("visible");
+  const [generation, setGeneration] = useState(0);
+
+  useEffect(() => onReplay(() => setGeneration((value) => value + 1)), []);
 
   useLayoutEffect(() => {
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -48,7 +58,7 @@ export function Reveal({
     observer.observe(element);
 
     return () => observer.disconnect();
-  }, []);
+  }, [generation]);
 
   return (
     <div

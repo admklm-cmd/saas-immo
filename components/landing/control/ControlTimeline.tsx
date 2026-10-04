@@ -8,6 +8,7 @@ import { cn } from "@/components/ui/cn";
 import { AgentAppIcon } from "@/features/agents-ia/components/icons/AgentAppIcon";
 
 import { CursorYou } from "../ecosystem/CursorYou";
+import { onReplay } from "../replay/replay-bus";
 import {
   BLOCKS,
   ControlTimelinePlayer,
@@ -68,6 +69,16 @@ export function ControlTimeline() {
   const rootRef = useRef<HTMLDivElement>(null);
   const motion = useMotionWelcome();
   const [snapshot, setSnapshot] = useState<PlayerSnapshot>({ status: "idle", index: null });
+  // « Rejouer les animations » (§2.11.8.8 L4-D): a new generation recreates the player, back to idle.
+  const [generation, setGeneration] = useState(0);
+  useEffect(
+    () =>
+      onReplay(() => {
+        setSnapshot({ status: "idle", index: null });
+        setGeneration((value) => value + 1);
+      }),
+    [],
+  );
 
   useEffect(() => {
     const root = rootRef.current;
@@ -107,7 +118,8 @@ export function ControlTimeline() {
       reduced.removeEventListener?.("change", onReduced);
       player.dispose();
     };
-  }, []);
+    // `generation`: « Rejouer les animations » recreates the player.
+  }, [generation]);
 
   const live = motion && snapshot.status !== "done";
   const frame = live ? frameOf(snapshot) : finalFrame();

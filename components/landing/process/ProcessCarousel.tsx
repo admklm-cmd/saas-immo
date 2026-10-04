@@ -20,6 +20,7 @@ import {
 } from "./process-carousel";
 import { ProcessCard } from "./ProcessCard";
 import styles from "./process.module.css";
+import { onReplay } from "../replay/replay-bus";
 import { useProcessTrack } from "./useProcessTrack";
 import type { VisualState } from "./visuals/VisualFrame";
 
@@ -73,6 +74,8 @@ export function ProcessCarousel() {
   const motion = useMotionWelcome();
   // Armed: motion allowed and the observer available — the first card waits on its first frame.
   const armed = motion && typeof IntersectionObserver !== "undefined";
+  // « Rejouer les animations » (§2.11.8.8 L4-D): back to step 1 at once, drawings armed again.
+  const [generation, setGeneration] = useState(0);
 
   const play = useCallback((index: number) => {
     if (window.matchMedia?.(REDUCED_MOTION).matches) return;
@@ -123,7 +126,26 @@ export function ProcessCarousel() {
     );
     observer.observe(root);
     return () => observer.disconnect();
-  }, [armed, play]);
+  }, [armed, play, generation]);
+
+  useEffect(
+    () =>
+      onReplay(() => {
+        if (!armed) return;
+        for (const timer of timers.current.values()) window.clearTimeout(timer);
+        timers.current.clear();
+        activeRef.current = 0;
+        seen.current = false;
+        setActive(0);
+        setStates(INITIAL_STATES);
+        setAnnouncement("");
+        // A glide in flight stops (the track listens to « wheel » for that), then step 1 at once.
+        trackRef.current?.dispatchEvent(new Event("wheel"));
+        trackRef.current?.scrollTo({ left: 0, behavior: "instant" });
+        setGeneration((value) => value + 1);
+      }),
+    [armed],
+  );
 
   // Pending « done » timers die with the carousel.
   useEffect(() => {

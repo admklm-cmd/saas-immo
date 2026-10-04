@@ -48,6 +48,7 @@ export function LandingHero() {
               reveal="load"
               accentEffect="underline"
               accentReplay
+              accentFace="title"
             />
           </div>
         </div>

@@ -92,3 +92,16 @@ la source… »). Palette : noir / blanc / gris + cobalt, **pas de rouge**. Acce
    - **Tuile 2 — frise multi-pistes** (modèle « Montage multi-format ») : en haut un aperçu (image vidéo dans le modèle — **chez nous : pas d'image**, une mini-fiche de dossier fictif), graduation horizontale (0s…18s → **J0…J9** chez nous), pistes de **blocs gris arrondis** de longueurs variées, une **tête de lecture verticale** avec petit triangle qui avance, des **curseurs étiquetés** (pastille + flèche) qui se déplacent (chez nous : « Léa », « Emma », « Vous »), un bloc **en pointillé coloré** (orange dans le modèle → **cobalt** chez nous) = **validation humaine en attente**.
    - **Garde-fous** : les 6 faits retirés (premier contact validé, mandat confirmé par un humain, consentement vérifié par canal, coupe-circuit, arrêt des relances sur refus/reprise en main, information manquante signalée) **doivent rester visibles** autrement (étiquettes dans la frise, légendes) — règle produit « un écran plus épuré ne justifie jamais la disparition d'un garde-fou ».
    - Badge « Simulation » / « Exemple fictif ». Aucune photo, aucune image ni code du modèle, pas d'orange ni de rouge. Animations à l'arrivée ; la frise peut boucler doucement **seulement si** la spec l'assume (pause hors écran, mouvement réduit = état final) — sinon une fois.
+
+## Retours de l'utilisateur (04/10) — Lot 4
+
+1. **Haut de page (bloc A)** : structure bonne mais **beaucoup trop rapide** → ralentir fortement (≈ ×2 à ×3). Remplacer les 7 cartes par **3 gros blocs rectangulaires**, **tailles variées** (pas monotone), **à peu près alignés mais pas trop** :
+   - **Acquisition** (fusion Léa + Hugo + Emma) ;
+   - **Validation humaine** (premier message + mandat, cochés par « Vous ») ;
+   - **Suivi** (Louis + Sarah).
+   Chaque bloc a un **grand pictogramme** de **notre** famille d'icônes (`components/icons/`), **façon icône d'app Apple** : **tuile à fond coloré, pictogramme blanc** à l'intérieur, **sans le petit point bleu** d'accent. **Couleurs variées** (orange, etc.) **uniquement pour ces icônes** : le reste du site reste **noir et blanc**.
+2. **Section résultat** (« Vous ouvrez l'espace agence. Vous savez par quoi commencer. ») : **supprimer** le widget « Étapes du pipeline » (boutons inutiles) et les encarts dessous. **Nouveau titre** : une phrase sur le **ROI**. En dessous : le **ROI en plusieurs widgets animés** (pertes actuelles et gains possibles, sans les nommer « ROI par perte / par gain » — juste « ROI »), motion soignée. **Chiffres sourcés** : `docs/recherche-roi-agences.md` ; tout chiffre non sourcé est une hypothèse affichée comme telle ; aucune promesse de gain garantie.
+3. **Titres** : **supprimer la police spéciale (italique serif) du mot accentué** : il reprend la typo du titre, **l'effet est conservé**. Les **3 titres à effet** (main, administratif, décide) rejouent leur effet **au survol ou au toucher de n'importe quel mot du titre** (pas seulement le mot accentué), y compris au doigt.
+4. **Bouton « Rejouer les animations »** discret et fixe : relance toutes les animations de la page sans recharger.
+5. **anime.js** (`animejs` 4.x, MIT) **autorisé** pour ces animations. Animations **fluides**.
+6. **Fond** : ne pas toucher (sera retravaillé plus tard avec l'utilisateur).

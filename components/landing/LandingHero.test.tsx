@@ -64,7 +64,7 @@ describe("LandingHero without JavaScript (server HTML)", () => {
     expect(Array.from(figure.querySelectorAll("a")).map((link) => link.getAttribute("href"))).toEqual(["/estimation"]);
   });
 
-  it("renders block A in its final state (A2): 12 of 13 agent lines checked, Motivation dashed, 3 « you » boxes, 2 full pills, still cursor on the mandate", () => {
+  it("renders block A in its final state (A2): 12 of 13 agent lines checked, Motivation dashed, 3 « you » boxes, the « Vous » pill full, still cursor on « Mandat confirmé »", () => {
     const figure = container.querySelector<HTMLElement>("[data-testid='hero-ecosystem']")!;
     expect(figure.getAttribute("data-loop")).toBe("allowed");
     expect(figure.getAttribute("data-step")).toBe("final");
@@ -78,24 +78,27 @@ describe("LandingHero without JavaScript (server HTML)", () => {
       { by: "you", checked: true },
       { by: "you", checked: true },
     ]);
-    expect(figure.querySelectorAll("[data-pill='you'][data-full]")).toHaveLength(2);
-    expect(figure.querySelectorAll("[data-card][data-active]")).toHaveLength(0);
+    expect(figure.querySelectorAll("[data-pill='you'][data-full]")).toHaveLength(1);
+    expect(figure.querySelectorAll("[data-block]")).toHaveLength(3);
+    expect(figure.querySelectorAll("[data-block][data-active]")).toHaveLength(0);
+    expect(figure.querySelectorAll("[data-app-tile]")).toHaveLength(3);
     const still = figure.querySelector("[data-testid='ecosystem-cursor-still']")!;
-    expect(still.closest("[data-card]")?.getAttribute("data-card")).toBe("mandate");
+    expect(still.closest("[data-block]")?.getAttribute("data-block")).toBe("validation");
+    expect(still.closest("[data-case]")?.getAttribute("data-case")).toBe("1:1:0");
     expect(still.textContent).toBe(JOURNEY.cursor);
     // No live cursor, no line before the first measure.
     expect(figure.querySelector("[data-testid='ecosystem-cursor']")).toBeNull();
   });
 
-  it("draws the cards in an aria-hidden layer and reads the final state from a static list", () => {
+  it("draws the blocks in an aria-hidden layer and reads the final state from a static list", () => {
     const figure = container.querySelector<HTMLElement>("[data-testid='hero-ecosystem']")!;
     expect(figure.getAttribute("aria-labelledby")).toBe("hero-ecosystem-title");
     expect(container.querySelector("#hero-ecosystem-title")?.textContent).toBe(JOURNEY.title);
-    for (const card of figure.querySelectorAll("[data-card]")) expect(card.closest("[aria-hidden='true']")).not.toBeNull();
+    for (const block of figure.querySelectorAll("[data-block]")) expect(block.closest("[aria-hidden='true']")).not.toBeNull();
     const summary = Array.from(figure.querySelectorAll("[data-testid='ecosystem-summary'] li")).map((item) => item.textContent);
     expect(summary).toEqual([...JOURNEY.srSummary]);
     const dots = Array.from(figure.querySelectorAll("button")).map((button) => button.getAttribute("aria-label"));
-    expect(dots).toEqual(JOURNEY.cards.map((card, index) => `Étape ${index + 1} sur 7 : ${card.name}`));
+    expect(dots).toEqual(JOURNEY.blocks.map((block, index) => `Bloc ${index + 1} sur 3 : ${block.name}`));
   });
 
   it("shows no figure, percentage or price", () => {
@@ -152,7 +155,7 @@ describe("LandingHero in the browser: block A loop", () => {
     expect(screen.queryByTestId("ecosystem-cursor")).toBeNull();
   });
 
-  it("plays in a loop on screen: reset, agents, then you; cycle 2 at 9.8 s", () => {
+  it("plays in a loop on screen: reset, agents, then you; cycle 2 at 24 s", () => {
     mockMotion(false);
     const io = mockIntersection();
     render(<LandingHero />);
@@ -165,7 +168,7 @@ describe("LandingHero in the browser: block A loop", () => {
     expect(boxes(figure()).filter((box) => box.checked)).toHaveLength(0);
     advance(3_000);
     const at3s = boxes(figure());
-    expect(at3s.filter((box) => box.by === "agent" && box.checked)).toHaveLength(7);
+    expect(at3s.filter((box) => box.by === "agent" && box.checked)).toHaveLength(3);
     expect(at3s.filter((box) => box.by === "you" && box.checked)).toHaveLength(0);
     advance(CYCLE_MS - 3_000);
     expect(figure().getAttribute("data-loop-cycles")).toBe("2");

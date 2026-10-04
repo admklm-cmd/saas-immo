@@ -1,15 +1,19 @@
 /*
  * Block A of the hero — « Vous » in the ecosystem of the agents
- * (docs/design-system.md §2.11.8.3). Final state by default: every rule that
- * hides or moves something only exists for a state set by JavaScript
- * (`data-checked="false"`, `data-active`, `data-pressed`). Transitions only
- * (`transform`, `opacity`), never an infinite animation; none at all under
- * reduced motion.
+ * (docs/design-system.md §2.11.8.8 L4-A, which replaces §2.11.8.3 / L3-A).
+ * Final state by default: every rule that hides or moves something only
+ * exists for a state set by JavaScript (`data-checked="false"`,
+ * `data-active`, `data-pressed`). Transitions only (`transform`, `opacity`),
+ * never an infinite animation; none at all under reduced motion.
  *
- * Layouts (§2.11.8.7 L3-A, ordered): ≥ 1440 px one row of seven cards of
- * 186 px; 1024–1439 two regular rows (4 + 3, the second centred) on a grid of
- * eight half-columns; < 1024 a native horizontal carousel (scroll-snap) with
- * dots. Every card of a layout has the same height, its content set at the top.
+ * Layouts: ≥ 1440 px one row of three blocks of different widths (600 / 300 /
+ * 420, tops 0 / 28 / 12: aligned, not too much); 1024–1439 a grid of 912 px
+ * (600 + 288), Validation on the right over two rows, Suivi (456) under
+ * Acquisition, set to the right; < 1024 a native horizontal carousel
+ * (scroll-snap) of three slides with dots. Natural heights everywhere.
+ *
+ * The cursor rules (`.cursor*`) are shared with `CursorYou` in blocks C and
+ * control: unchanged; block A's slower press is scoped under `.figure`.
  */
 
 .figure {
@@ -32,45 +36,63 @@
   margin-top: 24px;
 }
 
-/* Wide layouts: the rows are centred, nothing sits under their edges. */
 .viewport {
   padding-block: 8px 24px;
 }
 
-/* DOM order = Léa, Hugo, Emma, Validation, Louis, Sarah, Mandat: the order of the checks. */
+/* DOM order = Acquisition, Validation humaine, Suivi: the reading order. */
 .track {
   position: relative;
   display: grid;
   justify-content: center;
-  align-items: stretch;
+  align-items: start;
 }
 
-/* ≥ 1440: one row, 7 × 186 + 6 × 12 = 1 374 px; same top, same height. */
+/* ≥ 1440: one row, 600 + 300 + 420 + 2 × 24 = 1 368 px, centred; soft alignment. */
 @media (width >= 90rem) {
   .track {
-    grid-template-columns: repeat(7, 186px);
-    gap: 12px;
+    grid-template-columns: 600px 300px 420px;
+    column-gap: 24px;
+  }
+
+  .block[data-block="validation"] {
+    margin-top: 28px;
+  }
+
+  .block[data-block="suivi"] {
+    margin-top: 12px;
   }
 }
 
-/* 1024–1439: eight half-columns of 100 px, each card on two; row 2 centred under row 1. */
+/* 1024–1439: 600 + 24 + 288 = 912 px; Validation on the right over both rows; Suivi under Acquisition, set right. */
 @media (64rem <= width < 90rem) {
   .track {
-    grid-template-columns: repeat(8, 100px);
-    grid-auto-rows: 1fr;
-    gap: 16px;
+    grid-template-columns: 600px 288px;
+    column-gap: 24px;
+    row-gap: 20px;
   }
 
-  .card {
-    grid-column: span 2;
+  .block[data-block="acquisition"] {
+    grid-column: 1;
+    grid-row: 1;
   }
 
-  .card[data-card="louis"] {
-    grid-column: 2 / span 2;
+  .block[data-block="validation"] {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: start;
+    margin-top: 28px;
+  }
+
+  .block[data-block="suivi"] {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+    width: 456px;
   }
 }
 
-/* < 1024: a carousel, one card per slide, the next one peeking out. */
+/* < 1024: a carousel, one block per slide, the next one peeking out. */
 @media (width < 64rem) {
   .viewport {
     padding-block: 0;
@@ -81,13 +103,14 @@
   .track {
     display: flex;
     justify-content: flex-start;
+    align-items: flex-start;
     gap: 12px;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
-    /* Bottom: room for the parked cursor and its label, 20 px under the cards (L3-A). */
+    /* Bottom: room for the parked cursor and its label, 20 px under the Validation block. */
     padding: 8px 24px 56px;
     scroll-padding-inline: 24px;
   }
@@ -96,39 +119,44 @@
     display: none;
   }
 
-  .card {
+  .block {
     flex: none;
-    width: min(264px, 76vw);
+    width: min(340px, 86vw);
     scroll-snap-align: center;
   }
 }
 
 @media (40rem <= width < 64rem) {
-  .card {
-    width: 240px;
+  .block {
+    width: 360px;
   }
 }
 
-/* -------------------------------------------------------------------- card */
+/* ------------------------------------------------------------------- block */
 
-.card {
+.block {
   position: relative;
   border: 1px solid var(--color-line);
-  border-radius: var(--radius-xl);
+  border-radius: 28px;
   background-color: var(--color-surface);
   box-shadow: var(--shadow-raised);
-  padding: 8px;
+  padding: 20px;
 }
 
-/* A human step: a second contour — the shape says « human » (§1.1). */
-.card[data-nature="human"],
-.card[data-nature="outcome"] {
+@media (width < 64rem) {
+  .block {
+    padding: 16px;
+  }
+}
+
+/* The human block: a second contour — the shape says « human » (§1.1). */
+.block[data-nature="human"] {
   outline: 1px solid var(--color-ink);
   outline-offset: 3px;
 }
 
-/* The card being worked on: a cobalt ring over the border. */
-.card::after {
+/* The block being worked on: a cobalt ring over the border. */
+.block::after {
   content: "";
   position: absolute;
   inset: -1px;
@@ -138,52 +166,41 @@
   pointer-events: none;
 }
 
-.card[data-active]::after {
+.block[data-active]::after {
   opacity: 1;
 }
 
-.cardHead {
+.blockHead {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 2px 8px;
+  gap: 14px;
 }
 
-.cardName {
+.blockName {
   display: grid;
   min-width: 0;
   flex: 1;
+  gap: 2px;
+}
+
+.blockTitle {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
   line-height: 1.25;
-}
-
-.cardTitle {
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 500;
   color: var(--color-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.cardMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.cardRole {
-  overflow: hidden;
-  font-size: 12px;
+.blockMembers {
+  font-size: 13px;
+  line-height: 1.35;
   color: var(--color-ink-subtle);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .pill {
   display: inline-flex;
   flex: none;
+  align-self: flex-start;
   align-items: center;
   gap: 6px;
   border-radius: 999px;
@@ -204,7 +221,7 @@
   color: var(--color-ink);
 }
 
-/* The round box of the pill: full when every line of the card is yours. */
+/* The round box of the pill: full when the three « Vous » lines are checked. */
 .pillDot {
   position: relative;
   width: 10px;
@@ -223,6 +240,59 @@
 
 .pillYou:not([data-full]) .pillDot::after {
   opacity: 0;
+}
+
+/* ------------------------------------------------------------------ groups */
+
+.groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+/* ≥ 1024, agents blocks: groups side by side, equal columns. */
+@media (width >= 64rem) {
+  .block[data-nature="agents"] .groups {
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 12px;
+  }
+}
+
+/* The human block: groups stacked, a 1 px rule with 12 px on each side. */
+.block[data-nature="human"] .groups {
+  gap: 0;
+}
+
+.block[data-nature="human"] .group + .group {
+  margin-top: 12px;
+  border-top: 1px solid var(--color-line);
+  padding-top: 12px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  margin-bottom: 8px;
+}
+
+.groupAgent {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--color-ink);
+}
+
+.groupLabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
 }
 
 /* ------------------------------------------------------------------- lines */
@@ -516,46 +586,54 @@
 /* ------------------------------------------------------------------ motion */
 
 @media (prefers-reduced-motion: no-preference) {
-  .card::after {
-    transition: opacity var(--duration-base) var(--ease-standard);
+  /* The active ring fades in and out in 440 ms. */
+  .block::after {
+    transition: opacity 440ms var(--ease-standard);
   }
 
-  /* Checked: the fill grows in (200 ms), then the check is traced (160 ms, +60 ms). */
+  /* Checked: the fill grows in (400 ms), then the check is traced (320 ms, + 120 ms). */
   .boxFill {
     transition:
-      opacity 200ms var(--ease-emphasis),
-      transform 200ms var(--ease-emphasis);
+      opacity 400ms var(--ease-emphasis),
+      transform 400ms var(--ease-emphasis);
   }
 
   .checkMark path {
-    transition: stroke-dashoffset 160ms var(--ease-standard) 60ms;
+    transition: stroke-dashoffset 320ms var(--ease-standard) 120ms;
   }
 
-  /* The reset: every check fades out together (240 ms). */
+  /* The reset: every check fades out together (600 ms). */
   .box[data-checked="false"] .boxFill {
     transition:
-      opacity 240ms var(--ease-exit),
-      transform 240ms var(--ease-exit);
+      opacity 600ms var(--ease-exit),
+      transform 600ms var(--ease-exit);
   }
 
   .box[data-checked="false"] .checkMark path {
     transition: none;
   }
 
+  /* « Motivation »: its dashed box is traced in 400 ms. */
   .box[data-check="missing"]::before {
-    transition: opacity 200ms var(--ease-standard);
+    transition: opacity 400ms var(--ease-standard);
   }
 
   .box[data-pressed] {
     transform: scale(0.92);
   }
 
+  /* The press of a click: 150 ms down, 150 ms back up. */
   .box {
+    transition: transform 150ms var(--ease-standard);
+  }
+
+  /* Shared cursor (blocks C, control): unchanged 60 ms; block A presses in 150 ms. */
+  .cursorBody {
     transition: transform 60ms var(--ease-standard);
   }
 
-  .cursorBody {
-    transition: transform 60ms var(--ease-standard);
+  .figure .cursorBody {
+    transition: transform 150ms var(--ease-standard);
   }
 
   .pillDot::after {

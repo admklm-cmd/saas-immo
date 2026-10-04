@@ -71,6 +71,7 @@ export function LandingHeading({
           reveal="in-view"
           accentEffect={accentEffect}
           accentReplay={accentReplay}
+          accentFace="title"
           tone={tone}
           align={align}
         />

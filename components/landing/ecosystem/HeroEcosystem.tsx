@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { ButtonLink } from "@/components/ui/ButtonLink";
@@ -8,9 +8,11 @@ import { SimulationBadge } from "@/components/ui/SimulationBadge";
 
 import { ConvergingLines, type ConvergingColumn } from "./ConvergingLines";
 import { CursorYou } from "./CursorYou";
-import { EcosystemCard, type EcosystemCardTexts } from "./EcosystemCard";
+import { EcosystemBlock, type EcosystemBlockTexts } from "./EcosystemBlock";
+import { onReplay } from "../replay/replay-bus";
 import { convergingGeometry, cursorPoint } from "./ecosystem-geometry";
 import {
+  CURSOR_MOVES,
   EcosystemLoop,
   STEP_TIMES,
   checkKey,
@@ -22,7 +24,9 @@ import {
 import styles from "./ecosystem.module.css";
 
 const TEXTS = LANDING_TEXTS.journey;
-const CARDS: readonly EcosystemCardTexts[] = TEXTS.cards;
+const BLOCKS: readonly EcosystemBlockTexts[] = TEXTS.blocks;
+/** Where the still cursor of the server HTML sits: the last move of the cycle (« Mandat confirmé »). */
+const STILL_AT = CURSOR_MOVES.at(-1)?.target;
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
 /** Wide layouts (rows of columns, converging lines); below, a carousel with dots. */
 const WIDE = "(min-width: 64rem)";
@@ -46,13 +50,14 @@ function useMotionWelcome(): boolean {
 }
 
 /**
- * Block A of the hero (docs/design-system.md §2.11.8.3, ordered by §2.11.8.7
- * L3-A: one row of seven cards ≥ 1440, two regular rows 1024–1439): five agents check
- * their own work, then the « Vous » cursor — the advisor — checks the two
- * human decisions (first message, mandate). Labelled « Exemple fictif —
- * simulation »; it reads no real data and claims no activity.
+ * Block A of the hero (docs/design-system.md §2.11.8.8 L4-A): three blocks —
+ * Acquisition (Léa, Hugo, Emma), Validation humaine, Suivi (Louis, Sarah) —
+ * each marked by an app tile. The agents check their own work; the « Vous »
+ * cursor — the advisor — checks the first message, then, once Sarah has
+ * flagged it, confirms the mandate. Labelled « Exemple fictif — simulation »;
+ * it reads no real data and claims no activity.
  *
- * The ONLY loop of the landing (decision of the user): 9.8 s cycles driven by
+ * The ONLY loop of the landing (decision of the user): 24 s cycles driven by
  * one timer (`EcosystemLoop`), CSS transitions for the motion, never
  * `requestAnimationFrame`, never an infinite CSS animation. Paused off screen
  * (< 25 %) and in a hidden tab; still on its final state under reduced motion.
@@ -103,6 +108,8 @@ export function HeroEcosystem() {
       setLoop,
     );
     engine.setReduced(Boolean(reduced?.matches));
+    // « Rejouer les animations » (L4-D): the cycle restarts at t = 0, now if on screen, else on return.
+    const offReplay = onReplay(() => engine.restart());
     engine.setPageVisible(document.visibilityState !== "hidden");
     const observer =
       "IntersectionObserver" in window
@@ -120,6 +127,7 @@ export function HeroEcosystem() {
     document.addEventListener("visibilitychange", onVisibility);
     reduced?.addEventListener?.("change", onReduced);
     return () => {
+      offReplay();
       observer?.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
       reduced?.removeEventListener?.("change", onReduced);
@@ -162,14 +170,14 @@ export function HeroEcosystem() {
     return () => observer?.disconnect();
   }, [placeCursor, motion]);
 
-  /** Carousel (< 1024 px): the dot of the card nearest to the centre of the track. */
+  /** Carousel (< 1024 px): the dot of the block nearest to the centre of the track. */
   const onTrackScroll = useCallback(() => {
     const track = trackRef.current;
     if (!track || window.matchMedia?.(WIDE).matches) return;
     const centre = track.scrollLeft + track.clientWidth / 2;
     let best = 0;
     let bestDistance = Infinity;
-    Array.from(track.querySelectorAll<HTMLElement>("[data-card]")).forEach((card, index) => {
+    Array.from(track.querySelectorAll<HTMLElement>("[data-block]")).forEach((card, index) => {
       const distance = Math.abs(card.offsetLeft + card.offsetWidth / 2 - centre);
       if (distance < bestDistance) {
         bestDistance = distance;
@@ -181,22 +189,13 @@ export function HeroEcosystem() {
 
   const goTo = useCallback((index: number) => {
     const track = trackRef.current;
-    const card = track?.querySelectorAll<HTMLElement>("[data-card]")[index];
+    const card = track?.querySelectorAll<HTMLElement>("[data-block]")[index];
     if (!track || !card) return;
     const still = window.matchMedia?.(REDUCED_MOTION).matches;
     track.scrollTo({ left: card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2, behavior: still ? "auto" : "smooth" });
     setActiveDot(index);
   }, []);
 
-  const card = (index: number, still = false) => {
-    const texts = CARDS[index];
-    if (!texts) return null;
-    return (
-      <EcosystemCard card={texts} index={index} frame={frame} pressedKey={pressedKey}>
-        {still ? <CursorYou label={TEXTS.cursor} className={styles.cursorStill} testId="ecosystem-cursor-still" /> : null}
-      </EcosystemCard>
-    );
-  };
 
   return (
     <figure
@@ -224,9 +223,17 @@ export function HeroEcosystem() {
       <div ref={stageRef} className={styles.stage}>
         <div className={styles.viewport} aria-hidden="true">
           <div ref={trackRef} className={styles.track} onScroll={onTrackScroll} data-testid="ecosystem-track">
-            {/* DOM order = reading order = order of the checks (§2.11.8.7 L3-A); the grid places them. */}
-            {CARDS.map((entry, index) => (
-              <Fragment key={entry.key}>{card(index, index === CARDS.length - 1)}</Fragment>
+            {/* DOM order = reading order (Acquisition, Validation humaine, Suivi); the grid places them. */}
+            {BLOCKS.map((entry, index) => (
+              <EcosystemBlock
+                key={entry.key}
+                block={entry}
+                index={index}
+                frame={frame}
+                pressedKey={pressedKey}
+                stillAt={STILL_AT === "park" ? undefined : STILL_AT}
+                stillCursor={<CursorYou label={TEXTS.cursor} className={styles.cursorStill} testId="ecosystem-cursor-still" />}
+              />
             ))}
             {motion ? <CursorYou ref={cursorRef} label={TEXTS.cursor} pressed={frame.pressed} className={styles.cursorLive} testId="ecosystem-cursor" /> : null}
           </div>
@@ -235,7 +242,7 @@ export function HeroEcosystem() {
         <ConvergingLines columns={lines?.columns ?? []} target={lines?.target ?? null} />
 
         <div className={styles.dots} role="group" aria-label={TEXTS.dots.label}>
-          {CARDS.map((entry, index) => (
+          {BLOCKS.map((entry, index) => (
             <button
               key={entry.key}
               type="button"

@@ -96,6 +96,7 @@ async function accents(page: Page) {
         weight: Number(style.fontWeight),
         display: style.display,
         insideEmptyState: node.closest("[data-testid='empty-state-title']") !== null,
+        ratio: parseFloat(style.fontSize) / parseFloat(getComputedStyle((node.closest("[data-title-line]") ?? node.parentElement) as Element).fontSize),
       };
     }),
   );
@@ -210,7 +211,7 @@ function expectAllFinal(states: Awaited<ReturnType<typeof titleStates>>, label: 
 }
 
 test.describe("site public", () => {
-  test("titres en Bricolage 600, mot accentué en Instrument Serif italique, un seul h1, aucune requête vers Google", async ({
+  test("titres en Bricolage 600 ; mot accentué dans la police du titre sur « / », en Instrument Serif italique sur /estimation ; un seul h1, aucune requête vers Google", async ({
     page,
   }) => {
     const fontRequests: string[] = [];
@@ -238,10 +239,23 @@ test.describe("site public", () => {
       }
 
       for (const accent of await accents(page)) {
-        expect(accent.family.split(",")[0], `${path}: « ${accent.text} »`).toMatch(/Instrument Serif/);
-        expect(accent.fontStyle).toBe("italic");
-        expect(accent.weight).toBe(400);
+        if (path === "/") {
+          // L4-C1: the face of the title — Bricolage Grotesque, upright, 600, the size of the title.
+          expect(accent.family.split(",")[0], `${path}: « ${accent.text} »`).toMatch(/Bricolage/);
+          expect(accent.fontStyle).toBe("normal");
+          expect(accent.weight).toBe(600);
+          expect(accent.ratio, `${path}: « ${accent.text} » size ratio`).toBeGreaterThanOrEqual(0.995);
+          expect(accent.ratio).toBeLessThanOrEqual(1.005);
+        } else {
+          expect(accent.family.split(",")[0], `${path}: « ${accent.text} »`).toMatch(/Instrument Serif/);
+          expect(accent.fontStyle).toBe("italic");
+          expect(accent.weight).toBe(400);
+        }
         expect(accent.display).toBe("inline");
+      }
+      if (path === "/") {
+        await expect(page.locator("[data-accent-face='title']")).toHaveCount(7);
+        await expect(page.locator(".title-accent")).toHaveCount(7);
       }
 
       const overlines = await page.getByTestId("overline").evaluateAll((nodes) =>
@@ -304,7 +318,7 @@ test.describe("site public", () => {
       const colours = await title.locator("[data-title-line], .title-accent").evaluateAll((nodes) => nodes.map((node) => getComputedStyle(node).color));
       expect(new Set(colours)).toEqual(new Set(["rgb(250, 250, 250)"]));
       const accent = await title.locator(".title-accent").evaluate((node) => getComputedStyle(node).fontFamily);
-      expect(accent.split(",")[0]).toMatch(/Instrument Serif/);
+      expect(accent.split(",")[0]).toMatch(/Bricolage/);
     }
   });
 
@@ -708,8 +722,33 @@ test.describe("rejeu au survol (§2.11.2 D, critère 6 bis)", () => {
     await context.close();
   });
 
-  test("tactile (390 × 844, pointeur grossier) : un toucher ne rejoue rien", async ({ browser }) => {
-    test.setTimeout(90_000);
+  test("souris : entrer sur le PREMIER mot de chaque titre à effet rejoue ; d'un mot à l'autre, rien (L4-C3)", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1440, height: HEIGHT });
+    await open(page, "/");
+    for (const [selector, effect] of EFFECT_TITLES) {
+      const title = page.locator(selector);
+      await leaveTitles(page);
+      await title.scrollIntoViewIfNeeded();
+      await waitForRest(page, selector);
+      if (effect === "tech") await page.waitForTimeout(2_600); // the arrival sweep of « décide » (760 ms + 1.6 s)
+      const before = await replays(page, selector);
+      const words = title.locator("[data-title-word]");
+      const first = (await words.first().boundingBox())!;
+      await page.mouse.move(first.x + first.width / 2, first.y + first.height / 2);
+      await expect.poll(() => replays(page, selector), { message: `${selector}: first word` }).toBe(before + 1);
+      // Word to word inside the title: no other replay.
+      const second = (await words.nth(1).boundingBox())!;
+      await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2, { steps: 4 });
+      await page.waitForTimeout(150);
+      expect(await replays(page, selector), `${selector}: second word`).toBe(before + 1);
+      await leaveTitles(page);
+      await page.waitForTimeout(2_600);
+    }
+  });
+
+  test("toucher bref (390 × 844, pointeur grossier) : un mot quelconque rejoue l'effet ; un glisser de 200 px défile et ne rejoue rien (L4-C4)", async ({ browser }) => {
+    test.setTimeout(120_000);
     const context = await browser.newContext({
       reducedMotion: "no-preference",
       viewport: { width: 390, height: 844 },
@@ -719,14 +758,35 @@ test.describe("rejeu au survol (§2.11.2 D, critère 6 bis)", () => {
     const page = await context.newPage();
     await open(page, "/");
     expect(await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches)).toBe(false);
-    for (const [selector] of EFFECT_TITLES) {
-      await page.locator(selector).scrollIntoViewIfNeeded();
+    const cdp = await context.newCDPSession(page);
+    for (const [selector, effect] of EFFECT_TITLES) {
+      const title = page.locator(selector);
+      await title.scrollIntoViewIfNeeded();
       await waitForRest(page, selector);
-      const box = (await page.locator(`${selector} [data-accent]`).boundingBox())!;
+      if (effect === "tech") await page.waitForTimeout(2_600);
+      // A word that is NOT the accented one: the last visual word.
+      const word = title.locator("[data-title-word]:not([data-accent])").last();
+      const box = (await word.boundingBox())!;
+      const before = await replays(page, selector);
       await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
-      await page.waitForTimeout(150);
-      expect(await replays(page, selector), selector).toBe(0);
-      expect(await runningAnimations(page, selector), selector).toBe(0);
+      await expect.poll(() => replays(page, selector), { message: `${selector}: tap` }).toBe(before + 1);
+      await page.waitForTimeout(2_600);
+
+      // A vertical drag of 200 px started on a word: the page scrolls, nothing replays.
+      const again = (await word.boundingBox())!;
+      const x = again.x + again.width / 2;
+      const y = Math.min(again.y + again.height / 2, 800);
+      const scrollBefore = await page.evaluate(() => window.scrollY);
+      const count = await replays(page, selector);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (let step = 1; step <= 10; step++) {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y - step * 20 }] });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await page.waitForTimeout(400);
+      const scrollAfter = await page.evaluate(() => window.scrollY);
+      expect(scrollAfter - scrollBefore, `${selector}: the page scrolled`).toBeGreaterThan(50);
+      expect(await replays(page, selector), `${selector}: no replay on a drag`).toBe(count);
     }
     await context.close();
   });

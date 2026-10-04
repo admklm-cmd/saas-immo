@@ -4,12 +4,20 @@
  * Kept apart from `components/texts.ts` so the landing can evolve without
  * touching the application texts. Every statement here must stay TRUE for the
  * prototype: no client, testimonial, price, percentage or result is invented
- * (see `components/landing-texts.test.ts`, which fails on any of them).
+ * (see `components/landing-texts.test.ts`, which fails on any of them). The
+ * one exception is the `roi` key: sourced figures and editable hypotheses,
+ * each tagged, never a promise (docs/design-system.md §2.11.8.8 L4-B).
  */
 export const LANDING_TEXTS = {
   actions: {
     estimation: "Demander une estimation",
     signIn: "Espace agence",
+  },
+
+  /** « Rejouer les animations » (docs/design-system.md §2.11.8.8 L4-D): fixed button, polite announcement. */
+  replay: {
+    label: "Rejouer les animations",
+    done: "Animations relancées.",
   },
 
   hero: {
@@ -49,91 +57,102 @@ export const LANDING_TEXTS = {
       { actor: "Mandat", role: "Conseiller", action: "Signature confirmée par un humain", kind: "human" },
     ],
     /**
-     * Block A of the hero (docs/design-system.md §2.11.8.3): one card per
-     * agent, plus the two human steps. `by` says who checks a line: an agent,
-     * YOU (the « Vous » cursor, never an agent), or nobody (`missing`: the
-     * information is flagged, never invented). Labels ≤ 20 characters.
+     * Block A of the hero (docs/design-system.md §2.11.8.8 L4-A): three
+     * blocks — Acquisition (Léa, Hugo, Emma), Validation humaine (you),
+     * Suivi (Louis, Sarah) — each marked by an app tile (glyph, tone). An
+     * agents block holds one group per agent; the human block one group per
+     * decision (`label`). `by` says who checks a line: an agent, YOU (the
+     * « Vous » cursor, never an agent), or nobody (`missing`: the information
+     * is flagged, never invented). Same 16 lines as before: 12 agent boxes,
+     * 1 missing, 3 « Vous ». Labels ≤ 20 characters. DOM order = reading order.
      */
-    cards: [
+    blocks: [
       {
-        key: "lea",
-        name: "Léa",
-        role: "Acquisition",
-        nature: "agent",
-        glyph: "lea",
-        lines: [
-          { icon: "search", label: "Source vérifiée", by: "agent" },
-          { icon: "merge", label: "Doublon écarté", by: "agent" },
-          { icon: "contacts", label: "Fiche créée", by: "agent" },
+        key: "acquisition",
+        name: "Acquisition",
+        members: "Léa · Hugo · Emma",
+        nature: "agents",
+        glyph: "leads",
+        tone: "orange",
+        groups: [
+          {
+            agent: "Léa",
+            glyph: "lea",
+            lines: [
+              { icon: "search", label: "Source vérifiée", by: "agent" },
+              { icon: "merge", label: "Doublon écarté", by: "agent" },
+              { icon: "contacts", label: "Fiche créée", by: "agent" },
+            ],
+          },
+          {
+            agent: "Hugo",
+            glyph: "hugo",
+            lines: [
+              { icon: "deal", label: "Bien et secteur", by: "agent" },
+              { icon: "clock", label: "Délai du projet", by: "agent" },
+              { icon: "question", label: "Motivation", by: "missing", detail: "à demander" },
+            ],
+          },
+          {
+            agent: "Emma",
+            glyph: "emma",
+            lines: [
+              { icon: "email", label: "Consentement", by: "agent" },
+              { icon: "messages", label: "Message préparé", by: "agent" },
+            ],
+          },
         ],
       },
       {
-        key: "hugo",
-        name: "Hugo",
-        role: "Qualification",
-        nature: "agent",
-        glyph: "hugo",
-        lines: [
-          { icon: "deal", label: "Bien et secteur", by: "agent" },
-          { icon: "clock", label: "Délai du projet", by: "agent" },
-          { icon: "question", label: "Motivation", by: "missing", detail: "à demander" },
-        ],
-      },
-      {
-        key: "emma",
-        name: "Emma",
-        role: "Relation",
-        nature: "agent",
-        glyph: "emma",
-        lines: [
-          { icon: "email", label: "Consentement", by: "agent" },
-          { icon: "messages", label: "Message préparé", by: "agent" },
-        ],
-      },
-      {
-        key: "review",
+        key: "validation",
         name: "Validation humaine",
-        role: "Conseiller",
+        members: "Vous · Conseiller",
         nature: "human",
         glyph: "humanValidation",
-        lines: [
-          { icon: "document", label: "Message relu", by: "you" },
-          { icon: "humanValidation", label: "Message validé", by: "you" },
+        tone: "violet",
+        groups: [
+          {
+            label: "Premier message",
+            lines: [
+              { icon: "document", label: "Message relu", by: "you" },
+              { icon: "humanValidation", label: "Message validé", by: "you" },
+            ],
+          },
+          {
+            label: "Mandat",
+            lines: [{ icon: "mandate", label: "Mandat confirmé", by: "you" }],
+          },
         ],
       },
       {
-        key: "louis",
-        name: "Louis",
-        role: "Rendez-vous",
-        nature: "agent",
-        glyph: "louis",
-        lines: [
-          { icon: "calendar", label: "Créneau proposé", by: "agent" },
-          { icon: "document", label: "Dossier préparé", by: "agent" },
+        key: "suivi",
+        name: "Suivi",
+        members: "Louis · Sarah",
+        nature: "agents",
+        glyph: "pipeline",
+        tone: "green",
+        groups: [
+          {
+            agent: "Louis",
+            glyph: "louis",
+            lines: [
+              { icon: "calendar", label: "Créneau proposé", by: "agent" },
+              { icon: "document", label: "Dossier préparé", by: "agent" },
+            ],
+          },
+          {
+            agent: "Sarah",
+            glyph: "sarah",
+            lines: [
+              { icon: "document", label: "Compte-rendu lu", by: "agent" },
+              { icon: "tasks", label: "Actions créées", by: "agent" },
+              { icon: "mandate", label: "Mandat signalé", by: "agent" },
+            ],
+          },
         ],
-      },
-      {
-        key: "sarah",
-        name: "Sarah",
-        role: "Suivi",
-        nature: "agent",
-        glyph: "sarah",
-        lines: [
-          { icon: "document", label: "Compte-rendu lu", by: "agent" },
-          { icon: "tasks", label: "Actions créées", by: "agent" },
-          { icon: "mandate", label: "Mandat signalé", by: "agent" },
-        ],
-      },
-      {
-        key: "mandate",
-        name: "Mandat",
-        role: "Conseiller",
-        nature: "outcome",
-        glyph: "mandate",
-        lines: [{ icon: "mandate", label: "Mandat confirmé", by: "you" }],
       },
     ],
-    pills: { agent: "Agent", you: "Vous" },
+    pills: { agents: "Agents", you: "Vous" },
     cursor: "Vous",
     /** The guard rail under the action, in segments: the two strong words are set in ink. */
     guard: [
@@ -144,16 +163,12 @@ export const LANDING_TEXTS = {
       { text: " le mandat." },
     ],
     note: "Illustration en boucle, exemple fictif. Aucun prospect réel, aucun envoi.",
-    dots: { label: "Choisir une étape", item: "Étape {n} sur 7 : {nom}" },
-    /** Read instead of the drawing: the final state, one sentence per card, never announced during the loop. */
+    dots: { label: "Choisir une étape", item: "Bloc {n} sur 3 : {nom}" },
+    /** Read instead of the drawing: the final state, one sentence per block, never announced during the loop. */
     srSummary: [
-      "Léa, acquisition : source vérifiée, doublon écarté, fiche créée.",
-      "Hugo, qualification : bien et secteur, délai du projet ; motivation manquante, à demander.",
-      "Emma, relation : consentement vérifié, message préparé.",
-      "Validation humaine, par vous : message relu, message validé.",
-      "Louis, rendez-vous : créneau proposé, dossier préparé.",
-      "Sarah, suivi : compte-rendu lu, actions créées, mandat signalé.",
-      "Mandat, par vous : mandat confirmé.",
+      "Acquisition, par Léa, Hugo et Emma : source vérifiée, doublon écarté, fiche créée ; bien et secteur, délai du projet, motivation manquante, à demander ; consentement vérifié, message préparé.",
+      "Validation humaine, par vous : premier message relu puis validé ; mandat confirmé.",
+      "Suivi, par Louis et Sarah : créneau proposé, dossier préparé ; compte-rendu lu, actions créées, mandat signalé.",
     ],
   },
 
@@ -534,20 +549,110 @@ export const LANDING_TEXTS = {
     },
   },
 
-  result: {
-    kicker: "Le résultat",
-    title: "Vous ouvrez l'espace agence. Vous savez par quoi commencer.",
-    titleLines: ["Vous ouvrez l'espace agence.", "Vous savez par quoi", "commencer."],
-    titleAccent: "commencer",
-    body: "Dans l'espace agence, chaque contact indique son étape, ce qui a été fait et ce qui attend une décision.",
-    pipelineLabel: "Étapes du pipeline",
-    /** The stage names themselves come from the pipeline domain (real labels). */
-    pipelineLostNote: "possible à chaque étape",
-    outcomes: [
-      { title: "L'étape du dossier", body: "Du nouveau contact au mandat signé, sans ambiguïté." },
-      { title: "L'historique", body: "Les actions des agents et de l'équipe, blocages et erreurs compris." },
-      { title: "Ce qui attend", body: "Les messages à valider et les tâches créées pour les informations manquantes." },
+  /**
+   * ROI section (docs/design-system.md §2.11.8.8 L4-B; figures and sources:
+   * docs/recherche-roi-agences.md). The ONLY key of the landing allowed to
+   * carry figures: each one is tagged `source` (published figure),
+   * `hypothesis` (default value, to adjust) or `estimate` (rounded
+   * calculation), US studies flagged `us`. Never a promise: no « garanti »,
+   * no « vous gagnerez » (tested). Templates: `{value}`, `{hours}`,
+   * `{euros}`, `{n}` are filled by `components/landing/roi/roi-model.ts`.
+   */
+  roi: {
+    kicker: "ROI",
+    title: "Ce que vos délais coûtent, et ce que l'agence peut regagner.",
+    titleLines: ["Ce que vos délais coûtent,", "et ce que l'agence", "peut regagner."],
+    titleAccent: "regagner",
+    body: "Des ordres de grandeur, calculés à partir d'études publiques et d'hypothèses que vous pouvez ajuster.",
+    legend: [
+      { tag: "source", text: "chiffre publié" },
+      { tag: "hypothesis", text: "valeur par défaut, à ajuster" },
+      { tag: "estimate", text: "calcul arrondi" },
     ],
+    tags: { source: "Source", hypothesis: "Hypothèse", estimate: "Potentiel estimé", us: "Étude américaine" },
+    disclaimer:
+      "Chiffres indicatifs, issus d'études publiques (souvent américaines ou anciennes) et d'hypothèses modifiables. Ils ne constituent pas une promesse de résultat.",
+    noScript: "Réglages disponibles avec JavaScript.",
+    reset: "Valeurs par défaut",
+    widgets: {
+      speed: {
+        kicker: "Réactivité",
+        title: "Chaque minute compte",
+        value: { text: "×{value}", kind: "source", us: true, sr: "{value} fois plus" },
+        caption: "de chances de qualifier un lead rappelé en 5 minutes plutôt qu'en 30 minutes.",
+        bars: { fast: "5 min", slow: "30 min", fastRatio: "×21", slowRatio: "×1" },
+        secondary: {
+          value: { text: "×{value}", kind: "source", us: true, sr: "{value} fois plus" },
+          caption: "en tentant le contact dans l'heure plutôt qu'une heure plus tard.",
+        },
+        note: "Études américaines tous secteurs : MIT/InsideSales 2007 ; Harvard Business Review 2011. Non spécifiques à l'immobilier français.",
+      },
+      mandates: {
+        kicker: "Mandats",
+        title: "Les mandats qui partent ailleurs",
+        value: { text: "≈ {value} € HT", kind: "estimate", sr: "environ {value} euros hors taxes par an" },
+        caption: "d'honoraires potentiellement manqués par an.",
+        funnel: [
+          { label: "demandes par an", prefix: "", kind: "estimate" },
+          { label: "traitées trop tard", prefix: "", kind: "estimate" },
+          { label: "mandats", prefix: "≈ ", kind: "estimate" },
+          { label: "ventes", prefix: "≈ ", kind: "estimate" },
+        ],
+        funnelLabel: "Entonnoir annuel",
+        sliders: {
+          requests: { label: "Demandes vendeurs par mois", valueText: "{n} demandes par mois", kind: "hypothesis" },
+          lateShare: {
+            label: "Part traitée trop tard ou sans suivi",
+            valueText: "{n} pour cent",
+            kind: "hypothesis",
+            benchmark: { text: "audit américain : 23 % sans réponse", kind: "source", us: true },
+          },
+        },
+        display: { requests: "{n}", lateShare: "{n} %" },
+        fixed: [
+          { value: "8 %", label: "des demandes deviennent un mandat", kind: "hypothesis" },
+          { value: "60 %", label: "des mandats aboutissent à une vente", kind: "hypothesis" },
+          { value: "367 000 €", label: "— prix médian d'un appartement à La Ciotat (DVF 2025)", kind: "source" },
+          { value: "4 % HT", label: "— honoraires moyens (FNAIM 2016)", kind: "source" },
+        ],
+        live: "Potentiel estimé : environ {euros} euros hors taxes par an.",
+        note: "Prix médian : données DVF La Ciotat 2025. Honoraires : moyenne FNAIM 2016 (4 % HT). Volumes et taux de transformation : hypothèses à ajuster à votre agence.",
+      },
+      time: {
+        kicker: "Temps",
+        title: "Le temps qui vous échappe",
+        value: { text: "≈ {value} h", kind: "estimate", sr: "environ {value} heures par an" },
+        caption: "regagnables par an sur l'administratif.",
+        total: { text: "{value} h d'administratif par an", sr: "{value} heures d'administratif par an" },
+        worth: { text: "≈ {value} € de temps valorisé par an", sr: "environ {value} euros de temps valorisé par an" },
+        sliders: {
+          negotiators: { label: "Négociateurs", valueText: "{n} négociateurs", kind: "hypothesis" },
+          hours: {
+            label: "Heures d'administratif par semaine et par négociateur",
+            valueText: "{n} heures par semaine",
+            kind: "hypothesis",
+            benchmark: { text: "étude : 4 à 6 h", kind: "source" },
+          },
+        },
+        display: { negotiators: "{n}", hours: "{n} h" },
+        fixed: [
+          { value: "45", label: "semaines travaillées par an", kind: "hypothesis" },
+          { value: "30 %", label: "du temps administratif automatisable", kind: "hypothesis" },
+          { value: "40 €", label: "de coût horaire chargé", kind: "hypothesis" },
+        ],
+        live: "Potentiel estimé : environ {hours} heures et {euros} euros par an.",
+        note: "Temps administratif : étude La Boîte Immo, 629 professionnels, 2017. Part automatisable, nombre de négociateurs et coût horaire : hypothèses.",
+      },
+      followup: {
+        kicker: "Relance",
+        title: "La relance qui fait la différence",
+        value: { text: "{value} %", kind: "source", us: true, sr: "{value} pour cent" },
+        caption: "des leads convertis avaient été joints au plus tard au 6ᵉ appel.",
+        timelineLabel: "Six contacts successifs, canaux alternés",
+        message: "Un suivi régulier et multicanal, toujours avec le consentement du contact.",
+        note: "Étude Velocify (éditeur, États-Unis, environ 3,5 millions de leads). En France, les appels ne sont permis qu'avec consentement, du lundi au vendredi (10h-13h, 14h-20h) et 4 fois par mois maximum.",
+      },
+    },
   },
 
   final: {

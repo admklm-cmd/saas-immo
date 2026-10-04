@@ -12,53 +12,116 @@ function strings(value: unknown): string[] {
 }
 
 const ALL = strings(LANDING_TEXTS);
+/** Every string except the ROI section, the only one allowed to carry figures (docs/design-system.md §2.11.8.8 L4-B). */
+const { roi: ROI, ...WITHOUT_ROI } = LANDING_TEXTS;
+const ALL_BUT_ROI = strings(WITHOUT_ROI);
 
 describe("landing copy", () => {
-  it("claims no figure: no percentage, no price, no multiplier", () => {
-    for (const text of ALL) {
+  it("claims no figure outside the ROI section: no percentage, no price, no multiplier", () => {
+    for (const text of ALL_BUT_ROI) {
       expect(text, text).not.toMatch(/\d\s?%|€|\bx\d|\d+\s?(clients?|agences?|mandats?)\b/i);
     }
   });
 
-  it("invents no client, testimonial or result", () => {
+  it("invents no client, testimonial or result; « ROI » only in its own section", () => {
     for (const text of ALL) {
-      expect(text, text).not.toMatch(/témoignage|nos clients|ils nous font confiance|avis client|\bROI\b/i);
+      expect(text, text).not.toMatch(/témoignage|nos clients|ils nous font confiance|avis client/i);
     }
+    for (const text of ALL_BUT_ROI) expect(text, text).not.toMatch(/\bROI\b/);
   });
 
-  it("block A: badge, note, guard sentence, cards of the five agents and the two human steps (§2.11.8.3)", () => {
+  it("block A: badge, note, guard sentence, three blocks of the five agents and you (§2.11.8.8 L4-A)", () => {
     const journey = LANDING_TEXTS.journey;
     expect(journey.note).toBe("Illustration en boucle, exemple fictif. Aucun prospect réel, aucun envoi.");
     expect(journey.guard.map((segment) => segment.text).join("")).toBe("Les agents préparent. Vous validez le premier message et confirmez le mandat.");
     expect(journey.guard.filter((segment) => "strong" in segment && segment.strong).map((segment) => segment.text)).toEqual(["validez", "confirmez"]);
     expect(journey.cursor).toBe("Vous");
-    expect(journey.pills).toEqual({ agent: "Agent", you: "Vous" });
-    expect(journey.cards.map((card) => `${card.name} · ${card.role}`)).toEqual([
-      "Léa · Acquisition",
-      "Hugo · Qualification",
-      "Emma · Relation",
-      "Validation humaine · Conseiller",
-      "Louis · Rendez-vous",
-      "Sarah · Suivi",
-      "Mandat · Conseiller",
+    expect(journey.pills).toEqual({ agents: "Agents", you: "Vous" });
+    expect(journey.blocks.map((block) => [block.name, block.members, block.nature, block.glyph, block.tone])).toEqual([
+      ["Acquisition", "Léa · Hugo · Emma", "agents", "leads", "orange"],
+      ["Validation humaine", "Vous · Conseiller", "human", "humanValidation", "violet"],
+      ["Suivi", "Louis · Sarah", "agents", "pipeline", "green"],
     ]);
-    // Only the advisor checks the human steps; Sarah flags the mandate, never declares it.
-    const cards: readonly { nature: string; lines: readonly { label: string; by: string }[] }[] = journey.cards;
-    for (const card of cards) {
-      for (const line of card.lines) {
-        if (card.nature === "agent") expect(line.by, line.label).not.toBe("you");
-        else expect(line.by, line.label).toBe("you");
-        expect(line.label.length, line.label).toBeLessThanOrEqual(20);
-      }
+    type Line = { label: string; by: string };
+    type Group = { agent?: string; label?: string; lines: readonly Line[] };
+    const blocks: readonly { nature: string; groups: readonly Group[] }[] = journey.blocks;
+    expect(blocks.map((block) => block.groups.map((group) => group.agent ?? group.label))).toEqual([
+      ["Léa", "Hugo", "Emma"],
+      ["Premier message", "Mandat"],
+      ["Louis", "Sarah"],
+    ]);
+    // Only the advisor checks the human block; Sarah flags the mandate, never declares it.
+    const lines = blocks.flatMap((block) => block.groups.flatMap((group) => group.lines.map((line) => ({ ...line, nature: block.nature }))));
+    for (const line of lines) {
+      if (line.nature === "agents") expect(line.by, line.label).not.toBe("you");
+      else expect(line.by, line.label).toBe("you");
+      expect(line.label.length, line.label).toBeLessThanOrEqual(20);
     }
-    expect(cards.flatMap((card) => card.lines).filter((line) => line.by === "missing").map((line) => line.label)).toEqual(["Motivation"]);
-    // §2.11.8.7 L3-A: « Consentement » fits a card of 186 px; the checked box says « vérifié ».
-    expect(journey.cards[2]!.lines[0]!.label).toBe("Consentement");
-    expect(journey.srSummary.join(" ")).toContain("consentement vérifié");
-    expect(journey.srSummary).toHaveLength(7);
-    expect(journey.dots.item).toBe("Étape {n} sur 7 : {nom}");
+    expect(lines.filter((line) => line.by === "agent")).toHaveLength(12);
+    expect(lines.filter((line) => line.by === "you").map((line) => line.label)).toEqual(["Message relu", "Message validé", "Mandat confirmé"]);
+    expect(lines.filter((line) => line.by === "missing").map((line) => line.label)).toEqual(["Motivation"]);
+    expect(lines.find((line) => line.label === "Mandat signalé")?.by).toBe("agent");
+    expect(journey.srSummary).toEqual([
+      "Acquisition, par Léa, Hugo et Emma : source vérifiée, doublon écarté, fiche créée ; bien et secteur, délai du projet, motivation manquante, à demander ; consentement vérifié, message préparé.",
+      "Validation humaine, par vous : premier message relu puis validé ; mandat confirmé.",
+      "Suivi, par Louis et Sarah : créneau proposé, dossier préparé ; compte-rendu lu, actions créées, mandat signalé.",
+    ]);
+    expect(journey.dots.item).toBe("Bloc {n} sur 3 : {nom}");
+    expect("cards" in journey).toBe(false);
     expect("states" in journey).toBe(false);
     expect("prospect" in journey).toBe(false);
+  });
+
+  it("ROI (§2.11.8.8 L4-B): exact notes and disclaimer, never a promise, every value tagged", () => {
+    expect(ROI.kicker).toBe("ROI");
+    expect(ROI.disclaimer).toBe(
+      "Chiffres indicatifs, issus d'études publiques (souvent américaines ou anciennes) et d'hypothèses modifiables. Ils ne constituent pas une promesse de résultat.",
+    );
+    expect(ROI.widgets.speed.note).toBe(
+      "Études américaines tous secteurs : MIT/InsideSales 2007 ; Harvard Business Review 2011. Non spécifiques à l'immobilier français.",
+    );
+    expect(ROI.widgets.time.note).toBe(
+      "Temps administratif : étude La Boîte Immo, 629 professionnels, 2017. Part automatisable, nombre de négociateurs et coût horaire : hypothèses.",
+    );
+    expect(ROI.widgets.mandates.note).toBe(
+      "Prix médian : données DVF La Ciotat 2025. Honoraires : moyenne FNAIM 2016 (4 % HT). Volumes et taux de transformation : hypothèses à ajuster à votre agence.",
+    );
+    expect(ROI.widgets.followup.note).toBe(
+      "Étude Velocify (éditeur, États-Unis, environ 3,5 millions de leads). En France, les appels ne sont permis qu'avec consentement, du lundi au vendredi (10h-13h, 14h-20h) et 4 fois par mois maximum.",
+    );
+    for (const text of strings(ROI)) expect(text, text).not.toMatch(/garanti|vous gagnerez/i);
+
+    // Every displayed value carries its provenance: main values, secondary, funnel steps, sliders, fixed hypotheses, landmarks.
+    const KINDS = ["source", "hypothesis", "estimate"];
+    const { speed, mandates, time, followup } = ROI.widgets;
+    const values: readonly { kind: string }[] = [
+      speed.value,
+      speed.secondary.value,
+      mandates.value,
+      ...mandates.funnel,
+      mandates.sliders.requests,
+      mandates.sliders.lateShare,
+      mandates.sliders.lateShare.benchmark,
+      ...mandates.fixed,
+      time.value,
+      time.sliders.negotiators,
+      time.sliders.hours,
+      time.sliders.hours.benchmark,
+      ...time.fixed,
+      followup.value,
+    ];
+    expect(values).toHaveLength(22);
+    for (const value of values) expect(KINDS, JSON.stringify(value)).toContain(value.kind);
+    expect(speed.value).toMatchObject({ kind: "source", us: true });
+    expect(followup.value).toMatchObject({ kind: "source", us: true });
+    expect(mandates.sliders.lateShare.benchmark).toMatchObject({ kind: "source", us: true });
+    expect(time.value.kind).toBe("estimate");
+    expect(mandates.value.kind).toBe("estimate");
+    expect(mandates.fixed.map((entry) => entry.kind)).toEqual(["hypothesis", "hypothesis", "source", "source"]);
+    expect(time.fixed.map((entry) => entry.kind)).toEqual(["hypothesis", "hypothesis", "hypothesis"]);
+    // The hours slider is an adjustable value (hypothesis); only its published landmark is sourced.
+    expect(time.sliders.hours.kind).toBe("hypothesis");
+    expect(time.sliders.hours.benchmark).toEqual({ text: "étude : 4 à 6 h", kind: "source" });
   });
 
   it("block B: five tiles, fictitious label, true figures of tile 5 only (§2.11.8.4)", () => {
@@ -181,7 +244,7 @@ const EDITORIAL = {
   solution: LANDING_TEXTS.solution,
   agents: LANDING_TEXTS.agents,
   control: LANDING_TEXTS.control,
-  result: LANDING_TEXTS.result,
+  roi: LANDING_TEXTS.roi,
   final: LANDING_TEXTS.final,
 };
 
@@ -208,7 +271,7 @@ describe("landing editorial titles", () => {
       solution: [["Chaque dossier suit", "le même chemin,", "de la demande au mandat."], "chemin"],
       agents: [["Chaque agent sait", "où son travail commence.", "Et où il s'arrête."], "s'arrête"],
       control: [["L'IA prépare.", "Votre équipe décide."], "décide"],
-      result: [["Vous ouvrez l'espace agence.", "Vous savez par quoi", "commencer."], "commencer"],
+      roi: [["Ce que vos délais coûtent,", "et ce que l'agence", "peut regagner."], "regagner"],
       final: [["Déposez une demande fictive.", "Retrouvez-la", "dans l'espace agence."], "fictive"],
     });
   });

@@ -7,6 +7,7 @@ import { LandingProblem } from "@/components/landing/LandingProblem";
 import { LandingResult } from "@/components/landing/LandingResult";
 import { LandingSolution } from "@/components/landing/LandingSolution";
 import { LivingBackground } from "@/components/landing/living/LivingBackground";
+import { ReplayAnimationsButton } from "@/components/landing/replay/ReplayAnimationsButton";
 
 /**
  * Public home page of the agency website.
@@ -32,6 +33,8 @@ export default function HomePage() {
         <LandingControl />
         <LandingResult />
         <LandingFinal />
+        {/* Last focusable of the landing: « Rejouer les animations » (§2.11.8.8 L4-D; absent without JS and under reduced motion). */}
+        <ReplayAnimationsButton />
         {/* One delegated controller for the hover replay of the three titles (§2.11.2 D; the tech one replays itself). */}
         <AccentReplayController />
       </div>

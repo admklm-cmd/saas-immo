@@ -36,6 +36,7 @@ export function ProblemHeading() {
           reveal="in-view"
           accentEffect="focus"
           accentReplay
+          accentFace="title"
         />
       </div>
       <p className="particle-veil max-w-[52ch] text-lede text-pretty text-ink-muted" data-network-quiet="">

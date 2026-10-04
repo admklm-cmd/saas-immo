@@ -47,9 +47,18 @@ export type EditorialTitleProps = {
   tone?: "ink" | "inverse";
   /** `start` (default) or `center`: each author line centred. */
   align?: "start" | "center";
+  /**
+   * Face of the accented word (docs/design-system.md §2.11.8.8 L4-C):
+   * `serif` (default: Instrument Serif italic — /estimation, CRM empty
+   * states) or `title`: the word keeps the exact typography of its line
+   * (landing `/` only; `title-accent-plain`, `data-accent-face="title"`).
+   */
+  accentFace?: AccentFace;
   /** Layout only (margins, max width). */
   className?: string;
 };
+
+export type AccentFace = "serif" | "title";
 
 export type AccentEffect = "none" | "underline" | "focus" | "focus-underline" | "tech";
 
@@ -98,8 +107,10 @@ export function EditorialTitle({
   accentReplay = false,
   tone = "ink",
   align = "start",
+  accentFace = "serif",
   className,
 }: EditorialTitleProps) {
+  const plainAccent = accentFace === "title";
   const mode = isAnimatable(lines) ? reveal : "none";
   const animated = mode !== "none";
   const target = findAccent(lines, accent);
@@ -117,6 +128,7 @@ export function EditorialTitle({
         key={key}
         className={cn(styles.word, animated && styles.focusWord, cssReplay && replayStyles.word)}
         style={animated ? ({ "--line": line } as CSSProperties) : undefined}
+        data-title-word=""
       >
         {text}
       </span>
@@ -133,12 +145,14 @@ export function EditorialTitle({
         <span
           className={cn(
             "title-accent",
+            plainAccent && "title-accent-plain",
             animated && styles.sharpWord,
             effect !== "none" && !tech && styles.accentHost,
             cssReplay && replayStyles.sharp,
           )}
           data-accent=""
-          style={hasFrame ? ({ "--accent-overhang": `${accentOverhangEm(accented)}em` } as CSSProperties) : undefined}
+          data-title-word=""
+          style={hasFrame ? ({ "--accent-overhang": `${accentOverhangEm(accented, accentFace)}em` } as CSSProperties) : undefined}
         >
           {/* `tech`: one span per letter, and the canvas island (§2.11.8.2). */}
           {tech ? <TechAccent word={accented} /> : accented}
@@ -175,6 +189,7 @@ export function EditorialTitle({
       data-tech-state={tech ? "idle" : undefined}
       data-title-color={tone === "inverse" ? "inverse" : undefined}
       data-title-align={align === "center" ? "center" : undefined}
+      data-accent-face={plainAccent ? "title" : undefined}
     >
       <span className="sr-only">{lines.join(" ")}</span>
       <span aria-hidden="true" data-testid="editorial-title-visual">

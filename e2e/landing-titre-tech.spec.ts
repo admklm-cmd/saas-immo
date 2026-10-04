@@ -5,10 +5,12 @@ import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
 /**
  * The `tech` effect of « décide », title of the control section
  * (docs/design-system.md §2.11.8.2, criteria T2 and T3 of §2.11.8.6): the
- * TechText frame sweeps the letters once at the entry, replays on hover
- * (mouse), follows a fine pointer, lets a letter be dragged and springs it
- * back; touch and reduced motion get nothing after the arrival. The title stays
- * HTML text: its accessible name never changes.
+ * TechText frame sweeps the letters once at the entry, replays when a mouse
+ * enters any word of the title or on a brief tap (§2.11.8.8 L4-C: sweep only,
+ * never follow nor drag under a finger), follows a fine pointer, lets a letter
+ * be dragged and springs it back; reduced motion gets nothing. Since Lot 4 the
+ * word is set in the face of the title (Bricolage 600, upright). The title
+ * stays HTML text: its accessible name never changes.
  *
  * No form on this journey: no consent checkbox to check.
  */
@@ -119,6 +121,12 @@ async function letterBox(page: Page, index: number) {
   });
 }
 
+/** Centre of the first visual word of the title (« L'IA »), far from « décide ». */
+async function firstWord(page: Page): Promise<{ x: number; y: number }> {
+  const box = (await page.locator(`${TITLE} [data-title-word]`).first().boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
 async function waitForIdle(page: Page, timeout = 4_000): Promise<void> {
   await expect(page.locator(TITLE)).toHaveAttribute("data-tech-state", "idle", { timeout });
 }
@@ -166,6 +174,17 @@ test.describe("titre « décide » : effet tech (1440, souris)", () => {
     expect(idle - entered, `rest ${Math.round(idle - entered)} ms after the entry`).toBeLessThanOrEqual(2_400);
     console.log(`décide: sweep start +${Math.round(sweep - entered)} ms, rest +${Math.round(idle - entered)} ms after the entry`);
 
+    // L4-C: the word is in the face of the title (Bricolage 600, upright, same size).
+    const face = await page.locator(`${TITLE} [data-accent]`).evaluate((node) => {
+      const style = getComputedStyle(node);
+      const line = getComputedStyle(node.closest("[data-title-line]")!);
+      return { family: style.fontFamily, style: style.fontStyle, weight: style.fontWeight, ratio: parseFloat(style.fontSize) / parseFloat(line.fontSize) };
+    });
+    expect(face.family.split(",")[0]).toMatch(/Bricolage/);
+    expect(face.style).toBe("normal");
+    expect(face.weight).toBe("600");
+    expect(Math.abs(face.ratio - 1)).toBeLessThanOrEqual(0.005);
+
     // At rest: empty canvas, HTML letters visible, name unchanged.
     expect((await canvasInk(page)).inked).toBe(0);
     for (let index = 0; index < 6; index++) await expect(page.locator(`${TITLE} [data-letter='${index}']`)).toHaveCSS("visibility", "visible");
@@ -187,7 +206,8 @@ test.describe("titre « décide » : effet tech (1440, souris)", () => {
     const clip = { x: Math.floor(e.left - 10), y: Math.floor(e.baseline - e.size), width: Math.ceil(e.right - e.left + 20), height: Math.ceil(e.size * 1.2) };
     const html = await inkBox(page, clip);
     // …then painted by the canvas, at the start of a replay (the frame is on « d », far from « e »).
-    await page.mouse.move(Math.max(4, (await title.boundingBox())!.x + 4), (await title.boundingBox())!.y + 8);
+    const start = await firstWord(page);
+    await page.mouse.move(start.x, start.y);
     await expect(title).toHaveAttribute("data-tech-state", "sweep");
     const painted = await inkBox(page, clip);
     await expect(page.locator(`${TITLE} [data-letter='5']`)).toHaveCSS("visibility", "hidden");
@@ -228,10 +248,10 @@ test.describe("titre « décide » : effet tech (1440, souris)", () => {
     await title.scrollIntoViewIfNeeded();
     await waitForArrival(page);
     await page.waitForTimeout(100);
-    const box = (await title.boundingBox())!;
 
-    // Replay: the pointer enters the title far from the word (top left), then leaves.
-    await page.mouse.move(box.x + 6, box.y + 10);
+    // Replay: the pointer enters the FIRST word of the title, far from « décide », then leaves.
+    const entry = await firstWord(page);
+    await page.mouse.move(entry.x, entry.y);
     await expect(title).toHaveAttribute("data-accent-replay", "running");
     await expect(title).toHaveAttribute("data-accent-replays", "1");
     await page.waitForTimeout(100);
@@ -244,7 +264,7 @@ test.describe("titre « décide » : effet tech (1440, souris)", () => {
     await expect(title).not.toHaveAttribute("data-accent-played");
 
     // Back in at once: cooldown (800 ms), no replay.
-    await page.mouse.move(box.x + 6, box.y + 10);
+    await page.mouse.move(entry.x, entry.y);
     await page.waitForTimeout(100);
     await expect(title).toHaveAttribute("data-accent-replays", "1");
     await page.mouse.move(2, 450);
@@ -280,22 +300,44 @@ test.describe("titre « décide » : effet tech (1440, souris)", () => {
   });
 });
 
-test("tactile (390 × 844) : l'arrivée seule, aucun rejeu au toucher, la page défile", async ({ browser }) => {
+test("tactile (390 × 844) : un toucher bref rejoue le balayage seul (jamais suivi ni glisser), un glisser fait défiler la page (L4-C4)", async ({ browser }) => {
   test.setTimeout(90_000);
   const context = await browser.newContext({ reducedMotion: "no-preference", viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
   await openHome(page);
   const title = page.locator(TITLE);
   await title.scrollIntoViewIfNeeded();
-  // The arrival plays on touch too, once; then rest.
   await waitForArrival(page);
+  await page.evaluate((selector) => {
+    const node = document.querySelector<HTMLElement>(selector)!;
+    const states: string[] = [];
+    (window as unknown as { __states: string[] }).__states = states;
+    new MutationObserver(() => states.push(node.dataset.techState ?? "")).observe(node, { attributes: true, attributeFilter: ["data-tech-state"] });
+  }, TITLE);
   const before = Number((await title.getAttribute("data-accent-replays")) ?? 0);
+  // A tap on the accented word: the sweep, then rest.
   const word = (await page.locator(`${TITLE} [data-accent]`).boundingBox())!;
   await page.touchscreen.tap(word.x + word.width / 2, word.y + word.height / 2);
-  await page.waitForTimeout(300);
-  expect(Number((await title.getAttribute("data-accent-replays")) ?? 0)).toBe(before);
-  await expect(title).toHaveAttribute("data-tech-state", "idle");
+  await expect(title).toHaveAttribute("data-tech-state", "sweep", { timeout: 1_000 });
+  await expect.poll(async () => Number((await title.getAttribute("data-accent-replays")) ?? 0)).toBe(before + 1);
+  await waitForIdle(page);
+  const states = await page.evaluate(() => (window as unknown as { __states: string[] }).__states);
+  expect(states.filter((state) => state === "follow" || state === "drag"), "never follow nor drag under a finger").toEqual([]);
   expect((await canvasInk(page)).inked).toBe(0);
+
+  // A vertical drag of 200 px started on a word: the page scrolls, nothing replays.
+  await page.waitForTimeout(900);
+  const first = (await page.locator(`${TITLE} [data-title-word]`).first().boundingBox())!;
+  const x = first.x + first.width / 2;
+  const y = Math.min(first.y + first.height / 2, 800);
+  const scrollBefore = await page.evaluate(() => window.scrollY);
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+  for (let step = 1; step <= 10; step++) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x, y: y - step * 20 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await page.waitForTimeout(400);
+  expect(await page.evaluate(() => window.scrollY) - scrollBefore, "the page scrolled").toBeGreaterThan(50);
+  expect(Number((await title.getAttribute("data-accent-replays")) ?? 0)).toBe(before + 1);
   // The title never blocks the scroll.
   expect(await title.evaluate((node) => getComputedStyle(node).touchAction)).toBe("auto");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -310,7 +352,8 @@ test("mouvement réduit : le mot en HTML, aucun canvas, aucun rejeu (cas d'erreu
   await expect(title.locator("canvas")).toHaveCount(0);
   await expect(title.locator("[data-letter]")).toHaveText(["d", "é", "c", "i", "d", "e"]);
   const box = (await title.boundingBox())!;
-  await page.mouse.move(box.x + 6, box.y + 10);
+  const start = await firstWord(page);
+  await page.mouse.move(start.x, start.y);
   await page.mouse.move(box.x + box.width - 20, box.y + box.height - 20, { steps: 5 });
   await page.waitForTimeout(200);
   await expect(title).not.toHaveAttribute("data-accent-replays");

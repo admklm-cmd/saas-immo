@@ -404,3 +404,35 @@
 .inverse :global(.title-accent) {
   color: var(--color-ink-inverse);
 }
+
+/*
+ * Accented word in the title's own face (landing `/`, docs §2.11.8.8 L4-C):
+ * the word is set like its line (Bricolage Grotesque 600, upright, 1 em),
+ * so the ornaments are re-measured on that face. Measured in Chromium on
+ * 04/10/2026 (1440 px; same em values at 390 px): baseline 0.935 em from the
+ * top of the content area (font ascent 0.933–0.938), ink top of the ascenders
+ * 0.216 em (0.719 above the baseline), ink bottom 0.95 em (0.016 under the
+ * baseline). Accent em = title em here, so the title-em offsets are literal:
+ * mark 0.094 em under the baseline, from -0.02 em to +0.02 em around the box
+ * (no italic overhang any more); frame 0.08 em above the ascenders and
+ * 0.04 em under the ink. The serif values above stay for /estimation.
+ */
+[data-accent-face="title"] .accentHost {
+  --accent-baseline: 0.935em;
+  --accent-ink-top: 0.216em;
+  --accent-ink-bottom: 0.95em;
+}
+
+[data-accent-face="title"] .mark {
+  left: -0.02em;
+  right: -0.02em;
+}
+
+[data-accent-face="title"] .frame {
+  top: calc(var(--accent-ink-top) - 0.08em);
+  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.12em);
+}
+
+[data-accent-face="title"] .markBeforeDescender {
+  right: 0.02em;
+}

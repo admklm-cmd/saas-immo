@@ -81,15 +81,19 @@ test("accueil : titre, étiquette, deux actions et bloc « Vous » étiqueté si
     sections.map((section) => section.getAttribute("data-living-scene")),
   );
   expect(scenes).toEqual([...LIVING_SCENES]);
-  // The only « % » of the page is the computed POSITION of block C's carousel
+  // Outside the ROI section (§2.11.8.8 L4-B: sourced figures and editable hypotheses, each tagged),
+  // the only « % » of the page is the computed POSITION of block C's carousel
   // (step 1 of 7 → 14 %, §2.11.8.5), never a claimed figure: checked apart.
   const claims = await main.evaluate((element) => {
     const copy = element.cloneNode(true) as HTMLElement;
-    copy.querySelectorAll("[data-testid='process-percent']").forEach((node) => node.remove());
+    copy.querySelectorAll("[data-testid='process-percent'], [data-testid='roi']").forEach((node) => node.remove());
     return copy.textContent ?? "";
   });
   expect(claims).not.toMatch(/\d\s?%|€|témoignage/i);
   await expect(page.getByTestId("process-percent")).toHaveText("14 %");
+  // Block A: three blocks, 15 boxes checked in the final state (§2.11.8.8 L4-A).
+  await expect(ecosystem.locator("[data-block]")).toHaveCount(3);
+  await expect(ecosystem.locator("[data-check][data-checked='true']")).toHaveCount(15);
   // No floating contact button: no real channel is configured.
   await expect(page.getByRole("link", { name: /whatsapp|nous contacter/i })).toHaveCount(0);
 });
@@ -254,7 +258,8 @@ test.describe("avec animations", () => {
     await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
   });
 
-  test("bloc A : joue sa boucle à l'écran, les agents d'abord, puis « Vous » (§2.11.8.3)", async ({ page }) => {
+  test("bloc A : joue sa boucle à l'écran, les agents d'abord, puis « Vous » (§2.11.8.8 L4-A)", async ({ page }) => {
+    test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
     const ecosystem = page.getByTestId("hero-ecosystem");
@@ -262,10 +267,12 @@ test.describe("avec animations", () => {
     await expect(ecosystem).toHaveAttribute("data-loop-cycles", "1");
     // The agents check their boxes first; a human box only later.
     await expect
-      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "agent" && box.checked).length, { timeout: 4_000, intervals: [50] })
+      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "agent" && box.checked).length, { timeout: 8_000, intervals: [50] })
       .toBeGreaterThanOrEqual(7);
+    // No human box before the cursor works on « Validation humaine » (24 s cycle: first « Vous » box at 8.75 s).
+    expect((await ecosystemBoxes(page)).filter((box) => box.by === "you" && box.checked)).toHaveLength(0);
     await expect
-      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "you" && box.checked).length, { timeout: 6_000, intervals: [50] })
+      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "you" && box.checked).length, { timeout: 18_000, intervals: [50] })
       .toBe(3);
     await expect(page.locator("main")).toContainText(JOURNEY.note);
   });

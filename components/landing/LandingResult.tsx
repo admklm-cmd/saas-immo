@@ -1,20 +1,48 @@
 import { LANDING_TEXTS } from "@/components/landing-texts";
 import { Reveal } from "@/components/ui/Reveal";
-import { PIPELINE_STAGE_LABELS } from "@/features/contacts/types";
-import { PIPELINE_STAGES } from "@/features/pipeline/types";
 
 import { LandingHeading } from "./LandingHeading";
+import { FollowupWidget } from "./roi/FollowupWidget";
+import { MandatesWidget } from "./roi/MandatesWidget";
+import { RoiTag, RoiTags } from "./roi/RoiTag";
+import { RoiWidget, type RoiWidgetKey } from "./roi/RoiWidget";
+import { SpeedWidget } from "./roi/SpeedWidget";
+import { TimeWidget } from "./roi/TimeWidget";
+import styles from "./roi/roi.module.css";
 
-const TEXTS = LANDING_TEXTS.result;
-/** The real stage names of the pipeline, `perdu` stated apart. */
-const STAGES = PIPELINE_STAGES.filter((stage) => stage !== "perdu");
+const TEXTS = LANDING_TEXTS.roi;
+const WIDGETS = TEXTS.widgets;
 
-/** Section « Le résultat »: what the agency space shows for each file. */
+/** DOM and reading order (W1, W3, W2, W4) and the span of each tile on twelve columns (≥ 1280 px). */
+const ORDER: readonly { key: RoiWidgetKey; span: 5 | 7 }[] = [
+  { key: "speed", span: 5 },
+  { key: "mandates", span: 7 },
+  { key: "time", span: 7 },
+  { key: "followup", span: 5 },
+];
+
+const ISLANDS = {
+  speed: SpeedWidget,
+  mandates: MandatesWidget,
+  time: TimeWidget,
+  followup: FollowupWidget,
+} as const;
+
+/**
+ * Section ROI (docs/design-system.md §2.11.8.8 L4-B; figures:
+ * docs/recherche-roi-agences.md). Keeps the name, the `section`, its
+ * `aria-labelledby` and `data-living-scene="resultat"` (the background
+ * depends on it). Four widgets — each a big figure that lands, a small scene
+ * and a provenance tag (source, hypothesis, estimate) — and the general
+ * disclaimer. Indicative orders of magnitude, never a promise. Every value
+ * stays in the visitor's browser: nothing is stored nor sent.
+ */
 export function LandingResult() {
   return (
     <section
       aria-labelledby="result-title"
       data-living-scene="resultat"
+      data-testid="roi"
       className="mx-auto w-full max-w-7xl px-6 py-24 sm:px-8 lg:px-12 lg:py-36"
     >
       <Reveal frame="still">
@@ -27,31 +55,40 @@ export function LandingResult() {
         />
       </Reveal>
 
-      <div className="mt-14 rounded-xl border border-line bg-surface/90 p-6 shadow-subtle backdrop-blur-sm sm:p-8" data-network-cover="">
-        <p className="text-overline font-semibold text-ink-subtle uppercase">{TEXTS.pipelineLabel}</p>
-        <ol aria-label={TEXTS.pipelineLabel} className="mt-4 flex flex-wrap items-center gap-2">
-          {STAGES.map((stage) => (
-            <li
-              key={stage}
-              className="rounded-full border border-line-strong px-3 py-1 text-sm font-medium text-ink last:border-ink last:bg-ink last:text-ink-inverse"
-            >
-              {PIPELINE_STAGE_LABELS[stage]}
-            </li>
-          ))}
-        </ol>
-        <p className="mt-3 text-xs text-ink-muted">
-          <span className="font-medium text-ink">{PIPELINE_STAGE_LABELS.perdu}</span> : {TEXTS.pipelineLostNote}
-        </p>
+      <ul className={`particle-veil particle-veil-tight w-fit max-w-full ${styles.legend}`} data-network-quiet="">
+        {TEXTS.legend.map((entry) => (
+          <li key={entry.tag} className={styles.legendItem}>
+            <RoiTag tag={entry.tag} />
+            <span>{entry.text}</span>
+          </li>
+        ))}
+      </ul>
 
-        <ul className="mt-8 grid gap-6 border-t border-line pt-6 md:grid-cols-3">
-          {TEXTS.outcomes.map((outcome) => (
-            <li key={outcome.title}>
-              <p className="text-sm font-semibold text-ink">{outcome.title}</p>
-              <p className="mt-1 text-sm leading-relaxed text-ink-muted">{outcome.body}</p>
+      <ul className={styles.grid} data-testid="roi-grid">
+        {ORDER.map(({ key, span }, index) => {
+          const texts = WIDGETS[key];
+          const Island = ISLANDS[key];
+          return (
+            <li key={key} className={styles.cell} data-span={span}>
+              <Reveal index={index}>
+                <RoiWidget
+                  widget={key}
+                  kicker={texts.kicker}
+                  title={texts.title}
+                  note={texts.note}
+                  tags={<RoiTags kind={texts.value.kind} us={"us" in texts.value ? texts.value.us : false} />}
+                >
+                  <Island />
+                </RoiWidget>
+              </Reveal>
             </li>
-          ))}
-        </ul>
-      </div>
+          );
+        })}
+      </ul>
+
+      <p className={`particle-veil particle-veil-tight ${styles.disclaimer}`} data-network-quiet="" data-testid="roi-disclaimer">
+        {TEXTS.disclaimer}
+      </p>
     </section>
   );
 }

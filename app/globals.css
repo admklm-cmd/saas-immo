@@ -336,6 +336,17 @@
     color: var(--color-ink);
   }
 
+  /* Landing `/` only (docs §2.11.8.8 L4-C): the accented word keeps the exact
+     typography of its line (family, weight, size, tracking, `wdth`, leading);
+     only its effect and its « sharp first » arrival set it apart. */
+  .title-accent-plain {
+    font: inherit;
+    letter-spacing: inherit;
+    font-variation-settings: inherit;
+    line-height: inherit;
+    font-style: normal;
+  }
+
   .page-frame-reading > * {
     max-width: var(--container-4xl, 56rem);
   }

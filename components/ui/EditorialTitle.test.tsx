@@ -313,3 +313,44 @@ describe("EditorialTitleReplay.module.css (specificity contract, §2.11.2 D)", (
     expect(replay).not.toMatch(/infinite|drop-shadow|box-shadow|cursor/);
   });
 });
+
+describe("EditorialTitle accentFace (docs/design-system.md §2.11.8.8 L4-C)", () => {
+  it("keeps the serif accent by default (/estimation, CRM empty states)", () => {
+    renderTitle();
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.hasAttribute("data-accent-face")).toBe(false);
+    const accent = heading.querySelector("[data-accent]")!;
+    expect(accent.classList.contains("title-accent")).toBe(true);
+    expect(accent.classList.contains("title-accent-plain")).toBe(false);
+  });
+
+  it("title: the accented word takes the face of its line (class and attribute)", () => {
+    renderTitle({ accentFace: "title", accentEffect: "focus" });
+    const heading = screen.getByRole("heading", { level: 2 });
+    expect(heading.getAttribute("data-accent-face")).toBe("title");
+    const accent = heading.querySelector("[data-accent]")!;
+    expect(accent.classList.contains("title-accent")).toBe(true);
+    expect(accent.classList.contains("title-accent-plain")).toBe(true);
+    // No italic overhang in the title face: the frame is centred on the box.
+    expect((accent as HTMLElement).style.getPropertyValue("--accent-overhang")).toBe("0em");
+  });
+
+  it("marks every visual word, the accented one included, with data-title-word", () => {
+    renderTitle({ accentFace: "title" });
+    const words = Array.from(screen.getByTestId("editorial-title-visual").querySelectorAll("[data-title-word]"));
+    const tokens = LINES.flatMap((line) => line.split(" "));
+    // « l'administratif. » holds three parts (« l' », the accent, « . »): two extra boxes.
+    expect(words).toHaveLength(tokens.length + 2);
+    expect(words.some((word) => word.hasAttribute("data-accent"))).toBe(true);
+  });
+
+  it("declares title-accent-plain in globals.css: font, tracking, wdth and leading inherited, upright", () => {
+    const css = readFileSync(join(process.cwd(), "app/globals.css"), "utf8");
+    const rule = css.match(/\.title-accent-plain \{([^}]*)\}/)?.[1] ?? "";
+    for (const declaration of ["font: inherit", "letter-spacing: inherit", "font-variation-settings: inherit", "line-height: inherit", "font-style: normal"]) {
+      expect(rule).toContain(declaration);
+    }
+    const titleCss = readFileSync(join(process.cwd(), "components/ui/EditorialTitle.module.css"), "utf8");
+    expect(titleCss).toMatch(/\[data-accent-face="title"\] \.accentHost \{[^}]*--accent-baseline: 0\.935em/);
+  });
+});
