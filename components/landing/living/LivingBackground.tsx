@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { animate } from "animejs";
 
 import { LivingEngine, type FrameCost } from "./LivingEngine";
 import type { ScreenClass } from "./network";
@@ -16,6 +17,7 @@ const LARGE_MIN_WIDTH = 1280;
 /** The arrival cascade waits for the hero title lines to be posed. */
 const ARRIVAL_DELAY_MS = 900;
 const RESIZE_DEBOUNCE_MS = 150;
+const NANO_PARTICLE_COUNT = 34;
 /** Sections that drive the background carry this attribute. */
 export const SCENE_ATTRIBUTE = "data-living-scene";
 /** Text blocks posed outside an opaque surface: impulses fade out around them. */
@@ -23,8 +25,42 @@ export const QUIET_ATTRIBUTE = "data-network-quiet";
 /** Opaque surfaces (cards, panels): no sequence starts behind them. */
 export const COVER_ATTRIBUTE = "data-network-cover";
 
+type NanoParticle = {
+  left: number;
+  top: number;
+  size: number;
+  opacity: number;
+  driftX: number;
+  driftY: number;
+  duration: number;
+  delay: number;
+  accent: boolean;
+};
+
+/** Stable pseudo-random particles: identical server/client markup, no hydration jitter. */
+function nanoParticles(): NanoParticle[] {
+  let seed = 0x51a9d;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 0x1_0000_0000;
+  };
+  return Array.from({ length: NANO_PARTICLE_COUNT }, (_, index) => ({
+    left: 4 + random() * 92,
+    top: 8 + random() * 84,
+    size: 1.5 + random() * 2.5,
+    opacity: 0.22 + random() * 0.46,
+    driftX: 8 + random() * 22,
+    driftY: 7 + random() * 20,
+    duration: 5_800 + random() * 6_400,
+    delay: random() * 1_800,
+    accent: index % 11 === 0,
+  }));
+}
+
+const NANO_PARTICLES = nanoParticles();
+
 /**
- * Neural network behind the landing (docs/design-system.md §2.11.4) — an
+ * Living point-field behind the landing (docs/design-system.md §2.11.4) — an
  * illustration (fictitious example, simulation) that reads no real state.
  *
  * One fixed canvas behind the whole page, hidden from assistive technology
@@ -35,6 +71,57 @@ export const COVER_ATTRIBUTE = "data-network-cover";
  */
 export function LivingBackground({ initialScene = "hero" }: { initialScene?: LivingScene }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const artworkRef = useRef<HTMLDivElement>(null);
+  const nanoFieldRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const artwork = artworkRef.current;
+    const reduced = window.matchMedia?.(REDUCED_MOTION);
+    if (!artwork || reduced?.matches) return;
+
+    const drift = animate(artwork, {
+      translateX: ["-0.25%", "0.35%"],
+      translateY: ["0%", "-0.3%"],
+      scale: [1.02, 1.035],
+      opacity: [0.3, 0.38],
+      duration: 16_000,
+      ease: "inOutQuart",
+      loop: true,
+      alternate: true,
+    });
+
+    return () => {
+      drift.cancel();
+    };
+  }, []);
+
+  useEffect(() => {
+    const field = nanoFieldRef.current;
+    const reduced = window.matchMedia?.(REDUCED_MOTION);
+    if (!field || reduced?.matches) return;
+
+    const motions = Array.from(field.querySelectorAll<HTMLElement>("[data-nano-particle]")).map((particle, index) => {
+      const config = NANO_PARTICLES[index];
+      if (!config) return null;
+      const x = config.driftX * (index % 2 === 0 ? 1 : -1);
+      const y = config.driftY * (index % 3 === 0 ? -1 : 1);
+      return animate(particle, {
+        translateX: [-x * 0.45, x],
+        translateY: [-y * 0.4, y],
+        scale: [0.72, 1.18],
+        opacity: [config.opacity * 0.42, config.opacity],
+        duration: config.duration,
+        delay: config.delay,
+        ease: "inOutSine",
+        loop: true,
+        alternate: true,
+      });
+    });
+
+    return () => {
+      for (const motion of motions) motion?.cancel();
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -172,12 +259,34 @@ export function LivingBackground({ initialScene = "hero" }: { initialScene?: Liv
 
   return (
     <>
+      <div
+        ref={artworkRef}
+        aria-hidden="true"
+        data-testid="particle-handoff-background"
+        className={styles.artwork}
+      />
+      <div ref={nanoFieldRef} aria-hidden="true" data-testid="nano-particle-field" className={styles.nanoField}>
+        {NANO_PARTICLES.map((particle, index) => (
+          <span
+            key={index}
+            data-nano-particle=""
+            data-accent={particle.accent ? "" : undefined}
+            className={styles.nanoParticle}
+            style={{
+              left: `${particle.left}%`,
+              top: `${particle.top}%`,
+              width: `${particle.size}px`,
+              opacity: particle.opacity,
+            }}
+          />
+        ))}
+      </div>
       <canvas
         ref={canvasRef}
         aria-hidden="true"
         data-testid="living-background"
         data-motion="idle"
-        className={styles.canvas}
+        className={styles.measurementCanvas}
       />
       <div aria-hidden="true" data-testid="network-atmosphere" className={styles.atmosphere} />
     </>

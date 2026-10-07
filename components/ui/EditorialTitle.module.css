@@ -30,7 +30,7 @@
    Narrow option (§2.2.1, decision of 01/10/2026): `wdth` 92 on the hero only;
    the accented word resets it (`.title-accent` sets `normal`). */
 .poster {
-  font-size: min(var(--text-poster), 14cqi);
+  font-size: min(var(--text-poster), 11cqi);
   font-variation-settings: "wdth" 92;
   line-height: var(--text-poster--line-height);
   letter-spacing: var(--text-poster--letter-spacing);

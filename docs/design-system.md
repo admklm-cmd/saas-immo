@@ -18,6 +18,14 @@
    clavier complète, libellés de formulaire réels.
 6. **Aucune valeur en dur** dans un composant s'il existe un token.
 
+### Révision du 7 octobre 2026 — hero et matière pointilliste
+
+- La police de titre reste **Bricolage Grotesque**, réellement chargée par `next/font`. La référence temporaire à `Ppmori` a été retirée parce qu'aucun fichier Ppmori n'était fourni et qu'elle provoquait un repli Arial.
+- Le poster du hero est ramené à `clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem)` et `11cqi`. Il occupe la partie haute de l'écran ; une respiration de `clamp(7rem, 18vh, 12rem)` laisse ensuite lire l'illustration avant les preuves et l'interface produit.
+- Le fond visible représente une **transmission humaine en particules**, centrée. L'ancien réseau reste invisible pour conserver provisoirement ses mesures de démonstration.
+- Trente-quatre nanoparticules DOM suivent des dérives individuelles, lentes et désynchronisées avec Anime.js 4.5.0. Elles n'animent que `transform` et `opacity`, sont réduites sur mobile et entièrement statiques sous `prefers-reduced-motion`.
+- Les liaisons du bloc Acquisition → Validation humaine → Suivi passent à une opacité de `0.22` et une épaisseur de `1.25px`, afin que le système soit compris sans dominer les cartes.
+
 ### 1.1 Direction de la landing publique
 
 La page d'accueil adopte un rythme éditorial premium : titres de très grande taille,
@@ -1632,7 +1640,21 @@ Note inchangée mot pour mot : « Prototype de démonstration. Aucune donnée r�
 réel. » (`text-xs text-ink-subtle`, garde-fou d'honnêteté). Mobile 390 : boutons empilés si
 nécessaire (`flex-wrap gap-3` inchangé), note dessous à 16 px, alignée à gauche.
 
-#### 2.11.4 Réseau neuronal 3D (évolution de `LivingBackground`) — révisé 02/10 — référence utilisateur
+#### 2.11.4 Champ de particules humain (évolution de `LivingBackground`) — révisé 06/10 — référence utilisateur
+
+> **Révision du 06/10/2026.** Le réseau neuronal visible est retiré. La landing utilise
+> désormais une composition originale en demi-teinte : deux présences humaines faites de
+> points se transmettent un signal au centre, au-dessus d'un relief de particules. Ce langage
+> traduit l'assistance de l'IA et le contrôle humain sans cerveau, neurones ni globe générique.
+> Le titre du hero et la composition sont centrés. Le mouvement décoratif est un souffle lent
+> en `transform` et `opacity`; il devient entièrement statique avec
+> `prefers-reduced-motion: reduce`. Anime.js orchestre le souffle de la composition principale ;
+> deux plans de nano-particules dérivent lentement autour d'elle avec des animations CSS
+> `transform`/`opacity`. L'ancien moteur reste momentanément invisible pour conserver
+> les mesures bornées et les scénarios de non-régression jusqu'à la migration de leur télémétrie.
+
+La spécification ci-dessous décrit l'ancien moteur de mesure conservé temporairement ; elle ne
+décrit plus la couche visuelle montrée au visiteur.
 
 > **Révision du 02/10/2026 (référence utilisateur).** L'utilisateur a fourni le rendu exact
 > attendu : `ascend-neural-network-demo.html` (fichier autonome, canvas 2D, aucune dépendance ;

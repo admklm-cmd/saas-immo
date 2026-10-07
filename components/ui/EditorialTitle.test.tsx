@@ -101,7 +101,7 @@ describe("EditorialTitle.module.css", () => {
     expect(css).toMatch(/--title-line-delay:\s*100ms/);
     expect(css).toMatch(/var\(--ease-emphasis\)/);
     expect(css).toMatch(/title-sharp-in var\(--duration-base\) var\(--ease-standard\)/);
-    expect(css).toMatch(/min\(var\(--text-poster\),\s*1[234]cqi\)/);
+    expect(css).toMatch(/min\(var\(--text-poster\),\s*11cqi\)/);
   });
 
   it("narrows the poster only and balances the author lines", () => {

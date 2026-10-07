@@ -17,48 +17,40 @@
  */
 @theme {
   /* --- Typography ------------------------------------------------------- */
-  /* Five roles, four families (docs/design-system.md §2.2), self-hosted by
-     next/font at build time (app/layout.tsx sets --font-bricolage,
-     --font-instrument-serif, --font-geist, --font-geist-mono on <html>):
-     no request to Google from the browser.
-     - titles (--font-display): Bricolage Grotesque 600, optical size auto;
-     - accented word (--font-accent): Instrument Serif italic 400, only via .title-accent;
-     - body and UI (--font-sans): Geist 400–500;
-     - figures and mono labels (--font-mono): Geist Mono (.figure, .label-mono);
-     - labels: Geist, small caps, tracked, muted (.label).
-     The system stack stays as the fallback of each family. */
   --font-sans:
     var(--font-geist), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  /* Bricolage is loaded by next/font. Never point this token at a family that
+     has no bundled file: that would silently fall back to Arial. */
   --font-display: var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-accent: var(--font-instrument-serif), ui-serif, Georgia, serif;
   --font-mono:
     var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
 
   /* Public site scale (docs §2.2.3). The hero caps the poster by its column. */
-  --text-poster: clamp(2.5rem, 1rem + 7.2vw, 7.5rem);
+  --text-poster: clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem);
   --text-poster--line-height: 0.95;
   --text-poster--letter-spacing: -0.035em;
-  --text-statement: clamp(2.25rem, 1.25rem + 3.9vw, 4rem);
+  --text-statement: clamp(1.8rem, 1rem + 3vw, 3.25rem);
   --text-statement--line-height: 1;
   --text-statement--letter-spacing: -0.03em;
-  --text-lede: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --text-lede: clamp(1rem, 0.95rem + 0.25vw, 1.15rem);
   --text-lede--line-height: 1.55;
 
   /* Signed-in scale, « expressif contrôlé » (docs §2.2.4). */
-  --text-page: 3rem;
+  --text-page: 2.4rem;
   --text-page--line-height: 1.05;
   --text-page--letter-spacing: -0.025em;
-  --text-hero: 2.625rem;
+  --text-hero: 2.1rem;
   --text-hero--line-height: 1.05;
   --text-hero--letter-spacing: -0.025em;
-  --text-title: 2rem;
+  --text-title: 1.6rem;
   --text-title--line-height: 1.15;
   --text-title--letter-spacing: -0.02em;
-  --text-section: 1.75rem;
+  --text-section: 1.4rem;
   --text-section--line-height: 1.2;
   --text-section--letter-spacing: -0.015em;
-  --text-heading: 1.3125rem;
+  --text-heading: 1.1rem;
   --text-heading--line-height: 1.25;
   --text-heading--letter-spacing: -0.01em;
   --text-overline: 0.6875rem;

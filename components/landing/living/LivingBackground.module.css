@@ -2,13 +2,89 @@
  * Fixed behind the whole landing: out of the flow (no layout shift), never
  * interactive. The page content is painted above it (see app/(marketing)/page.tsx).
  */
-.canvas {
+.artwork,
+.nanoField,
+.measurementCanvas,
+.atmosphere {
   position: fixed;
   inset: 0;
   z-index: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
+}
+
+.nanoField {
+  overflow: hidden;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 18%, #000 48% 100%);
+  mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 18%, #000 48% 100%);
+}
+
+.nanoParticle {
+  position: absolute;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 1px rgb(24 24 27 / 0.08), 0 0 7px rgb(24 24 27 / 0.16);
+  will-change: transform, opacity;
+}
+
+.nanoParticle[data-accent] {
+  background: var(--color-accent);
+  box-shadow: 0 0 0 1px rgb(36 87 255 / 0.12), 0 0 10px rgb(36 87 255 / 0.3);
+}
+
+/*
+ * Human hand-off, rendered as a monochrome point cloud. This replaces the
+ * visible neural graph while keeping the measured canvas below for the
+ * bounded scene timing and performance telemetry used by the demo.
+ */
+.artwork {
+  background-image: url("/images/particle-handoff.jpg");
+  background-position: 54% 50%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0.34;
+  transform: scale(1.02);
+  will-change: transform, opacity;
+}
+
+/* Two sparse nano-particle planes add depth around the fixed illustration. */
+.artwork::before,
+.artwork::after {
+  content: "";
+  position: absolute;
+  inset: -8%;
+  pointer-events: none;
+  background-repeat: repeat;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 24%, #000 56% 100%);
+  mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 24%, #000 56% 100%);
+  will-change: transform, opacity;
+}
+
+.artwork::before {
+  background-image:
+    radial-gradient(circle, rgb(24 24 27 / 0.34) 0 0.7px, transparent 1.1px),
+    radial-gradient(circle, rgb(24 24 27 / 0.2) 0 0.55px, transparent 0.95px);
+  background-position: 7px 11px, 23px 29px;
+  background-size: 37px 37px, 53px 53px;
+  opacity: 0.42;
+  animation: nano-drift-near 13s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
+}
+
+.artwork::after {
+  background-image:
+    radial-gradient(circle, rgb(24 24 27 / 0.24) 0 0.5px, transparent 0.9px),
+    radial-gradient(circle, rgb(36 87 255 / 0.3) 0 0.65px, transparent 1.1px);
+  background-position: 13px 19px, 41px 31px;
+  background-size: 67px 67px, 97px 97px;
+  opacity: 0.3;
+  animation: nano-drift-far 19s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
+}
+
+/* The previous network still records its bounded timing, but is no longer a visual layer. */
+.measurementCanvas {
+  opacity: 0;
 }
 
 /*
@@ -20,12 +96,65 @@
  * the network.
  */
 .atmosphere {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
   background:
-    radial-gradient(ellipse at 48% 48%, transparent 25%, rgb(255 255 255 / 0.12) 75%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.9), transparent 96px),
-    linear-gradient(0deg, rgb(255 255 255 / 0.5), transparent 12%);
+    radial-gradient(circle at 50% 50%, rgb(36 87 255 / 0.09) 0 2px, transparent 9px),
+    radial-gradient(ellipse at 50% 46%, transparent 24%, rgb(255 255 255 / 0.26) 78%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.92), transparent 104px),
+    linear-gradient(0deg, rgb(255 255 255 / 0.62), transparent 16%);
+}
+
+@keyframes nano-drift-near {
+  from {
+    opacity: 0.28;
+    transform: translate3d(-1.2%, 0.8%, 0) rotate(-0.25deg);
+  }
+
+  to {
+    opacity: 0.48;
+    transform: translate3d(1.4%, -1%, 0) rotate(0.35deg);
+  }
+}
+
+@keyframes nano-drift-far {
+  from {
+    opacity: 0.2;
+    transform: translate3d(0.8%, -0.4%, 0) scale(0.99);
+  }
+
+  to {
+    opacity: 0.34;
+    transform: translate3d(-0.9%, 0.9%, 0) scale(1.015);
+  }
+}
+
+@media (max-width: 767px) {
+  .artwork {
+    background-position: 54% 42%;
+    background-size: auto 92%;
+    opacity: 0.3;
+  }
+
+  .artwork::before,
+  .artwork::after {
+    opacity: 0.22;
+  }
+
+  .nanoParticle:nth-child(n + 23) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artwork {
+    opacity: 0.34;
+    transform: none;
+  }
+
+
+  .artwork::before,
+  .artwork::after,
+  .nanoParticle {
+    animation: none;
+    transform: none !important;
+  }
 }

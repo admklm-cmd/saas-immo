@@ -3,7 +3,7 @@
 /**
  * anime.js side of the ROI widgets (docs/design-system.md §2.11.8.8 L4-E):
  * number counting (arrival and slider change) and one arrival timeline per
- * widget. The ONLY module of the site that imports `animejs` (guard test).
+ * widget. One of the two documented modules that import `animejs` (guard test).
  * Only `transform`, `opacity` and the text of the numbers are animated.
  * anime.js 4 stops requesting frames once no animation is active: after an
  * arrival ends, nothing runs.

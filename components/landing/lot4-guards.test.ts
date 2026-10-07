@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Guards of Lot 4 (docs/design-system.md §2.11.8.8 L4-A, L4-E):
- * - `animejs` is imported only under `components/landing/roi/**`;
+ * - `animejs` is imported only by the ROI widgets and the living background;
  * - the app-tile tones (`--app-tile-*`) and their colours live in ONE CSS
  *   file (block A), and nowhere else in the code of the site.
  */
@@ -27,10 +27,13 @@ const SOURCES = ["app", "components", "features", "lib"].flatMap((dir) => files(
 const rel = (path: string) => relative(ROOT, path).split(sep).join("/");
 
 describe("Lot 4 guards", () => {
-  it("imports animejs only under components/landing/roi/", () => {
+  it("imports animejs only in the two documented motion modules", () => {
     const importers = SOURCES.filter((path) => /from\s+["']animejs|import\(["']animejs|require\(["']animejs/.test(readFileSync(path, "utf8"))).map(rel);
     expect(importers.length).toBeGreaterThan(0);
-    for (const path of importers) expect(path).toMatch(/^components\/landing\/roi\//);
+    expect(importers.sort()).toEqual([
+      "components/landing/living/LivingBackground.tsx",
+      "components/landing/roi/roi-motion.ts",
+    ]);
   });
 
   it("pins animejs to an exact 4.x version", () => {

@@ -12,11 +12,11 @@ import { ReplayAnimationsButton } from "@/components/landing/replay/ReplayAnimat
 /**
  * Public home page of the agency website.
  *
- * The living background is a fixed, `aria-hidden` neural network
- * (illustration, simulation; docs/design-system.md §2.11.4): bounded
- * sequences of impulses, still at rest; every section carries
- * `data-living-scene`. The content is painted above it and is complete
- * without JavaScript. Three titles carry an accent effect, each a different
+ * The living background is a fixed, `aria-hidden` point-field hand-off
+ * (illustration, simulation; docs/design-system.md §2.11.4). Its restrained
+ * motion is decorative and becomes static with reduced motion; every section
+ * still carries `data-living-scene` for the bounded demo timing. The content
+ * is painted above it and is complete without JavaScript. Three titles carry an accent effect, each a different
  * one (§2.11.8.2), replayed when a mouse enters them (§2.11.2 D). No figure, client, testimonial or
  * price is shown.
  */
