@@ -31,14 +31,7 @@ export function LandingHero() {
             One veil per role of text, sized to the words (§2.11.4): the network
             stays visible around and, at 30 %, behind the title. */}
         <div className="@container flex w-full min-w-0 flex-col items-center">
-          <p
-            data-testid="hero-tag"
-            className="inline-block -rotate-3 rounded-full border border-ink bg-surface px-3.5 py-1.5 text-overline font-semibold text-ink uppercase shadow-subtle"
-          >
-            {TEXTS.tag}
-          </p>
-
-          <div className="network-veil-title mx-auto mt-6 w-fit max-w-full" data-network-quiet="">
+          <div className="network-veil-title relative mx-auto mt-8 w-fit max-w-full" data-network-quiet="">
             <EditorialTitle
               as="h1"
               id="hero-title"
@@ -50,6 +43,12 @@ export function LandingHero() {
               accentReplay
               accentFace="title"
             />
+            <p
+              data-testid="hero-tag"
+              className="absolute -top-8 right-0 z-10 inline-block rotate-3 rounded-full border border-ink bg-surface px-2.5 py-1 text-[0.6rem] leading-none font-semibold tracking-[0.08em] whitespace-nowrap text-ink uppercase shadow-subtle sm:-right-8 sm:top-[0.45em] lg:-right-12"
+            >
+              {TEXTS.tag}
+            </p>
           </div>
         </div>
 

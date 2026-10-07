@@ -17,7 +17,7 @@ const LARGE_MIN_WIDTH = 1280;
 /** The arrival cascade waits for the hero title lines to be posed. */
 const ARRIVAL_DELAY_MS = 900;
 const RESIZE_DEBOUNCE_MS = 150;
-const NANO_PARTICLE_COUNT = 34;
+const NANO_PARTICLE_COUNT = 64;
 /** Sections that drive the background carry this attribute. */
 export const SCENE_ATTRIBUTE = "data-living-scene";
 /** Text blocks posed outside an opaque surface: impulses fade out around them. */
@@ -35,6 +35,7 @@ type NanoParticle = {
   duration: number;
   delay: number;
   accent: boolean;
+  shape: "dot" | "chip" | "ring";
 };
 
 /** Stable pseudo-random particles: identical server/client markup, no hydration jitter. */
@@ -47,13 +48,14 @@ function nanoParticles(): NanoParticle[] {
   return Array.from({ length: NANO_PARTICLE_COUNT }, (_, index) => ({
     left: 4 + random() * 92,
     top: 8 + random() * 84,
-    size: 1.5 + random() * 2.5,
-    opacity: 0.22 + random() * 0.46,
-    driftX: 8 + random() * 22,
-    driftY: 7 + random() * 20,
-    duration: 5_800 + random() * 6_400,
+    size: 1.4 + random() * 3.2,
+    opacity: 0.24 + random() * 0.5,
+    driftX: 6 + random() * 26,
+    driftY: 6 + random() * 24,
+    duration: 4_800 + random() * 7_200,
     delay: random() * 1_800,
     accent: index % 11 === 0,
+    shape: index % 9 === 0 ? "ring" : index % 5 === 0 ? "chip" : "dot",
   }));
 }
 
@@ -71,29 +73,7 @@ const NANO_PARTICLES = nanoParticles();
  */
 export function LivingBackground({ initialScene = "hero" }: { initialScene?: LivingScene }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const artworkRef = useRef<HTMLDivElement>(null);
   const nanoFieldRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const artwork = artworkRef.current;
-    const reduced = window.matchMedia?.(REDUCED_MOTION);
-    if (!artwork || reduced?.matches) return;
-
-    const drift = animate(artwork, {
-      translateX: ["-0.25%", "0.35%"],
-      translateY: ["0%", "-0.3%"],
-      scale: [1.02, 1.035],
-      opacity: [0.3, 0.38],
-      duration: 16_000,
-      ease: "inOutQuart",
-      loop: true,
-      alternate: true,
-    });
-
-    return () => {
-      drift.cancel();
-    };
-  }, []);
 
   useEffect(() => {
     const field = nanoFieldRef.current;
@@ -110,6 +90,7 @@ export function LivingBackground({ initialScene = "hero" }: { initialScene?: Liv
         translateY: [-y * 0.4, y],
         scale: [0.72, 1.18],
         opacity: [config.opacity * 0.42, config.opacity],
+        rotate: config.shape === "dot" ? [0, 0] : [index % 2 === 0 ? -18 : 18, index % 2 === 0 ? 18 : -18],
         duration: config.duration,
         delay: config.delay,
         ease: "inOutSine",
@@ -259,18 +240,14 @@ export function LivingBackground({ initialScene = "hero" }: { initialScene?: Liv
 
   return (
     <>
-      <div
-        ref={artworkRef}
-        aria-hidden="true"
-        data-testid="particle-handoff-background"
-        className={styles.artwork}
-      />
+      <div aria-hidden="true" data-testid="particle-handoff-background" className={styles.artwork} />
       <div ref={nanoFieldRef} aria-hidden="true" data-testid="nano-particle-field" className={styles.nanoField}>
         {NANO_PARTICLES.map((particle, index) => (
           <span
             key={index}
             data-nano-particle=""
             data-accent={particle.accent ? "" : undefined}
+            data-shape={particle.shape}
             className={styles.nanoParticle}
             style={{
               left: `${particle.left}%`,

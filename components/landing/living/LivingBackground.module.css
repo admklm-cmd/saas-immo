@@ -34,6 +34,16 @@
   box-shadow: 0 0 0 1px rgb(36 87 255 / 0.12), 0 0 10px rgb(36 87 255 / 0.3);
 }
 
+.nanoParticle[data-shape="chip"] {
+  border-radius: 1px;
+}
+
+.nanoParticle[data-shape="ring"] {
+  border: 1px solid var(--color-ink);
+  background: transparent;
+  box-shadow: 0 0 6px rgb(24 24 27 / 0.18);
+}
+
 /*
  * Human hand-off, rendered as a monochrome point cloud. This replaces the
  * visible neural graph while keeping the measured canvas below for the
@@ -45,41 +55,6 @@
   background-repeat: no-repeat;
   background-size: cover;
   opacity: 0.34;
-  transform: scale(1.02);
-  will-change: transform, opacity;
-}
-
-/* Two sparse nano-particle planes add depth around the fixed illustration. */
-.artwork::before,
-.artwork::after {
-  content: "";
-  position: absolute;
-  inset: -8%;
-  pointer-events: none;
-  background-repeat: repeat;
-  -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 24%, #000 56% 100%);
-  mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 24%, #000 56% 100%);
-  will-change: transform, opacity;
-}
-
-.artwork::before {
-  background-image:
-    radial-gradient(circle, rgb(24 24 27 / 0.34) 0 0.7px, transparent 1.1px),
-    radial-gradient(circle, rgb(24 24 27 / 0.2) 0 0.55px, transparent 0.95px);
-  background-position: 7px 11px, 23px 29px;
-  background-size: 37px 37px, 53px 53px;
-  opacity: 0.42;
-  animation: nano-drift-near 13s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
-}
-
-.artwork::after {
-  background-image:
-    radial-gradient(circle, rgb(24 24 27 / 0.24) 0 0.5px, transparent 0.9px),
-    radial-gradient(circle, rgb(36 87 255 / 0.3) 0 0.65px, transparent 1.1px);
-  background-position: 13px 19px, 41px 31px;
-  background-size: 67px 67px, 97px 97px;
-  opacity: 0.3;
-  animation: nano-drift-far 19s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
 }
 
 /* The previous network still records its bounded timing, but is no longer a visual layer. */
@@ -103,30 +78,6 @@
     linear-gradient(0deg, rgb(255 255 255 / 0.62), transparent 16%);
 }
 
-@keyframes nano-drift-near {
-  from {
-    opacity: 0.28;
-    transform: translate3d(-1.2%, 0.8%, 0) rotate(-0.25deg);
-  }
-
-  to {
-    opacity: 0.48;
-    transform: translate3d(1.4%, -1%, 0) rotate(0.35deg);
-  }
-}
-
-@keyframes nano-drift-far {
-  from {
-    opacity: 0.2;
-    transform: translate3d(0.8%, -0.4%, 0) scale(0.99);
-  }
-
-  to {
-    opacity: 0.34;
-    transform: translate3d(-0.9%, 0.9%, 0) scale(1.015);
-  }
-}
-
 @media (max-width: 767px) {
   .artwork {
     background-position: 54% 42%;
@@ -134,12 +85,7 @@
     opacity: 0.3;
   }
 
-  .artwork::before,
-  .artwork::after {
-    opacity: 0.22;
-  }
-
-  .nanoParticle:nth-child(n + 23) {
+  .nanoParticle:nth-child(n + 41) {
     display: none;
   }
 }
@@ -150,11 +96,7 @@
     transform: none;
   }
 
-
-  .artwork::before,
-  .artwork::after,
   .nanoParticle {
-    animation: none;
     transform: none !important;
   }
 }

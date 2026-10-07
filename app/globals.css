@@ -29,7 +29,7 @@
 
   /* Public site scale (docs §2.2.3). The hero caps the poster by its column. */
   --text-poster: clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem);
-  --text-poster--line-height: 0.95;
+  --text-poster--line-height: 1.04;
   --text-poster--letter-spacing: -0.035em;
   --text-statement: clamp(1.8rem, 1rem + 3vw, 3.25rem);
   --text-statement--line-height: 1;

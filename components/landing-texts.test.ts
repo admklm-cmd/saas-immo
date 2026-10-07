@@ -266,7 +266,7 @@ describe("landing editorial titles", () => {
 
   it("keeps the exact titles and accents validated by the user", () => {
     expect(Object.fromEntries(Object.entries(EDITORIAL).map(([key, texts]) => [key, [texts.titleLines, texts.titleAccent]]))).toEqual({
-      hero: [["Chaque demande", "vendeur avance.", "Votre agence", "garde la main."], "main"],
+      hero: [["Chaque demande vendeur avance.", "Votre agence garde la main."], "main"],
       problem: [["Ce n'est pas la prospection", "qui freine vos mandats.", "C'est l'administratif."], "administratif"],
       solution: [["Chaque dossier suit", "le même chemin,", "de la demande au mandat."], "chemin"],
       agents: [["Chaque agent sait", "où son travail commence.", "Et où il s'arrête."], "s'arrête"],

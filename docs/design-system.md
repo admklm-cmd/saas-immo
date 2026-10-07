@@ -21,9 +21,9 @@
 ### Révision du 7 octobre 2026 — hero et matière pointilliste
 
 - La police de titre reste **Bricolage Grotesque**, réellement chargée par `next/font`. La référence temporaire à `Ppmori` a été retirée parce qu'aucun fichier Ppmori n'était fourni et qu'elle provoquait un repli Arial.
-- Le poster du hero est ramené à `clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem)` et `11cqi`. Il occupe la partie haute de l'écran ; une respiration de `clamp(7rem, 18vh, 12rem)` laisse ensuite lire l'illustration avant les preuves et l'interface produit.
+- Le poster du hero est ramené à `clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem)` et `11cqi`, composé en deux lignes d'auteur avec un interligne de `1.04`. Il occupe la partie haute de l'écran ; une respiration de `clamp(7rem, 18vh, 12rem)` laisse ensuite lire l'illustration avant les preuves et l'interface produit. La plaquette « 5 agents · contrôle humain » est épinglée au premier vers.
 - Le fond visible représente une **transmission humaine en particules**, centrée. L'ancien réseau reste invisible pour conserver provisoirement ses mesures de démonstration.
-- Trente-quatre nanoparticules DOM suivent des dérives individuelles, lentes et désynchronisées avec Anime.js 4.5.0. Elles n'animent que `transform` et `opacity`, sont réduites sur mobile et entièrement statiques sous `prefers-reduced-motion`.
+- Soixante-quatre nanorobots DOM (points, micro-puces et anneaux) suivent des trajectoires individuelles, lentes et désynchronisées avec Anime.js 4.5.0. L'illustration de fond reste fixe : seuls les nanorobots bougent. Ils n'animent que `transform` et `opacity`, sont réduits à quarante sur mobile et entièrement statiques sous `prefers-reduced-motion`.
 - Les liaisons du bloc Acquisition → Validation humaine → Suivi passent à une opacité de `0.22` et une épaisseur de `1.25px`, afin que le système soit compris sans dominer les cartes.
 
 ### 1.1 Direction de la landing publique

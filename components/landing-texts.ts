@@ -28,7 +28,7 @@ export const LANDING_TEXTS = {
      * (`title === titleLines.join(" ")`, tested).
      */
     title: "Chaque demande vendeur avance. Votre agence garde la main.",
-    titleLines: ["Chaque demande", "vendeur avance.", "Votre agence", "garde la main."],
+    titleLines: ["Chaque demande vendeur avance.", "Votre agence garde la main."],
     titleAccent: "main",
     subtitle:
       "Cinq agents IA préparent chaque étape jusqu'à une prochaine action claire. Le premier message et le mandat restent validés par votre équipe.",
