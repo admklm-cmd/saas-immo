@@ -23,7 +23,7 @@
 - La police de titre reste **Bricolage Grotesque**, réellement chargée par `next/font`. La référence temporaire à `Ppmori` a été retirée parce qu'aucun fichier Ppmori n'était fourni et qu'elle provoquait un repli Arial.
 - Le poster du hero est ramené à `clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem)` et `11cqi`, composé en deux lignes d'auteur avec un interligne de `1.04`. Il occupe la partie haute de l'écran ; une respiration de `clamp(7rem, 18vh, 12rem)` laisse ensuite lire l'illustration avant les preuves et l'interface produit. La plaquette « 5 agents · contrôle humain » est épinglée au premier vers.
 - Le fond visible représente une **transmission humaine en particules**, centrée. L'ancien réseau reste invisible pour conserver provisoirement ses mesures de démonstration.
-- Soixante-quatre nanorobots DOM (points, micro-puces et anneaux) suivent des trajectoires individuelles, lentes et désynchronisées avec Anime.js 4.5.0. L'illustration de fond reste fixe : seuls les nanorobots bougent. Ils n'animent que `transform` et `opacity`, sont réduits à quarante sur mobile et entièrement statiques sous `prefers-reduced-motion`.
+- *Révisé le 10/10/2026 (§ 2.11.4 bis) : les nanorobots quittent le fond de toute la page pour la seule première section, perdent leurs lueurs, échangent par paires, et un terminal « humain ⇄ machine » s'écrit sous les mains.* Soixante-quatre nanorobots DOM (points, micro-puces et anneaux) suivent des trajectoires individuelles, lentes et désynchronisées avec Anime.js 4.5.0. L'illustration de fond reste fixe : seuls les nanorobots bougent. Ils n'animent que `transform` et `opacity`, sont réduits à quarante sur mobile et entièrement statiques sous `prefers-reduced-motion`.
 - Les liaisons du bloc Acquisition → Validation humaine → Suivi passent à une opacité de `0.22` et une épaisseur de `1.25px`, afin que le système soit compris sans dominer les cartes.
 
 ### 1.1 Direction de la landing publique
@@ -1322,6 +1322,8 @@ titre, quelle que soit la largeur du contenu.
 
 1. **Aucune boucle sur la landing** — *exception unique depuis le 02/10 (soir) : le bloc A du
    hero, en boucle par décision de l'utilisateur, en pause hors écran et onglet caché, § 2.11.8.3*.
+   *Seconde exception le 10/10/2026 : les nanorobots du hero (`hero-nanorobots`) et le terminal
+   (≈ 15 s, joué une fois), avec bouton pause, § 2.11.4 bis.*
    Tout mouvement automatique a une fin, atteinte **en moins
    de 5 s** après son départ, puis l'écran est immobile (testé au pixel, § 2.11.7). Seuls les
    effets déclenchés par l'utilisateur (défilement, pointeur, bouton) peuvent bouger ensuite,
@@ -2076,6 +2078,387 @@ environnement.
 Captures de contrôle (passe 2) : `…/scratchpad/landing-motion/pass2/` (1440 / 1024 / 390 / 360 :
 arrivée à ≈ 2 s, repos haut / milieu / bas, salve « problème », titre « problème » option A,
 mouvement réduit ; comparaison côte à côte avec la démo à 1440 et 390).
+
+#### 2.11.4 bis Hero : nanorobots qui échangent et terminal « humain ⇄ machine » (10/10/2026)
+
+> **Statut : spécifié le 10/10/2026, non implémenté.** Demande de l'utilisateur : garder la
+> transmission en particules, la rendre **plus tech**, faire **interagir** les nanorobots
+> (ils se rapprochent, se touchent, se transmettent quelque chose, repartent) en un fond
+> **continu mais posé**, et ajouter une **écriture façon terminal** qui dit le lien entre
+> l'humain et la machine — **seulement sur la première section**. La refonte typographique
+> globale est hors de ce lot. Cette sous-section **prime** sur la puce « Soixante-quatre
+> nanorobots » de la révision du 7 octobre (§ 1) pour tout ce qui concerne les nanorobots.
+
+##### A. Idée, lecture en cinq secondes
+
+- **Idée unique** : les agents travaillent en se passant le relais ; l'humain reçoit et décide.
+- **Ce que voit le visiteur** : au-dessus, le titre ; au centre, les deux mains en points ; autour,
+  de minuscules puces noires qui viennent l'une vers l'autre, se touchent, se relient une seconde
+  par un fil d'un pixel, se passent un **bit cobalt**, puis repartent. Sous les mains, un petit
+  journal en police mono s'écrit ligne à ligne : « léa → hugo », « emma → vous », « vous →
+  louis »… et se termine par « les agents préparent. vous décidez. »
+- **Ce n'est pas** un réseau de neurones : aucun lien permanent, jamais plus de deux robots reliés
+  ensemble, aucun nœud fixe, aucune arborescence. Un fil n'existe que pendant un échange
+  (≈ 1,7 s) et entre deux puces qui se sont touchées.
+- **Hiérarchie conservée** : titre → actions → mains → journal → nanorobots. Les nanorobots
+  restent sous tout le texte (voiles existants) et n'entrent jamais dans une zone de texte.
+
+##### B. Périmètre : la première section seulement
+
+| Élément | Avant | Après |
+|---|---|---|
+| Image des mains (`.artwork`, `particle-handoff.jpg`) | fixe, toute la page | **inchangée** (hors demande ; voir « À transmettre ») |
+| 64 nanorobots (`nano-particle-field`) | fixes derrière **toute** la page (`LivingBackground`) | **retirés de `LivingBackground`** ; nouveau calque **dans le hero**, bande 1 seulement |
+| Canvas de mesure, atmosphère | inchangés | inchangés |
+| Terminal | — | nouveau, dans la bande 1 du hero |
+
+- Nouveau conteneur : la bande 1 (`hero-band`) est enveloppée dans un bloc **pleine largeur**
+  `relative` (`data-testid="hero-stage"`). Le calque `HeroNanoField` y est posé en
+  `position: absolute; inset: 0; overflow: hidden; z-index: 0; pointer-events: none`,
+  `aria-hidden="true"`. Le contenu de la bande passe en `relative z-10`. Le calque **ne couvre
+  pas** le bloc A (`hero-ecosystem`) ni la marge qui le précède.
+- Le calque défile avec le hero (il n'est pas fixe) : dès que la section suivante arrive, il
+  sort de l'écran ; il se met alors en pause (§ F).
+
+##### C. Les nanorobots : formes, nombre, couleurs
+
+Deux populations dans le même calque, rendues dans le HTML serveur à des positions
+pseudo-aléatoires stables (même générateur à graine que l'actuel `nanoParticles()`, aucune
+différence serveur/client).
+
+| Population | ≥ 768 px (pointeur fin) | < 768 px ou `pointer: coarse` | Rôle |
+|---|---|---|---|
+| Ambiants (`data-nano-robot="ambient"`) | 48 | 32 | matière, dérive lente individuelle |
+| Acteurs (`data-nano-robot="actor"`, `data-pair="1…8"`) | 16 (8 paires) | 8 (paires 1 à 4) | les échanges |
+| **Total** | **64** | **40** (plafond du PRD) | |
+
+Formes (toutes **sans lueur** : `box-shadow` de flou, `filter` et `drop-shadow` interdits — les
+lueurs actuelles de `.nanoParticle` et `[data-accent]` sont **supprimées**) :
+
+| Forme | Dessin | Taille | Couleur |
+|---|---|---|---|
+| Ambiant « point » | disque plein | 1,4 à 3,6 px | `ink`, opacité 0,20 à 0,60 |
+| Ambiant « puce » | carré, rayon 1 px | 2 à 4 px | `ink`, opacité 0,20 à 0,60 |
+| Ambiant « anneau » | cercle, trait 1 px `ink`, fond transparent | 4 à 5 px | opacité 0,25 à 0,50 |
+| **Acteur** | **carré 6 × 6 px** (5 × 5 sous 768), rayon 1 px, plein `ink` ; au centre un **port** carré 2 × 2 px couleur `canvas` (un « trou ») | — | repos 0,55 ; engagé 0,95 |
+| Port « porteur » | le port passe de `canvas` à `accent` (fondu d'opacité entre deux calques superposés, jamais de transition de `background-color`) | 2 × 2 | `--color-accent` |
+| **Bit** (`data-nano-bit`) | carré plein | 3 × 3 px | `--color-accent`, opacité 1 |
+| **Fil** (`data-nano-link`) | trait de 1 px de haut, origine au centre de A, orienté vers B (rotation fixée pour l'échange) | longueur = distance des centres en position « liaison » | `ink` à 35 % |
+
+Le cobalt n'apparaît **que** sur un port porteur ou un bit en transit : au plus **deux** points
+cobalt visibles en même temps dans le calque sur ordinateur, **un** sur téléphone.
+
+**Dérive des ambiants** (Anime.js 4.5.0, comme aujourd'hui, mais plus posée) :
+`translateX`/`translateY` amplitude 6 à 22 px (au lieu de 6 à 32), `scale` 0,92 → 1,06 (au lieu
+de 0,72 → 1,18), `rotate` ±8° pour puces et anneaux seulement (au lieu de ±18°), opacité
+`o × 0,6 → o`, durée 7 000 à 14 000 ms (au lieu de 4 800 à 12 000), délai 0 à 2 000 ms,
+`ease: "inOutSine"`, `loop: true`, `alternate: true`. Les acteurs **ne dérivent pas** : ils sont
+immobiles à leur position de repos entre deux échanges (c'est ce qui rend l'échange lisible).
+
+**Zone centrale dégagée** : masque du calque `radial-gradient(ellipse at 50% 58%, transparent 0
+14%, #000 42% 100%)` (même principe que l'actuel `.nanoField`), pour laisser la rosace entre les
+deux index lisible.
+
+##### D. Chorégraphie d'un échange (le cœur de la demande)
+
+**Géométrie d'une paire.** Chaque paire *i* a un **point de rencontre** `M` (ancre), un angle
+`θ` tiré une fois (graine) dans **[−35°, +35°]** par rapport à l'horizontale (les fils restent
+presque horizontaux : lecture « circuit », pas « toile »), et une distance de repos `d` entre les
+deux centres : **140 à 200 px** (≥ 1024), **120 à 180 px** (768–1023), **72 à 110 px** (< 768).
+Repos : A en `M − (d/2)·u`, B en `M + (d/2)·u` (`u` = vecteur unitaire de `θ`). `s` = côté de
+l'acteur (6 ou 5 px).
+
+**Ancres (en % du calque `hero-stage`)** :
+
+| Paire | ≥ 768 px | < 768 px |
+|---|---|---|
+| 1 | (9 %, 18 %) | voir ci-dessous |
+| 2 | (91 %, 14 %) | |
+| 3 | (16 %, 46 %) | |
+| 4 | (84 %, 40 %) | |
+| 5 | (7 %, 74 %) | — |
+| 6 | (93 %, 70 %) | — |
+| 7 | (12 %, 94 %) | — |
+| 8 | (88 %, 94 %) | — |
+
+Sous 768 px, les quatre ancres sont calculées dans le rectangle de l'**espace libre au-dessus du
+terminal** (`data-nano-stage`, § E) : (20 %, 30 %), (80 %, 30 %), (30 %, 75 %), (70 %, 75 %) de
+ce rectangle.
+
+**Règle d'évitement (obligatoire, recalculée au redimensionnement, 150 ms de délai)** : on lit
+les rectangles des éléments `[data-network-quiet]` de la bande (titre, sous-titre, actions,
+terminal, preuves). Une paire est **désactivée** si un point de son trajet (de A au repos à B au
+repos, épaisseur `s`) passe à moins de **24 px** d'un de ces rectangles ; on essaie d'abord de
+réduire `d` jusqu'à 80 px (48 px sous 768) avant de la désactiver. Une paire désactivée reste
+affichée à son repos si son repos est hors texte, sinon elle est masquée (`opacity: 0`). Au
+moins une paire doit rester active à 1440, 1024 et 390 (critère C4).
+
+**Déroulé d'un échange** (une **timeline Anime.js** par échange ; `t` en ms depuis le début ;
+propriétés animées : `translateX`, `translateY`, `scale`, `scaleX`, `opacity` **uniquement**) :
+
+| t (ms) | Phase (`data-phase` sur l'acteur A et B) | Ce qui bouge | Valeurs | Easing |
+|---|---|---|---|---|
+| 0 → 2 800 | `approach` — ils se rapprochent | A et B glissent vers `M` | jusqu'à `M ∓ (s/2 + 8 px)·u` ; opacité 0,55 → 0,95 | `inOutSine` |
+| 2 800 → 3 160 | `contact` — ils se touchent | derniers 8 px | jusqu'à `M ∓ (s/2)·u` : **bords en contact, écart 0** | `outQuad` |
+| 3 160 → 3 640 | `contact` — poignée de main | A et B ensemble | `scale` 1 → 1,12 (240 ms) → 1 (240 ms) ; à 3 400 le port de A devient cobalt (fondu 160 ms) | `inOutSine` |
+| 3 640 → 4 060 | `link` — ils se relient | A et B reculent, le fil se tend | écart entre bords 0 → **28 px** ; fil `scaleX` 0 → 1 depuis A, synchronisé | `outSine` |
+| 4 060 → 4 780 | `transfer` — ils se transmettent | le bit quitte A et rejoint B le long du fil | port de A cobalt → `canvas` (120 ms) au départ ; bit `translate` du centre de A au centre de B ; à l'arrivée bit opacité 1 → 0 (80 ms) et port de B → cobalt (160 ms) | `inOutSine` (720 ms) |
+| 4 780 → 5 380 | `hold` — tenue | rien | 600 ms immobiles (le regard enregistre que B porte le bit) | — |
+| 5 380 → 5 620 | `release` — le fil se défait | fil | opacité 1 → 0 | `linear` (240 ms) |
+| 5 620 → 8 420 | `release` — ils repartent | A et B retournent à leur repos **± 10 px** (graine différente à chaque fois : jamais deux fois exactement le même retour) | opacité 0,95 → 0,55 ; port de B cobalt → `canvas` de 6 820 à 7 420 | `inOutSine` (2 800 ms) |
+| 8 420 | `idle` | — | état de repos | — |
+
+Durée d'un échange : **8 420 ms**. Aucun rebond, aucune rotation, aucun dépassement.
+
+**Ordonnanceur (budget)** :
+
+| Réglage | ≥ 768 px | < 768 px |
+|---|---|---|
+| Échanges simultanés max | **2** | **1** |
+| Premier échange | 2 400 ms après l'hydratation (après l'arrivée du titre, 1,4 s) | idem |
+| Départ suivant | 4 200 ms ± 600 (graine) après le départ précédent ; si le plafond est atteint : 1 200 ms après la fin d'un échange | 2 400 ms après la fin du précédent |
+| Repos d'une paire | ≥ 6 000 ms entre sa fin et son prochain départ | idem |
+| Choix de la paire | tour de rôle sur un ordre mélangé une fois (graine), en sautant les paires désactivées ou au repos | idem |
+| Éléments animés en même temps | ≤ 48 ambiants + 2 × (2 acteurs + 1 fil + 1 bit) = **56** | ≤ 32 + 4 = **36** |
+
+Rythme obtenu : un nouvel échange toutes les ≈ 4 s sur ordinateur, au plus deux qui se
+chevauchent ; un seul à la fois sur téléphone, séparé par une respiration de 2,4 s. Jamais de
+salve.
+
+**Attributs de test** sur le calque (`data-testid="hero-nanorobots"`) : `data-loop="allowed"`,
+`data-loop-state` (`playing` | `paused` | `stopped` | `reduced`), `data-exchanges` (nombre
+d'échanges commencés), `data-exchanges-active` (0 à 2). Sur chaque acteur : `data-pair`,
+`data-role` (`a` | `b`), `data-phase`.
+
+**Interruptions** : pause (hors écran, onglet caché, bouton) = la timeline se fige **là où elle
+est** (fil et bit compris) et reprend au même instant. Redimensionnement pendant un échange : la
+timeline est **amenée à sa fin** (acteurs au repos, pas de fil, pas de bit) puis la géométrie est
+recalculée. Clavier, toucher, survol : aucun effet (calque inerte).
+
+##### E. Le terminal « humain ⇄ machine »
+
+**Place.** Dans la bande 1, l'actuelle respiration `h-[clamp(7rem,18vh,12rem)]` (entre les
+actions et les preuves) devient :
+
+1. un **espace libre** `data-nano-stage` : `h-[clamp(3.5rem,8vh,6rem)]`, `aria-hidden`, vide
+   (les mains et, sur téléphone, les échanges s'y voient) ;
+2. le **terminal** (`HeroTerminal`), centré, largeur `min(100%, 30rem)`, lignes **alignées à
+   gauche** dans ce bloc ;
+3. un écart `mt-10` (40 px ; `mt-8` sous 640) avant le filet des preuves.
+
+Le terminal a une **hauteur fixe** (toutes ses lignes sont dans le DOM dès le départ ; seule leur
+opacité change) : **aucun décalage de mise en page** pendant l'écriture. Si la capture à
+1440 × 900 montre que son voile recouvre la rosace entre les deux index, augmenter l'espace libre
+(plafond `7rem`), jamais réduire le terminal.
+
+**Habillage : volontairement nu** (pas de fenêtre, pas de barre à trois pastilles, pas de cadre,
+pas de fond noir) : texte mono posé sur `.particle-veil .particle-veil-tight` + `data-network-quiet`
+(zone calme : aucun robot ne s'y engage). Un seul filet : bord gauche 1 px `line-strong` sur toute
+la hauteur, `padding-left: 0.875rem` — le repère « console ».
+
+**Typographie (tokens)** — Geist Mono déjà chargée (`--font-mono`) :
+
+| Rôle | ≥ 640 px | < 640 px | Couleur (token) | Contraste mesuré sur blanc |
+|---|---|---|---|---|
+| Ligne | `font-mono`, 12 px (0,75 rem), interligne 20 px, graisse 400, approche 0, `font-variant-ligatures: none` | 11 px, interligne 18 px | — | — |
+| Commentaire (`# …`) | idem | idem | `ink-subtle` `#66666e` | 5,7:1 |
+| Émetteur agent (`léa`, `hugo`…) | graisse 500 | idem | `ink-muted` `#5a5a60` | 6,9:1 |
+| Flèche `→` | 400 | idem | `ink-subtle` | 5,7:1 |
+| `vous` (émetteur ou destinataire) | **graisse 600** | idem | `ink` `#18181b` | 17,7:1 |
+| Contenu | 400 | idem | `ink-muted` | 6,9:1 |
+| Curseur | bloc `0.6em × 1.2em`, plein | idem | `accent` `#2457ff` | 5,4:1 (≥ 3:1 requis, non textuel) |
+
+Exigence : **≥ 4,5:1 au pixel le plus sombre sous chaque glyphe**, mesuré sur capture (voile
+90 % blanc au-dessus de l'image et des robots). Aucune couleur autre que celles du tableau ; pas
+de vert, pas de néon, pas de lueur sur le texte ni le curseur.
+
+**Grille d'une ligne** : 4 colonnes `5ch · 2ch · 6ch · 1fr` (émetteur, flèche, destinataire,
+contenu). Si le contenu passe à la ligne (écrans < 360 px), il garde un **retrait suspendu**
+aligné sur la 4e colonne.
+
+**Lignes exactes** (à centraliser dans `LANDING_TEXTS.hero.terminal`, `components/landing-texts.ts`) :
+
+| # | Émetteur | → | Destinataire | Contenu | Nature |
+|---|---|---|---|---|---|
+| 0 | `# exemple fictif — simulation` (ligne entière, commentaire) | | | | statique |
+| 1 | `léa` | `→` | `hugo` | `fiche créée · doublon écarté` | agent |
+| 2 | `hugo` | `→` | `emma` | `motivation : manquante, signalée` | agent |
+| 3 | `emma` | `→` | `vous` | `premier message prêt · non envoyé` | agent |
+| 4 | `vous` | `→` | `louis` | `premier contact validé` | **humain** |
+| 5 | `louis` | `→` | `vous` | `créneau proposé · à confirmer` | agent |
+| 6 | `sarah` | `→` | `vous` | `mandat : à confirmer par vous` | agent |
+| 7 | `# les agents préparent. vous décidez.` (ligne entière, commentaire) | | | | conclusion |
+
+Fidélité au workflow (vérifiée) : Hugo **signale** l'information manquante sans l'inventer ;
+Emma prépare, **rien n'est envoyé** ; le **premier contact est validé par l'humain** avant que
+Louis prenne le relais ; le créneau et le **mandat restent à confirmer par l'humain**. Aucun
+chiffre, aucun nom de client, aucune durée, aucun résultat. La ligne 0 marque l'ensemble comme
+simulation ; elle est toujours visible (jamais tapée, jamais masquée).
+
+**Rythme de frappe** (la machine tape vite et régulier, l'humain plus lentement, après une
+hésitation — c'est le contraste humain/machine, sans texte de plus) :
+
+| Étape | Début (ms après le premier affichage) | Règle |
+|---|---|---|
+| Ligne 0 | 0 | visible d'emblée |
+| Départ | 1 600 | après l'arrivée du titre (1,4 s) |
+| Ligne d'agent (1, 2, 3, 5, 6) | — | émetteur, flèche et destinataire apparaissent **d'un coup** (comme une invite) ; puis le contenu, **24 ms par caractère** ; puis 520 ms de pause |
+| Ligne humaine (4) | — | l'invite apparaît, le curseur **clignote 700 ms** (hésitation), puis **52 ms par caractère** ; puis 800 ms de pause |
+| Avant la ligne 7 | — | 900 ms de pause (après la ligne 6, au lieu de 520) |
+| Ligne 7 | — | **36 ms par caractère** |
+| Fin | ≈ 12 200 | le curseur reste au bout de la ligne 7, clignote **3 fois** (530 ms allumé / 530 ms éteint, en `steps(1)`), puis reste **allumé et immobile** (≈ 15 400 ms) |
+
+Repères calculés : L1 1 600 → 2 272 · L2 2 792 → 3 560 · L3 4 080 → 4 872 · L4 5 392 (hésitation)
+→ 6 092 → 7 236 · L5 8 036 → 8 732 · L6 9 252 → 9 948 · L7 10 848 → 12 180. Les durées par
+caractère sont fixes (aucun aléa : rendu identique à chaque chargement, testable).
+
+- Apparition d'un caractère : opacité 0 → 1 **instantanée** (`steps(1)`), pas de fondu ni de
+  glissement. Animer `width`, `clip-path`, `max-width` ou le contenu textuel est **interdit**.
+- Curseur : **plein** pendant la frappe (il suit le dernier caractère affiché), clignotant
+  seulement pendant l'hésitation de la ligne 4 et à la fin. Élément de **largeur nulle dans le
+  flux** (le bloc est dessiné par un pseudo-élément) : il ne pousse jamais le texte.
+- **Joué une fois par chargement.** Rejoué par « Rejouer les animations » (§ 2.11.8.8 L4-D :
+  ajouter le terminal au tableau « Contenu relancé » : retour à l'état armé, frappe depuis 0).
+  Aucune boucle de texte.
+- Implémentation recommandée (frontend-ux tranche) : délais par caractère calculés au rendu
+  serveur (`--d` en ligne) + animation CSS sous `@media (prefers-reduced-motion: no-preference)`,
+  avec `animation-fill-mode: backwards` ; ainsi le HTML serveur est l'état final (règle § 2.11.1
+  n° 2), il n'y a **aucun flash** de texte complet puis effacé, et la pause / le rejeu passent
+  par `getAnimations({ subtree: true })` (`finish()` / `cancel()` + `play()`).
+
+**Bouton pause** (le mouvement démarre seul, dure plus de 5 s et côtoie le titre : WCAG 2.2.2
+impose un moyen de l'arrêter) :
+
+- Place : aligné à droite sur la **ligne 0** du terminal (même ligne de base), dans le bloc.
+- Texte visible : `[ pause ]` puis `[ reprendre ]` (mono 11 px, `ink-muted` ; crochets décoratifs
+  en `aria-hidden`). Nom accessible : « Mettre en pause l'animation du haut de page » /
+  « Reprendre l'animation du haut de page » (contient le mot visible, WCAG 2.5.3). `type="button"`,
+  `aria-pressed` absent (le libellé change).
+- Cible : 28 px de haut ≥ 640 (zone de clic 44 × 28 min) ; **44 × 44** sous 640 (zone de clic
+  étendue, le texte reste petit). Survol : `ink`, 160 ms. Focus : anneau produit (2 px `focus`).
+- Effet de « pause » : le terminal saute à son **état final** (texte complet, curseur immobile),
+  les nanorobots se **figent** sur place (`data-loop-state="stopped"`). « Reprendre » relance les
+  nanorobots ; le terminal reste complet. Le choix vaut pour la page (pas de stockage).
+- Ordre de tabulation : après « Se connecter », avant les preuves. Rendu **après hydratation
+  seulement** ; **absent sous mouvement réduit** (rien ne bouge), comme le bouton de rejeu.
+
+**Accessibilité du terminal** : `<figure aria-labelledby="hero-terminal-title">` ; titre `sr-only`
+« Exemple fictif, simulation : le relais entre les agents et votre équipe » ; **toutes** les
+lignes visibles sont `aria-hidden="true"` ; une liste **statique** `<ol class="sr-only">`, lue une
+seule fois, aucune `aria-live` :
+
+1. « Léa transmet à Hugo : fiche créée, doublon écarté. »
+2. « Hugo transmet à Emma : motivation manquante, signalée. »
+3. « Emma vous transmet le premier message, prêt et non envoyé. »
+4. « Vous validez le premier contact ; Louis prend le relais. »
+5. « Louis vous propose un créneau, à confirmer. »
+6. « Sarah vous transmet le suivi ; le mandat reste à confirmer par vous. »
+7. « Les agents préparent, vous décidez. »
+
+##### F. États
+
+| Situation | Nanorobots | Terminal | Bouton pause |
+|---|---|---|---|
+| HTML serveur / sans JavaScript | 64 (40) à leur position de repos, immobiles ; paires 3 et 4 dessinées en **liaison** (fil visible, port de B cobalt) | texte complet **dans le HTML** ; si la frappe est en CSS pur, elle se joue une fois sans JS et finit complète à ≈ 12,2 s (pas de bouton pause possible sans JS : limite connue, acceptée car rare) | absent |
+| Chargement avec mouvement | ambiants dérivent dès l'hydratation ; échanges à partir de 2 400 ms ; `playing` | armé puis frappe (§ E) ; `data-terminal-state` `typing` → `done` | présent |
+| Calque visible à < 10 % (défilement) | `paused` en ≤ 1 s, tout figé | continue (texte, pas un mouvement de fond) | présent |
+| Onglet caché | `paused` | animations CSS suspendues par le navigateur ; si la frappe n'est pas finie au retour, elle reprend | — |
+| Pause utilisateur | `stopped`, figé | état final | « reprendre » |
+| `prefers-reduced-motion: reduce` | **composition statique complète** : même dessin que le HTML serveur (deux paires en liaison, bit montré dans le port de B) ; aucun minuteur, aucune timeline ; `reduced` | complet à l'instant 0, curseur plein immobile ; `data-terminal-state="reduced"` | absent |
+| Bascule du réglage en direct | → `reduced` : saut à la composition statique | → complet | retiré / rendu |
+
+##### G. Responsive
+
+| Largeur | Nanorobots | Terminal |
+|---|---|---|
+| **1440** | 64 ; 8 paires, ancres du tableau D ; 2 échanges max ; `d` 140–200 px | 12 px / 20 px, `min(100%, 30rem)` centré ; ligne la plus longue (48 car.) ≈ 346 px ; 8 lignes = **160 px** |
+| **1024** | 64 ; ancres D (les paires trop proches des preuves sont désactivées par la règle d'évitement — 7 sautera probablement) ; 2 max ; `d` 140–200 px | identique à 1440 |
+| **768–1023** | 64 ; `d` 120–180 px ; 2 max | identique |
+| **390** | **40** ; 4 paires dans l'espace libre au-dessus du terminal ; **1** échange à la fois ; `d` 72–110 px ; acteurs 5 px | 11 px / 18 px, pleine largeur de colonne (342 px) ; 48 car. ≈ 317 px : pas de retour à la ligne ; 8 lignes = **144 px** ; bouton pause 44 × 44 |
+| < 360 | idem 390 | retour à la ligne autorisé, retrait suspendu (colonne 4) |
+
+Rien n'est masqué du terminal à aucune largeur ; aucun défilement horizontal.
+
+##### H. Performance
+
+- Uniquement `transform` et `opacity` ; `will-change: transform, opacity` sur les robots, le fil
+  et le bit seulement. Aucun canvas ajouté, aucune dépendance (Anime.js 4.5.0 déjà là).
+- Plafonds : 64 robots (40), ≤ 56 éléments animés à la fois (36), 2 timelines d'échange (1), 2
+  points cobalt (1).
+- Mesure (Playwright, `requestAnimationFrame` sur 20 s après chargement) : **p95 de l'intervalle
+  entre images ≤ 17 ms à 1440** sans bridage ; **≤ 34 ms à 390 avec CPU × 4** ; aucune tâche
+  longue (> 50 ms) imputable au hero après la fin du chargement.
+- Hors écran, onglet caché ou pause : **zéro** minuteur armé et timelines en pause (vérifiable :
+  transformations identiques à 1 s d'intervalle).
+
+##### I. Règles modifiées par cette sous-section
+
+- § 2.11.1 n° 1 (« aucune boucle ») et § 2.11.8.1 n° 3 : **deuxième exception**, décidée par
+  l'utilisateur le 10/10/2026 — le calque `hero-nanorobots` (`data-loop="allowed"`), en pause hors
+  écran, onglet caché et au bouton. Le terminal n'est **pas** une boucle (joué une fois) mais dure
+  ≈ 15 s : il est couvert par le bouton pause.
+- § 2.11.8.8 L4-D : le terminal rejoue sa frappe ; les nanorobots ne sont pas concernés (continus).
+- Révision du 7 octobre (§ 1) : les lueurs des nanorobots sont retirées ; les nanorobots ne sont
+  plus fixes derrière toute la page.
+
+##### J. Critères d'acceptation (vérifiables)
+
+Composition et périmètre
+- C1. À 1440, 1024, 390 : `[data-nano-robot]` dans `hero-nanorobots` = 64, 64, 40 (visibles) ;
+  acteurs = 16, 16, 8. **Aucun** `[data-nano-robot]` dans le DOM hors de la section `#hero` ;
+  `nano-particle-field` n'existe plus dans `LivingBackground`.
+- C2. Le bas du calque `hero-stage` est au-dessus du haut de `hero-ecosystem`.
+- C3. Après défilement jusqu'à la section « problème » : `data-loop-state="paused"` en ≤ 1 s.
+- C4. Au moins une paire active à chaque largeur ; pendant `contact`, `link`, `transfer`, aucun
+  acteur n'est à moins de 24 px d'un rectangle `[data-network-quiet]` (échantillonné).
+
+Échanges
+- C5. Dans les 12 s après le chargement (mouvement autorisé) : `data-exchanges ≥ 1`.
+- C6. Échantillons toutes les 250 ms pendant 30 s : `data-exchanges-active ≤ 2` (1440) et `≤ 1`
+  (390) ; jamais plus de 2 (1) éléments cobalt visibles dans le calque.
+- C7. Pendant `data-phase="contact"` (après 3 160 ms de l'échange) : distance entre les centres de
+  A et B ≤ `s + 1 px`. Pendant `transfer` : un `[data-nano-link]` d'opacité > 0 et un
+  `[data-nano-bit]` d'opacité > 0 existent.
+- C8. Test unitaire (Vitest) de la logique pure (`nano-exchange.ts` ou équivalent) : la timeline
+  n'utilise que `translateX`, `translateY`, `scale`, `scaleX`, `opacity` ; durée totale 8 420 ms ;
+  l'ordonnanceur respecte plafond, repos de 6 000 ms et premier départ à 2 400 ms ; la règle
+  d'évitement désactive une ancre posée dans un rectangle de texte.
+- C9. `getComputedStyle(robot).boxShadow === "none"` et `filter === "none"` pour tous les robots.
+
+Terminal
+- C10. HTML serveur : les 8 lignes sont présentes en entier dans le DOM ; sans JavaScript, toutes
+  sont visibles au plus tard à 13 s (immédiatement si la frappe n'est pas en CSS pur).
+- C11. Les textes du terminal viennent de `LANDING_TEXTS.hero.terminal` (test : aucune chaîne du
+  terminal en dur dans le composant) et la liste `sr-only` contient exactement les 7 phrases du § E.
+- C12. Nom accessible de la figure = titre `sr-only` ; les lignes visibles sont `aria-hidden` ; le
+  texte « fiche créée » n'apparaît **qu'une fois** dans l'arbre d'accessibilité.
+- C13. Mouvement autorisé : à 1 000 ms, le premier caractère du contenu de la ligne 1 a une opacité
+  0 ; à 13 000 ms, `data-terminal-state="done"` et tous les caractères ont une opacité 1.
+- C14. La boîte du terminal a la même hauteur à 0 ms et à 13 000 ms (aucun décalage) ; elle
+  n'intersecte ni le titre, ni le sous-titre, ni les actions, ni les preuves.
+- C15. Contraste ≥ 4,5:1 au pixel le plus sombre sous chaque ligne (capture 1440 et 390).
+
+Pause, mouvement réduit, rejeu
+- C16. Bouton pause atteignable au clavier juste après « Se connecter », focus visible ; clic →
+  terminal complet immédiatement, `data-loop-state="stopped"`, transformations des robots
+  identiques à 1 s d'intervalle ; second clic → `playing`, nom accessible « Reprendre… » →
+  « Mettre en pause… ».
+- C17. `prefers-reduced-motion: reduce` : terminal complet à 0 ms, aucun bouton pause, transforms
+  des robots identiques sur 3 s, deux paires en `data-phase="link"` avec fil visible,
+  `data-loop-state="reduced"`.
+- C18. Onglet caché (`visibilitychange`) → `paused` ; retour → `playing`.
+- C19. « Rejouer les animations » : le terminal repasse à `typing` et recommence à la ligne 1 ;
+  `data-exchanges` n'est pas remis à zéro.
+- C20. `e2e/landing-sans-boucle.spec.ts` mis à jour : `[data-loop]` = **2** (`hero-ecosystem`,
+  `hero-nanorobots`), les deux masqués dans les captures ; le terminal est immobile au pixel entre
+  16 s et 18 s.
+- C21. Performance du § H mesurée et consignée (valeurs réelles dans le rapport de frontend-ux).
+- C22. Captures 1440, 1024, 390, et 1440 en mouvement réduit : à t = 0, t ≈ 4 s (échange en cours),
+  t ≈ 16 s ; l'utilisateur audite sur ces captures.
+
+Nouveau fichier E2E attendu : `e2e/landing-hero-nanorobots.spec.ts` (C1–C7, C9–C19) ; tests
+existants à ajuster : `landing-sans-boucle.spec.ts` (C20), et toute assertion de `accueil.spec.ts`
+sur l'ordre de tabulation du hero (le bouton pause s'insère).
 
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
