@@ -1,5 +1,7 @@
 # Directives pour Gemini — Ascend Strategy
 
+> Rôle de Gemini dans l'équipe : voir `docs/outils-ia.md` (branche `gemini/<sujet>` ou `docs/propositions-gemini/`, jamais de code métier, jamais `main`).
+
 Utilise ce document comme brief avant toute proposition de design ou de code. Lis ensuite `CLAUDE.md`, `docs/PRD.md`, `docs/design-system.md`, `docs/product.md` et `docs/workflows.md`. Le dépôt existant est la source de vérité ; ne remplace pas une règle métier par une invention visuelle.
 
 ## Ta mission

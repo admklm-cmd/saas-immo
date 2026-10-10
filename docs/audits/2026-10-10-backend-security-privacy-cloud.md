@@ -205,3 +205,4 @@ démarrage de Docker Desktop, reste la voie normale.
   sans protection frontale.
 - **Décision humaine attendue** : fournisseur IA ou modèle privé, AWS/OVH/Supabase, seuils de quota,
   conservation et objectifs RPO/RTO.
+
