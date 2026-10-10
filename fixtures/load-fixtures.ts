@@ -109,7 +109,11 @@ async function createUsers(admin: TypedClient): Promise<
       email: user.email,
       password,
       email_confirm: true,
-      user_metadata: { label: user.label, fixture: true },
+      user_metadata: {
+        label: user.label,
+        fixture: true,
+        ...(user.displayName ? { full_name: user.displayName } : {}),
+      },
     });
     fail(`createUser ${user.email}`, result.error);
     if (result.data.user?.id !== user.id) {

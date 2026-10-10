@@ -3,12 +3,14 @@ import { describe, expect, it } from "vitest";
 import { buildFixtures, NOTABLE_CONTACTS } from "./dataset";
 import {
   FIXTURE_AGENCY_IDS,
-  FIXTURE_EMAIL_DOMAIN,
+  FIXTURE_ACCOUNT_EMAIL_DOMAINS,
   FIXTURE_PHONE_PATTERN,
+  FIXTURE_USER_IDS,
   FIXTURE_USERS,
   fictionLandline,
   fictionMobile,
   fixtureUuid,
+  isFixtureAccountEmail,
 } from "./fixture-ids";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -30,10 +32,36 @@ describe("fixtures : identifiants", () => {
     expect(FIXTURE_PHONE_PATTERN.test("06 12 34 56 78")).toBe(false);
   });
 
-  it("n'utilise que le domaine réservé pour les comptes de test", () => {
-    for (const user of FIXTURE_USERS) {
-      expect(user.email.endsWith(`@${FIXTURE_EMAIL_DOMAIN}`)).toBe(true);
+  it("n'utilise que des domaines réservés (.test) pour les comptes de test", () => {
+    for (const domain of FIXTURE_ACCOUNT_EMAIL_DOMAINS) {
+      expect(domain.endsWith(".test")).toBe(true);
     }
+    for (const user of FIXTURE_USERS) {
+      expect(isFixtureAccountEmail(user.email), user.email).toBe(true);
+    }
+    expect(isFixtureAccountEmail("quelquun@gmail.com")).toBe(false);
+    expect(isFixtureAccountEmail("piege@ascend.test.evil.com")).toBe(false);
+    expect(isFixtureAccountEmail(null)).toBe(false);
+  });
+
+  it("déclare le compte propriétaire en direction de l'agence A, mot de passe lu dans l'environnement", () => {
+    const owner = FIXTURE_USERS.find((user) => user.key === "ownerA");
+    expect(owner).toMatchObject({
+      email: "adm.hatira@ascend.test",
+      agency: "a",
+      role: "director",
+      passwordEnvVar: "FIXTURES_PASSWORD_OWNER",
+      displayName: "Adm Hatira",
+    });
+    expect(FIXTURE_USER_IDS.ownerA).toBe(owner?.id);
+  });
+
+  it("garde des clés, identifiants, e-mails et variables de mot de passe uniques", () => {
+    for (const field of ["key", "id", "email", "passwordEnvVar"] as const) {
+      const values = FIXTURE_USERS.map((user) => user[field]);
+      expect(new Set(values).size, field).toBe(values.length);
+    }
+    expect(Object.values(FIXTURE_USER_IDS).sort()).toEqual(FIXTURE_USERS.map((user) => user.id).sort());
   });
 });
 

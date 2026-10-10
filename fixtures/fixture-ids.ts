@@ -33,6 +33,20 @@ export const FIXTURE_AGENCY_IDS = {
 export const FIXTURE_EMAIL_DOMAIN = "example.test";
 
 /**
+ * Domain of the project owner's local demo account. Also under the reserved
+ * `.test` TLD, so it can never reach a real mailbox.
+ */
+export const FIXTURE_OWNER_EMAIL_DOMAIN = "ascend.test";
+
+/** Every domain a fixture ACCOUNT (auth user) may use. Contacts stay on FIXTURE_EMAIL_DOMAIN. */
+export const FIXTURE_ACCOUNT_EMAIL_DOMAINS = [FIXTURE_EMAIL_DOMAIN, FIXTURE_OWNER_EMAIL_DOMAIN] as const;
+
+export function isFixtureAccountEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return FIXTURE_ACCOUNT_EMAIL_DOMAINS.some((domain) => email.endsWith(`@${domain}`));
+}
+
+/**
  * Phone numbers reserved by Arcep for audiovisual works (decision n° 2018-0881,
  * national numbering plan): six blocks of 10 000 numbers that can neither call
  * nor be called. We use the PACA landline block 04 65 71 XX XX and the mobile
@@ -51,7 +65,7 @@ export function fictionLandline(last4: string): string {
 /** A phone number is a fixture phone number only if it is in a fiction block. */
 export const FIXTURE_PHONE_PATTERN = /^0(6 39 98|4 65 71) \d{2} \d{2}$/;
 
-export type FixtureUserKey = "directorA" | "agentA" | "userB";
+export type FixtureUserKey = "directorA" | "agentA" | "userB" | "ownerA";
 
 export type FixtureUser = {
   key: FixtureUserKey;
@@ -63,6 +77,8 @@ export type FixtureUser = {
   /** Optional environment variable holding the password (otherwise generated). */
   passwordEnvVar: string;
   label: string;
+  /** Optional display name stored in the auth user metadata (`full_name`). */
+  displayName?: string;
 };
 
 export const FIXTURE_USERS: readonly FixtureUser[] = [
@@ -93,10 +109,24 @@ export const FIXTURE_USERS: readonly FixtureUser[] = [
     passwordEnvVar: "FIXTURES_PASSWORD_USER_B",
     label: "Utilisateur — Agence Test Isolation (fictive)",
   },
+  {
+    // Local demo account of the project owner: same role as directorA, in
+    // agency A. Its password comes from FIXTURES_PASSWORD_OWNER (or is
+    // generated), exactly like the other accounts — never hard-coded.
+    key: "ownerA",
+    id: fixtureUuid("user:owner-a"),
+    email: `adm.hatira@${FIXTURE_OWNER_EMAIL_DOMAIN}`,
+    agency: "a",
+    role: "director",
+    passwordEnvVar: "FIXTURES_PASSWORD_OWNER",
+    label: "Propriétaire — Calanques Immobilier (fictive)",
+    displayName: "Adm Hatira",
+  },
 ] as const;
 
 export const FIXTURE_USER_IDS = {
   directorA: FIXTURE_USERS[0]!.id,
   agentA: FIXTURE_USERS[1]!.id,
   userB: FIXTURE_USERS[2]!.id,
+  ownerA: FIXTURE_USERS[3]!.id,
 } as const;

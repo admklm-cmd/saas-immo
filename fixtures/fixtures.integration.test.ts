@@ -5,7 +5,13 @@ import type { Database } from "@/types/database";
 
 import { assertLocalSupabaseUrl, assertNotProduction } from "../lib/supabase/local-only";
 import { buildFixtures, FIXTURE_EXPECTED_COUNTS, NOTABLE_CONTACTS } from "./dataset";
-import { FIXTURE_AGENCY_IDS, FIXTURE_EMAIL_DOMAIN, FIXTURE_PHONE_PATTERN, FIXTURE_USERS } from "./fixture-ids";
+import {
+  FIXTURE_AGENCY_IDS,
+  FIXTURE_EMAIL_DOMAIN,
+  FIXTURE_PHONE_PATTERN,
+  FIXTURE_USERS,
+  isFixtureAccountEmail,
+} from "./fixture-ids";
 
 /**
  * Proves that the loaded fixtures are, and stay, 100 % synthetic:
@@ -189,15 +195,29 @@ describe("fixtures : données 100 % fictives", () => {
     }
   });
 
-  it("les comptes utilisateurs de test sont en @example.test", async () => {
+  it("les comptes utilisateurs de test sont sur un domaine réservé .test (example.test, ascend.test)", async () => {
     const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     expect(error).toBeNull();
     for (const user of data?.users ?? []) {
-      expect(user.email?.endsWith(`@${FIXTURE_EMAIL_DOMAIN}`), `compte « ${user.email} »`).toBe(true);
+      expect(isFixtureAccountEmail(user.email), `compte « ${user.email} »`).toBe(true);
     }
     const emails = new Set((data?.users ?? []).map((user) => user.email));
     for (const fixtureUser of FIXTURE_USERS) {
       expect(emails.has(fixtureUser.email), `compte manquant : ${fixtureUser.email}`).toBe(true);
+    }
+  });
+
+  it("chaque compte de fixture a exactement l'adhésion déclarée (agence et rôle)", async () => {
+    const { data, error } = await admin
+      .from("memberships")
+      .select("user_id, agency_id, role")
+      .in("user_id", FIXTURE_USERS.map((user) => user.id));
+    expect(error).toBeNull();
+    for (const fixtureUser of FIXTURE_USERS) {
+      const own = (data ?? []).filter((row) => row.user_id === fixtureUser.id);
+      expect(own, `adhésion de ${fixtureUser.email}`).toEqual([
+        { user_id: fixtureUser.id, agency_id: FIXTURE_AGENCY_IDS[fixtureUser.agency], role: fixtureUser.role },
+      ]);
     }
   });
 
