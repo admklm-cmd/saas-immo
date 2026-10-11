@@ -2,7 +2,7 @@
 name: cybersecurite
 description: Expert sécurité et conformité du SaaS immobilier. Audite et corrige le code d'une branche (isolation entre agences, RLS, secrets, API, injection de prompt, dépendances, consentements et RGPD). À utiliser après chaque développement et sur toute modification sensible.
 tools: Read, Edit, Write, Grep, Glob, Bash, WebFetch, WebSearch
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 skills:
   - appsec-review

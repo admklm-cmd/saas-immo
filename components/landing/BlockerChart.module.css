@@ -1,0 +1,501 @@
+/*
+ * Illustration of the problem section — mandates progress, the administrative
+ * work absorbs the time, progression plateaus.
+ *
+ * Palette: ink and greys at rest (dark curve, very fine grey strokes); cobalt
+ * only for motion (the curve while it draws itself) and active states (a
+ * highlighted cause: the curve turns slightly blue, its events light up with a
+ * local cobalt veil and one pulse). No border, no axis, no shadow on the words. Literal numbers are SVG geometry (strokes, dashes,
+ * radii) and the timings of the narrative sequence, which have no token (they
+ * come from problem/problem-scene.ts through CSS variables on the figure).
+ */
+
+/* Right under the caption; the row above the plot carries « Mandats » and the
+   name of the absorbed capacity. */
+.scene {
+  position: relative;
+  margin-top: 1.5rem;
+  padding-top: 1.75rem;
+}
+
+.plot {
+  position: relative;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+/* --- Gradients -------------------------------------------------------------- */
+/* The curve: ink at rest, slightly blue while it draws or when a cause is active. */
+.stopCurveStart,
+.stopCurveMid,
+.stopCurveEnd {
+  transition: stop-color var(--duration-interactive) var(--ease-standard);
+}
+
+.stopCurveStart {
+  --curve-rest: var(--color-ink);
+  --curve-active: color-mix(in srgb, var(--color-accent) 58%, var(--color-ink));
+  stop-color: var(--curve-rest);
+}
+
+.stopCurveMid {
+  --curve-rest: color-mix(in srgb, var(--color-ink) 80%, var(--color-ink-muted));
+  --curve-active: color-mix(in srgb, var(--color-accent) 34%, var(--color-ink));
+  stop-color: var(--curve-rest);
+}
+
+.stopCurveEnd {
+  --curve-rest: var(--color-ink-muted);
+  --curve-active: color-mix(in srgb, var(--color-accent) 18%, var(--color-ink-muted));
+  stop-color: var(--curve-rest);
+}
+
+:global([data-active-cause]) .stopCurveStart,
+:global([data-active-cause]) .stopCurveMid,
+:global([data-active-cause]) .stopCurveEnd {
+  stop-color: var(--curve-active);
+}
+
+.stopAreaTop {
+  stop-color: var(--color-ink);
+  stop-opacity: 0.028;
+}
+
+.stopAreaBottom {
+  stop-color: var(--color-ink);
+  stop-opacity: 0;
+}
+
+.stopVeilCenter {
+  stop-color: var(--color-accent);
+  stop-opacity: 0.13;
+}
+
+.stopVeilEdge {
+  stop-color: var(--color-accent);
+  stop-opacity: 0;
+}
+
+.stopFrictionStart {
+  stop-color: var(--color-pearl);
+  stop-opacity: 0;
+}
+
+.stopFrictionEnd {
+  stop-color: var(--color-pearl);
+  stop-opacity: 0.7;
+}
+
+/* --- Shapes ----------------------------------------------------------------- */
+.area {
+  fill: url(#problem-area-fill);
+}
+
+.friction {
+  fill: url(#problem-friction-fill);
+}
+
+.expected {
+  fill: none;
+  stroke: color-mix(in srgb, var(--color-ink-subtle) 70%, transparent);
+  stroke-dasharray: 0.004 0.012;
+  stroke-linecap: round;
+  stroke-width: 1.5;
+  transition: stroke var(--duration-interactive) var(--ease-standard);
+}
+
+:global([data-active-cause]) .expected {
+  stroke: color-mix(in srgb, var(--color-accent) 50%, transparent);
+}
+
+.curve {
+  fill: none;
+  stroke: url(#problem-curve-stroke);
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+.end {
+  fill: var(--color-surface);
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+}
+
+.marker,
+.markerCap {
+  stroke: var(--color-ink-muted);
+  stroke-linecap: round;
+  stroke-width: 1;
+}
+
+/* --- Events ----------------------------------------------------------------- */
+/* The outer group reacts to the cause (dimmed / highlighted); the inner group
+   carries the appearance, so the two never fight over the same property. */
+.event {
+  cursor: default;
+  transition: opacity var(--duration-interactive) var(--ease-standard);
+}
+
+/* The one or two events before the friction: barely there. */
+.event[data-early="true"] {
+  opacity: 0.45;
+}
+
+.tether {
+  stroke: var(--color-ink-subtle);
+  stroke-linecap: round;
+  stroke-width: 0.75;
+  /* Shown when the word of the event is shown, or the event highlighted. */
+  opacity: 0;
+  transition:
+    stroke var(--duration-interactive) var(--ease-standard),
+    opacity var(--duration-interactive) var(--ease-standard);
+}
+
+.event[data-label="rest"] .tether {
+  opacity: 0.45;
+}
+
+@media (min-width: 640px) {
+  .event[data-label="wide"] .tether {
+    opacity: 0.45;
+  }
+}
+
+/* Local cobalt veil: the zone of the highlighted events lights up slightly.
+   Never a hit area (it would steal the pointer from its neighbours). */
+.veil {
+  fill: url(#problem-event-veil);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-slow) var(--ease-standard);
+}
+
+/* Invisible, wider hit area: hovering an event points at its cause. It also
+   carries the single pulse of a highlighted event. */
+.halo {
+  fill: var(--color-accent);
+  opacity: 0;
+}
+
+/* An event is a node of the system: a small ring, like the living background. */
+.dot {
+  fill: var(--color-canvas);
+  stroke: var(--color-ink-subtle);
+  stroke-width: 1.25;
+  r: 3.4px;
+  transition:
+    fill var(--duration-interactive) var(--ease-standard),
+    stroke var(--duration-interactive) var(--ease-standard),
+    r var(--duration-interactive) var(--ease-standard);
+}
+
+.event[data-early="true"] .dot {
+  r: 2.6px;
+}
+
+.event[data-highlighted="true"] {
+  opacity: 1;
+}
+
+.event[data-highlighted="true"] .dot {
+  fill: var(--color-accent);
+  stroke: var(--color-accent);
+  r: 4.5px;
+}
+
+.event[data-highlighted="true"] .veil {
+  opacity: 1;
+}
+
+/* One pulse, once, when the event gets highlighted. */
+.event[data-highlighted="true"] .halo {
+  animation: event-pulse 640ms var(--ease-standard) 1;
+}
+
+@keyframes event-pulse {
+  from {
+    opacity: 0.28;
+    r: 4.5px;
+  }
+  to {
+    opacity: 0;
+    r: 15px;
+  }
+}
+
+.event[data-highlighted="true"] .tether {
+  stroke: var(--color-accent);
+  opacity: 0.6;
+}
+
+:global([data-active-cause]) .event:not([data-highlighted="true"]) {
+  opacity: 0.3;
+}
+
+:global([data-active-cause]) .event:not([data-highlighted="true"]) .tether {
+  opacity: 0;
+}
+
+/* --- Words over the scene -------------------------------------------------- */
+.word {
+  position: absolute;
+  font-size: var(--text-overline);
+  font-weight: 600;
+  letter-spacing: var(--text-overline--letter-spacing);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-ink-subtle);
+  pointer-events: none;
+}
+
+.axisY {
+  top: 0;
+  left: 0;
+}
+
+.axisX {
+  right: 0;
+  bottom: -0.25rem;
+}
+
+/*
+ * The word of an event hangs under the curve, below its event, always at the
+ * same distance: one rule, one rhythm. At rest only a few words are shown;
+ * the others appear with their cause. Hidden words are not hoverable
+ * (`visibility`), so they never steal the pointer.
+ */
+.chipSlot {
+  position: absolute;
+  z-index: 1;
+  translate: -50% 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-interactive) var(--ease-standard),
+    visibility 0s linear var(--duration-interactive);
+}
+
+.chipSlot[data-align="end"] {
+  translate: calc(-100% + 0.75rem) 0.5rem;
+}
+
+.chipSlot[data-label="rest"],
+.chipSlot[data-highlighted="true"] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity var(--duration-interactive) var(--ease-standard),
+    visibility 0s;
+}
+
+@media (min-width: 640px) {
+  .chipSlot[data-label="wide"] {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--duration-interactive) var(--ease-standard),
+      visibility 0s;
+  }
+}
+
+/* A cause is active: only its words stay. */
+:global([data-active-cause]) .chipSlot:not([data-highlighted="true"]) {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--duration-interactive) var(--ease-standard),
+    visibility 0s linear var(--duration-interactive);
+}
+
+/* A tag of the system: the same hairline capsule as the fragments of the
+   living background and the events written under each cause. */
+.chip {
+  display: block;
+  padding: 0.3125rem 0.625rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: default;
+  transition:
+    color var(--duration-interactive) var(--ease-standard),
+    border-color var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-interactive) var(--ease-standard);
+}
+
+.chipSlot[data-highlighted="true"] .chip {
+  border-color: var(--color-accent-line);
+  background-color: var(--color-surface);
+  color: var(--color-accent-strong);
+}
+
+/* On the row of « Mandats », right-aligned on the measure of the gap, which
+   starts just under it. */
+.capacityLabel {
+  position: absolute;
+  top: -0.125rem;
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  text-align: right;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Phones: the scene shrinks, the words keep a readable size (12 px). */
+@media (max-width: 639px) {
+  /* The body face (Geist since 01/10/2026) sets wider than the former system
+     face: a touch of tracking and padding keeps neighbouring words apart on a
+     phone. */
+  .chip {
+    padding: 0.25rem 0.4375rem;
+    letter-spacing: -0.015em;
+  }
+
+  .capacityLabel {
+    font-size: 0.75rem;
+  }
+}
+
+/* --- Appearance sequence (driven by the enclosing Reveal) ------------------ */
+/* Without JavaScript, Reveal stays « visible »: the scene is complete. */
+:global(.reveal[data-reveal="hidden"]) .curve {
+  stroke-dashoffset: 1;
+}
+
+:global(.reveal[data-reveal="hidden"]) .expected,
+:global(.reveal[data-reveal="hidden"]) .area,
+:global(.reveal[data-reveal="hidden"]) .friction,
+:global(.reveal[data-reveal="hidden"]) .appear,
+:global(.reveal[data-reveal="hidden"]) .chip,
+:global(.reveal[data-reveal="hidden"]) .capacity,
+:global(.reveal[data-reveal="hidden"]) .capacityLabel,
+:global(.reveal[data-reveal="hidden"]) .end {
+  opacity: 0;
+}
+
+:global(.reveal[data-reveal="entering"]) .curve {
+  animation: problem-draw var(--curve-duration) cubic-bezier(0.3, 0.1, 0.3, 1) var(--curve-delay) both;
+}
+
+/* Motion is cobalt: the curve draws itself slightly blue, then settles to ink. */
+:global(.reveal[data-reveal="entering"]) .stopCurveStart,
+:global(.reveal[data-reveal="entering"]) .stopCurveMid,
+:global(.reveal[data-reveal="entering"]) .stopCurveEnd {
+  animation: problem-settle calc(var(--curve-duration) + 900ms) var(--ease-standard) var(--curve-delay) backwards;
+}
+
+@keyframes problem-settle {
+  from,
+  60% {
+    stop-color: var(--curve-active);
+  }
+}
+
+/* The area uncovers itself from left to right, under the curve being drawn. */
+:global(.reveal[data-reveal="entering"]) .area {
+  animation: problem-uncover var(--curve-duration) cubic-bezier(0.3, 0.1, 0.3, 1) var(--curve-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .appear {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: problem-event 520ms var(--ease-standard) var(--event-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .chip {
+  animation: problem-fade 520ms var(--ease-standard) var(--event-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .friction {
+  animation: problem-fade 1400ms var(--ease-standard) var(--friction-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .expected {
+  animation: problem-fade 1400ms var(--ease-standard) var(--friction-delay) both;
+}
+
+:global(.reveal[data-reveal="entering"]) .end {
+  animation: problem-fade var(--duration-slow) var(--ease-standard) calc(var(--curve-delay) + var(--curve-duration))
+    both;
+}
+
+:global(.reveal[data-reveal="entering"]) .capacity,
+:global(.reveal[data-reveal="entering"]) .capacityLabel {
+  animation: problem-fade 700ms var(--ease-standard) var(--capacity-delay) both;
+}
+
+@keyframes problem-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes problem-uncover {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes problem-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes problem-event {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.6);
+  }
+}
+
+/* Reduced motion: the final scene at once, whatever the Reveal state. */
+@media (prefers-reduced-motion: reduce) {
+  .curve,
+  .expected,
+  .area,
+  .friction,
+  .appear,
+  .chip,
+  .capacity,
+  .capacityLabel,
+  .end {
+    animation: none !important;
+    opacity: 1 !important;
+    clip-path: none !important;
+  }
+
+  .curve {
+    stroke-dashoffset: 0 !important;
+  }
+
+  /* No pulse; the highlighted state (dot, veil, curve tint) stays visible. */
+  .halo,
+  .stopCurveStart,
+  .stopCurveMid,
+  .stopCurveEnd {
+    animation: none !important;
+  }
+}

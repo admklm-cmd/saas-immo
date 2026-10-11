@@ -1,0 +1,74 @@
+// @vitest-environment jsdom
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { afterEach, expect, it } from "vitest";
+
+import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
+import { LIVING_SCENES } from "@/components/landing/living/scenes";
+
+import HomePage from "./page";
+
+afterEach(() => {
+  cleanup();
+});
+
+it("presents the hero, the five agents and the human safeguards", () => {
+  render(<HomePage />);
+  expect(screen.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeDefined();
+
+  // The seven steps of the carousel are tabs; the first one is shown at once.
+  const tabs = screen.getAllByRole("tab");
+  expect(tabs).toHaveLength(LANDING_TEXTS.agents.steps.length);
+  // The open module previews its mission (aria-hidden); the panel states it in full.
+  expect(within(screen.getByRole("tabpanel")).getByText(LANDING_TEXTS.agents.steps[0].action)).toBeDefined();
+  for (const fact of LANDING_TEXTS.control.facts) {
+    expect(screen.getByText(fact.body)).toBeDefined();
+  }
+  expect(screen.getAllByText("Simulation").length).toBeGreaterThan(0);
+  // Block A of the hero and carousel scene: both say they are a fictitious simulation.
+  expect(screen.getAllByText(LANDING_TEXTS.journey.badge).length).toBeGreaterThanOrEqual(2);
+});
+
+it("names every section, and the still background is decorative", () => {
+  const { container } = render(<HomePage />);
+  const scenes = Array.from(container.querySelectorAll("[data-living-scene]")).map((section) =>
+    section.getAttribute("data-living-scene"),
+  );
+  expect(scenes).toEqual([...LIVING_SCENES]);
+  expect(screen.getByTestId("particle-handoff-background").getAttribute("aria-hidden")).toBe("true");
+  // The former network canvas is gone: no canvas behind the page (§2.11.4 bis B).
+  expect(screen.queryByTestId("living-background")).toBeNull();
+  expect(screen.queryByTestId("nano-particle-field")).toBeNull();
+});
+
+it("offers both public estimation and agency access, and no floating contact button", () => {
+  render(<HomePage />);
+  const estimationLinks = screen.getAllByRole("link", { name: LANDING_TEXTS.actions.estimation });
+  const signInLinks = screen.getAllByRole("link", { name: LANDING_TEXTS.actions.signIn });
+  expect(estimationLinks.every((link) => link.getAttribute("href") === "/estimation")).toBe(true);
+  expect(signInLinks.every((link) => link.getAttribute("href") === "/connexion")).toBe(true);
+  expect(screen.queryByRole("link", { name: /whatsapp|contact/i })).toBeNull();
+});
+
+it("gives three titles one effect each, never repeated, replayable on hover; the four others none (§2.11.8.2, T1)", () => {
+  const { container } = render(<HomePage />);
+  const titles = Array.from(container.querySelectorAll("[data-accent-replayable]"));
+  expect(titles.map((title) => [title.id, title.getAttribute("data-accent-effect")])).toEqual([
+    ["hero-title", "underline"],
+    ["problem-title", "focus"],
+    ["control-title", "tech"],
+  ]);
+  for (const id of ["solution-title", "agents-title", "result-title", "final-title"]) {
+    const title = container.querySelector(`#${id}`)!;
+    expect(title.hasAttribute("data-accent-effect"), id).toBe(false);
+    expect(title.querySelectorAll("[data-accent-frame], [data-accent-mark], canvas, [data-letter]"), id).toHaveLength(0);
+  }
+  // Two elements of the page may loop: the nanorobots and block A of the hero (§2.11.8.1 n° 3, §2.11.4 bis I).
+  expect(Array.from(container.querySelectorAll("[data-loop]")).map((element) => element.getAttribute("data-testid"))).toEqual([
+    "hero-nanorobots",
+    "hero-ecosystem",
+  ]);
+  // The final panel ends on its note, no canvas inside it (§2.11.3 bis).
+  const actions = screen.getByTestId("final-actions");
+  expect(actions.lastElementChild?.textContent).toBe(LANDING_TEXTS.final.note);
+  expect(actions.parentElement?.querySelector("canvas")).toBeNull();
+});

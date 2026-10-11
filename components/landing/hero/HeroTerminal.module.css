@@ -1,0 +1,239 @@
+/*
+ * Terminal « humain ⇄ machine » of the hero (docs/design-system.md §2.11.4 bis
+ * E). Deliberately bare: no window, no traffic lights, no frame, no dark
+ * background — mono text on the 90 % veil, one 1 px rule on the left. Fixed
+ * height: every line is in the DOM from the start, only opacities change.
+ * Colours: ink, ink-muted, ink-subtle, and cobalt for the cursor only.
+ */
+
+.terminal {
+  position: relative;
+  width: min(100%, 30rem);
+  margin-inline: auto;
+  padding-left: 0.875rem;
+  border-left: 1px solid var(--color-line-strong);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.25rem;
+  letter-spacing: 0;
+  font-variant-ligatures: none;
+  text-align: left;
+}
+
+/* The veil of the terminal: 90 % white under the text, soft edges in the overflow
+   (the same shape as .particle-veil, so it never reads as a white box). */
+.terminal::before {
+  --veil-x: 3rem;
+  --veil-y: 1.25rem;
+  content: "";
+  position: absolute;
+  inset: calc(var(--veil-y) * -1) calc(var(--veil-x) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 90%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  mask-composite: intersect;
+}
+
+@media (width < 40rem) {
+  .terminal {
+    font-size: 0.6875rem;
+    line-height: 1.125rem;
+  }
+}
+
+/* One line: sender · arrow · receiver · content; a wrapped content keeps a hanging indent. */
+.line {
+  display: grid;
+  grid-template-columns: 5ch 2ch 6ch minmax(0, 1fr);
+  column-gap: 1ch;
+}
+
+.comment {
+  grid-column: 1 / -1;
+  color: var(--color-ink-subtle);
+}
+
+.agent {
+  font-weight: 500;
+  color: var(--color-ink-muted);
+}
+
+.arrow {
+  color: var(--color-ink-subtle);
+}
+
+.receiver {
+  color: var(--color-ink-muted);
+}
+
+.human {
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.content {
+  position: relative;
+  color: var(--color-ink-muted);
+}
+
+/* The closing comment spans the whole line (it keeps the comment colour). */
+.closing .content {
+  color: var(--color-ink-subtle);
+}
+
+/*
+ * Characters typed so far (`--shown`, one integer per line, animated in steps
+ * — see below): character `--i` is shown when `--shown > --i`. At rest the
+ * property keeps its initial value (999): the whole text, the server HTML.
+ */
+.char {
+  opacity: clamp(0, var(--shown) - var(--i), 1);
+}
+
+/* The cursor: a cobalt block, absolutely placed (zero width in the flow), moved by whole characters. */
+.cursor {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0.6em;
+  height: 1.2em;
+  margin-top: -0.6em;
+  background-color: var(--color-accent);
+  /* +0.12ch: the mono advance is ~0.01 px wider than 1ch per character (0.6 px after 37): the cursor never touches the last glyph (contrast, C15). */
+  transform: translateX(calc(min(var(--shown), var(--n)) * 1ch + 0.12ch));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* At rest, the cursor stays after the closing words, on, still. */
+.closing .cursor {
+  opacity: 1;
+}
+
+/* Pause button: on line 0, right-aligned; small mono text, a 28 px target (44 × 44 on a phone). */
+.pause {
+  position: absolute;
+  top: -0.25rem;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 1.75rem;
+  padding-inline: 0.25rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink-muted);
+  font-size: 0.6875rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 160ms var(--ease-standard);
+}
+
+.pause:hover {
+  color: var(--color-ink);
+}
+
+.pause:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+@media (width < 40rem) {
+  .pause {
+    top: -0.75rem;
+    right: -0.5rem;
+    height: 2.75rem;
+    padding-inline: 0.5rem;
+  }
+}
+
+/*
+ * Typing, once (motion welcome only). The server HTML is the final text. Per
+ * line: the prompt (sender, arrow, receiver) appears at once at `--start`;
+ * `--shown` then steps from 0 to `--n`, one character every 24/52/36 ms (no
+ * fade, no glide; jump-start: the first character with the first step). The
+ * cursor follows; it blinks 700 ms before the human types, blinks three times
+ * at the end, then stays on, still.
+ */
+@property --shown {
+  syntax: "<integer>";
+  inherits: true;
+  initial-value: 999;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .typed {
+    animation:
+      terminal-hidden var(--start) step-end,
+      terminal-type var(--t) steps(var(--n), jump-start) var(--first) both;
+  }
+
+  .closing {
+    animation: terminal-type var(--t) steps(var(--n), jump-start) var(--first) both;
+  }
+
+  .typed .cursor {
+    animation: terminal-cursor var(--w) step-end var(--first);
+  }
+
+  .typed[data-hesitation] .cursor {
+    animation:
+      terminal-blink var(--hd) step-end var(--h),
+      terminal-cursor var(--w) step-end var(--first);
+  }
+
+  .closing .cursor {
+    animation:
+      terminal-hidden var(--first) step-end,
+      terminal-blink var(--b) step-end var(--done) 3;
+  }
+}
+
+@keyframes terminal-type {
+  from {
+    --shown: 0;
+  }
+  to {
+    --shown: var(--n);
+  }
+}
+
+@keyframes terminal-hidden {
+  from,
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes terminal-cursor {
+  from,
+  to {
+    opacity: 1;
+  }
+}
+
+/* On for the first half, off for the second. */
+@keyframes terminal-blink {
+  0% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* « Rejouer les animations »: one style pass without any animation, then the typing starts over. */
+.terminal[data-rearm] *,
+.terminal[data-rearm] *::before,
+.terminal[data-rearm] *::after {
+  animation: none !important;
+}

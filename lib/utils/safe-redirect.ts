@@ -1,0 +1,42 @@
+/**
+ * Redirect targets that come from the URL (`/connexion?suivant=…`).
+ *
+ * An open redirect is a phishing primitive: a link that looks like our domain
+ * but lands the user on someone else's sign-in page. Only a same-origin,
+ * unambiguous path is ever accepted; anything else silently falls back to the
+ * default screen.
+ *
+ * Why "starts with a single slash" is NOT enough: browsers normalise the
+ * backslash to a slash while parsing a URL, so `/\evil.example` becomes
+ * `//evil.example`, i.e. a scheme-relative URL pointing at another host. The
+ * same goes for control characters, which some parsers strip before resolving.
+ */
+
+export const DEFAULT_REDIRECT_TARGET = "/contacts";
+
+/** Defensive bound: no legitimate internal route is anywhere near that long. */
+export const MAX_REDIRECT_TARGET_LENGTH = 512;
+
+/** ASCII control characters, whitespace and DEL (CR/LF, TAB, NUL…). */
+const FORBIDDEN_CHARACTERS = /[\u0000-\u0020\u007F]/;
+
+/**
+ * Returns `value` when it is a safe same-origin path, the fallback otherwise.
+ * Accepts `string | string[] | undefined` so it can take a Next.js search
+ * param directly (a repeated parameter is an array: never trusted).
+ */
+export function safeInternalPath(value: unknown, fallback: string = DEFAULT_REDIRECT_TARGET): string {
+  if (typeof value !== "string") return fallback;
+  if (value.length === 0 || value.length > MAX_REDIRECT_TARGET_LENGTH) return fallback;
+
+  // Must be a path of this site…
+  if (!value.startsWith("/")) return fallback;
+  // …and not a scheme-relative URL, in any of its spellings.
+  if (value.startsWith("//") || value.startsWith("/\\")) return fallback;
+  // A backslash anywhere else is never legitimate in one of our routes.
+  if (value.includes("\\")) return fallback;
+  // Header injection / parser tricks.
+  if (FORBIDDEN_CHARACTERS.test(value)) return fallback;
+
+  return value;
+}

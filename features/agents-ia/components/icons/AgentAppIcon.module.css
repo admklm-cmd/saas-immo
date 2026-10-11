@@ -1,0 +1,169 @@
+/*
+ * Tile of the Ascend icon family (components/icons) — docs/design-system.md §2.8.
+ *
+ * The SHAPE says who acts, the colour never does:
+ *   * agent   — rounded square (radius 30 % of the side), dark tile, light
+ *               symbol: an AI module;
+ *   * human   — circle with a double contour: a person decides here;
+ *   * outcome — filled circle with a double contour: the result of the
+ *               journey, sealed by a person (the mandate);
+ *   * neutral — light rounded square: a stage that is nobody's action
+ *               (prospect, appointment).
+ * `data-surface="dark"` adapts the same four shapes to a near-black surface.
+ *
+ * States: idle, active (lifted 2 px, thin cobalt ring, the symbol plays its
+ * motion once), inactive (sunken, grey symbol, dashed contour for the round
+ * shapes). Hover of the interactive parent (a link or a button): lifted 1 px,
+ * the accent layer of the symbol moves. Reduced motion: none of it moves.
+ */
+
+.tile {
+  --tile: 2.5rem;
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  width: var(--tile);
+  height: var(--tile);
+  place-items: center;
+  border-radius: calc(var(--tile) * 0.3);
+  outline: 1.5px solid transparent;
+  outline-offset: 2px;
+  transition:
+    transform var(--duration-interactive) var(--ease-standard),
+    box-shadow var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard),
+    color var(--duration-base) var(--ease-standard),
+    outline-color var(--duration-base) var(--ease-standard);
+}
+
+.tile[data-size="sm"] {
+  --tile: 1.75rem;
+}
+
+.tile[data-size="lg"] {
+  --tile: 3.5rem;
+}
+
+.tile[data-size="xl"] {
+  --tile: 4.5rem;
+}
+
+/* --- Kinds on a light surface ------------------------------------------------ */
+.tile[data-kind="agent"] {
+  background: linear-gradient(180deg, var(--color-inverse-soft), var(--color-inverse));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-ink-inverse) 12%, transparent),
+    var(--shadow-subtle);
+  color: var(--color-ink-inverse);
+}
+
+.tile[data-kind="human"],
+.tile[data-kind="outcome"] {
+  border-radius: 999px;
+  outline-width: 1px;
+  outline-offset: 2.5px;
+}
+
+.tile[data-kind="human"] {
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink);
+  color: var(--color-ink);
+  outline-color: var(--color-ink-subtle);
+}
+
+.tile[data-kind="outcome"] {
+  background: var(--color-inverse);
+  color: var(--color-ink-inverse);
+  outline-color: var(--color-ink);
+}
+
+.tile[data-kind="neutral"] {
+  background: var(--color-surface-muted);
+  box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  color: var(--color-ink);
+}
+
+/* --- Kinds on a dark surface -------------------------------------------------- */
+.tile[data-surface="dark"][data-kind="agent"] {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-ink-inverse) 18%, var(--color-inverse)),
+    color-mix(in srgb, var(--color-ink-inverse) 8%, var(--color-inverse))
+  );
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--color-ink-inverse) 18%, transparent);
+}
+
+.tile[data-surface="dark"][data-kind="human"] {
+  background: var(--color-inverse);
+  box-shadow: inset 0 0 0 1.5px var(--color-ink-inverse);
+  color: var(--color-ink-inverse);
+  outline-color: var(--color-ink-inverse-muted);
+}
+
+.tile[data-surface="dark"][data-kind="outcome"] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  outline-color: var(--color-ink-inverse-muted);
+}
+
+.tile[data-surface="dark"][data-kind="neutral"] {
+  background: color-mix(in srgb, var(--color-ink-inverse) 8%, var(--color-inverse));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ink-inverse) 16%, transparent);
+  color: var(--color-ink-inverse);
+}
+
+/* --- States ------------------------------------------------------------------- */
+.tile[data-state="inactive"] {
+  background: var(--color-surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--color-line-strong);
+  color: var(--color-ink-subtle);
+}
+
+.tile[data-state="inactive"][data-surface="dark"] {
+  background: var(--color-inverse);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ink-inverse) 18%, transparent);
+  color: var(--color-ink-inverse-muted);
+}
+
+.tile[data-state="inactive"]:is([data-kind="human"], [data-kind="outcome"]) {
+  outline-style: dashed;
+  outline-color: var(--color-line-strong);
+}
+
+/* Same specificity as the kind × surface rules, declared after them: the ring wins. */
+.tile[data-state="active"][data-kind][data-surface] {
+  transform: translateY(-2px);
+  outline-color: var(--color-accent);
+}
+
+.tile[data-state="active"]:not([data-surface="dark"]) {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--color-ink-inverse) 12%, transparent),
+    var(--shadow-raised);
+}
+
+.tile[data-state="active"]:not([data-surface="dark"])[data-kind="human"] {
+  box-shadow:
+    inset 0 0 0 1.5px var(--color-ink),
+    var(--shadow-raised);
+}
+
+/* --- Motion ------------------------------------------------------------------------ */
+/* The symbol plays its own story (components/icons/icons.css): once on hover or
+   focus of the parent control, once when the tile becomes active. The tile
+   itself only lifts. */
+:is(a, button):hover .tile:not([data-state="inactive"], [data-state="active"]) {
+  transform: translateY(-1px);
+}
+
+/* Reduced motion: the tile never moves either. */
+@media (prefers-reduced-motion: reduce) {
+  .tile {
+    transition: none;
+  }
+
+  :is(a, button):hover .tile:not([data-state="inactive"], [data-state="active"]),
+  .tile[data-state="active"][data-kind][data-surface] {
+    transform: none;
+  }
+}

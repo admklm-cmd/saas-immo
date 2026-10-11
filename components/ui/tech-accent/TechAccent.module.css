@@ -1,0 +1,46 @@
+/*
+ * Adapted from React Bits — TechText (https://reactbits.dev)
+ * Copyright (c) 2026 David Haz — MIT + Commons Clause License Condition v1.0:
+ * full notice in THIRD_PARTY_NOTICES.md (keep it; never sell or redistribute
+ * this component on its own).
+ *
+ * The `tech` accented word of a landing title (docs/design-system.md
+ * §2.11.8.2). At rest — and without JavaScript, and under reduced motion — it
+ * is plain HTML ink, one inline-block per letter. The canvas only paints while
+ * an effect plays, then is cleared; meanwhile the letters keep their place
+ * (`visibility: hidden`). The title keeps its `touch-action`: the page always
+ * scrolls under a finger.
+ */
+
+.word {
+  position: relative;
+  display: inline;
+  /* Dragging a letter must not select the title. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* One box per letter, measured by the canvas. Kerning off on these spans only:
+   the painted letters (no kerning between separate fillText calls) then fall
+   exactly on the HTML ones. */
+.letter {
+  display: inline-block;
+  font-kerning: none;
+}
+
+/* While the canvas paints the letters, the HTML ones hold their place. */
+.word[data-painting] .letter {
+  visibility: hidden;
+}
+
+.canvas {
+  position: absolute;
+  /* Bleed for the frame, the specks and, at the bottom, the label (§2.11.8.2). */
+  top: -32px;
+  left: -32px;
+  width: calc(100% + 64px);
+  height: calc(100% + 76px);
+  pointer-events: none;
+  /* Canvas text must not inherit the tracking of the title (labels). */
+  letter-spacing: normal;
+}

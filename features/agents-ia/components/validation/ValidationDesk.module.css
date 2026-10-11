@@ -1,0 +1,137 @@
+/*
+ * Dual view of « Messages à valider » — docs/design-system.md §3.1.1.
+ * Left: the queue (tabs). Right: the pearl desk where the selected letter
+ * lies. From 1280 px both are side by side; below, one at a time (queue, then
+ * the letter with « Retour à la file »), driven by `data-view` — which the
+ * server also sets from `?message=`, so it works without JavaScript.
+ */
+
+.desk {
+  display: grid;
+  overflow: clip;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+@media (width >= 80rem) {
+  .desk {
+    grid-template-columns: 20rem minmax(0, 1fr);
+  }
+}
+
+@media (width >= 90rem) {
+  .desk {
+    grid-template-columns: 23rem minmax(0, 1fr);
+  }
+}
+
+.queue {
+  min-width: 0;
+  padding: 0.75rem 0.5rem;
+}
+
+/* Room for the focus ring of a tab, never clipped by the scrolling list. */
+.queueInner {
+  padding: 0.25rem;
+}
+
+@media (width >= 80rem) {
+  .queue {
+    border-right: 1px solid var(--color-line);
+  }
+
+  .queueInner {
+    position: sticky;
+    top: 1.5rem;
+    max-height: calc(100dvh - 3rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+}
+
+.pane {
+  min-width: 0;
+  padding: 1.25rem 1rem 1.5rem;
+  background: var(--color-pearl-soft);
+}
+
+@media (width >= 40rem) {
+  .pane {
+    padding: 1.75rem 1.75rem 2rem;
+  }
+}
+
+@media (width >= 64rem) {
+  .pane {
+    padding: 2rem 2.5rem 2.5rem;
+  }
+}
+
+@media (width < 80rem) {
+  .desk[data-view="message"] .queue,
+  .desk[data-view="list"] .pane {
+    display: none;
+  }
+}
+
+/* --- Queue item (a tab) ------------------------------------------------------- */
+.item {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 0.875rem 0.875rem 1rem;
+  border-radius: var(--radius-lg);
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
+}
+
+.item + .item {
+  margin-top: 0.25rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .item:hover {
+    background: var(--color-surface-muted);
+  }
+}
+
+/* Lifted onto the pearl of the letter pane it controls. */
+.item[aria-selected="true"] {
+  background: var(--color-pearl-soft);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+
+/* « You are here »: the same 2 px cobalt marker as the current menu entry. */
+.marker {
+  position: absolute;
+  top: 1rem;
+  bottom: 1rem;
+  left: 0.3125rem;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--color-accent);
+  opacity: 0;
+  scale: 1 0.4;
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    scale var(--duration-base) var(--ease-standard);
+}
+
+.item[aria-selected="true"] .marker {
+  opacity: 1;
+  scale: 1 1;
+}
+
+.check {
+  display: inline-grid;
+  width: 0.875rem;
+  height: 0.875rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}

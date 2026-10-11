@@ -1,0 +1,616 @@
+@import "tailwindcss";
+@import "../components/ui/micro-interactions.css";
+@import "../components/ui/interactions.css";
+@import "../components/icons/icons.css";
+@import "../components/icons/icon-stories.css";
+
+/*
+ * Ascend Strategy design tokens — see docs/design-system.md (frontend-ux agent).
+ *
+ * Strictly black, white and greys. No hue is used to carry meaning: status is
+ * expressed with fill, weight, border and iconography, so the interface stays
+ * readable for colour-blind users and in greyscale print.
+ *
+ * Tailwind v4 reads these tokens from `@theme` and generates the matching
+ * utilities (`bg-surface`, `text-ink-muted`, `rounded-lg`, `shadow-raised`…).
+ * Components must never hard-code a value that exists here.
+ */
+@theme {
+  /* --- Typography ------------------------------------------------------- */
+  --font-sans:
+    var(--font-geist), ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  /* Bricolage is loaded by next/font. Never point this token at a family that
+     has no bundled file: that would silently fall back to Arial. */
+  --font-display: var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
+
+  /* Public site scale (docs §2.2.3). The hero caps the poster by its column. */
+  --text-poster: clamp(2.15rem, 1.05rem + 4.2vw, 4.75rem);
+  --text-poster--line-height: 1.04;
+  --text-poster--letter-spacing: -0.035em;
+  --text-statement: clamp(1.8rem, 1rem + 3vw, 3.25rem);
+  --text-statement--line-height: 1;
+  --text-statement--letter-spacing: -0.03em;
+  --text-lede: clamp(1rem, 0.95rem + 0.25vw, 1.15rem);
+  --text-lede--line-height: 1.55;
+
+  /* Signed-in scale, « expressif contrôlé » (docs §2.2.4). */
+  --text-page: 2.4rem;
+  --text-page--line-height: 1.05;
+  --text-page--letter-spacing: -0.025em;
+  --text-hero: 2.1rem;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.025em;
+  --text-title: 1.6rem;
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.02em;
+  --text-section: 1.4rem;
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.015em;
+  --text-heading: 1.1rem;
+  --text-heading--line-height: 1.25;
+  --text-heading--letter-spacing: -0.01em;
+  --text-overline: 0.6875rem;
+  --text-overline--line-height: 1.2;
+  --text-overline--letter-spacing: 0.1em;
+
+  /* The accented word is set a little larger: the serif has a smaller x-height. */
+  --accent-word-size: 1.06em;
+
+  /* --- Surfaces --------------------------------------------------------- */
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafafa;
+  --color-surface-sunken: #f4f4f5;
+  /* Pearl greys of the app canvas gradient (docs/design-system.md §2.1). */
+  --color-pearl: #e9e9ee;
+  --color-pearl-soft: #f7f7f9;
+  --color-inverse: #0a0a0b;
+  --color-inverse-soft: #1c1c1f;
+
+  /* --- Text ------------------------------------------------------------- */
+  /* Contrast on white: ink 17.7:1, ink-muted 6.9:1, ink-subtle 5.7:1.
+     On the darkest pearl of the canvas (#e9e9ee): 14.6:1, 5.7:1, 4.7:1 (WCAG AA). */
+  --color-ink: #18181b;
+  --color-ink-muted: #5a5a60;
+  --color-ink-subtle: #66666e;
+  --color-ink-inverse: #fafafa;
+  /* Contrast on inverse: 7.4:1. */
+  --color-ink-inverse-muted: #a8a8b0;
+
+  /* --- Lines and focus --------------------------------------------------- */
+  --color-line: #e4e4e9;
+  --color-line-strong: #d2d2d8;
+  /* Focus ring: the cobalt accent (5.4:1 on white, WCAG 2.4.7 / 1.4.11). */
+  --color-focus: #2457ff;
+
+  /* --- Accent (cobalt) ------------------------------------------------------ */
+  /* ONE accent, reserved to: active step, signal, primary emphasis, important
+     status, keyboard focus, human checkpoint (docs/design-system.md §2.1).
+     Never the only carrier of a meaning: a word always goes with it.
+     accent 5.4:1 on white (4.4:1 on pearl: text on pearl uses accent-strong),
+     accent-strong 7.3:1 on white, 5.9:1 on pearl. */
+  --color-accent: #2457ff;
+  --color-accent-strong: #1b45d6;
+  --color-accent-soft: #eef2ff;
+  --color-accent-line: #c9d5ff;
+  /* Translucent accent for halos and glows only (never behind text). */
+  --color-accent-glow: rgb(36 87 255 / 0.28);
+
+  /* --- Error accent ------------------------------------------------------- */
+  /* The only hue of the interface: error dots, never text, never alone
+     (always next to a written message). 5.2:1 on white. */
+  --color-danger: #c63838;
+
+  /* --- Icon family (docs/design-system.md §2.8) ------------------------------ */
+  /* Gradient of the accent of a LARGE icon only (frosted tile): indigo → violet,
+     never on text, never on a small icon (small icons use --color-accent). */
+  --color-icon-indigo: #6366f1;
+  --color-icon-violet: #a78bfa;
+
+  /* --- Breakpoints --------------------------------------------------------- */
+  /* Tailwind's defaults (sm 640, md 768, lg 1024, xl 1280, 2xl 1536) plus the
+     1440 px reference width of the product (`wide:`): a dense screen may keep a
+     lighter composition from 1280 to 1439 px (docs/design-system.md §7). */
+  --breakpoint-wide: 90rem;
+
+  /* --- Radii -------------------------------------------------------------- */
+  --radius-xs: 0.375rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  /* --- Elevation (very light, Apple-like) --------------------------------- */
+  --shadow-subtle: 0 1px 2px rgb(10 10 11 / 0.04);
+  --shadow-raised: 0 1px 3px rgb(10 10 11 / 0.06), 0 8px 24px -12px rgb(10 10 11 / 0.14);
+  --shadow-overlay: 0 2px 8px rgb(10 10 11 / 0.08), 0 24px 48px -20px rgb(10 10 11 / 0.24);
+
+  /* --- Motion -------------------------------------------------------------- */
+  --ease-standard: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* Only the line-by-line reveal of the public editorial titles (docs §2.2.7). */
+  --ease-emphasis: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Only a stroke that draws itself: the mark under the accented word of the
+     landing titles (docs §2.11.2). Soft start and arrival, like a pen. */
+  --ease-draw: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+  --duration-slow: 300ms;
+  /* Buttons: hover lift, shadow and arrow nudge (spec §2 E: 150-200 ms). */
+  --duration-press: 180ms;
+  /* Interactive controls (plan 2026-09-24, Lot 1.1: 180-260 ms): arrow swap,
+     letter roll, capsule of the tabs, magnetic return. */
+  --duration-interactive: 240ms;
+  /* Icon family (docs/design-system.md §2.8): one story of an icon (played once),
+     the step between two elements of the same story (message dots, bars), and
+     the breath of the accent of a large icon (two cycles, then rest). */
+  --duration-icon: 420ms;
+  --icon-step: 90ms;
+  --duration-icon-breathe: 1800ms;
+  /* Delay between two letters of a primary button label (<= 12 ms). */
+  --letter-step: 10ms;
+  /* Rail « réseau opérationnel »: one recorded node lights up after the other. */
+  --rail-step: 110ms;
+  /* Delay between the first cards of a list (spec: 100-120 ms), capped at 5 steps. */
+  --stagger-step: 110ms;
+
+  --animate-rise: rise var(--duration-slow) var(--ease-standard) both;
+  --animate-rise-soft: rise-soft var(--duration-base) var(--ease-standard) both;
+  --animate-fade: fade var(--duration-base) var(--ease-standard) both;
+  --animate-settle: settle var(--duration-base) var(--ease-standard) both;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-spin-slow: spin 700ms linear infinite;
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 8px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes rise-soft {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 4px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes settle {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Titles are Bricolage Grotesque 600 (role « title », docs/design-system.md
+     §2.2.2). Size stays on each heading. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
+  /* Bricolage never below 18 px: a small heading is set in Geist (§2.2.2).
+     Utilities stay stronger, and future small headings are covered too. */
+  :is(h1, h2, h3, h4):is(.text-xs, .text-sm, .text-base, .text-lg, .text-heading, .text-overline) {
+    font-family: var(--font-sans);
+  }
+
+  /* Keyboard focus is always visible and never removed (WCAG 2.4.7). */
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::selection {
+    background-color: var(--color-inverse);
+    color: var(--color-ink-inverse);
+  }
+}
+
+@layer utilities {
+  /*
+   * Common frame of every signed-in page (docs/design-system.md §2.10). One
+   * left edge and one top for all titles, whatever the width of the content:
+   * a narrower page is capped with `page-frame-reading` / `page-frame-medium`
+   * but stays LEFT-aligned on the same edge, instead of being centred.
+   */
+  .page-frame {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--container-7xl, 80rem);
+    padding: calc(var(--spacing) * 10) calc(var(--spacing) * 6) calc(var(--spacing) * 16);
+  }
+
+  @media (width >= 64rem) {
+    .page-frame {
+      padding: calc(var(--spacing) * 12) calc(var(--spacing) * 10) calc(var(--spacing) * 20);
+    }
+  }
+
+  /* Role « figure »: KPIs, counts, amounts, dates in stats — Geist Mono,
+     tabular numerals, so columns of figures line up and never jitter. */
+  .figure {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+  }
+
+  /* Role « label »: overline above a figure or a group — Geist, capitals,
+     tracked; pair it with text-ink-subtle (or text-ink-inverse-muted on black).
+     Never a title, never a figure. */
+  .label {
+    font-family: var(--font-sans);
+    font-size: var(--text-overline);
+    line-height: var(--text-overline--line-height);
+    letter-spacing: var(--text-overline--letter-spacing);
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  /* Role « label mono »: page overline (CRM), section overline (public site),
+     index. Geist Mono 500, capitals by CSS (the text is stored in normal case),
+     muted ink: 5.7:1 on white, 4.7:1 on pearl (docs §2.2.2). */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: var(--text-overline);
+    line-height: var(--text-overline--line-height);
+    letter-spacing: 0.08em;
+    font-weight: 500;
+    text-transform: uppercase;
+    color: var(--color-ink-subtle);
+  }
+
+  /* The accented word (docs §2.2.5): Instrument Serif italic, ink, one word per
+     title. Always `inline`: on an inline-block, `line-height: 0` would crush the
+     box and shift the baseline. `line-height: 0` keeps the serif's own ascent
+     and descent out of the line box, so the line keeps the height it has
+     without the accent. */
+  .title-accent {
+    display: inline;
+    font-family: var(--font-accent);
+    font-style: italic;
+    font-weight: 400;
+    font-size: var(--accent-word-size);
+    letter-spacing: -0.01em;
+    line-height: 0;
+    font-variation-settings: normal;
+    color: var(--color-ink);
+  }
+
+  /* Landing `/` only (docs §2.11.8.8 L4-C): the accented word keeps the exact
+     typography of its line (family, weight, size, tracking, `wdth`, leading);
+     only its effect and its « sharp first » arrival set it apart. */
+  .title-accent-plain {
+    font: inherit;
+    letter-spacing: inherit;
+    font-variation-settings: inherit;
+    line-height: inherit;
+    font-style: normal;
+  }
+
+  .page-frame-reading > * {
+    max-width: var(--container-4xl, 56rem);
+  }
+
+  .page-frame-medium > * {
+    max-width: var(--container-5xl, 64rem);
+  }
+
+  /* Discreet translucent panel (navigation bars, sticky headers). */
+  .panel-blur {
+    background-color: color-mix(in srgb, var(--color-canvas) 78%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  .panel-blur-inverse {
+    background-color: color-mix(in srgb, var(--color-inverse) 82%, transparent);
+    backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  /*
+   * Brand symbol (`LogoSymbol`, `Logo`).
+   *
+   * The master artwork is used as a MASK, and the mark itself is painted with
+   * `currentColor`. Consequence: the symbol inverts itself with the text
+   * around it — black on a light surface, white on `bg-inverse` — from a
+   * single file, with no theme prop and no JavaScript.
+   *
+   * When a vector master is delivered, only the two URLs below change (plus
+   * `BRAND.symbol` in components/brand.ts). No screen is touched.
+   *
+   * `background-color` is scoped to the @supports block on purpose: where
+   * masking is unavailable the element simply stays empty, instead of painting
+   * a solid black rectangle over the interface. The brand name written next to
+   * it in `Logo` — and the accessible name — remain.
+   */
+  @supports (mask-image: url("/brand/ascend-symbol-black.png")) or
+    (-webkit-mask-image: url("/brand/ascend-symbol-black.png")) {
+    .brand-symbol {
+      background-color: currentColor;
+      -webkit-mask-image: url("/brand/ascend-symbol-black.png");
+      mask-image: url("/brand/ascend-symbol-black.png");
+      -webkit-mask-repeat: no-repeat;
+      mask-repeat: no-repeat;
+      -webkit-mask-position: center;
+      mask-position: center;
+      -webkit-mask-size: contain;
+      mask-size: contain;
+    }
+  }
+
+  /* Reveal and .stagger live in components/ui/micro-interactions.css. */
+}
+
+/*
+ * Local white veil under a block of text posed outside the cards (page header,
+ * section heading, list total). The canvas is fixed and the page scrolls, so
+ * any such text can pass over the shape: this soft-edged, nearly opaque patch
+ * keeps it AA whatever is behind (docs/design-system.md §2.5.8). On the white
+ * and pearl canvas it is invisible; it only clears the particles. Inside a card
+ * it would be white on white, so it is harmless there too.
+ */
+.particle-veil {
+  position: relative;
+  isolation: isolate;
+}
+
+.particle-veil::before {
+  --veil-x: 3rem;
+  --veil-y: 1.25rem;
+  content: "";
+  position: absolute;
+  inset: calc(var(--veil-y) * -1) calc(var(--veil-x) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 90%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  mask-composite: intersect;
+}
+
+/*
+ * Tight veil, for text that sits close to something the veil must not cover:
+ * a neighbouring pipeline column and its connector line (0.75rem gap), tiles
+ * 0.75rem below a section heading. Same soft edge and same 90 % white, with a
+ * 0.5rem × 0.375rem overflow, so the patch never reaches an element spaced
+ * 0.5rem or more away. The text box itself is always fully veiled: the fade
+ * lives entirely in the overflow. Use together with `.particle-veil`.
+ */
+.particle-veil-tight::before {
+  --veil-x: 0.5rem;
+  --veil-y: 0.375rem;
+}
+
+/*
+ * Landing (`/`) only (docs/design-system.md §2.11.4): veil of the big titles
+ * over the neural network. Same shape as `.particle-veil` (soft edges, 3rem ×
+ * 1.25rem overflow) but white 70 %: the network stays visible behind the
+ * titles (at 30 %), while an ink title keeps ≥ 7:1 and a subtle-ink title line
+ * ≥ 3:1 at its darkest pixel (measured, §2.11.4). Sized to the words (`w-fit`),
+ * never to the column. Small text keeps `.particle-veil` (90 %).
+ */
+.network-veil-title {
+  position: relative;
+  isolation: isolate;
+}
+
+.network-veil-title::before {
+  --veil-x: 3rem;
+  --veil-y: 1.25rem;
+  content: "";
+  position: absolute;
+  /* The glyph boxes of a tight title overflow its line boxes (ascenders,
+     descenders, italic overhang): the full-strength veil reaches 1.5rem above
+     and below the block and 0.5rem on the sides before fading out. */
+  inset: calc((var(--veil-y) + 1.5rem) * -1) calc((var(--veil-x) + 0.5rem) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 70%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-y), #000 calc(100% - var(--veil-y)), transparent);
+  mask-composite: intersect;
+}
+
+/*
+ * Landing only, local variant of `.network-veil-title` for the title of the
+ * problem section (option A, docs/design-system.md §2.11.4): its two
+ * subtle-ink lines sit on a 75 % veil, so that even a pure ink pixel of the
+ * network keeps ≥ 3:1 under them, whatever the camera pose (motion allowed or
+ * reduced). The ink line and every other title stay on 70 %. The extra layer
+ * is 1/6 of white over the 70 % of the block veil: 1 − 0.30 × 5/6 = 0.75.
+ * One layer per subtle line, abutting (no overlap between them); the first
+ * reaches above the block like the block veil, the last a little below its
+ * line (descenders), then fades out.
+ */
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"] {
+  --veil-x: 3rem;
+  --veil-top: 0px;
+  --veil-top-fade: 0px;
+  --veil-bottom: 0px;
+  --veil-bottom-fade: 0px;
+  position: relative;
+  isolation: isolate;
+}
+
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"]:first-child {
+  --veil-top: 1.5rem;
+  --veil-top-fade: 1.25rem;
+}
+
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"]:not(:has(+ [data-title-tone="subtle"])) {
+  --veil-bottom: 0.25em;
+  --veil-bottom-fade: 0.25em;
+}
+
+[data-landing] .network-veil-title-subtle [data-title-tone="subtle"]::before {
+  content: "";
+  position: absolute;
+  top: calc((var(--veil-top) + var(--veil-top-fade)) * -1);
+  bottom: calc((var(--veil-bottom) + var(--veil-bottom-fade)) * -1);
+  left: calc((var(--veil-x) + 0.5rem) * -1);
+  right: calc((var(--veil-x) + 0.5rem) * -1);
+  z-index: -1;
+  pointer-events: none;
+  background-color: color-mix(in srgb, var(--color-canvas) 16.7%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-top-fade), #000 calc(100% - var(--veil-bottom-fade)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-x), #000 calc(100% - var(--veil-x)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-top-fade), #000 calc(100% - var(--veil-bottom-fade)), transparent);
+  mask-composite: intersect;
+}
+
+/*
+ * The layer must not widen the scrollable area of the title (measured 02/10:
+ * h2 scrollWidth 778 > 722 at 1440, 398 > 342 at 390 — the 3.5rem bleed on
+ * the right). Where anchor positioning exists, the line is no longer the
+ * containing block of its layer (the wrapper `.network-veil-title`, positioned,
+ * is): the h2 stops counting it, while the layer is placed on the very same
+ * box through the line's anchor. Same pixels (captured before / after at 1440
+ * and 390); the line keeps `isolation` so the layer still paints under its words.
+ */
+@supports (anchor-name: --a) {
+  [data-landing] .network-veil-title-subtle [data-title-tone="subtle"] {
+    position: static;
+  }
+
+  [data-landing] .network-veil-title-subtle [data-title-line="0"] {
+    anchor-name: --veil-subtle-line-0;
+  }
+
+  [data-landing] .network-veil-title-subtle [data-title-line="1"] {
+    anchor-name: --veil-subtle-line-1;
+  }
+
+  [data-landing] .network-veil-title-subtle [data-title-line="0"]::before {
+    position-anchor: --veil-subtle-line-0;
+  }
+
+  [data-landing] .network-veil-title-subtle [data-title-line="1"]::before {
+    position-anchor: --veil-subtle-line-1;
+  }
+
+  [data-landing] .network-veil-title-subtle [data-title-tone="subtle"]::before {
+    top: calc(anchor(top) - var(--veil-top) - var(--veil-top-fade));
+    bottom: calc(anchor(bottom) - var(--veil-bottom) - var(--veil-bottom-fade));
+    left: calc(anchor(left) - var(--veil-x) - 0.5rem);
+    right: calc(anchor(right) - var(--veil-x) - 0.5rem);
+  }
+}
+
+/*
+ * Landing only: the 90 % veils of the small text reach 0.375rem past the box
+ * before fading out (the glyph boxes of a label overflow its line box), so
+ * no fiber of the network reaches the letters at full strength
+ * (docs/design-system.md §2.11.4). The signed-in space keeps §2.5.8 as is.
+ */
+[data-landing] .particle-veil::before {
+  inset: calc((var(--veil-y) + 0.375rem) * -1) calc((var(--veil-x) + 0.25rem) * -1);
+}
+
+/*
+ * Landing only (fix of 10/10/2026): a veil never paints over a text. With
+ * `isolation: isolate` on every veiled block, each block was its own stacking
+ * context, painted in the order of the page: the veil of a block reached over
+ * the text of the block BEFORE it — the descenders of the first note under
+ * block A were cut by the veil of the second note (0.75rem overflow, 4px
+ * apart), and the overline « Le problème » sat under the 70 % + 75 % veils of
+ * the title below it (its ink-subtle read #76767d instead of #66666e). Without
+ * the isolation, every veil (`z-index: -1`) joins the stacking context of the
+ * landing wrapper (`[data-landing]`, z-index 10) or of the hero content
+ * (z-index 10): all the veils paint first, all the texts above them, still
+ * above the fixed background and the nanorobots.
+ */
+[data-landing] :is(.particle-veil, .network-veil-title, .network-veil-title-subtle [data-title-tone="subtle"]) {
+  isolation: auto;
+}
+
+/*
+ * Landing (`/`) only, lot landing-motion (docs/design-system.md §2.11.5): the
+ * Simulation badge plays ONE cycle (float 3 s, dot 2 s), then stays still —
+ * nothing loops on the landing. The badge text never changes. The signed-in
+ * space keeps its infinite badge (§2.5.7). `data-landing` is set by
+ * app/(marketing)/page.tsx.
+ */
+[data-landing] .simulation-badge,
+[data-landing] .simulation-dot {
+  animation-iteration-count: 1;
+}
+
+/* Motion is decoration: honour the OS setting (WCAG 2.3.3). */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,169 @@
+/*
+ * Process card visual — cards 5 and 6, Louis's slots and Sarah's next actions (docs/design-system.md §2.11.8.5).
+ * Rule of every visual: the DEFAULT styles are the final state (server HTML,
+ * no JavaScript, reduced motion, a card that has not played); under
+ * `[data-run]` (set on the window, `frame.module.css`) each piece plays once,
+ * filled BACKWARDS only, so nothing lingers when it ends. No red.
+ */
+
+/* --- Card 5: slots ------------------------------------------------------------------- */
+.slots {
+  --slot-h: 40px;
+  --slot-gap: 8px;
+  position: relative;
+  display: grid;
+  gap: var(--slot-gap);
+  margin: 0;
+  padding: 8px 4px 0;
+  list-style: none;
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--slot-h);
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 10px;
+  background-color: rgb(255 255 255 / 0.04);
+}
+
+.slotTaken {
+  background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.06) 0 6px, transparent 6px 12px);
+}
+
+.slotTime {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--color-ink-inverse);
+}
+
+.slotTaken .slotTime {
+  text-decoration: line-through;
+  color: var(--color-ink-inverse-muted);
+}
+
+.slotNote {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-inverse-muted);
+}
+
+.slotProposed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--color-ink-inverse);
+}
+
+.slotProposedDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+}
+
+/* The cobalt ring, at rest on the proposed slot (offset by the list padding). */
+.slotRing {
+  position: absolute;
+  right: 4px;
+  left: 4px;
+  height: var(--slot-h);
+  margin-top: 8px;
+  border: 2px solid var(--color-accent);
+  border-radius: 10px;
+  pointer-events: none;
+}
+
+/* --- Card 6: report → actions -------------------------------------------------------- */
+.sheet {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  border-radius: 10px;
+  background-color: rgb(255 255 255 / 0.04);
+}
+
+.sheetLine {
+  display: block;
+  height: 12px;
+  background-image: radial-gradient(circle, rgb(255 255 255 / 0.2) 0.75px, transparent 1.25px);
+  background-size: 6px 6px;
+}
+
+.actions {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background-color: rgb(255 255 255 / 0.05);
+  color: var(--color-ink-inverse);
+}
+
+.actionText {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* --- Play, once ----------------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-run] .slotRing {
+    animation: slot-ring 480ms var(--ease-emphasis) 300ms backwards;
+  }
+
+  [data-run] .slotProposed {
+    animation: fade-in 200ms var(--ease-standard) 820ms backwards;
+  }
+
+  [data-run] .action {
+    animation: rise-8 280ms var(--ease-emphasis) calc(300ms + var(--action-index) * 160ms) backwards;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise-8 {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+@keyframes slot-ring {
+  0% {
+    opacity: 0;
+    translate: 0 calc(-1 * (var(--slot-h) + var(--slot-gap)) - 20px);
+  }
+  40% {
+    opacity: 1;
+    translate: 0 calc(-1 * (var(--slot-h) + var(--slot-gap)));
+  }
+  100% {
+    opacity: 1;
+    translate: 0 0;
+  }
+}

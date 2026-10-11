@@ -1,0 +1,441 @@
+/*
+ * Editorial title of the public site (docs/design-system.md §2.2.7, §3.8).
+ *
+ * Final state by default: the initial (hidden, blurred) state only exists
+ * inside `prefers-reduced-motion: no-preference`, and `backwards` leaves no
+ * transform nor filter behind once a line has landed. CSS only: no timer.
+ */
+
+.title {
+  /* Local tokens of the reveal (§2.2.7). */
+  --title-focus-blur: 8px;
+  --title-focus-duration: 640ms;
+  --title-line-step: 80ms;
+  --title-line-delay: 0ms;
+  /* Blur held on the rest of the title during a focus effect (§2.11.2). */
+  --focus-rest-blur: 5px;
+  /* No mask: an `overflow: hidden` would cut the blur and the italic descenders. */
+}
+
+@media (width < 40rem) {
+  .title {
+    --title-line-step: 60ms;
+    --focus-rest-blur: 3px;
+  }
+}
+
+/* Poster: capped by its column, which must be an inline-size container
+   (docs §2.2.3). The coefficient is the only value frontend-ux may tune
+   (12cqi–14cqi); the retained value is reported in the design system.
+   Narrow option (§2.2.1, decision of 01/10/2026): `wdth` 92 on the hero only;
+   the accented word resets it (`.title-accent` sets `normal`). */
+.poster {
+  font-size: min(var(--text-poster), 11cqi);
+  font-variation-settings: "wdth" 92;
+  line-height: var(--text-poster--line-height);
+  letter-spacing: var(--text-poster--letter-spacing);
+}
+
+/* Balanced: an author line that wraps (below 1024 px) never leaves a word
+   alone; no effect where the line fits on one visual line. */
+.line {
+  display: block;
+  text-wrap: balance;
+}
+
+.subtle {
+  color: var(--color-ink-subtle);
+}
+
+/* The blur needs a box: each non-accented word is an inline-block. */
+.word {
+  display: inline-block;
+}
+
+/* The accented word, its elided article and its punctuation never break apart. */
+.nowrap {
+  white-space: nowrap;
+}
+
+.load {
+  --title-line-delay: 100ms;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* On load (hero, /estimation). */
+  :where(.load) .focusWord {
+    animation: title-focus-in var(--title-focus-duration) var(--ease-emphasis) backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :where(.load) .sharpWord {
+    animation: title-sharp-in var(--duration-base) var(--ease-standard) backwards;
+    animation-delay: var(--title-line-delay);
+  }
+
+  /* On entering the viewport: driven by the enclosing Reveal. Its hidden
+     state is only ever set by JavaScript, never in the server HTML. */
+  :global(.reveal[data-reveal="hidden"]) .inView .focusWord {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+  }
+
+  :global(.reveal[data-reveal="hidden"]) .inView .sharpWord {
+    opacity: 0;
+  }
+
+  :where(:global(.reveal[data-reveal="entering"]) .inView) .focusWord {
+    animation: title-focus-in var(--title-focus-duration) var(--ease-emphasis) backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :where(:global(.reveal[data-reveal="entering"]) .inView) .sharpWord {
+    animation: title-sharp-in var(--duration-base) var(--ease-standard) backwards;
+    animation-delay: var(--title-line-delay);
+  }
+}
+
+/* Reduced motion: nothing moves, no intermediate opacity (explicit, on top of
+   the global rule of globals.css). */
+@media (prefers-reduced-motion: reduce) {
+  .focusWord,
+  .sharpWord {
+    animation: none;
+  }
+}
+
+@keyframes title-focus-in {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+  }
+  55% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes title-sharp-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Effects of the accented word — landing only (docs/design-system.md §2.11.2).
+ * `accentEffect`: underline (hero), focus (problem), focus-underline (solution,
+ * agents, control, result, final). Entry rules sit under `:where()` (0,1,0) so
+ * the hover replay (EditorialTitleReplay.module.css, §2.11.2 D) beats them.
+ * Ornaments are empty spans inside `.title-accent`, absolutely positioned: the
+ * line box never changes. Lengths are in the accent's em (the accent is set at
+ * `--accent-word-size`, 1.06 × the title): 0.02 title em = 0.019 em here.
+ * CSS only, played once by the existing triggers (load, Reveal), no timer.
+ * The focus idea comes from React Bits' TrueFocus; independent implementation,
+ * no code reused (credited in THIRD_PARTY_NOTICES.md).
+ */
+.accentHost {
+  /* A stacking context: the mark (z-index -1) sits behind the glyphs. */
+  position: relative;
+  z-index: 0;
+  /* Local tokens (§2.11.2); --focus-rest-blur lives on .title. */
+  --focus-frame-arm: 16px;
+  --focus-frame-width: 3px;
+  --focus-frame-from: 1.28;
+  --mark-thickness: max(3px, 0.0472em);
+  --mark-draw: 640ms;
+  /* Geometry measured on Instrument Serif italic in Chromium (accent em, from
+     the top of the content area, 1440 and 390 px): baseline 0.99, ink top of
+     the ascenders 0.232 (0.758 above the baseline), ink bottom 1.0 (the italic
+     « f » has no descender, 0.009 under the baseline). Reported in §2.11.2. */
+  --accent-baseline: 0.99em;
+  --accent-ink-top: 0.232em;
+  --accent-ink-bottom: 1em;
+}
+
+@media (width < 64rem) {
+  .accentHost {
+    --focus-frame-arm: 12px;
+    --focus-frame-width: 2px;
+  }
+}
+
+@media (width < 40rem) {
+  .accentHost {
+    --mark-thickness: 3px;
+  }
+}
+
+/* The mark: a cobalt bar under the word, rounded ends, 0.08–0.12 title em
+   under the baseline, from -0.02 em to +0.06 em (past the italic overhang).
+   Final state by default: complete, no clip-path. */
+.mark {
+  position: absolute;
+  z-index: -1;
+  left: -0.019em;
+  right: -0.057em;
+  top: calc(var(--accent-baseline) + 0.094em);
+  height: var(--mark-thickness);
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  pointer-events: none;
+}
+
+/* A comma or semicolon right after the word (« chemin, ») dips under the
+   baseline into the mark: the mark stops at the word (§2.11.2, measured 02/10:
+   8 px of the comma in the bar at 1440 with +0.06 em, still 1 px at `right: 0`,
+   none at 0.02 em short of the box). Other words keep +0.06 em. */
+.markBeforeDescender {
+  right: 0.02em;
+}
+
+/* The frame: four L corners (8 gradient layers), sharp, no shadow, around
+   the ink of the word (0.12 em left and right, 0.08 em above the ascenders,
+   0.04 em under the lowest descender, title em). Never shown at rest: it only
+   exists during the effect, so it is absent without motion. */
+.frame {
+  display: none;
+  position: absolute;
+  /* The ink starts 0.01 em after the box; it ends `--accent-overhang` past it
+     (italic overhang, set per word by EditorialTitle). The gaps are measured
+     from the ink to the INNER edge of the arms: the arms (`--focus-frame-width`)
+     are drawn outside them, never on the glyphs (fix of 10/10/2026: at 390 px
+     the bottom arms overlapped the ink of « administratif » by 1.5 px). */
+  left: calc(-0.103em - var(--focus-frame-width));
+  right: calc(-0.113em - var(--accent-overhang, 0.02em) - var(--focus-frame-width));
+  top: calc(var(--accent-ink-top) - 0.075em - var(--focus-frame-width));
+  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.113em + 2 * var(--focus-frame-width));
+  pointer-events: none;
+  transform-origin: center;
+  --frame-color: var(--color-accent);
+  background-image:
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color)),
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color)),
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color)),
+    linear-gradient(var(--frame-color), var(--frame-color)), linear-gradient(var(--frame-color), var(--frame-color));
+  background-repeat: no-repeat;
+  background-size:
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm),
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm),
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm),
+    var(--focus-frame-arm) var(--focus-frame-width),
+    var(--focus-frame-width) var(--focus-frame-arm);
+  background-position:
+    left top,
+    left top,
+    right top,
+    right top,
+    left bottom,
+    left bottom,
+    right bottom,
+    right bottom;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* The frame exists (invisible at rest) only when motion is welcome. */
+  .frame {
+    display: block;
+    opacity: 0;
+  }
+
+  /* A. Underline, hero (on load): drawn left to right, 760 ms → 1 400 ms. */
+  :where(.load) .mark {
+    animation: accent-mark-draw var(--mark-draw) var(--ease-draw) 760ms backwards;
+  }
+
+  /* Hidden section (before the Reveal enters): no mark yet. */
+  :global(.reveal[data-reveal="hidden"]) .inView .mark {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+
+  /* B. Focus, problem section: the rest stays blurred, the frame tightens on
+     the word, holds, then everything turns sharp (≤ 2.5 s). */
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocus) .focusWord {
+    animation: title-focus-hold 2340ms backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocus) .frame {
+    animation: accent-frame-focus 2020ms 160ms backwards;
+  }
+
+  /* C. Focus then underline, final panel: the frame fades while the mark is drawn. */
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline) .focusWord {
+    animation: title-focus-hold-short 2220ms backwards;
+    animation-delay: calc(var(--title-line-delay) + var(--line, 0) * var(--title-line-step));
+  }
+
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline) .frame {
+    animation: accent-frame-focus-short 1620ms 160ms backwards;
+  }
+
+  :where(:global(.reveal[data-reveal="entering"]) .inView.effectFocusUnderline) .mark {
+    animation: accent-mark-draw var(--mark-draw) var(--ease-draw) 1560ms backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark,
+  .frame {
+    animation: none;
+  }
+}
+
+@keyframes accent-mark-draw {
+  from {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+
+/* B, non-accented words, 2 340 ms: arrival (blur 8 → 5 px at 352 ms, landed
+   at 640 ms), hold at 5 px, release at 1 820 ms in 520 ms. */
+@keyframes title-focus-hold {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  15.04% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: linear;
+  }
+  27.35% {
+    opacity: 1;
+    transform: none;
+  }
+  77.78% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: var(--ease-standard);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* C, non-accented words, 2 220 ms: same arrival, release at 1 700 ms. */
+@keyframes title-focus-hold-short {
+  0% {
+    opacity: 0;
+    transform: translateY(0.2em);
+    filter: blur(var(--title-focus-blur));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  15.86% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: linear;
+  }
+  28.83% {
+    opacity: 1;
+    transform: none;
+  }
+  76.58% {
+    filter: blur(var(--focus-rest-blur));
+    animation-timing-function: var(--ease-standard);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* B, frame, from 160 ms: tightens in 560 ms, holds, fades out at 1 900 ms in 280 ms. */
+@keyframes accent-frame-focus {
+  0% {
+    opacity: 0;
+    transform: scale(var(--focus-frame-from));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  27.72% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  86.14% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: var(--ease-exit);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* C, frame, from 160 ms: tightens in 560 ms, fades out at 1 500 ms in 280 ms. */
+@keyframes accent-frame-focus-short {
+  0% {
+    opacity: 0;
+    transform: scale(var(--focus-frame-from));
+    animation-timing-function: var(--ease-emphasis);
+  }
+  34.57% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  82.72% {
+    opacity: 1;
+    transform: scale(1);
+    animation-timing-function: var(--ease-exit);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+/* `tone="inverse"` (dark panel, docs/design-system.md §2.11.8.5): every word,
+   the subtle lines and the accented word included, in the inverse ink. */
+.inverse,
+.inverse .subtle,
+.inverse :global(.title-accent) {
+  color: var(--color-ink-inverse);
+}
+
+/*
+ * Accented word in the title's own face (landing `/`, docs §2.11.8.8 L4-C):
+ * the word is set like its line (Bricolage Grotesque 600, upright, 1 em),
+ * so the ornaments are re-measured on that face. Measured in Chromium on
+ * 04/10/2026 (1440 px; same em values at 390 px): baseline 0.935 em from the
+ * top of the content area (font ascent 0.933–0.938), ink top of the ascenders
+ * 0.216 em (0.719 above the baseline), ink bottom 0.95 em (0.016 under the
+ * baseline). Accent em = title em here, so the title-em offsets are literal:
+ * mark 0.094 em under the baseline, from -0.02 em to +0.02 em around the box
+ * (no italic overhang any more); frame 0.08 em above the ascenders and
+ * 0.04 em under the ink. The serif values above stay for /estimation.
+ */
+[data-accent-face="title"] .accentHost {
+  --accent-baseline: 0.935em;
+  --accent-ink-top: 0.216em;
+  --accent-ink-bottom: 0.95em;
+}
+
+[data-accent-face="title"] .mark {
+  left: -0.02em;
+  right: -0.02em;
+}
+
+[data-accent-face="title"] .frame {
+  top: calc(var(--accent-ink-top) - 0.08em - var(--focus-frame-width));
+  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.12em + 2 * var(--focus-frame-width));
+}
+
+[data-accent-face="title"] .markBeforeDescender {
+  right: 0.02em;
+}

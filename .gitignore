@@ -22,6 +22,7 @@ supabase/.temp/
 
 # tests
 coverage/
+.vitest/
 test-results/
 playwright-report/
 blob-report/
@@ -29,9 +30,20 @@ playwright/.cache/
 
 # claude code local settings
 .claude/settings.local.json
+# temporary agent worktrees (copies of the repository)
+.claude/worktrees/
 
 # misc
 .DS_Store
 Thumbs.db
 *.log
 .vercel
+
+# private keys and certificates
+*.pem
+
+# locally generated fixture credentials (never commit)
+fixtures/.generated-credentials.json
+
+# graphify knowledge graph (local, regenerated)
+graphify-out/

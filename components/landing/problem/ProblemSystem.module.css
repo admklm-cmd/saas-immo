@@ -1,0 +1,239 @@
+/*
+ * The chart and its causes, part of the page itself: no container, no border,
+ * no shadow. A feathered paper veil (edges fading to nothing) only keeps the
+ * words readable over the living background, which stays visible around and,
+ * dimmed, behind. The causes read as nodes of the same system: a fine rail
+ * links them, each one is a node, its events are small tags of the system.
+ * Cobalt only on the active cause.
+ */
+
+.system {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  gap: 3rem;
+  margin-top: 3rem;
+  padding: 1.5rem 1.25rem 1.75rem;
+}
+
+/* The veil: invisible as a shape, it has no edge. */
+.system::before {
+  --veil-edge: 3.5rem;
+  content: "";
+  position: absolute;
+  /* Phones: the content (1.25–1.5rem padding) starts past the 3.5rem fade, so
+     every word sits on the full veil; what reaches past the page margins is
+     clipped by the landing wrapper (overflow-x: clip), never scrolled. */
+  inset: -2.5rem;
+  z-index: -1;
+  pointer-events: none;
+  /* 90 %, like .particle-veil: the small text of the causes and of the chart stays
+     AA over the darkest fibers of the network (docs/design-system.md §2.11.4). */
+  background-color: color-mix(in srgb, var(--color-canvas) 90%, transparent);
+  -webkit-mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent),
+    linear-gradient(to bottom, transparent, #000 var(--veil-edge), #000 calc(100% - var(--veil-edge)), transparent);
+  mask-composite: intersect;
+}
+
+@media (min-width: 640px) {
+  .system::before {
+    inset: calc(var(--veil-edge) * -0.5);
+  }
+}
+
+@media (min-width: 640px) {
+  .system {
+    padding: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .system {
+    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr);
+    gap: 4.5rem;
+    margin-top: 4rem;
+    padding: 3rem 3.5rem 3rem 3rem;
+  }
+}
+
+.chart,
+.causes {
+  min-width: 0;
+}
+
+.list {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  margin: 1.75rem -1rem 0;
+}
+
+/* The rail linking the causes, through the centre of their nodes. */
+.list::before {
+  content: "";
+  position: absolute;
+  top: 1.75rem;
+  bottom: 1.75rem;
+  left: 0.46875rem;
+  width: 1px;
+  background-image: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-line-strong) 12%,
+    var(--color-line-strong) 88%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* --- One cause: an event of the system ------------------------------------ */
+.cause {
+  position: relative;
+  display: grid;
+  padding: 1rem;
+  border-radius: var(--radius-lg);
+  transition:
+    background-color var(--duration-interactive) var(--ease-standard),
+    opacity var(--duration-interactive) var(--ease-standard);
+}
+
+/* The node of the cause, on the rail, level with its title. */
+.cause::before {
+  content: "";
+  position: absolute;
+  top: 1.5rem;
+  left: 0.25rem;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background-color: var(--color-canvas);
+  transition:
+    border-color var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-interactive) var(--ease-standard),
+    box-shadow var(--duration-interactive) var(--ease-standard);
+}
+
+.cause[data-highlighted="true"] {
+  background-color: color-mix(in srgb, var(--color-pearl-soft) 80%, transparent);
+}
+
+.cause[data-highlighted="true"]::before {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-soft);
+}
+
+:global([data-active-cause]) .cause:not([data-highlighted="true"]) {
+  opacity: 0.55;
+}
+
+.cause:has(.toggle:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 0;
+}
+
+/* The title is the button; its hit area covers the whole cause. */
+.toggle {
+  display: block;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--color-ink);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  line-height: 1.5rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.toggle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.toggle:focus-visible {
+  outline: none;
+}
+
+/* The events of the cause: small tags of the system (the same tags as on the
+   chart and in the living background), each carrying the dot of its event. */
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+.kind {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  padding: 0.25rem 0.5625rem 0.25rem 0.4375rem;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background-color: color-mix(in srgb, var(--color-canvas) 88%, transparent);
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1;
+  transition:
+    color var(--duration-interactive) var(--ease-standard),
+    border-color var(--duration-interactive) var(--ease-standard),
+    background-color var(--duration-interactive) var(--ease-standard);
+}
+
+/* The same dot as the events of the chart. */
+.kind::before {
+  content: "";
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 999px;
+  background-color: var(--color-ink-subtle);
+  transition: background-color var(--duration-interactive) var(--ease-standard);
+}
+
+.cause[data-highlighted="true"] .kind {
+  border-color: var(--color-accent-line);
+  background-color: var(--color-canvas);
+  color: var(--color-accent-strong);
+}
+
+.cause[data-highlighted="true"] .kind::before {
+  background-color: var(--color-accent);
+}
+
+/* --- Appearance: each cause arrives with the first event it produces ------- */
+:global(.reveal[data-reveal="hidden"]) .cause {
+  opacity: 0;
+}
+
+:global(.reveal[data-reveal="entering"]) .cause {
+  animation: cause-arrive 640ms var(--ease-standard) var(--cause-delay) both;
+}
+
+@keyframes cause-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(0.75rem, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cause {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  :global([data-active-cause]) .cause:not([data-highlighted="true"]) {
+    opacity: 0.55 !important;
+  }
+}

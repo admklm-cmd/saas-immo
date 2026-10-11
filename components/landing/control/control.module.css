@@ -1,0 +1,211 @@
+/*
+ * The control section (docs/design-system.md §2.11.8.7 L3-D): two white tiles
+ * (24 px), a framed visual on top, a legend with the guard rails under it.
+ * ≥ 1280: two columns and three thin separators; 640–1279: one column of
+ * 720 px max; < 640: full width. The arrival is a CSS animation filled
+ * BACKWARDS, once, when the tile's `Reveal` enters (final state by default).
+ */
+
+.gridWrap {
+  position: relative;
+  margin-top: 56px;
+}
+
+.grid {
+  position: relative;
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (width >= 40rem) {
+  .grid {
+    max-width: 45rem;
+    margin-inline: auto;
+  }
+}
+
+@media (width >= 80rem) {
+  .grid {
+    max-width: none;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* --- Separators (≥ 1280): 8 px outside each edge and in the middle of the gap ---- */
+.separators {
+  display: none;
+}
+
+@media (width >= 80rem) {
+  .separators {
+    position: absolute;
+    inset: -48px -8px;
+    z-index: 0;
+    display: block;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  }
+
+  .separator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: rgb(10 10 11 / 0.06);
+  }
+
+  .separator:nth-child(1) {
+    left: 0;
+  }
+
+  .separator:nth-child(2) {
+    left: calc(50% - 0.5px);
+  }
+
+  .separator:nth-child(3) {
+    right: 0;
+  }
+}
+
+.cell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.cell > :global(.reveal) {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+}
+
+/* --- The tile ------------------------------------------------------------------ */
+.tile {
+  --tile-delay: calc(var(--tile-index, 0) * 80ms);
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  padding: 8px;
+  transition:
+    translate var(--duration-interactive) var(--ease-standard),
+    box-shadow var(--duration-interactive) var(--ease-standard);
+}
+
+.frame {
+  position: relative;
+  height: 320px;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-muted);
+}
+
+@media (width >= 40rem) {
+  .frame {
+    height: 312px;
+  }
+}
+
+/* « Simulation » + « Exemple fictif », top left of the frame, above the drawing. */
+.fictive {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--color-ink-muted);
+}
+
+/* --- Legend -------------------------------------------------------------------- */
+.legend {
+  padding: 20px 20px 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--color-ink);
+}
+
+.body {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-ink-muted);
+  text-wrap: pretty;
+}
+
+.facts {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  border-top: 1px solid var(--color-line);
+  padding: 12px 0 0;
+  list-style: none;
+}
+
+.fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.factIcon {
+  flex: none;
+  margin-top: 3px;
+}
+
+.factName {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.factBody {
+  color: var(--color-ink-muted);
+}
+
+/* --- Hover (fine pointer, motion allowed): 2 px up, raised shadow ---------------- */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .tile:hover {
+    translate: 0 -2px;
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+/* --- Arrival, once ------------------------------------------------------------------ */
+:global(.reveal[data-reveal="hidden"]) .tile {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :global(.reveal[data-reveal="entering"]) .tile {
+    animation: control-tile-in 560ms var(--ease-emphasis) var(--tile-delay) backwards;
+  }
+}
+
+@keyframes control-tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}

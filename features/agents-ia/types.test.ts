@@ -1,0 +1,154 @@
+import { describe, expect, it } from "vitest";
+
+import { AGENT_ORDER } from "@/lib/agents/messages";
+
+import {
+  AGENT_RUNS_DEFAULT_LIMIT,
+  AGENT_RUNS_MAX_LIMIT,
+  AGENT_RUNS_MAX_OFFSET,
+  agentRunFiltersSchema,
+  draftEditSchema,
+  MESSAGE_REJECTION_NOTE_MAX_LENGTH,
+  MESSAGE_REJECTION_REASON_LABELS,
+  MESSAGE_REJECTION_REASONS,
+  messageRejectionSchema,
+} from "./types";
+
+/**
+ * Pure tests of the two inputs this domain accepts from the browser: the
+ * filters of the execution history, and the motive of a refusal.
+ *
+ * A server action is a public HTTP endpoint (CLAUDE.md): its TypeScript
+ * signature promises nothing at runtime. Everything below is what stops a
+ * crafted payload — an unbounded page, an unknown key, a motive invented by the
+ * caller, or a control character smuggled into the append-only CRM journal.
+ */
+
+describe("agentRunFiltersSchema", () => {
+  it("applique des valeurs par défaut bornées quand rien n'est demandé", () => {
+    const parsed = agentRunFiltersSchema.parse({});
+    expect(parsed).toEqual({ limit: AGENT_RUNS_DEFAULT_LIMIT, offset: 0 });
+  });
+
+  it("accepte chaque agent et chaque statut du produit", () => {
+    for (const agent of AGENT_ORDER) {
+      expect(agentRunFiltersSchema.parse({ agent }).agent).toBe(agent);
+    }
+    for (const status of ["running", "succeeded", "failed", "blocked"] as const) {
+      expect(agentRunFiltersSchema.parse({ status }).status).toBe(status);
+    }
+  });
+
+  it("refuse un filtre inconnu plutôt que de l'ignorer en silence", () => {
+    // Une liste qui ne correspond pas aux filtres affichés est un chiffre faux.
+    expect(agentRunFiltersSchema.safeParse({ agencyId: "autre-agence" }).success).toBe(false);
+    expect(agentRunFiltersSchema.safeParse({ agent: "zoe" }).success).toBe(false);
+    expect(agentRunFiltersSchema.safeParse({ status: "sent" }).success).toBe(false);
+  });
+
+  it("refuse une page non bornée ou un décalage aberrant", () => {
+    for (const filters of [
+      { limit: 0 },
+      { limit: AGENT_RUNS_MAX_LIMIT + 1 },
+      { limit: 10.5 },
+      { limit: Number.NaN },
+      { offset: -1 },
+      { offset: AGENT_RUNS_MAX_OFFSET + 1 },
+    ]) {
+      expect(agentRunFiltersSchema.safeParse(filters).success).toBe(false);
+    }
+    expect(agentRunFiltersSchema.safeParse({ limit: AGENT_RUNS_MAX_LIMIT }).success).toBe(true);
+    expect(agentRunFiltersSchema.safeParse({ offset: AGENT_RUNS_MAX_OFFSET }).success).toBe(true);
+  });
+
+  it("refuse ce qui n'est pas un objet de filtres", () => {
+    for (const value of ["tout", 12, [], true]) {
+      expect(agentRunFiltersSchema.safeParse(value).success).toBe(false);
+    }
+  });
+});
+
+describe("messageRejectionSchema", () => {
+  it("chaque motif de la liste fermée a un libellé français", () => {
+    for (const reason of MESSAGE_REJECTION_REASONS) {
+      expect(MESSAGE_REJECTION_REASON_LABELS[reason].length).toBeGreaterThan(0);
+    }
+    expect(Object.keys(MESSAGE_REJECTION_REASON_LABELS)).toHaveLength(
+      MESSAGE_REJECTION_REASONS.length,
+    );
+  });
+
+  it("accepte un motif seul : le commentaire est facultatif", () => {
+    const parsed = messageRejectionSchema.parse({ reason: "bad_timing" });
+    expect(parsed).toEqual({ reason: "bad_timing", note: null });
+  });
+
+  it("accepte un commentaire court, nettoyé et sans caractères de contrôle", () => {
+    const parsed = messageRejectionSchema.parse({
+      reason: "incorrect_information",
+      note: "  Le bien est à Cassis,\u0000 pas à La Ciotat.\u001B[31m  ",
+    });
+    expect(parsed.note).toBe("Le bien est à Cassis,  pas à La Ciotat. [31m");
+    expect(parsed.note).not.toMatch(/[\u0000-\u001F\u007F]/);
+  });
+
+  it("traite un commentaire vide comme une absence de commentaire", () => {
+    for (const note of ["", "   ", null, undefined]) {
+      expect(messageRejectionSchema.parse({ reason: "other", note }).note).toBeNull();
+    }
+  });
+
+  it("refuse un motif hors de la liste : pas de texte libre en guise de motif", () => {
+    for (const reason of ["ton", "", null, 3, "OTHER"]) {
+      expect(messageRejectionSchema.safeParse({ reason }).success).toBe(false);
+    }
+  });
+
+  it("refuse un commentaire trop long plutôt que de le tronquer en silence", () => {
+    const limit = MESSAGE_REJECTION_NOTE_MAX_LENGTH;
+    expect(messageRejectionSchema.safeParse({ reason: "other", note: "a".repeat(limit) }).success).toBe(
+      true,
+    );
+    expect(
+      messageRejectionSchema.safeParse({ reason: "other", note: "a".repeat(limit + 1) }).success,
+    ).toBe(false);
+  });
+
+  it("refuse toute clé supplémentaire : rien ne se glisse dans le journal", () => {
+    expect(
+      messageRejectionSchema.safeParse({
+        reason: "other",
+        // Une tentative d'écrire dans l'historique à la place du serveur.
+        actor_type: "system",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("refuse une charge utile qui n'est pas un objet", () => {
+    for (const value of ["other", ["other"], 1, null, undefined]) {
+      expect(messageRejectionSchema.safeParse(value).success).toBe(false);
+    }
+  });
+});
+
+describe("draftEditSchema", () => {
+  it("préserve la tabulation et le retour à la ligne", () => {
+    const parsed = draftEditSchema.parse({
+      subject: "Relance\tCassis",
+      body: "Bonjour,\n\tVoici le point sur votre bien.\nCordialement.",
+    });
+    expect(parsed.subject).toBe("Relance\tCassis");
+    expect(parsed.body).toBe("Bonjour,\n\tVoici le point sur votre bien.\nCordialement.");
+  });
+
+  it("remplace les caractères de contrôle bruts par une espace", () => {
+    const parsed = draftEditSchema.parse({
+      subject: "Relance\u0000Cassis\u007F",
+      body: "Bonjour,\u001Fvoici le point.",
+    });
+    expect(parsed.subject).toBe("Relance Cassis");
+    expect(parsed.body).toBe("Bonjour, voici le point.");
+    expect(parsed.subject).not.toMatch(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/);
+    expect(parsed.body).not.toMatch(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/);
+  });
+});

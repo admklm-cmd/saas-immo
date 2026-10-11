@@ -1,0 +1,17 @@
+/* Decorative canvas: never intercepts pointer events, fills the box given by its parent. */
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Background mode (spec §9): one canvas fixed to the viewport, behind the content. */
+.background {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 0;
+}

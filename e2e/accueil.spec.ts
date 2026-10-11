@@ -1,0 +1,302 @@
+import { expect, test, type Page } from "@playwright/test";
+
+import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
+import { LIVING_SCENES } from "@/components/landing/living/scenes";
+
+import { signIn } from "./helpers/sign-in";
+
+/**
+ * Public home page: the hero (title revealed line then word, tilted tag, black
+ * then light action), block A « Vous » in the ecosystem of the agents labelled
+ * as a simulation (docs/design-system.md §2.11.8.3), the still hand-off
+ * behind the page and, in band 1 of the hero only, the nanorobots and the
+ * terminal « humain ⇄ machine » (§2.11.4 bis).
+ *
+ * The suite runs in reduced motion (playwright.config.ts): everything is in its
+ * final state at once. One group opts back into real motion to check that the
+ * nanorobots play on screen and pause off screen, that block A plays its loop
+ * on screen, and that the Simulation badge plays one cycle on / only (§2.11.5).
+ * Block A is covered in depth by e2e/landing-ecosysteme.spec.ts, the
+ * nanorobots and the terminal by e2e/landing-hero-nanorobots.spec.ts, the
+ * whole page « no loop » (block A and the nanorobots excepted) by
+ * e2e/landing-sans-boucle.spec.ts.
+ */
+
+const COLD_START = 60_000;
+const HERO = LANDING_TEXTS.hero;
+const JOURNEY = LANDING_TEXTS.journey;
+const AGENTS = LANDING_TEXTS.agents;
+const PROBLEM = LANDING_TEXTS.problem;
+
+async function openHome(page: Page): Promise<void> {
+  const response = await page.goto("/");
+  expect(response?.status()).toBe(200);
+  await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
+}
+
+/** Boxes of block A: who checks them, and whether they are checked. */
+async function ecosystemBoxes(page: Page) {
+  return page.getByTestId("hero-ecosystem").locator("[data-check]").evaluateAll((nodes) =>
+    nodes.map((node) => ({ by: node.getAttribute("data-check"), checked: node.getAttribute("data-checked") === "true" })),
+  );
+}
+
+/** Final state of block A (§2.11.8.6 A2): 12 agent boxes checked, Motivation empty, 3 « you » boxes checked. */
+function expectFinalBoxes(boxes: Awaited<ReturnType<typeof ecosystemBoxes>>) {
+  expect(boxes.filter((box) => box.by === "agent" && box.checked)).toHaveLength(12);
+  expect(boxes.filter((box) => box.by === "missing")).toEqual([{ by: "missing", checked: false }]);
+  expect(boxes.filter((box) => box.by === "you" && box.checked)).toHaveLength(3);
+}
+
+test("accueil : titre, étiquette, deux actions et bloc « Vous » étiqueté simulation", async ({ page }) => {
+  await openHome(page);
+  const main = page.locator("main");
+
+  await expect(page.getByTestId("hero-tag")).toHaveText(HERO.tag);
+  await expect(page.getByTestId("hero-tag")).toHaveCSS("text-transform", "uppercase");
+
+  // Band 1 of the hero (block A carries its own estimation action, checked below).
+  const hero = page.getByTestId("hero-band");
+  const estimation = hero.getByRole("link", { name: LANDING_TEXTS.actions.estimation });
+  const signIn = hero.getByRole("link", { name: LANDING_TEXTS.actions.signIn });
+  await expect(estimation).toHaveAttribute("href", "/estimation");
+  await expect(signIn).toHaveAttribute("href", "/connexion");
+
+  // The illustration says what it is, with the Simulation badge next to it.
+  const ecosystem = page.getByTestId("hero-ecosystem");
+  await expect(ecosystem.getByTestId("hero-ecosystem-label")).toContainText(JOURNEY.badge);
+  await expect(ecosystem.getByTestId("hero-ecosystem-label")).toContainText("Simulation");
+  await expect(ecosystem).toContainText(JOURNEY.note);
+  await expect(main).toContainText(HERO.illustrationNote);
+  // The guard rails stay readable (§2.11.7 n° 10).
+  await expect(page.getByTestId("ecosystem-guard")).toHaveText("Les agents préparent. Vous validez le premier message et confirmez le mandat.");
+  await expect(ecosystem.getByRole("link", { name: LANDING_TEXTS.actions.estimation })).toHaveAttribute("href", "/estimation");
+
+  // Reduced motion: the final state at once, still, no pause button (§2.11.6).
+  await expect(ecosystem).toHaveAttribute("data-loop-state", "reduced");
+  expectFinalBoxes(await ecosystemBoxes(page));
+  await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
+  // The nanorobots of the hero: the still composition; the terminal complete, no pause button (§2.11.4 bis F).
+  await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "reduced");
+  await expect(page.getByTestId("hero-terminal")).toHaveAttribute("data-terminal-state", "reduced");
+  await expect(page.getByTestId("hero-motion-pause")).toHaveCount(0);
+  await expect(page.getByTestId("living-background")).toHaveCount(0);
+
+  // One background scene per section, and nothing invented on the page.
+  const scenes = await page.locator("[data-living-scene]").evaluateAll((sections) =>
+    sections.map((section) => section.getAttribute("data-living-scene")),
+  );
+  expect(scenes).toEqual([...LIVING_SCENES]);
+  // Outside the ROI section (§2.11.8.8 L4-B: sourced figures and editable hypotheses, each tagged),
+  // the only « % » of the page is the computed POSITION of block C's carousel
+  // (step 1 of 7 → 14 %, §2.11.8.5), never a claimed figure: checked apart.
+  const claims = await main.evaluate((element) => {
+    const copy = element.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("[data-testid='process-percent'], [data-testid='roi']").forEach((node) => node.remove());
+    return copy.textContent ?? "";
+  });
+  expect(claims).not.toMatch(/\d\s?%|€|témoignage/i);
+  await expect(page.getByTestId("process-percent")).toHaveText("14 %");
+  // Block A: three blocks, 15 boxes checked in the final state (§2.11.8.8 L4-A).
+  await expect(ecosystem.locator("[data-block]")).toHaveCount(3);
+  await expect(ecosystem.locator("[data-check][data-checked='true']")).toHaveCount(15);
+  // No floating contact button: no real channel is configured.
+  await expect(page.getByRole("link", { name: /whatsapp|nous contacter/i })).toHaveCount(0);
+});
+
+test("carrousel des agents : sept étapes, clic sur Hugo puis clavier et boutons", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openHome(page);
+  const carousel = page.getByTestId("agents-carousel");
+  await carousel.scrollIntoViewIfNeeded();
+
+  const tabs = carousel.getByRole("tab");
+  await expect(tabs).toHaveCount(AGENTS.steps.length);
+  await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
+  const panel = carousel.getByRole("tabpanel");
+  await expect(panel.getByTestId("agent-scene")).toHaveAttribute("data-step", "lea");
+
+  // Click on Hugo: his scene, labelled as a fictitious simulation, with the missing information flagged.
+  await carousel.getByRole("tab", { name: /Hugo/ }).click();
+  await expect(panel.getByTestId("agent-scene")).toHaveAttribute("data-step", "hugo");
+  await expect(panel.getByTestId("agent-scene")).toBeVisible();
+  await expect(panel).toContainText(AGENTS.scenes.hugo.title);
+  await expect(panel.getByTestId("agent-scene-label")).toContainText(AGENTS.carousel.sceneBadge);
+  await expect(panel.getByTestId("agent-scene-label")).toContainText("Simulation");
+  await expect(panel.getByTestId("hugo-missing")).toContainText(AGENTS.scenes.hugo.missing);
+
+  // Keyboard: the arrows move the selection and the focus (roving tabindex).
+  await page.keyboard.press("ArrowRight");
+  await expect(carousel.getByRole("tab", { name: /Emma/ })).toBeFocused();
+  await expect(panel.getByTestId("agent-scene")).toHaveAttribute("data-step", "emma");
+  await page.keyboard.press("ArrowRight");
+  await expect(panel.getByTestId("agent-scene")).toHaveAttribute("data-step", "review");
+  await expect(carousel.getByRole("tab", { name: /Validation humaine/ })).toHaveAttribute("data-kind", "human");
+
+  // Next / previous buttons, inert at the end.
+  const next = carousel.getByRole("button", { name: AGENTS.carousel.next });
+  for (const key of ["louis", "sarah", "mandate"]) {
+    await next.click();
+    await expect(panel.getByTestId("agent-scene")).toHaveAttribute("data-step", key);
+  }
+  await expect(next).toHaveAttribute("aria-disabled", "true");
+  const lastTab = carousel.getByRole("tab", { name: /Mandat/ });
+  await expect(lastTab).toBeInViewport();
+  await carousel.getByRole("button", { name: AGENTS.carousel.previous }).click();
+  await expect(panel.getByTestId("agent-scene")).toHaveAttribute("data-step", "sarah");
+});
+
+test("carrousel sur mobile (390 px) : défilement horizontal interne, page sans débordement", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openHome(page);
+  const tablist = page.getByTestId("agents-tablist");
+  await tablist.scrollIntoViewIfNeeded();
+  const overflow = await tablist.evaluate((element) => element.scrollWidth > element.clientWidth);
+  expect(overflow).toBe(true);
+  const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+  expect(pageOverflow).toBe(false);
+  await page.getByRole("tab", { name: /Louis/ }).click();
+  await expect(page.getByTestId("agents-panel").getByTestId("agent-scene")).toHaveAttribute("data-step", "louis");
+});
+
+test("graphique « blocage administratif » : étiquette fictive, aucun chiffre, description accessible", async ({ page }) => {
+  await openHome(page);
+  const section = page.locator("section[data-living-scene='probleme']");
+  await expect(section.getByRole("heading", { level: 2, name: PROBLEM.title })).toBeVisible();
+  const chart = section.getByTestId("blocker-chart");
+  await chart.scrollIntoViewIfNeeded();
+  await expect(chart).toBeVisible();
+  await expect(chart.getByTestId("blocker-chart-label")).toHaveText(PROBLEM.chart.label);
+  const svg = chart.getByRole("img");
+  await expect(svg).toBeVisible();
+  expect(await svg.textContent()).not.toMatch(/\d/);
+  await expect(svg).toHaveAccessibleDescription(PROBLEM.chart.description);
+  for (const symptom of PROBLEM.symptoms) await expect(section).toContainText(symptom.title);
+});
+
+test("cas dégradé : sans JavaScript, tout le contenu reste lisible", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  await openHome(page);
+  await expect(page.getByTestId("hero-tag")).toBeVisible();
+  await expect(page.getByTestId("hero-ecosystem")).toContainText(JOURNEY.badge);
+  expectFinalBoxes(await ecosystemBoxes(page));
+  await expect(page.getByTestId("ecosystem-cursor-still")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: LANDING_TEXTS.control.title })).toBeVisible();
+  // Carousel: the first step and its scene are in the server HTML; the chart is complete.
+  await expect(page.getByTestId("agents-panel").getByTestId("agent-scene")).toHaveAttribute("data-step", "lea");
+  await expect(page.getByTestId("agents-panel")).toContainText(AGENTS.carousel.sceneBadge);
+  await expect(page.getByTestId("blocker-chart-label")).toHaveText(PROBLEM.chart.label);
+  await expect(page.locator("section[data-living-scene='final']").getByRole("link", { name: LANDING_TEXTS.actions.estimation })).toBeVisible();
+  await context.close();
+});
+
+test("panneau final (bloc C, §2.11.8.5) : titre centré, paragraphe, actions, note 16 px dessous, puis le carrousel des sept étapes", async ({ page }) => {
+  for (const width of [1440, 1024, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 });
+    await openHome(page);
+    const geometry = await page.getByTestId("final-panel").evaluate((panel) => {
+      const centre = panel.getBoundingClientRect().left + panel.getBoundingClientRect().width / 2;
+      const box = (element: Element) => element.getBoundingClientRect();
+      const title = panel.querySelector("#final-title") as HTMLElement;
+      const body = panel.querySelector("[data-testid='final-body']") as HTMLElement;
+      const actions = panel.querySelector("[data-testid='final-actions']") as HTMLElement;
+      const buttons = actions.firstElementChild as HTMLElement;
+      const note = actions.lastElementChild as HTMLElement;
+      const carousel = panel.querySelector("[data-testid='process-carousel']") as HTMLElement;
+      const middle = (element: HTMLElement) => box(element).left + box(element).width / 2;
+      return {
+        note: note.textContent,
+        noteLast: actions.lastElementChild === note,
+        gapToNote: box(note).top - box(buttons).bottom,
+        order: [box(title).top, box(body).top, box(buttons).top, box(note).top, box(carousel).top],
+        offCentre: [title, body, buttons, note].map((element) => Math.abs(middle(element) - centre)),
+        cards: carousel.querySelectorAll("[data-testid='process-card']").length,
+        canvases: panel.querySelectorAll("canvas").length,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(geometry.note).toBe(LANDING_TEXTS.final.note);
+    expect(geometry.noteLast, `${width}: the note closes the actions`).toBe(true);
+    expect(Math.abs(geometry.gapToNote - 16), `${width}: buttons → note ${geometry.gapToNote}`).toBeLessThanOrEqual(1);
+    for (let index = 1; index < geometry.order.length; index += 1) {
+      expect(geometry.order[index]!, `${width}: order ${index}`).toBeGreaterThan(geometry.order[index - 1]!);
+    }
+    for (const offset of geometry.offCentre) expect(offset, `${width}: centred`).toBeLessThanOrEqual(2);
+    expect(geometry.cards).toBe(7);
+    expect(geometry.canvases).toBe(0);
+    expect(geometry.overflow, `${width}: page overflow`).toBeLessThanOrEqual(0);
+  }
+});
+
+test("cas d'erreur : une adresse inconnue du site public répond 404, sans fond animé", async ({ page }) => {
+  const response = await page.goto("/cette-page-n-existe-pas");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByTestId("particle-handoff-background")).toHaveCount(0);
+  await expect(page.getByTestId("hero-nanorobots")).toHaveCount(0);
+});
+
+test.describe("avec animations", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("les nanorobots du hero jouent à l'écran, puis se mettent en pause hors écran", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const field = page.getByTestId("hero-nanorobots");
+    await expect(field).toHaveAttribute("data-loop-state", "playing", { timeout: 10_000 });
+    await expect(page.getByTestId("hero-motion-pause")).toBeVisible();
+    // No canvas behind the page any more (§2.11.4 bis B).
+    await expect(page.locator("canvas[data-testid='living-background']")).toHaveCount(0);
+
+    await page.locator("section[data-living-scene='controle']").scrollIntoViewIfNeeded();
+    await expect(field).toHaveAttribute("data-loop-state", "paused", { timeout: 2_000 });
+
+    // The page-wide pause is gone (docs/design-system.md §2.11.6): only the pause of the hero motion exists.
+    await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
+  });
+
+  test("bloc A : joue sa boucle à l'écran, les agents d'abord, puis « Vous » (§2.11.8.8 L4-A)", async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const ecosystem = page.getByTestId("hero-ecosystem");
+    // Below the fold at 1440 × 900 since the terminal of the hero (§2.11.4 bis E): brought to the middle.
+    await ecosystem.evaluate((figure) => figure.scrollIntoView({ block: "center", behavior: "instant" }));
+    await expect(ecosystem).toHaveAttribute("data-loop-state", "playing");
+    await expect(ecosystem).toHaveAttribute("data-loop-cycles", "1");
+    // The agents check their boxes first; a human box only later.
+    await expect
+      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "agent" && box.checked).length, { timeout: 8_000, intervals: [50] })
+      .toBeGreaterThanOrEqual(7);
+    // No human box before the cursor works on « Validation humaine » (24 s cycle: first « Vous » box at 8.75 s).
+    expect((await ecosystemBoxes(page)).filter((box) => box.by === "you" && box.checked)).toHaveLength(0);
+    await expect
+      .poll(async () => (await ecosystemBoxes(page)).filter((box) => box.by === "you" && box.checked).length, { timeout: 18_000, intervals: [50] })
+      .toBe(3);
+    await expect(page.locator("main")).toContainText(JOURNEY.note);
+  });
+
+  test("badge « Simulation » : un seul cycle sur l'accueil, infini dans l'espace agence (§2.11.5)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openHome(page);
+    const iterations = (selector: string) =>
+      page.locator(selector).first().evaluate((node) =>
+        node.getAnimations().map((animation) => (animation.effect?.getComputedTiming().iterations ?? 0) as number),
+      );
+    const badge = page.getByTestId("hero-ecosystem").locator(".simulation-badge");
+    await expect(badge).toContainText("Simulation");
+    expect(await iterations("[data-testid='hero-ecosystem'] .simulation-badge")).toEqual([1]);
+    expect(await iterations("[data-testid='hero-ecosystem'] .simulation-dot")).toEqual([1]);
+    // After its cycle (3 s), nothing is left running on the badge; the word stays.
+    await page.waitForTimeout(3_300);
+    expect(await iterations("[data-testid='hero-ecosystem'] .simulation-badge")).toEqual([]);
+    await expect(badge).toContainText("Simulation");
+
+    // The signed-in space keeps its badge unchanged.
+    await signIn(page, "agentA");
+    await page.goto("/rendez-vous");
+    await expect(page.locator(".simulation-badge").first()).toBeVisible({ timeout: COLD_START });
+    expect(await iterations(".simulation-badge")).toEqual([Infinity]);
+    expect(await iterations(".simulation-dot")).toEqual([Infinity]);
+  });
+});

@@ -1,0 +1,20 @@
+/*
+ * Heading of the problem section. Editorial composition: overline, sentence
+ * title (two tones: observation / answer, docs/design-system.md §2.2.9),
+ * paragraph, a lot of air. The author lines set the measure of the title.
+ */
+
+/* One reading axis: overline, title and paragraph share the left edge of the
+   chart below (same inner edge as the surface), with no empty quadrant. */
+.heading {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 1.75rem;
+}
+
+@media (min-width: 1024px) {
+  .heading {
+    padding-left: 3rem;
+  }
+}

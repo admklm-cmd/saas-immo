@@ -1,0 +1,332 @@
+/*
+ * Tile 1 of the control section — the chart (docs/design-system.md §2.11.8.7
+ * L3-D). A fixed scene centred in the frame: 518 × 264 px (≥ 640), 286 × 288 px
+ * below. Every position comes from the table of the spec. The arrival plays
+ * once when the tile's `Reveal` enters: CSS animations filled BACKWARDS only
+ * (the final state is the default style), nothing at rest, nothing under
+ * reduced motion.
+ */
+
+.visual {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.scene {
+  position: relative;
+  width: 518px;
+  height: 264px;
+}
+
+/* One scene per width; doubled classes beat the display of the reused icon tiles. */
+@media (width >= 40rem) {
+  .narrowOnly.narrowOnly {
+    display: none;
+  }
+}
+
+@media (width < 40rem) {
+  .scene {
+    width: 286px;
+    height: 288px;
+  }
+
+  .wideOnly.wideOnly {
+    display: none;
+  }
+}
+
+/* --- Lines: 1 px, opaque light grey (so shared segments never darken), round ends --- */
+.lines {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.lines path {
+  fill: none;
+  stroke: var(--color-line-strong);
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+
+/* --- « Vous », verified advisor --------------------------------------------- */
+.you {
+  position: absolute;
+  top: 104px;
+  left: 0;
+  display: flex;
+  width: 96px;
+  flex-direction: column;
+  align-items: center;
+}
+
+.youName {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: var(--color-ink);
+}
+
+.youRole {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-subtle);
+}
+
+.verified {
+  position: absolute;
+  top: 143px;
+  left: 59px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 999px;
+  background-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-surface);
+}
+
+.verified svg {
+  width: 10px;
+  height: 10px;
+  fill: none;
+  stroke: var(--color-ink-inverse);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- The agency space and its kill switch -------------------------------------- */
+.hub {
+  position: absolute;
+  top: 80px;
+  left: 160px;
+  display: flex;
+  width: 128px;
+  height: 104px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  text-align: center;
+}
+
+.hubName {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--color-ink);
+}
+
+.hubSub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-subtle);
+}
+
+.killSwitch {
+  position: absolute;
+  top: 196px;
+  left: 224px;
+  display: inline-flex;
+  height: 24px;
+  align-items: center;
+  gap: 4px;
+  translate: -50% 0;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* --- The five agents ------------------------------------------------------------ */
+.roles {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.role {
+  position: absolute;
+  top: calc(8px + var(--role-index) * 52px);
+  left: 352px;
+  display: flex;
+  height: 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.roleDisc {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+.roleText {
+  display: flex;
+  flex-direction: column;
+}
+
+.roleName {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 17px;
+  color: var(--color-ink);
+}
+
+.roleRole {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-ink-subtle);
+  white-space: nowrap;
+}
+
+@media (width < 40rem) {
+  .you {
+    top: 20px;
+    left: 4px;
+  }
+
+  .youName {
+    margin-top: 6px;
+    line-height: 16px;
+  }
+
+  .verified {
+    top: 47px;
+    left: 59px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .hub {
+    top: 132px;
+    left: 4px;
+    width: 96px;
+    height: 88px;
+  }
+
+  .hubName {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  .hubSub {
+    font-size: 11px;
+    line-height: 14px;
+  }
+
+  .killSwitch {
+    top: 232px;
+    left: 52px;
+  }
+
+  .role {
+    top: calc(20px + var(--role-index) * 52px);
+    left: 148px;
+    gap: 8px;
+  }
+
+  .roleDisc {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* --- Arrival, once (t = 0: the tile's Reveal enters) ----------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  :global(.reveal[data-reveal="entering"]) .you {
+    animation: team-from-left 420ms var(--ease-emphasis) 240ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .verified {
+    animation: team-pop 240ms var(--ease-emphasis) 560ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .lineYou {
+    animation: team-draw 320ms var(--ease-draw) 520ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .hub {
+    animation: team-hub 400ms var(--ease-emphasis) 720ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .killSwitch {
+    animation: team-rise 240ms var(--ease-emphasis) 1120ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .lineTree {
+    animation: team-draw 480ms var(--ease-draw) 1000ms backwards;
+  }
+
+  :global(.reveal[data-reveal="entering"]) .role {
+    animation: team-role 360ms var(--ease-emphasis) calc(1160ms + var(--role-index) * 90ms) backwards;
+  }
+}
+
+@keyframes team-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+    filter: blur(6px);
+  }
+}
+
+@keyframes team-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes team-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes team-hub {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+    filter: blur(6px);
+  }
+}
+
+@keyframes team-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes team-role {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+    filter: blur(6px);
+  }
+}

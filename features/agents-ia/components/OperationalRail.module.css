@@ -1,0 +1,690 @@
+/*
+ * Rail « réseau opérationnel » — docs/design-system.md §3.1.
+ * Colours, radii, shadows, durations and easings are tokens; the few literal
+ * numbers are the geometry of the rail (node size, line thickness, relays).
+ *
+ * Colour rule (plan A1, validated 24/09/2026): the static network is black,
+ * white and grey. The cobalt accent is ONLY used by
+ *   - the moving signal (`.signal`),
+ *   - the node in progress (`data-state="running"`, `data-play="active"`),
+ *   - a human validation that really awaits an action (`data-state="human"`).
+ * A human checkpoint that is not waiting is recognised by its double contour,
+ * never by the colour. No glow, no neon. Enforced by OperationalRail.test.tsx.
+ */
+
+.rail {
+  --core: 2.75rem;
+  --line: 3px;
+  --relay: 7px;
+  --gap-link: 0.5rem;
+  /* Grey of the lines and contours not reached yet: clearly visible, never black. */
+  --rail-idle: color-mix(in srgb, var(--color-ink-subtle) 62%, var(--color-surface));
+  position: relative;
+  display: grid;
+  grid-auto-columns: minmax(6.75rem, 1fr);
+  grid-auto-flow: column;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem 0.25rem;
+  scrollbar-width: thin;
+}
+
+.node {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding-inline: 0.375rem;
+  text-align: center;
+}
+
+/* --- Incoming line (from the previous node to this one) ---------------------- */
+.link,
+.relays {
+  position: absolute;
+  right: calc(50% + var(--core) / 2 + var(--gap-link));
+  left: calc(-50% + var(--core) / 2 + var(--gap-link));
+}
+
+.link {
+  top: calc(var(--core) / 2 - var(--line) / 2);
+  height: var(--line);
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--rail-idle);
+}
+
+/* After a blocked, stopped or failed node the signal does not go on: dashed
+   line, and a short bar where it stopped. */
+.link[data-cut] {
+  overflow: visible;
+  background: repeating-linear-gradient(to right, var(--rail-idle) 0 4px, transparent 4px 8px);
+}
+
+.link[data-cut]::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 0;
+  width: 2px;
+  height: 13px;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--color-ink);
+}
+
+.link[data-lit] .fill {
+  transform: none;
+}
+
+.travel {
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+}
+
+/* The impulse in motion: the only moving cobalt of the rail. */
+.signal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1.25rem;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-accent);
+  opacity: 0;
+}
+
+/* --- Relay points along the line (visual marks, no extra connection) ------- */
+.relays {
+  z-index: 1;
+  top: calc(var(--core) / 2 - var(--relay) / 2);
+  display: flex;
+  height: var(--relay);
+  align-items: center;
+  justify-content: space-evenly;
+  pointer-events: none;
+}
+
+.relay {
+  width: var(--relay);
+  height: var(--relay);
+  flex: none;
+  border: 1.5px solid var(--rail-idle);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+
+.relays[data-lit] .relay {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+}
+
+/* A cut line reads as stopped: no relay on it. */
+.relays[data-cut] {
+  display: none;
+}
+
+/* --- Node core ------------------------------------------------------------- */
+.core {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: var(--core);
+  height: var(--core);
+  flex: none;
+  place-items: center;
+  border: 1.5px solid var(--rail-idle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+  color: var(--color-ink);
+  transition:
+    transform var(--duration-base) var(--ease-standard),
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard),
+    background-color var(--duration-base) var(--ease-standard);
+}
+
+.icon {
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+/* The small light of the node. */
+.dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-surface);
+  border-radius: 999px;
+  background: var(--rail-idle);
+}
+
+.text {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.name {
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+}
+
+.action {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-ink-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.status {
+  color: var(--color-ink);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
+.duration {
+  color: var(--color-ink-subtle);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* --- States (final look; the playback only animates towards it) ------------ */
+.node[data-state="done"] .core {
+  border-width: 2px;
+  border-color: var(--color-ink);
+}
+
+.node[data-state="done"] .dot {
+  background: var(--color-ink);
+}
+
+.node[data-state="pending"] .core {
+  border-style: dashed;
+  box-shadow: none;
+  color: var(--color-ink-subtle);
+}
+
+.node[data-state="pending"] .icon {
+  opacity: 0.6;
+}
+
+.node[data-state="pending"] .status,
+.node[data-state="untraced"] .status {
+  color: var(--color-ink-subtle);
+  font-weight: 500;
+}
+
+.node[data-state="untraced"] .core {
+  border-style: dotted;
+  background: var(--color-surface-muted);
+  box-shadow: none;
+  color: var(--color-ink-subtle);
+}
+
+.node[data-state="untraced"] .icon {
+  opacity: 0.5;
+}
+
+.node[data-state="untraced"] .dot {
+  display: none;
+}
+
+/* In progress: cobalt contour, the light breathes (opacity only, no glow). */
+.node[data-state="running"] .core {
+  border: 2px solid var(--color-accent);
+}
+
+.node[data-state="running"] .dot {
+  background: var(--color-accent);
+  animation: rail-pulse 1.4s ease-in-out infinite;
+}
+
+/* Human checkpoint (validation, confirmation): a double contour, in the grey
+   or black of the network. The shape says « a person decides here ». */
+.node[data-checkpoint] .core {
+  outline: 1.5px solid var(--rail-idle);
+  outline-offset: 3px;
+}
+
+.node[data-checkpoint][data-state="pending"] .core,
+.node[data-checkpoint][data-state="untraced"] .core {
+  outline-style: dashed;
+}
+
+.node[data-checkpoint]:is([data-state="done"], [data-state="blocked"], [data-state="stopped"], [data-state="failed"])
+  .core {
+  outline-color: var(--color-ink);
+}
+
+/* A human decision is REALLY awaited: the only static cobalt of the network. */
+.node[data-state="human"] .core {
+  border: 2px solid var(--color-accent);
+  outline-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.node[data-state="human"] .dot {
+  background: var(--color-accent);
+}
+
+.node[data-state="human"] .status {
+  color: var(--color-accent-strong);
+}
+
+.node[data-state="blocked"] .core,
+.node[data-state="stopped"] .core {
+  border: 1.5px dashed var(--color-ink);
+  background: var(--color-surface-sunken);
+}
+
+.node[data-state="blocked"] .dot,
+.node[data-state="stopped"] .dot {
+  border-color: var(--color-ink);
+  background: var(--color-surface);
+}
+
+.node[data-state="failed"] .core {
+  border-color: var(--color-inverse);
+  background: var(--color-inverse);
+  color: var(--color-ink-inverse);
+}
+
+.node[data-state="failed"] .dot {
+  background: var(--color-danger);
+}
+
+.node[data-state="failed"] .status {
+  font-weight: 700;
+}
+
+/* A last node that stopped the flow: a short dashed stub and a stop bar. */
+.endcap {
+  position: absolute;
+  top: calc(var(--core) / 2 - var(--line) / 2);
+  left: calc(50% + var(--core) / 2 + var(--gap-link));
+  width: 1.25rem;
+  height: var(--line);
+  background: repeating-linear-gradient(to right, var(--rail-idle) 0 4px, transparent 4px 8px);
+}
+
+.endcap::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: 0;
+  width: 2px;
+  height: 13px;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+
+/* --- App-icon family (docs/design-system.md §2.8) ----------------------------
+   Nodes of a dossier carry `data-tone`: the SHAPE says who acts. An agent is a
+   rounded square that becomes a dark app tile once it has recorded its work; a
+   person is a circle (the double contour above stays); the mandate is a circle
+   filled once a person has confirmed it; the prospect and the appointment are
+   neutral squares. The states above keep their meaning (dashed = not reached,
+   cobalt = in progress or awaited decision only). The phases of a run carry no
+   tone and keep the plain square. */
+.core[data-tone] {
+  border-radius: calc(var(--core) * 0.3);
+}
+
+.core:is([data-tone="human"], [data-tone="outcome"]) {
+  border-radius: 999px;
+}
+
+.core:is([data-tone="human"], [data-tone="outcome"]) .dot {
+  top: -2px;
+  right: -2px;
+}
+
+.node[data-state="done"] .core:is([data-tone="agent"], [data-tone="outcome"]) {
+  border-color: var(--color-inverse);
+  background: linear-gradient(180deg, var(--color-inverse-soft), var(--color-inverse));
+  color: var(--color-ink-inverse);
+}
+
+/* In progress: the lit tile, framed by the cobalt contour of the state rule. */
+.node[data-state="running"] .core[data-tone="agent"] {
+  background: linear-gradient(180deg, var(--color-inverse-soft), var(--color-inverse));
+  color: var(--color-ink-inverse);
+}
+
+/* A technical error is never drawn like a finished agent: sunken, black frame. */
+.node[data-state="failed"] .core[data-tone="agent"] {
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface-sunken);
+  color: var(--color-ink);
+}
+
+/* --- Playback: stagger (order) and measured (recorded durations) ---------- */
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .node[data-reached] .core {
+  animation: rail-light var(--duration-slow) var(--ease-standard) var(--at) both;
+}
+
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .node[data-reached] .icon {
+  animation: rail-pop var(--duration-interactive) var(--ease-standard) var(--at) both;
+}
+
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .node[data-reached] .status {
+  animation: rail-fade var(--duration-base) var(--ease-standard) var(--at) both;
+}
+
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .link[data-lit] .fill {
+  animation: rail-fill var(--link-dur) linear var(--link-at) both;
+}
+
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .link[data-lit] .travel {
+  animation: rail-travel var(--link-dur) linear var(--link-at) both;
+}
+
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .link[data-lit] .signal {
+  animation: rail-signal var(--link-dur) linear var(--link-at) both;
+}
+
+/* A relay turns black once the signal has passed it (end of the line). */
+.rail:is([data-playback="stagger"], [data-playback="measured"]) .relays[data-lit] .relay {
+  animation: rail-relay var(--duration-base) var(--ease-standard) calc(var(--link-at) + var(--link-dur)) both;
+}
+
+/* --- Playback: external (the replay sets data-play on each node) ------------ */
+.rail[data-playback="external"] .node[data-play="pending"] .core {
+  border-style: dashed;
+  border-color: var(--rail-idle);
+  background: var(--color-surface);
+  box-shadow: none;
+  color: var(--color-ink-subtle);
+}
+
+.rail[data-playback="external"] .node[data-play="pending"] .icon {
+  opacity: 0.35;
+  transform: scale(0.8);
+}
+
+.rail[data-playback="external"] .node[data-play="pending"] .dot {
+  background: var(--rail-idle);
+}
+
+.rail[data-playback="external"] .node[data-play="pending"] .status {
+  opacity: 0;
+}
+
+/* The step being replayed is the step in progress. */
+.rail[data-playback="external"] .node[data-play="active"] .core {
+  transform: translateY(-3px);
+  border: 2px solid var(--color-accent);
+  box-shadow: var(--shadow-raised);
+}
+
+.rail[data-playback="external"] .node[data-play="active"] .dot {
+  background: var(--color-accent);
+}
+
+.rail[data-playback="external"] .node[data-play="active"] .icon {
+  animation: rail-pop var(--duration-interactive) var(--ease-standard) both;
+}
+
+.rail[data-playback="external"] .link[data-lit] .fill {
+  transform: scaleX(0);
+}
+
+.rail[data-playback="external"] .relays[data-lit] .relay {
+  border-color: var(--rail-idle);
+  background: var(--color-surface);
+}
+
+.rail[data-playback="external"] .node[data-play="done"] + .node .link[data-lit] .fill {
+  transform: none;
+}
+
+.rail[data-playback="external"] .node[data-play="done"] + .node .relays[data-lit] .relay {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+}
+
+.rail[data-playback="external"] .node[data-play="active"] + .node .link[data-lit] .fill {
+  animation: rail-fill var(--link-dur) linear both;
+}
+
+.rail[data-playback="external"] .node[data-play="active"] + .node .link[data-lit] .travel {
+  animation: rail-travel var(--link-dur) linear both;
+}
+
+.rail[data-playback="external"] .node[data-play="active"] + .node .link[data-lit] .signal {
+  animation: rail-signal var(--link-dur) linear both;
+}
+
+/* Keyframes: black and grey only. The cobalt stays in the state rules above. */
+@keyframes rail-light {
+  from {
+    border-color: var(--rail-idle);
+    box-shadow: none;
+  }
+  45% {
+    border-color: var(--color-ink);
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+@keyframes rail-pop {
+  from {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes rail-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rail-relay {
+  from {
+    border-color: var(--rail-idle);
+    background: var(--color-surface);
+  }
+}
+
+@keyframes rail-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rail-travel {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes rail-signal {
+  0% {
+    opacity: 0;
+  }
+  12%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rail-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* --- Vertical rail below 768 px ---------------------------------------------- */
+@media (max-width: 767px) {
+  .rail {
+    --row: 4.25rem;
+    --row-gap: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--row-gap);
+    overflow: visible;
+    padding: 0.25rem 0 0;
+  }
+
+  .node {
+    height: var(--row);
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.875rem;
+    padding-inline: 0;
+    text-align: left;
+  }
+
+  .link,
+  .relays {
+    top: calc((var(--row) + var(--row-gap) - var(--core) - var(--gap-link)) * -1);
+    right: auto;
+    bottom: auto;
+    height: calc(var(--row) + var(--row-gap) - var(--core) - var(--gap-link) * 2);
+  }
+
+  .link {
+    left: calc(var(--core) / 2 - var(--line) / 2);
+    width: var(--line);
+  }
+
+  .relays {
+    left: calc(var(--core) / 2 - var(--relay) / 2);
+    width: var(--relay);
+    flex-direction: column;
+  }
+
+  .link[data-cut] {
+    background: repeating-linear-gradient(to bottom, var(--rail-idle) 0 4px, transparent 4px 8px);
+  }
+
+  .link[data-cut]::before {
+    top: 0;
+    left: -5px;
+    width: 13px;
+    height: 2px;
+  }
+
+  .fill {
+    transform: scaleY(0);
+    transform-origin: center top;
+  }
+
+  .travel {
+    transform: translateY(-100%);
+  }
+
+  .signal {
+    top: auto;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 1.25rem;
+  }
+
+  .text {
+    padding-top: 0.125rem;
+  }
+
+  .action {
+    -webkit-line-clamp: 1;
+  }
+
+  .endcap {
+    display: none;
+  }
+
+  .rail:is([data-playback="stagger"], [data-playback="measured"]) .link[data-lit] .fill,
+  .rail[data-playback="external"] .node[data-play="active"] + .node .link[data-lit] .fill {
+    animation-name: rail-fill-y;
+  }
+
+  .rail:is([data-playback="stagger"], [data-playback="measured"]) .link[data-lit] .travel,
+  .rail[data-playback="external"] .node[data-play="active"] + .node .link[data-lit] .travel {
+    animation-name: rail-travel-y;
+  }
+
+  .rail[data-playback="external"] .link[data-lit] .fill {
+    transform: scaleY(0);
+  }
+
+  .rail[data-playback="external"] .node[data-play="done"] + .node .link[data-lit] .fill {
+    transform: none;
+  }
+}
+
+@keyframes rail-fill-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes rail-travel-y {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Reduced motion: final state, no impulse travels (the signal stays hidden). */
+@media (prefers-reduced-motion: reduce) {
+  .rail *,
+  .rail *::before,
+  .rail *::after {
+    animation: none !important;
+  }
+
+  .signal {
+    display: none;
+  }
+}
