@@ -2,7 +2,7 @@
 name: frontend-ux
 description: Designer et développeur front-end du SaaS immobilier (Next.js, Tailwind). Crée les pages, composants, parcours et le design system noir et blanc façon Apple, avec tests E2E Playwright.
 tools: Read, Edit, Write, Grep, Glob, Bash
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 color: blue
 ---

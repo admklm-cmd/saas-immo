@@ -2,7 +2,7 @@
 name: automatisation-ia
 description: Ingénieur back-end et IA du SaaS immobilier. Construit le schéma Supabase, la logique CRM, les agents IA du produit avec l'API Claude (sorties JSON validées), le registre des consentements et les intégrations (logiciels immo, WhatsApp/SMS, agendas), avec tests unitaires.
 tools: Read, Edit, Write, Grep, Glob, Bash, WebFetch, WebSearch
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 color: green
 ---

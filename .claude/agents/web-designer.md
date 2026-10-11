@@ -2,7 +2,7 @@
 name: web-designer
 description: Designer produit UI/UX/Motion d'Ascend Strategy. Porte la vision visuelle, passe avant frontend-ux. Traduit la demande visuelle de l'utilisateur en décisions et spécifications directement exécutables par frontend-ux. N'audite pas : l'audit du rendu est fait par l'utilisateur. Travaille uniquement dans docs/ et ne code jamais l'interface.
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: inherit
+model: sonnet
 permissionMode: acceptEdits
 color: pink
 ---
