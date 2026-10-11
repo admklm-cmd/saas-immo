@@ -10,6 +10,9 @@
  *      "Contact introuvable.", which leaks nothing about another agency);
  *   3. agency kill switch (`agencies.ai_paused`);
  *   4. daily volume limit (`agencies.ai_daily_run_limit`, Europe/Paris day);
+ *   4b. spending ceiling of EXTERNAL calls (`AI_EXTERNAL_DAILY_CALL_LIMIT`, see
+ *      external-budget.ts), only for a non-simulated provider, from the runs
+ *      already journaled (`is_simulation = false`): no new table;
  *   5. human takeover (`contacts.human_takeover`) — no automatic action.
  *   6. business eligibility of the agent (optional `precheck`: Emma on a signed
  *      mandate, a lost file, a draft already waiting, a follow-up already
@@ -51,6 +54,7 @@ import { ok, type Result } from "@/lib/utils/result";
 import type { Json } from "@/types/database";
 
 import { databaseErrorCode, failFromDatabase, failWith } from "./errors";
+import { externalRunsAllowedPerDay, readExternalDailyCallLimit } from "./external-budget";
 import {
   AGENT_ERROR_MESSAGES,
   AGENT_STEP_BLOCK_LABELS,
@@ -112,6 +116,8 @@ export type GuardedRunInput = {
   provider: AiProvider;
   now?: Date;
   precheck?: RunPrecheck;
+  /** Test seam: overrides `AI_EXTERNAL_DAILY_CALL_LIMIT` (external providers only). */
+  externalDailyCallLimit?: number;
 };
 
 /** Same thing for an agent that runs BEFORE any contact exists (Léa). */
@@ -336,6 +342,29 @@ async function startRun(
   }
   if ((countQuery.count ?? 0) >= agency.ai_daily_run_limit) {
     return block("ai_daily_run_limit_reached");
+  }
+
+  // --- 4b. spending ceiling of external (paid) calls --------------------------
+  // Only for a real provider: simulated runs cost nothing. Checked here, before
+  // the run exists and long before any call, from the runs already journaled.
+  if (!input.provider.isSimulation) {
+    const runsAllowed = externalRunsAllowedPerDay(
+      input.externalDailyCallLimit ?? readExternalDailyCallLimit(process.env.AI_EXTERNAL_DAILY_CALL_LIMIT),
+    );
+    const externalCount = await client
+      .from("ai_agent_runs")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", context.agencyId)
+      .eq("is_simulation", false)
+      .neq("status", "blocked")
+      .gte("started_at", dayStart.toISOString());
+
+    if (externalCount.error) {
+      return failFromDatabase<AnyGuardedRun>("startGuardedRun.externalCount", externalCount.error);
+    }
+    if ((externalCount.count ?? 0) >= runsAllowed) {
+      return block("ai_external_daily_limit_reached");
+    }
   }
 
   // --- 5. human takeover -----------------------------------------------------

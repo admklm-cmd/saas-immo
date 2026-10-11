@@ -253,3 +253,104 @@ describe("startGuardedRun — precheck d'éligibilité", () => {
     expect(seen).toEqual(["ai_agent_runs-1"]);
   });
 });
+
+/**
+ * Spending ceiling of external (paid) calls: checked by the runner BEFORE the
+ * run is opened, from the runs already journaled, and only for a real provider.
+ */
+describe("plafond quotidien des appels externes", () => {
+  const external = { name: "anthropic", model: "claude-haiku-5-5", isSimulation: false } as unknown as AiProvider;
+
+  function stubWithRuns(count: number) {
+    const stub = stubClient();
+    // Same count for the generic daily-limit query and the external one.
+    const original = stub.client.from.bind(stub.client) as unknown as (table: string) => unknown;
+    (stub.client as unknown as { from: unknown }).from = (table: string) => {
+      const builder = original(table) as unknown as Record<string, unknown>;
+      if (table === "ai_agent_runs") {
+        const baseThen = builder.then as (cb: (value: unknown) => unknown) => Promise<unknown>;
+        builder.then = (cb: (value: unknown) => unknown) =>
+          baseThen((value) => cb(value && typeof value === "object" && "count" in (value as object) ? { ...(value as object), count } : value));
+      }
+      return builder;
+    };
+    return stub;
+  }
+
+  it("bloque avant tout appel quand le plafond est atteint, et journalise un run « bloqué »", async () => {
+    const { client, inserts } = stubWithRuns(2);
+    const result = await startGuardedRun(client, context, {
+      agent: "hugo",
+      contactId: CONTACT_ID,
+      input: {},
+      provider: external,
+      // 4 calls a day = 2 runs (each may need its retry).
+      externalDailyCallLimit: 4,
+    });
+
+    expect(result.error?.code).toBe("ai_external_daily_limit_reached");
+    expect(result.error?.message).toContain("plafond quotidien");
+    expect(runStatusForRefusal("ai_external_daily_limit_reached")).toBe("blocked");
+    const run = inserts.find((entry) => entry.table === "ai_agent_runs");
+    expect(run?.row).toMatchObject({ status: "blocked", error: "ai_external_daily_limit_reached", is_simulation: false });
+  });
+
+  it("laisse passer sous le plafond", async () => {
+    const { client } = stubWithRuns(1);
+    const result = await startGuardedRun(client, context, {
+      agent: "hugo",
+      contactId: CONTACT_ID,
+      input: {},
+      provider: external,
+      externalDailyCallLimit: 4,
+    });
+    expect(result.error).toBeNull();
+  });
+
+  it("un plafond à 0 bloque tout appel externe", async () => {
+    const { client } = stubWithRuns(0);
+    const result = await startGuardedRun(client, context, {
+      agent: "hugo",
+      contactId: CONTACT_ID,
+      input: {},
+      provider: external,
+      externalDailyCallLimit: 0,
+    });
+    expect(result.error?.code).toBe("ai_external_daily_limit_reached");
+  });
+
+  it("ne s'applique pas au simulateur (rien n'est facturé)", async () => {
+    const { client } = stubWithRuns(500);
+    const result = await startGuardedRun(client, context, {
+      agent: "hugo",
+      contactId: CONTACT_ID,
+      input: {},
+      provider,
+      externalDailyCallLimit: 0,
+    });
+    // The generic agency limit (100) is the only one that applies: 500 >= 100.
+    expect(result.error?.code).toBe("ai_daily_run_limit_reached");
+  });
+
+  it("le coupe-circuit et la reprise humaine bloquent toujours avant le plafond externe", async () => {
+    const paused = stubClient({ aiPaused: true });
+    const pausedResult = await startGuardedRun(paused.client, context, {
+      agent: "hugo",
+      contactId: CONTACT_ID,
+      input: {},
+      provider: external,
+      externalDailyCallLimit: 1000,
+    });
+    expect(pausedResult.error?.code).toBe("ai_paused");
+
+    const takeover = stubClient({ humanTakeover: true });
+    const takeoverResult = await startGuardedRun(takeover.client, context, {
+      agent: "hugo",
+      contactId: CONTACT_ID,
+      input: {},
+      provider: external,
+      externalDailyCallLimit: 1000,
+    });
+    expect(takeoverResult.error?.code).toBe("human_takeover");
+  });
+});

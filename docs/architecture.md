@@ -165,18 +165,77 @@ par accident, tout en gardant la possibilité de brancher un vrai fournisseur sa
 **Comment.**
 - `lib/claude/provider.ts` définit l'interface `AiProvider` (`name`, `model`, `isSimulation`,
   `generate`). Le reste du code ne connaît que cette interface.
-- `lib/claude/client.ts` choisit l'implémentation d'après `AI_PROVIDER`. **Seul `simulator` est
-  branché** ; toute autre valeur est refusée avec un message explicite — jamais de repli silencieux
-  vers un service payant, jamais de repli silencieux vers le simulateur non plus.
+- `lib/claude/client.ts` choisit l'implémentation d'après `AI_PROVIDER`. Absent ou `simulator` :
+  le simulateur (comportement par défaut, rien n'est facturé). `anthropic` : le vrai fournisseur,
+  **toujours derrière la Privacy Gateway** (§4.1) et seulement si la clé et le modèle sont
+  renseignés. Toute autre valeur, ou une configuration incomplète, est refusée avec un message
+  explicite — jamais de repli silencieux vers un service payant, jamais de repli silencieux vers le
+  simulateur non plus.
 - `lib/claude/simulator.ts` produit des réponses **déterministes, hors ligne, gratuites**, à partir
   des seules entrées fournies. Une information absente reste `null` et est signalée manquante.
 - Tout ce qui sort du simulateur est marqué `is_simulation` jusque dans l'historique CRM, pour
   qu'une action simulée ne soit jamais confondue avec une action réelle.
-- Le SDK d'un fournisseur payant n'est **pas installé** dans le projet.
+- Le SDK `@anthropic-ai/sdk` (version figée) est installé, mais n'est instancié que par
+  `lib/claude/anthropic.ts`, et seulement quand `AI_PROVIDER=anthropic`.
 
-**Brancher un vrai fournisseur plus tard** : ajouter un adaptateur à côté de `simulator.ts`, lire sa
-clé dans une variable d'environnement serveur, ajouter une branche dans `client.ts`. Rien d'autre
-ne change.
+**Brancher un autre fournisseur plus tard** : écrire un transport qui implémente
+`ExternalAiTransport` (`lib/privacy-gateway/types.ts`) à côté de `anthropic.ts`, lire sa clé dans une
+variable d'environnement serveur, ajouter une branche dans `client.ts`. Il hérite automatiquement
+de la Privacy Gateway : il ne sait recevoir qu'une requête déjà assainie.
+
+### 4.1 Privacy Gateway : l'unique porte de sortie vers un fournisseur externe
+
+**Pourquoi.** Changer d'hébergeur n'empêche pas l'application d'envoyer des données brutes à une IA
+(audit du 10 octobre 2026, §3). La protection doit donc vivre dans le code, avant l'appel.
+
+**Flux.**
+
+```text
+Base CRM (RLS)
+  -> agent (features/agents-ia/<agent>/) : faits CRM + texte du prospect + contexte du dossier
+  -> garde-fous du runner : session, agence, coupe-circuit, plafond du jour, plafond d'appels
+     externes, reprise humaine (AVANT l'ouverture de l'exécution, donc avant tout appel)
+  -> generateValidated (lib/agents/ai-task.ts)
+       -> AiProvider = Privacy Gateway (lib/privacy-gateway/gateway.ts)
+            1. politique de la tâche : champs autorisés, sinon REFUS (aucun appel)
+            2. faits : énumérations / booléens / nombres bornés, code postal réduit au département
+            3. textes libres : détection (emails, téléphones, liens, adresses, IBAN, identifiants,
+               noms du dossier, personnes introduites) -> pseudonymes [TYPE_n_étiquette]
+            4. dernier portail : nouvelle analyse du texte final, sinon REFUS
+            5. SanitizedAiRequest (type marqué, produit uniquement par sanitize.ts)
+       -> transport Anthropic (lib/claude/anthropic.ts) -> API  [seul endroit qui parle au réseau]
+       <- JSON brut
+       -> validation zod -> ré-identification locale (pseudonymes -> valeurs) -> 2e validation zod
+       -> destruction de la table de correspondance (endRun)
+  -> règles métier déterministes (le code décide, l'IA propose)
+  -> validation humaine / écriture protégée (RLS, RPC auditées)
+```
+
+**Garanties par construction.**
+- `ExternalAiTransport.complete` n'accepte qu'un `SanitizedAiRequest`. Ce type est une marque que
+  seul `sanitize.ts` sait produire, et le transport le revérifie à l'exécution (`WeakSet`) : une
+  requête fabriquée à la main est refusée sans appel réseau.
+- `lib/claude/client.ts` ne fabrique un fournisseur non simulé que via
+  `createPrivacyGatewayProvider(transport)`. Le simulateur, lui, ne sort pas du processus et garde
+  son fonctionnement actuel.
+- Les politiques (`lib/privacy-gateway/policies.ts`) sont des listes blanches **fermées** par tâche :
+  un fait, un bloc de texte ou un créneau inconnu bloque l'appel. Chaque agent doit aussi fournir
+  son contexte de dossier (`privacy` : noms connus, agence, email et téléphone du contact), sinon
+  refus.
+- Pseudonymes : étiquette aléatoire de 8 hexadécimaux **par exécution** ; table en mémoire, détruite
+  dans le `finally` de `generateValidated` ; un jeton inconnu ou venant d'une autre exécution rend
+  la sortie invalide.
+- Journal technique : compteurs par type et noms de champs (colonne `detail` de l'étape « appel
+  IA »), jamais une valeur. Aucun log du prompt ni de la réponse brute ; le logger du SDK est
+  coupé et l'URL de l'API est épinglée.
+- Plafond de dépense : `AI_EXTERNAL_DAILY_CALL_LIMIT`, calculé à partir des exécutions non simulées
+  déjà présentes dans `ai_agent_runs` (aucune nouvelle table), vérifié avant l'ouverture de
+  l'exécution ; l'exécution refusée est journalisée `blocked`.
+
+**Preuve.** `features/agents-ia/privacy-leak.test.ts` fait passer les cinq agents (données
+réalistes, notes pleines de coordonnées, tentative d'injection) à travers la chaîne complète avec
+un SDK simulé et **échoue si une donnée interdite atteint l'appel**. Procédure d'activation, liste
+champ par champ et limites de détection : `docs/activation-ia.md`.
 
 ---
 
@@ -484,7 +543,9 @@ le même `npm run db:seed`.
 ## 11. Ce qui n'est pas couvert (à ce stade)
 
 - Aucun envoi réel : aucun fournisseur d'email, SMS, WhatsApp ou agenda n'est branché.
-- Aucun appel IA payant : seul le simulateur existe.
+- Aucun appel IA payant n'est activé : le simulateur est le défaut ; la connexion Anthropic est
+  écrite et testée avec un SDK simulé, mais **jamais exercée contre l'API réelle** (aucune clé n'existe).
+  La Privacy Gateway réduit l'exposition sans anonymiser (voir `docs/activation-ia.md`, §7).
 - **Un seul rendez-vous actif par contact** n'est garanti que par le code. En pratique, deux
   exécutions simultanées de Louis sur le même contact choisissent le même créneau et le même
   conseiller, donc la contrainte d'exclusion les départage ; mais si elles visaient des conseillers

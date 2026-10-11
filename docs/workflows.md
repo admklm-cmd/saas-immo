@@ -12,6 +12,35 @@ ces champs n'existent pas dans les schémas de sortie.
 État : **simulateur** (`AI_PROVIDER=simulator`). Aucun appel payant, aucun envoi réel.
 Tout ce qui est produit est marqué `is_simulation`.
 
+## Outil commun à tous les agents : Privacy Gateway
+
+Dès que `AI_PROVIDER` n'est plus `simulator`, **tout appel à un fournisseur IA passe par la
+Privacy Gateway** (`lib/privacy-gateway/`, schéma dans `docs/architecture.md` §4.1). Elle s'insère
+entre « construire le prompt » et « appeler le fournisseur » de chaque workflow ci-dessous, sans
+changer leur ordre :
+
+1. **Politique par tâche** (liste blanche fermée) : un fait ou un bloc de texte non prévu bloque
+   l'appel — aucune donnée n'est transmise, l'erreur est `privacy_gateway_refused`, repli sûr
+   habituel (aucune écriture, tâche pour un humain).
+2. **Pseudonymisation** : emails, téléphones, liens, adresses, IBAN, identifiants, noms du dossier
+   et personnes introduites par une formule deviennent des jetons `[TYPE_n_étiquette]`, propres à
+   l'exécution ; le texte du prospect reste dans son bloc de données non fiables.
+3. **Après la réponse** : validation zod, **ré-identification locale** (jetons -> valeurs), seconde
+   validation zod. Un jeton inventé rend la sortie invalide (même repli sûr que toute sortie invalide).
+4. **Fin d'exécution** : la table de correspondance est détruite ; le journal ne garde que des
+   compteurs.
+
+Avant la Gateway, le runner applique en plus le **plafond quotidien d'appels externes**
+(`ai_external_daily_limit_reached`, run `blocked`) pour tout fournisseur non simulé. Les garde-fous
+existants (coupe-circuit, reprise humaine, volume) passent toujours en premier.
+
+Champ par champ, ce qui part vers le fournisseur pour chaque agent : `docs/activation-ia.md`, §6.
+
+Changement de la branche précédente à retenir : **Hugo et Sarah changent l'étape du contact
+uniquement par la RPC `apply_agent_stage_change`** (migration `20261010120000`), liée à leur
+exécution, avec verrou optimiste sur l'étape lue au départ ; un `UPDATE contacts.stage` direct est
+refusé par la base (SEC-007). Le détail est dans leurs « Étapes ».
+
 ---
 
 ## Gabarit
@@ -62,10 +91,16 @@ Action humaine depuis la fiche contact (bouton « Lancer Hugo »), via la server
 7. **Fusion (code)** : une valeur déjà présente dans le CRM gagne toujours ; Hugo ne comble que les
    trous et n'écrit jamais `null` par-dessus une valeur existante.
 8. **Décision d'étape (code)** : voir « condition de passage » ci-dessous.
-9. Écrire les colonnes comblées (`contacts`, `properties`), ouvrir une tâche humaine si nécessaire,
-   écrire l'entrée d'historique, clôturer le run.
+9. Écrire les colonnes comblées (`contacts`, `properties`) — **sans l'étape** —, puis changer l'étape
+   par la RPC auditée `apply_agent_stage_change(target_contact, agent_run, expected_stage, new_stage)` :
+   la base revérifie l'exécution, la liste blanche de Hugo (`nouveau` -> `qualifie`/`chaud`,
+   `qualifie` -> `chaud`), le coupe-circuit et la reprise humaine, et ne déplace le contact que s'il
+   est encore à l'étape lue au départ (sinon `contact_stage_changed`). Ouvrir une tâche humaine si
+   nécessaire, écrire l'entrée d'historique, clôturer le run.
 
 ### Outils utilisés
+**Privacy Gateway** (`lib/privacy-gateway/`, politique `hugo_qualification`) : faits CRM bornés ; notes, motivation, délai, ville, secteur et historique pseudonymisés ; aucun email, téléphone ni nom ne part. RPC `apply_agent_stage_change` pour l'étape.
+
 `lib/agents/context.ts` · `lib/agents/runner.ts` · `lib/agents/ai-task.ts` · `lib/agents/journal.ts`
 · `lib/claude/` (interface fournisseur + simulateur) · tables `contacts`, `properties`,
 `activities`, `tasks`, `ai_agent_runs`.
@@ -164,6 +199,8 @@ Action humaine depuis la fiche contact (bouton « Lancer Louis »), via la serve
 11. Écrire l'entrée d'historique (`appointment_proposed`) et clôturer le run.
 
 ### Outils utilisés
+**Privacy Gateway** (politique `louis_appointment`) : faits CRM bornés, créneaux `creneau-N` calculés par le code, textes pseudonymisés ; nom de l'agence et prénom remplacés par `[AGENCE_n]` et `[PRENOM_n]`, restitués localement dans le brouillon.
+
 `features/agents-ia/louis-rendez-vous/slots.ts` (créneaux, jours fériés, Europe/Paris) ·
 `decision.ts` (éligibilité, canal, mention légale) · `lib/agents/*` · `lib/claude/*` ·
 tables `appointments`, `outbound_messages`, `activities`, `tasks`, `ai_agent_runs`,
@@ -282,6 +319,8 @@ règles) : Léa le traite sans aucune adaptation de son code, prouvé par
     entrée d'historique, clôture du run.
 
 ### Outils utilisés
+**Privacy Gateway** (politique `lea_acquisition`) : le texte brut du lead est pseudonymisé ; les noms saisis dans le formulaire sont reconnus, email et téléphone reviennent sous forme de jetons puis sont restitués localement avant la fusion par le code. Cas le plus exposé : voir `docs/activation-ia.md`, §7.
+
 `features/agents-ia/lea-acquisition/dedupe.ts` (normalisation + correspondance exacte) ·
 `decision.ts` (fusion, valeurs acceptables, issue) · `lib/agents/*` · `lib/claude/*` · tables
 `inbound_leads`, `contacts`, `activities`, `tasks`, `ai_agent_runs`.
@@ -400,6 +439,8 @@ que l'écran ne connaît pas (coupe-circuit, limite quotidienne).
 10. Écrire l'entrée d'historique (`message_drafted`) et clôturer le run.
 
 ### Outils utilisés
+**Privacy Gateway** (politique `emma_follow_up`) : faits CRM bornés, textes pseudonymisés ; nom de l'agence et prénom remplacés par `[AGENCE_n]` et `[PRENOM_n]`, restitués localement dans le brouillon après validation.
+
 `lib/agents/consent.ts` (canal, consentement, mention STOP — **règle partagée avec Louis**) ·
 `features/agents-ia/emma-relation/decision.ts` (éligibilité, idempotence) · `lib/agents/*` ·
 `lib/claude/*` · tables `outbound_messages`, `activities`, `tasks`, `ai_agent_runs`, vue
@@ -515,10 +556,14 @@ Aucun déclenchement automatique à ce stade.
    montant en euros, aucun lien, vocabulaire fermé pour la position du vendeur).
 9. **Décision d'étape (code)** : liste blanche `SARAH_ALLOWED_TARGET_STAGES = ["estimation_faite"]`.
    Voir « condition de passage ».
-10. Écrire l'étape éventuellement avec un verrou optimiste sur l'étape lue avant l'appel IA : une
-    décision humaine concurrente gagne toujours. Écrire les tâches et l'historique, puis clôturer le run.
+10. Écrire l'étape éventuelle **par la RPC auditée `apply_agent_stage_change`** (liste blanche de
+    Sarah : `qualifie`/`chaud`/`rdv_planifie` -> `estimation_faite`), avec verrou optimiste sur l'étape lue
+    avant l'appel IA : une décision humaine concurrente gagne toujours. Écrire les tâches et
+    l'historique, puis clôturer le run.
 
 ### Outils utilisés
+**Privacy Gateway** (politique `sarah_follow_through`) : compte rendu, notes et historique pseudonymisés ; personnes citées restituées localement dans le résumé et les tâches. RPC `apply_agent_stage_change` pour l'étape.
+
 `features/agents-ia/sarah-suivi/decision.ts` (liste blanche d'étapes, plan de tâches) ·
 `lib/agents/*` · `lib/claude/*` · tables `appointments` (**lecture seule**), `contacts`,
 `activities`, `tasks`, `ai_agent_runs`.

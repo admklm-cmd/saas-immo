@@ -134,7 +134,7 @@ export async function runHugoQualification(
       now: options.now,
     });
     if (started.error) return { data: null, error: started.error };
-    const { runId, contact, steps } = started.data;
+    const { runId, contact, agency, steps } = started.data;
 
     // --- inputs: contact, property, recent history ---------------------------
     const propertyQuery = await client
@@ -226,6 +226,13 @@ export async function runHugoQualification(
         promptVersion: HUGO_PROMPT_VERSION,
         facts,
         untrusted,
+        // Read by the Privacy Gateway only (never part of a prompt).
+        privacy: {
+          persons: [{ firstName: contact.first_name, lastName: contact.last_name }],
+          emails: [contact.email],
+          phones: [contact.phone],
+          agencyName: agency.name,
+        },
         scenario: options.scenario,
       },
       hugoQualificationSchema,

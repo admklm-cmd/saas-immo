@@ -13,7 +13,12 @@
 import type { AgentErrorCode } from "./messages";
 
 /** Shared guard rails refusing an attempt before any work (see runner.ts). */
-export const GUARD_BLOCKING_CODES = ["ai_paused", "ai_daily_run_limit_reached", "human_takeover"] as const;
+export const GUARD_BLOCKING_CODES = [
+  "ai_paused",
+  "ai_daily_run_limit_reached",
+  "ai_external_daily_limit_reached",
+  "human_takeover",
+] as const;
 export type GuardBlockingCode = (typeof GUARD_BLOCKING_CODES)[number];
 
 /**

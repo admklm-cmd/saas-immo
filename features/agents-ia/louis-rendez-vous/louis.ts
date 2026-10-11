@@ -570,6 +570,13 @@ export async function runLouisAppointment(
         facts,
         choices,
         untrusted,
+        // Read by the Privacy Gateway only (never part of a prompt).
+        privacy: {
+          persons: [{ firstName: contact.first_name, lastName: contact.last_name }],
+          emails: [contact.email],
+          phones: [contact.phone],
+          agencyName: agency.name,
+        },
         scenario: options.scenario,
       },
       createLouisAppointmentSchema(slots.map((slot) => slot.id)),

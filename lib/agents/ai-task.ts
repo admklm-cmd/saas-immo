@@ -19,6 +19,7 @@
 
 import { addUsage, emptyUsage, type AiGenerationRequest, type AiProvider, type AiUsage } from "@/lib/claude/provider";
 import type { ResultError } from "@/lib/utils/result";
+import type { Json } from "@/types/database";
 import type { ZodType } from "zod";
 
 import { agentError } from "./errors";
@@ -31,6 +32,12 @@ export type GenerationOutcome<T> =
   | { ok: true; output: T; usage: AiUsage; attempts: number }
   | { ok: false; error: ResultError; usage: AiUsage; attempts: number };
 
+/** Counters-only audit of the Privacy Gateway, when the provider has one. */
+function privacyDetail(provider: AiProvider): Record<string, Json> {
+  const audit = provider.lastPrivacyAudit?.();
+  return audit ? { privacy: audit as unknown as Json } : {};
+}
+
 export type GenerateValidatedOptions = {
   maxAttempts?: number;
   /** Run step journal; omit it and nothing is journaled (unit tests). */
@@ -42,6 +49,21 @@ export async function generateValidated<T>(
   request: AiGenerationRequest,
   schema: ZodType<T>,
   options: GenerateValidatedOptions = {},
+): Promise<GenerationOutcome<T>> {
+  try {
+    return await runValidated(provider, request, schema, options);
+  } finally {
+    // Per-execution resources (the Privacy Gateway pseudonym table) are wiped
+    // whatever the outcome.
+    provider.endRun?.();
+  }
+}
+
+async function runValidated<T>(
+  provider: AiProvider,
+  request: AiGenerationRequest,
+  schema: ZodType<T>,
+  options: GenerateValidatedOptions,
 ): Promise<GenerationOutcome<T>> {
   const attemptLimit = Math.max(1, options.maxAttempts ?? MAX_AI_ATTEMPTS);
   const steps = options.steps;
@@ -67,6 +89,7 @@ export async function generateValidated<T>(
           attempt,
           max_attempts: attemptLimit,
           error_code: generation.error.code,
+          ...privacyDetail(provider),
         },
       });
       return { ok: false, error: generation.error, usage, attempts };
@@ -84,17 +107,48 @@ export async function generateValidated<T>(
         max_attempts: attemptLimit,
         input_tokens: generation.data.usage.inputTokens,
         output_tokens: generation.data.usage.outputTokens,
+        ...privacyDetail(provider),
       },
     });
 
     const parsed = schema.safeParse(generation.data.raw);
     if (parsed.success) {
+      // Local re-identification (Privacy Gateway): pseudonyms go back to real
+      // values only AFTER the schema accepted the output, then the restored
+      // output must pass the very same schema again. A forged or unknown
+      // pseudonym, or a restored value the schema refuses, makes it invalid.
+      let output: T = parsed.data;
+      let restoreFailure: string | null = null;
+      if (provider.restoreOutput) {
+        const restored = provider.restoreOutput(parsed.data);
+        if (restored.error) {
+          restoreFailure = restored.error.code;
+        } else {
+          const revalidated = schema.safeParse(restored.data);
+          if (revalidated.success) output = revalidated.data;
+          else restoreFailure = "restored_output_invalid";
+        }
+      }
+
+      if (restoreFailure === null) {
+        await steps?.step({
+          phase: "output_validated",
+          label: AGENT_STEP_LABELS.output_valid,
+          detail: { task: request.task, attempt, issues: 0 },
+        });
+        return { ok: true, output, usage, attempts };
+      }
+
+      console.error(
+        `[agents] AI output refused after re-identification for task "${request.task}" (attempt ${attempt}/${attemptLimit}): ${restoreFailure}`,
+      );
       await steps?.step({
         phase: "output_validated",
-        label: AGENT_STEP_LABELS.output_valid,
-        detail: { task: request.task, attempt, issues: 0 },
+        label: AGENT_STEP_LABELS.output_invalid,
+        status: "failed",
+        detail: { task: request.task, attempt, max_attempts: attemptLimit, issues: 1, fields: [restoreFailure] },
       });
-      return { ok: true, output: parsed.data, usage, attempts };
+      continue;
     }
 
     const issues = parsed.error.issues

@@ -121,7 +121,8 @@ function payloadIdentity(payload: Json): LeadPayloadIdentity {
     : {};
 }
 
-function buildFacts(lead: LeadRow, payload: LeadPayloadIdentity): AiFacts {
+/** Exported for the Privacy Gateway anti-leak suite: the facts Léa really sends. */
+export function buildFacts(lead: LeadRow, payload: LeadPayloadIdentity): AiFacts {
   return {
     lead_source: lead.source,
     lead_raw_text_chars: (lead.raw_text ?? "").length,
@@ -187,7 +188,7 @@ export async function runLeaAcquisition(
       now: options.now,
     });
     if (started.error) return { data: null, error: started.error };
-    const { runId, steps } = started.data;
+    const { runId, agency, steps } = started.data;
 
     /** Opens a task that is not attached to a contact, without piling up copies. */
     const openLeadTask = async (input: {
@@ -316,6 +317,19 @@ export async function runLeaAcquisition(
         promptVersion: LEA_PROMPT_VERSION,
         facts: buildFacts(lead, payload),
         untrusted,
+        // Read by the Privacy Gateway only (never part of a prompt). Names typed
+        // in the form are known, so they are recognised inside the free text.
+        privacy: {
+          persons: [
+            {
+              firstName: typeof payload.first_name === "string" ? payload.first_name : null,
+              lastName: typeof payload.last_name === "string" ? payload.last_name : null,
+            },
+          ],
+          emails: [typeof payload.email === "string" ? payload.email : null],
+          phones: [typeof payload.phone === "string" ? payload.phone : null],
+          agencyName: agency.name,
+        },
         scenario: options.scenario,
       },
       leaAcquisitionSchema,

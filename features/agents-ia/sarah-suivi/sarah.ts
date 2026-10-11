@@ -202,7 +202,7 @@ export async function runSarahFollowThrough(
       precheck: async (subject) => ok(checkSarahPrecheck(client, context, appointment, subject)),
     });
     if (started.error) return { data: null, error: started.error };
-    const { runId, contact, steps } = started.data;
+    const { runId, contact, agency, steps } = started.data;
 
     const now = options.now ?? new Date();
 
@@ -339,6 +339,13 @@ export async function runSarahFollowThrough(
         promptVersion: SARAH_PROMPT_VERSION,
         facts,
         untrusted,
+        // Read by the Privacy Gateway only (never part of a prompt).
+        privacy: {
+          persons: [{ firstName: contact.first_name, lastName: contact.last_name }],
+          emails: [contact.email],
+          phones: [contact.phone],
+          agencyName: agency.name,
+        },
         scenario: options.scenario,
       },
       sarahFollowThroughSchema,

@@ -21,6 +21,7 @@ export const AGENT_ERROR_CODES = [
   // --- product guard rails (enforced by code and/or by the database) ---
   "ai_paused",
   "ai_daily_run_limit_reached",
+  "ai_external_daily_limit_reached",
   "human_takeover",
   "consent_not_granted",
   "first_contact_requires_human_validation",
@@ -63,6 +64,7 @@ export const AGENT_ERROR_CODES = [
   "ai_provider_not_configured",
   "ai_provider_unavailable",
   "ai_response_invalid",
+  "privacy_gateway_refused",
   // --- generic ---
   "invalid_filters",
   "invalid_reason",
@@ -86,6 +88,8 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
     "Les agents IA sont suspendus par le coupe-circuit de l'agence. Réactivez-les dans « Agents IA » pour relancer une action.",
   ai_daily_run_limit_reached:
     "La limite quotidienne d'exécutions des agents IA est atteinte pour votre agence. Réessayez demain ou augmentez la limite dans les réglages.",
+  ai_external_daily_limit_reached:
+    "Le plafond quotidien d'appels à l'IA externe est atteint pour votre agence. Aucun appel n'a été envoyé ; réessayez demain ou faites relever le plafond par l'administrateur.",
   human_takeover:
     "Ce dossier est repris en main par un conseiller : aucune action automatique n'est possible.",
   consent_not_granted:
@@ -152,6 +156,8 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
     "Le fournisseur d'IA n'a pas répondu. Aucune action n'a été effectuée.",
   ai_response_invalid:
     "La réponse de l'agent IA n'a pas pu être validée. Aucune action n'a été effectuée : une tâche a été créée pour un conseiller.",
+  privacy_gateway_refused:
+    "Une règle de confidentialité a empêché l'envoi du dossier à l'IA : aucune donnée n'a été transmise. Une tâche a été créée pour un conseiller.",
   invalid_filters:
     "Les filtres demandés ne sont pas valides. L'historique n'a pas été chargé.",
   invalid_reason:
@@ -160,6 +166,19 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
   unexpected_error:
     "Une erreur technique est survenue. Aucune action n'a été effectuée.",
 };
+
+/**
+ * Why the real AI provider could not be configured. Same error code as an
+ * unknown provider (`ai_provider_not_configured`), different explanation.
+ */
+export const AI_PROVIDER_CONFIG_MESSAGES = {
+  missing_key:
+    "Fournisseur d'IA non configuré : la clé d'API serveur est absente. Aucun appel n'a été envoyé et aucune donnée n'a été transmise.",
+  missing_model:
+    "Fournisseur d'IA non configuré : le modèle n'est pas défini (ou invalide). Aucun appel n'a été envoyé et aucune donnée n'a été transmise.",
+  invalid_limit:
+    "Fournisseur d'IA non configuré : une limite (jetons, délai ou reprises) est invalide. Aucun appel n'a été envoyé.",
+} as const;
 
 export function agentMessage(code: AgentErrorCode): string {
   return AGENT_ERROR_MESSAGES[code];
@@ -253,6 +272,7 @@ export const AGENT_STEP_LABELS = {
 export const AGENT_STEP_BLOCK_LABELS = {
   ai_paused: "Arrêt : le coupe-circuit de l'agence est actif.",
   ai_daily_run_limit_reached: "Arrêt : la limite quotidienne d'exécutions de l'agence est atteinte.",
+  ai_external_daily_limit_reached: "Arrêt : le plafond quotidien d'appels à l'IA externe est atteint.",
   human_takeover: "Arrêt : le dossier est repris en main par un conseiller.",
 } as const satisfies Partial<Record<AgentErrorCode, string>>;
 

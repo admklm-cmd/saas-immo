@@ -65,6 +65,21 @@ export type AiChoice = {
   label: string;
 };
 
+/**
+ * What the Privacy Gateway needs to know about the dossier to recognise it in
+ * free text (names, the agency, the contact's own email and phone). It is read
+ * by the gateway ONLY: it is never part of a prompt, and the simulator ignores
+ * it. Every field is optional, but the `privacy` object itself is mandatory for
+ * every task that goes through the gateway (fail closed, see
+ * lib/privacy-gateway/policies.ts).
+ */
+export type AiPrivacyContext = {
+  persons?: readonly { firstName?: string | null; lastName?: string | null }[];
+  agencyName?: string | null;
+  emails?: readonly (string | null | undefined)[];
+  phones?: readonly (string | null | undefined)[];
+};
+
 export type AiGenerationRequest = {
   task: AiTaskName;
   /** Versioned system prompt of the agent (see features/agents-ia/<agent>/prompt.ts). */
@@ -75,6 +90,8 @@ export type AiGenerationRequest = {
   /** Closed set of options the model may choose from (trusted, code-computed). */
   choices?: readonly AiChoice[];
   untrusted?: readonly AiUntrustedField[];
+  /** Dossier knowledge for the Privacy Gateway; never sent to any provider. */
+  privacy?: AiPrivacyContext;
   /** Simulator-only; ignored by real providers. */
   scenario?: AiScenario;
   /** 1-based attempt number when the previous output failed validation. */
@@ -95,6 +112,22 @@ export type AiGeneration = {
   usage: AiUsage;
 };
 
+/**
+ * Technical audit of one external call: counters and field NAMES only, never a
+ * value (Privacy Gateway rule 8). Safe to journal and to display.
+ */
+export type AiPrivacyAudit = {
+  task: AiTaskName;
+  outcome: "sent" | "refused";
+  /** Stable refusal reason when `outcome` is "refused". */
+  reason: string | null;
+  /** Number of identifiers replaced by a pseudonym, per type (EMAIL, TEL…). */
+  replaced: Readonly<Record<string, number>>;
+  facts_sent: readonly string[];
+  untrusted_fields_sent: readonly string[];
+  untrusted_chars: number;
+};
+
 export interface AiProvider {
   /** Stable provider identifier, stored in `ai_agent_runs.provider`. */
   readonly name: string;
@@ -103,6 +136,17 @@ export interface AiProvider {
   /** True when nothing real is called and nothing is billed. */
   readonly isSimulation: boolean;
   generate(request: AiGenerationRequest): Promise<Result<AiGeneration>>;
+  /**
+   * Optional hook, called by `generateValidated` ONCE the output passed its zod
+   * schema: gives back the real values behind the pseudonyms (local
+   * re-identification). An error means the output cannot be used (e.g. an
+   * unknown or forged pseudonym); the caller then treats it as invalid.
+   */
+  restoreOutput?(validated: unknown): Result<unknown>;
+  /** Optional hook: audit of the last call (counters only). */
+  lastPrivacyAudit?(): AiPrivacyAudit | null;
+  /** Optional hook: releases per-execution resources (pseudonym table). */
+  endRun?(): void;
 }
 
 export function emptyUsage(provider: AiProvider): AiUsage {
