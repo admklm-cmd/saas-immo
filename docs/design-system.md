@@ -4549,6 +4549,281 @@ une personne doit décider*. `buildFrieze(pipeline, todo)` ne fait que **réordo
   contour + anneau cobalt = décision humaine attendue, disque noir = mandat confirmé par un
   humain, pointillés = perdu) pour que les deux écrans se lisent de la même façon.
 
+### 3.5.1 Analytics : courbe d'activité et entonnoir du pipeline (11/10/2026, lot `feat/analytics-charts`)
+
+**Source** : demande de l'utilisateur (« il manque de l'analytics »), composants **Bklit UI**
+(MIT, copiés dans le projet : `AreaChart`, `FunnelChart`, bases visx + `motion`). Les noms de
+props ci-dessous sont ceux de la documentation fournie ; **frontend-ux les vérifie dans le code
+copié** et signale tout écart (nom ou valeur absente) avant de contourner. Données : celles de
+`automatisation-ia` (calculées depuis la base, jamais estimées). Ce qui complète, ce qui remplace :
+**rien n'est remplacé** (la frise du tableau de bord et la ligne du pipeline restent l'outil de
+travail ; les graphiques sont de la lecture, placés après l'action).
+
+**Amendements à des règles existantes** (à lire avec §3.2 et §3.5) :
+- §3.2 « Aucun taux de conversion » est levé **uniquement dans la carte de l'entonnoir** : les
+  taux y sont un constat sur les dossiers enregistrés, rien d'autre. La ligne du pipeline reste
+  sans taux.
+- §3.5 « Ni tendance, ni flèche, ni pourcentage » reste vrai pour les `DashboardFigure` ; la
+  courbe n'affiche ni tendance calculée, ni « +x % », ni flèche.
+- §2.5.4 règle 3 (pas de compteur qui défile) **s'applique** : voir « Mouvement ».
+
+#### A. Tableau de bord : « Activité sur 30 jours »
+
+**Idée unique** : *les demandes arrivent, une partie devient dossier qualifié.* Compréhensible en
+5 s : deux courbes, une légende de deux entrées, deux totaux exacts.
+
+**Emplacement** : nouvelle carte pleine largeur, **après `TodoSection`** (la décision prime) et
+avant `AgentsSummary`. Composant `ActivityChartCard` (`features/dashboard/components/`, serveur
+pour le titre/légende/totaux/tableau ; îlot client `ActivityAreaChart` pour le graphique).
+Réutilise `Card` ; aucun nouveau type de carte.
+
+**Structure** (de haut en bas) : `h2` + `SimulationBadge` si l'agence est de démonstration ·
+sous-titre périmètre · deux totaux (motif « chiffre + périmètre ») · graphique · légende ·
+`details` « Afficher les valeurs jour par jour ».
+
+**Textes exacts (à centraliser dans `lib/ui-text` ou le fichier de textes du tableau de bord)** :
+
+| Clé | Texte |
+|---|---|
+| titre | `Activité sur 30 jours` (`h2`, style des titres du CRM, §2.2.4) |
+| périmètre | `Demandes vendeur reçues et dossiers qualifiés, par jour · 30 derniers jours · heure de Paris` |
+| série 1 | `Demandes reçues` |
+| série 2 | `Dossiers qualifiés` |
+| total 1 | chiffre exact + `demandes reçues` + périmètre `sur 30 jours` |
+| total 2 | chiffre exact + `dossiers qualifiés` + périmètre `sur 30 jours` |
+| note | `Chiffres comptés dans la base de l'agence. Un jour sans valeur est un jour à 0.` |
+| tableau | résumé `Afficher les valeurs jour par jour` ; légende de table `Demandes reçues et dossiers qualifiés par jour, 30 derniers jours` ; colonnes `Jour` · `Demandes reçues` · `Dossiers qualifiés` |
+| aria du graphique | `Courbe de l'activité sur 30 jours. Demandes reçues : {total}. Dossiers qualifiés : {total}. Le tableau des valeurs se trouve sous le graphique.` |
+| vide (30 jours à 0) | `Aucune demande reçue sur les 30 derniers jours.` (pas de courbe, pas d'axe : une ligne ✓ neutre comme l'état vide compact d'`ActionListCard`) |
+| indisponible | `Indisponible` + `Le calcul n'a pas pu être fait. Rechargez la page ; les autres blocs ne sont pas touchés.` (jamais un 0, jamais une courbe plate) |
+
+**Props Bklit retenues** :
+`<AreaChart aspectRatio=… data={days} className="chart-scope">` avec `Grid horizontal`, deux
+`Area curve={curveMonotoneX}` (monotone : ne dépasse jamais les valeurs, donc aucun creux sous 0
+sur de petits entiers), `SegmentBackground`, `SegmentLineFrom`, `SegmentLineTo`, `XAxis`,
+`ChartTooltip`. Pas de `YAxis` visuel plein : 3 repères entiers seulement (0, milieu entier, max)
+posés par la grille ; domaine Y = `[0, max(4, maxValeur)]`, graduations **entières uniquement**
+(jamais 0,5 ni 2,5). Pas de lissage de données, pas de moyenne glissante (honnêteté : la courbe
+est irrégulière parce que les valeurs le sont ; « régulier » = rythme visuel, pas données lissées).
+
+| Série | `dataKey` | trait | remplissage | distinction hors couleur |
+|---|---|---|---|---|
+| Demandes reçues | `received` | `var(--chart-line-primary)` (encre), `strokeWidth={2}` | même couleur, `fillOpacity={0.10}` | trait plein, légende : trait plein |
+| Dossiers qualifiés | `qualified` | `var(--chart-line-secondary)` (cobalt), `strokeWidth={1.5}` | `fillOpacity={0.06}` | **trait en tirets `4 3`**, légende : tirets ; au survol l'infobulle nomme les deux séries |
+
+Le cobalt ne sert ici que de **signal** (le travail transformé en dossier) et de point de survol ;
+c'est la seule teinte du graphique. Le remplissage reste très pâle : jamais d'aplat qui rivalise
+avec le texte.
+
+**Ratio** : 1440 px → `aspectRatio="4 / 1"` (≈ 275 px de haut) ; 1024 px → `"3 / 1"` ; 390 px →
+`"16 / 10"` (hauteur ≥ 200 px). Marges internes : gauche 8, droite 8 (pas de colonne d'axe Y),
+bas 28. Axe X : 1440 → un repère tous les 5 jours ; 1024 → tous les 7 ; 390 → 4 repères (jours
+1, 10, 20, 30 de la fenêtre) ; format `12 oct.` (`Intl.DateTimeFormat("fr-FR", {day:"numeric", month:"short", timeZone:"Europe/Paris"})`), Geist Mono 11 px, `ink-subtle`.
+
+**Infobulle** (`ChartTooltip`) : fond `surface`, bordure `line-strong`, `shadow-overlay`, rayon
+`--radius-md`, texte 13 px. Contenu : date longue (`lundi 12 octobre`), puis deux lignes
+`Demandes reçues  3` / `Dossiers qualifiés  1` (valeur en Geist Mono, tabulaire, entière).
+`SegmentBackground` : bande `surface-sunken` à 60 % sur le jour survolé ; `SegmentLineFrom/To` :
+filet 1 px `line-strong`. Aucun glow. Pointeur : survol ; tactile : toucher + glisser ; **clavier** :
+le conteneur du graphique est `role="group"` `tabIndex=0` avec `aria-label` ci-dessus ; flèches
+gauche/droite déplacent le jour actif d'un cran, Début/Fin vont aux extrémités, Échap l'enlève ;
+l'infobulle est répétée dans une zone `aria-live="polite"` `sr-only` (« 12 octobre : 3 demandes
+reçues, 1 dossier qualifié »). Si le composant Bklit ne le gère pas, `ActivityAreaChart` ajoute ce
+pilotage par état (index actif) : c'est le seul code autorisé en plus.
+
+#### B. Pipeline : « Passage d'une étape à l'autre »
+
+**Idée unique** : *combien de dossiers atteignent chaque étape, et quelle part passe à la
+suivante.* Compréhensible en 5 s : six tranches de largeur décroissante, six chiffres, cinq
+pourcentages entre elles, « Perdus » à part.
+
+**Emplacement** : carte `PipelineFunnelCard` (`features/pipeline/components/`), **sous la ligne
+des étapes et la voie « Perdu »**, dans le `page-frame` (pas dans la zone qui défile). `PipelineStageNav`
+ne change pas (pas d'ancre vers cette carte : une cible de plus la rendrait ambiguë).
+
+**Données** : par étape, `reached` (dossiers ayant atteint au moins cette étape, décroissant),
+`rate` (taux vers l'étape suivante), `lost` (perdus, à part). **Pourcentage** = `reached(n+1) /
+reached(n) × 100`, **arrondi à l'entier le plus proche, moitié vers le haut** (`Math.round`), une
+seule règle pour tout l'écran. Dénominateur 0 → `—` et la mention `Non calculable : aucun dossier
+à l'étape précédente`. Le pourcentage affiché n'est jamais recalculé côté client à partir de
+valeurs arrondies. L'infobulle donne toujours le brut : `{n} sur {d} dossiers`. Format :
+`Intl.NumberFormat("fr-FR")` (espace fine insécable avant `%`, séparateur de milliers fin).
+
+**Textes exacts** :
+
+| Clé | Texte |
+|---|---|
+| titre | `Passage d'une étape à l'autre` (`h2`) |
+| périmètre | `Dossiers enregistrés dans l'agence, état actuel · chaque tranche compte les dossiers arrivés au moins à cette étape` |
+| libellés d'étape | `PIPELINE_STAGE_LABELS` tels quels : Nouveau, Qualifié, Chaud, RDV planifié, Estimation faite, Mandat signé (aucune réécriture) |
+| entre deux tranches | `{p} %` précédé d'un trait/flèche d'orientation (forme, pas seulement couleur), nom accessible `{p} % des dossiers « {étape} » passent à « {étape suivante} »` |
+| constat | `Constat sur les dossiers enregistrés, pas une prévision.` |
+| perdus | `Perdus : {n}` + `Comptés à part, hors de l'entonnoir.` (rangée en pointillés `border-dashed`, comme `PipelineLostLane`) |
+| mandat | sous la dernière tranche : `Confirmé par un humain` |
+| vide (0 dossier) | `Aucun dossier enregistré pour le moment.` (pas d'entonnoir ; `EmptyState` compact existant) |
+| une seule étape non vide | entonnoir affiché, pourcentages suivants `—` |
+| indisponible | `Indisponible` + `Le calcul n'a pas pu être fait. Rechargez la page.` ; si seules les étapes sont calculées et pas les perdus : entonnoir normal, et `Perdus : Indisponible` |
+| aria du graphique | `Entonnoir du pipeline. {Étape} : {n} dossiers, … Mandat signé : {n} dossiers. Les pourcentages de passage sont dans le tableau sous le graphique.` |
+| tableau | `Afficher les valeurs par étape` ; colonnes `Étape` · `Dossiers arrivés à cette étape` · `Passage vers l'étape suivante` |
+
+`SimulationBadge` près du titre **si** l'agence est de démonstration (même condition que sur
+les autres écrans) ; aucune mention de simulation existante n'est retirée.
+
+**Props Bklit retenues** (`FunnelChart`) :
+`orientation` = `"horizontal"` dès 768 px (même sens que la ligne du pipeline : de gauche à droite),
+`"vertical"` sous 768 px (six tranches de 56 px de haut + 8 px d'écart, empilées : aucun
+défilement horizontal) · `edges="curved"` (la courbe reste douce, le calcul exact) ·
+`gap={8}` en horizontal, `gap={8}` en vertical · `layers={3}` : **anneaux « halo » fixes**,
+décroissants, en encre à 6 % / 4 % / 2 % d'opacité, **sans pulsation, sans flou, sans cobalt**
+(l'ADN de la marque : le motif de halos concentriques des tuiles, §2.8, en plus sobre) ·
+`showValues` oui · `showLabels` oui · `showPercentage` **non** (le composant calculerait un
+pourcentage sur le premier palier ; ici le pourcentage est celui du passage, fourni par nos
+données et posé entre les tranches) · `labelLayout="outside"` (libellé au-dessus/à côté de la
+tranche, jamais dans la forme pour tenir le contraste) · `grid` : lignes de repère `line` à 1 px,
+désactivées sous 768 px · `renderPattern` : **pointillés fins en encre à 12 %** sur la seule tranche
+de l'étape en cours de lecture (survol/focus) ; pas de motif permanent (le point = dossier de la
+frise est la signature, mais ici on ne dessine pas un point par dossier).
+
+**Couleur par segment** : une rampe de gris qui s'assombrit jusqu'au mandat, jamais de teinte :
+
+| Étape | Remplissage (`ink` #18181b avec opacité) | Contraste du texte posé dessus |
+|---|---|---|
+| Nouveau | `ink` à 14 % | libellés/chiffres hors tranche, ink 17,7:1 |
+| Qualifié | 26 % | idem |
+| Chaud | 40 % | idem |
+| RDV planifié | 56 % | idem |
+| Estimation faite | 76 % | idem |
+| Mandat signé | 100 % (noir, = disque « issue » de la frise) | idem |
+
+Aucun texte n'est posé **sur** une tranche : libellés et chiffres sont en dehors (garantie du
+contraste AA, quelle que soit l'opacité). L'ordre est lu par la **largeur** et par le **texte**,
+pas par la nuance seule.
+
+**Dimensions** : 1440 → carte pleine largeur, entonnoir ≈ 1100 × 260 px (tranche 1 = 100 % de la
+largeur disponible, les suivantes proportionnelles aux valeurs **réelles** `reached`, avec une
+largeur minimale de 6 px pour qu'une étape à 0 ou 1 reste visible) ; 1024 → ≈ 900 × 240 ;
+390 → vertical, largeur pleine, 6 × 56 + 5 × 8 = 376 px de haut. Libellés longs : « Estimation
+faite » et « Mandat signé » passent sur **deux lignes** (jamais d'ellipse), colonne de libellé de
+`6.5rem` minimum en horizontal ; en vertical, le libellé est à gauche, le chiffre (Geist Mono) à
+droite, le pourcentage dans le connecteur entre deux lignes (`↓ 62 %`).
+
+**Infobulle / survol** : survol d'une tranche (ou focus) : la tranche garde sa nuance, les autres
+reculent à 40 % d'opacité (`--duration-fast`), infobulle `{Étape} : {n} dossiers` + `{p} % passent
+à « {suivante} »` + `{n} sur {d} dossiers`. Clavier : le graphique est un groupe focalisable,
+flèches droite/gauche (haut/bas en vertical) parcourent les tranches, même zone `aria-live`
+que la courbe.
+
+#### C. Tokens : correspondance des variables Bklit
+
+Posée une seule fois sur `.chart-scope` (classe maison dans `app/globals.css`, appliquée au
+conteneur de chaque graphique ; **ne jamais** redéfinir ces variables sur `:root`).
+
+| Variable Bklit | Valeur (token du projet) | Usage |
+|---|---|---|
+| `--chart-line-primary` | `var(--color-ink)` | Courbe « Demandes reçues » |
+| `--chart-line-secondary` | `var(--color-accent-strong)` | Courbe « Dossiers qualifiés » (7,3:1 sur blanc) |
+| `--chart-grid` | `var(--color-line)` | Grille horizontale (décorative, exemptée du critère de contraste) |
+| `--chart-axis`, `--color-muted` | `var(--color-ink-subtle)` | Texte des axes (5,7:1) |
+| `--chart-foreground` | `var(--color-ink)` | Texte d'infobulle, chiffres |
+| `--chart-background`, `--chart-tooltip-bg` | `var(--color-surface)` | Fond d'infobulle |
+| `--chart-tooltip-border` | `var(--color-line-strong)` | Bordure d'infobulle |
+| `--chart-crosshair` | `var(--color-line-strong)` | Filets de segment |
+| `--chart-segment-bg` | `var(--color-surface-sunken)` | `SegmentBackground` |
+| `--chart-1` … `--chart-6` | `color-mix(in srgb, var(--color-ink) 14%, transparent)` à 100 % (rampe du tableau B, dans l'ordre des étapes) | Tranches |
+| `--chart-halo-1/2/3` | ink à 6 % / 4 % / 2 % | Anneaux `layers` |
+
+Aucun hexadécimal en dur dans les composants de graphique. Aucune autre teinte : pas de
+`--color-danger`, pas de `--color-icon-indigo/violet`, pas d'arc-en-ciel.
+
+#### D. Mouvement : ce que fait Anime.js, ce que fait Bklit
+
+**Partage strict** (pas de doublon) :
+- **Bklit / `motion`** (interne, on ne le réécrit pas) : tracé des aires, croissance des
+  tranches, survol, déplacement de l'infobulle. Réglage demandé : durée d'entrée interne du
+  graphique **≤ 900 ms**, échelonnement des tranches **≤ 70 ms par pas** ; `MotionConfig
+  reducedMotion="user"` (ou équivalent) en tête de chaque îlot. Si les valeurs par défaut sont
+  plus longues, les raccourcir par les props du composant, sinon le signaler.
+- **Anime.js 4.5.0** (déjà dans `package.json`, aucun ajout) **orchestre l'enveloppe uniquement**,
+  dans un seul îlot `ChartStage` (`components/charts/ChartStage.tsx`, client) qui enveloppe la carte :
+  1. **Entrée de la carte** : `opacity 0 → 1`, `translateY 12 px → 0`, **550 ms**,
+     easing `cubic-bezier(0.22, 0.61, 0.36, 1)` (= `--ease-standard`, lu via
+     `getComputedStyle`, pas recopié), déclenchée **une fois** à 35 % de visibilité
+     (`IntersectionObserver`). Cohérente avec « arrivée des cartes » du §2.5.3.
+  2. **Chiffres clés** (totaux de la courbe ; chiffres de tranche) : apparition `opacity` +
+     `translateY 6 px`, **300 ms**, décalée de **70 ms**, **commençant 200 ms après le début de
+     l'entrée de la carte**. Le texte est **déjà sa valeur finale dans le HTML** : aucun
+     compteur ne défile (§2.5.4 règle 3 : pas de fausse progression ; une valeur qui monte de 0
+     à N laisserait croire à un calcul en cours). Si l'utilisateur tient au comptage, c'est une
+     décision à valider : durée ≤ 600 ms, valeur finale dans le DOM dès le début.
+  3. **Séquence** : `createTimeline` unique : carte → chiffres → **montage du graphique Bklit**.
+     Le graphique n'est rendu animé qu'au moment où Anime.js passe `ready=true` (≈ 450 ms après
+     le début), pour que les deux moteurs ne jouent jamais ensemble. Avant, l'emplacement du
+     graphique existe déjà à sa taille finale (hauteur réservée par `aspectRatio` : **zéro
+     décalage de mise en page**, CLS 0).
+  4. **Interdits côté Anime.js** : ne touche ni au SVG de Bklit, ni aux halos, ni à l'infobulle ;
+     seulement `transform`, `opacity` ; aucune boucle, aucun halo qui pulse ; moteur au repos
+     après la séquence (aucun `requestAnimationFrame` actif à l'arrêt).
+- **Interruption** : changement de page ou démontage → `timeline.revert()` ; retour sur l'écran →
+  la séquence ne rejoue pas (une seule fois par chargement de page). Redimensionnement : aucun
+  rejeu, le graphique se redessine à la nouvelle taille sans animation.
+- **Survol / clavier** : `--duration-fast` (150 ms), propriétés de peinture et d'opacité
+  seulement, jamais de translation de la tranche.
+- **`prefers-reduced-motion: reduce`** : `ChartStage` ne crée **aucune** timeline (`ready=true`
+  immédiat), la carte, les chiffres et le graphique sont **affichés directement dans leur état
+  final** ; `MotionConfig` désactive l'entrée Bklit ; halos fixes de toute façon ; survol =
+  changement d'opacité instantané. Sans JavaScript : la carte, les totaux, le tableau de valeurs
+  et le résumé sont dans le HTML serveur ; le graphique seul est absent et le tableau reste
+  visible (`details` ouvert).
+
+#### E. Responsive et états
+
+| Largeur | Courbe | Entonnoir |
+|---|---|---|
+| 1440 | 4/1, axe tous les 5 jours, totaux sur une ligne à gauche, légende à droite du titre | horizontal, pourcentages entre tranches, « Perdus » en rangée pointillée sous l'entonnoir |
+| 1024 | 3/1, axe tous les 7 jours, légende sous le titre | horizontal, libellés sur 2 lignes si besoin |
+| 390 | 16/10, 4 repères d'axe, totaux empilés, légende sous la courbe, cibles tactiles de la zone de survol ≥ 44 px de large (la bande `SegmentBackground` est élargie, pas le tracé) | vertical, connecteurs `↓ p %`, aucun défilement horizontal |
+
+États : **chargement** → `Skeleton` à la taille finale (même `aspectRatio`, jamais de saut), pas
+de fausse courbe ; **vide**, **indisponible**, **une étape non vide** : textes ci-dessus ;
+**erreur technique** ≠ **vide** : jamais la même phrase.
+
+#### F. Accessibilité
+
+Graphiques `aria-hidden` pour le rendu SVG, **doublés** par : (1) le résumé écrit (`aria-label`
+et phrase d'ouverture), (2) le tableau complet dans `details` (visible, clavier, lecteurs
+d'écran), (3) la zone `aria-live` du jour/de l'étape actifs. Aucune information uniquement en
+couleur (tirets vs plein, légende textuelle, pourcentage écrit, largeur). Texte ≥ 4,5:1,
+éléments graphiques porteurs de sens (traits des deux courbes) ≥ 3:1 sur blanc (ink 17,7:1 ;
+cobalt strong 7,3:1). Focus visible : anneau global (`:focus-visible`) sur le groupe.
+
+#### G. Critères d'acceptation vérifiables
+
+1. `/dashboard` : une carte « Activité sur 30 jours » après « À faire maintenant » ; 30 points ;
+   totaux = somme exacte des données ; aucune valeur décimale, aucun `k`.
+2. `/pipeline` : carte « Passage d'une étape à l'autre » sous la voie « Perdu » ; 6 tranches
+   dans l'ordre ; chaque `reached(n) ≥ reached(n+1)` ; 5 pourcentages = `Math.round` des
+   rapports (test unitaire sur la fonction de calcul, dont dénominateur 0 → `—`) ; « Perdus : N »
+   présent et hors de l'entonnoir.
+3. Aucune couleur hors tokens : test de garde CSS/TSX (pas de `#`, `rgb(` ni `red|orange|…` dans
+   `features/*/components/*Chart*`, `components/charts/**`), `--color-danger` absent.
+4. Reduced motion (`emulateMedia({reducedMotion:'reduce'})`) : graphiques visibles et tooltip
+   fonctionnel sans attente ; 0 timeline Anime.js ; mesure `requestAnimationFrame` = 0 après
+   200 ms.
+5. Animations normales : séquence totale ≤ 1,5 s depuis l'entrée à l'écran ; rejouée 0 fois au
+   redimensionnement ; CLS = 0 (hauteur réservée) ; test « aucune boucle » existant inchangé.
+6. Mobile 390 : aucun défilement horizontal de la page ; entonnoir vertical ; « Estimation
+   faite » sans ellipse (`scrollWidth ≤ clientWidth` sur chaque libellé) ; cibles tactiles ≥ 44 px.
+7. États : un mock « calcul en échec » affiche `Indisponible`, jamais `0` ; 0 dossier affiche le
+   texte vide ; périmètre temporel toujours présent.
+8. Clavier : Tab atteint chaque groupe ; flèches changent l'élément actif ; la zone `aria-live`
+   annonce « 12 octobre : … » ; `details` ouvrable à Entrée.
+9. Axe/Lighthouse a11y : 0 violation sérieuse ; contraste mesuré des textes d'axe et d'infobulle.
+10. E2E (`e2e/analytics-charts.spec.ts`) : cas 1, 2, 4, 6, 7 ci-dessus, sur 1440 / 1024 / 390 ;
+    sans attente de fin d'animation (règle d'or §2.5.5).
+11. `docs/THIRD_PARTY_NOTICES.md` (ou `THIRD_PARTY_NOTICES.md`) : licence MIT de Bklit UI, visx
+    et `motion` recopiées. Aucune dépendance Anime.js ajoutée ; `motion` et visx seulement si
+    Bklit les exige (à signaler à l'orchestrateur : ajout de dépendances = décision à confirmer).
+
 ### 3.6 Tâches (`features/tasks/components/`) et rendez-vous (`features/appointments/components/`)
 
 | Composant | Fichier | Rôle |

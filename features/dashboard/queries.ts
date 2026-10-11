@@ -11,8 +11,8 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Result } from "@/lib/utils/result";
 
-import { buildDashboardSummary } from "./data";
-import type { DashboardSummary } from "./types";
+import { buildDashboardDailySeries, buildDashboardSummary } from "./data";
+import type { DashboardDailySeries, DashboardSummary } from "./types";
 
 /**
  * The `/dashboard` overview of the caller's agency.
@@ -29,4 +29,18 @@ import type { DashboardSummary } from "./types";
 export async function getDashboardSummary(): Promise<Result<DashboardSummary>> {
   const client = await createClient();
   return buildDashboardSummary(client);
+}
+
+/**
+ * The 30-day series of the area chart: per Paris calendar day, the seller
+ * requests received and the dossiers qualified (see `DashboardDailyPoint` for
+ * the exact definitions).
+ *
+ * * `{ data: null, error }` only when the session or the agency is invalid.
+ * * Otherwise `data.status` is `"ok"` (30 points, a day without activity is a
+ *   real `0`) or `"unavailable"` (display « Indisponible », never zeros).
+ */
+export async function getDashboardDailySeries(): Promise<Result<DashboardDailySeries>> {
+  const client = await createClient();
+  return buildDashboardDailySeries(client);
 }

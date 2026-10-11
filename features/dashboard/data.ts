@@ -22,24 +22,30 @@ import { parseAgentActivityRows, requireExactCount, type AgentActivityRow } from
 import { UPCOMING_APPOINTMENT_STATUSES } from "@/features/appointments/types";
 import type { AgentRunCounts } from "@/features/agents-ia/types";
 import { NO_NAME_LABEL } from "@/features/contacts/data";
+import { PIPELINE_FUNNEL_STAGES, STAGE_TRANSITION_ACTIVITY_TYPES } from "@/features/pipeline/types";
 import { OPEN_TASK_STATUS } from "@/features/tasks/types";
 import { resolveAgentContext } from "@/lib/agents/context";
 import { failFromDatabase, failFromUnexpected } from "@/lib/agents/errors";
-import { AGENCY_TIME_ZONE, parisDayStart, parisWindowStart } from "@/lib/agents/time";
+import { fetchAllPages } from "@/lib/agents/paginate";
+import { AGENCY_TIME_ZONE, parisDayKey, parisDayStart, parisWindowStart } from "@/lib/agents/time";
 import type { TypedClient } from "@/lib/agents/types";
 import { ok, type Result } from "@/lib/utils/result";
 
 import {
   DASHBOARD_PIPELINE_STAGES,
   DASHBOARD_SAMPLE_LIMIT,
+  DASHBOARD_SERIES_DAYS,
   type DashboardActionList,
   type DashboardAgents,
   type DashboardAppointmentItem,
+  type DashboardDailyPoint,
+  type DashboardDailySeries,
   type DashboardInboundLeadItem,
   type DashboardIndicator,
   type DashboardMessageItem,
   type DashboardPipeline,
   type DashboardScope,
+  type DashboardSeriesScope,
   type DashboardSummary,
   type DashboardTaskItem,
   type DashboardTimeZone,
@@ -491,5 +497,153 @@ export async function buildDashboardSummary(
     });
   } catch (cause) {
     return failFromUnexpected<DashboardSummary>("buildDashboardSummary", cause);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Daily series (area chart)
+// -----------------------------------------------------------------------------
+
+/** The `days` Paris calendar days ending today, oldest first, as `YYYY-MM-DD`. */
+export function parisDayKeys(days: number, now: Date): string[] {
+  const keys: string[] = [];
+  for (let back = days; back >= 1; back -= 1) {
+    keys.push(parisDayKey(parisWindowStart(back, now)));
+  }
+  return keys;
+}
+
+/**
+ * Buckets instants into Paris calendar days. Pure: instants outside the listed
+ * days are ignored, an invalid instant is ignored (never counted in a wrong
+ * day), and every listed day is present — with a real `0` when nothing happened.
+ */
+export function bucketDailySeries(input: {
+  days: readonly string[];
+  /** ISO-8601 instants of the received requests. */
+  received: readonly string[];
+  /** ISO-8601 instants of the qualifications (already one per dossier). */
+  qualified: readonly string[];
+}): DashboardDailyPoint[] {
+  const points = new Map<string, DashboardDailyPoint>(
+    input.days.map((date) => [date, { date, received: 0, qualified: 0 }]),
+  );
+  const add = (instants: readonly string[], field: "received" | "qualified") => {
+    for (const instant of instants) {
+      const time = Date.parse(instant);
+      if (Number.isNaN(time)) continue;
+      const point = points.get(parisDayKey(new Date(time)));
+      if (point) point[field] += 1;
+    }
+  };
+  add(input.received, "received");
+  add(input.qualified, "qualified");
+  return input.days.map((date) => points.get(date)!);
+}
+
+/** Stages a qualification leads to (a dossier leaves `nouveau` for one of them). */
+const QUALIFIED_STAGES = PIPELINE_FUNNEL_STAGES.filter((stage) => stage !== "nouveau");
+
+type QualificationRow = { contact_id: string | null; occurred_at: string };
+
+/**
+ * One qualification instant per dossier: its earliest move out of `nouveau`
+ * inside the window. Pure, so the « once per dossier » rule is unit tested.
+ */
+export function firstQualificationPerContact(rows: readonly QualificationRow[]): string[] {
+  const earliest = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.contact_id) continue;
+    const time = Date.parse(row.occurred_at);
+    if (Number.isNaN(time)) continue;
+    const known = earliest.get(row.contact_id);
+    if (known === undefined || time < known) earliest.set(row.contact_id, time);
+  }
+  return [...earliest.values()].map((time) => new Date(time).toISOString());
+}
+
+/**
+ * The 30-day series « demandes reçues / dossiers qualifiés » of the caller's
+ * agency, by Paris calendar day. `{ data: null, error }` only when the session
+ * or the agency is invalid; a failed read is `{ status: "unavailable" }`.
+ *
+ * Reads rows (not counts), 1000 per page, refusing — not truncating — beyond
+ * 20 000 rows. Both reads are filtered by agency and by window; the activities
+ * read uses the existing `(agency_id, occurred_at)` index. The contacts read has
+ * no `(agency_id, created_at)` index yet: fine at this size, a candidate index
+ * if an agency ever holds tens of thousands of contacts.
+ */
+export async function buildDashboardDailySeries(
+  client: TypedClient,
+  now: Date = new Date(),
+): Promise<Result<DashboardDailySeries>> {
+  try {
+    const contextResult = await resolveAgentContext(client);
+    if (contextResult.error) return { data: null, error: contextResult.error };
+    const agencyId = contextResult.data.agencyId;
+
+    const startsAt = parisWindowStart(DASHBOARD_SERIES_DAYS, now);
+    const scope: DashboardSeriesScope = {
+      key: "last_30_days",
+      startsAt: startsAt.toISOString(),
+      endsAt: now.toISOString(),
+      days: DASHBOARD_SERIES_DAYS,
+      timeZone: TIME_ZONE,
+    };
+
+    let reads: [Result<{ created_at: string }[]>, Result<QualificationRow[]>];
+    try {
+      reads = await Promise.all([
+        fetchAllPages<{ created_at: string }>("dashboard.series.received", (from, to) =>
+          client
+            .from("contacts")
+            .select("created_at")
+            .eq("agency_id", agencyId)
+            .gte("created_at", scope.startsAt)
+            .lte("created_at", scope.endsAt)
+            .order("created_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        ),
+        fetchAllPages<QualificationRow>("dashboard.series.qualified", (from, to) =>
+          client
+            .from("activities")
+            .select("contact_id, occurred_at")
+            .eq("agency_id", agencyId)
+            .in("type", [...STAGE_TRANSITION_ACTIVITY_TYPES])
+            .eq("payload->>previous_stage", "nouveau")
+            .in("payload->>stage", [...QUALIFIED_STAGES])
+            .gte("occurred_at", scope.startsAt)
+            .lte("occurred_at", scope.endsAt)
+            .order("occurred_at", { ascending: true })
+            .order("id", { ascending: true })
+            .range(from, to),
+        ),
+      ]);
+    } catch (cause) {
+      // A read that throws is an unavailable figure, not a broken page.
+      console.error("[dashboard] daily series threw:", cause);
+      return ok({ status: "unavailable", scope });
+    }
+    const [received, qualified] = reads;
+
+    if (received.error || qualified.error) return ok({ status: "unavailable", scope });
+
+    const points = bucketDailySeries({
+      days: parisDayKeys(DASHBOARD_SERIES_DAYS, now),
+      received: received.data.map((row) => isoUtc(row.created_at)),
+      qualified: firstQualificationPerContact(qualified.data).map(isoUtc),
+    });
+    return ok({
+      status: "ok",
+      scope,
+      points,
+      totals: {
+        received: points.reduce((sum, point) => sum + point.received, 0),
+        qualified: points.reduce((sum, point) => sum + point.qualified, 0),
+      },
+    });
+  } catch (cause) {
+    return failFromUnexpected<DashboardDailySeries>("buildDashboardDailySeries", cause);
   }
 }

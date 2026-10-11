@@ -97,6 +97,13 @@ const FIXTURE_ACTIVITIES = [...DATASET.a.activities, ...DATASET.b.activities];
 
 type TypedClient = SupabaseClient<Database>;
 
+/** The API refuses very long URLs: ids are looked up by chunks. */
+function chunksOf<T>(items: readonly T[], size = 100): T[][] {
+  const chunks: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += size) chunks.push(items.slice(offset, offset + size));
+  return chunks;
+}
+
 let admin: TypedClient;
 
 beforeAll(async () => {
@@ -177,12 +184,13 @@ describe("fixtures : données 100 % fictives", () => {
   });
 
   it("chaque fiche de fixture existe avec exactement les coordonnées fictives du jeu de données", async () => {
-    const { data, error } = await admin
-      .from("contacts")
-      .select("id, agency_id, email, phone")
-      .in("id", FIXTURE_CONTACTS.map((contact) => contact.id!));
-    expect(error).toBeNull();
-    const byId = new Map((data ?? []).map((row) => [row.id, row]));
+    const found: Array<{ id: string; agency_id: string; email: string | null; phone: string | null }> = [];
+    for (const ids of chunksOf(FIXTURE_CONTACTS.map((contact) => contact.id!))) {
+      const { data, error } = await admin.from("contacts").select("id, agency_id, email, phone").in("id", ids);
+      expect(error).toBeNull();
+      found.push(...(data ?? []));
+    }
+    const byId = new Map(found.map((row) => [row.id, row]));
     for (const expected of FIXTURE_CONTACTS) {
       const row = byId.get(expected.id!);
       expect(row, `fiche de fixture manquante : ${expected.id}`).toBeDefined();
@@ -239,12 +247,16 @@ describe("fixtures : données 100 % fictives", () => {
     expect(FIXTURE_ACTIVITIES.length).toBeGreaterThan(0);
     expect(FIXTURE_ACTIVITIES.every((activity) => activity.is_simulation === true)).toBe(true);
 
-    const { data, error } = await admin
-      .from("activities")
-      .select("id, agency_id, contact_id, type, actor_type, is_simulation")
-      .in("id", FIXTURE_ACTIVITIES.map((activity) => activity.id!));
-    expect(error).toBeNull();
-    const byId = new Map((data ?? []).map((row) => [row.id, row]));
+    const found: Array<{ id: string; agency_id: string; contact_id: string | null; type: string; actor_type: string; is_simulation: boolean }> = [];
+    for (const ids of chunksOf(FIXTURE_ACTIVITIES.map((activity) => activity.id!))) {
+      const { data, error } = await admin
+        .from("activities")
+        .select("id, agency_id, contact_id, type, actor_type, is_simulation")
+        .in("id", ids);
+      expect(error).toBeNull();
+      found.push(...(data ?? []));
+    }
+    const byId = new Map(found.map((row) => [row.id, row]));
     for (const expected of FIXTURE_ACTIVITIES) {
       const row = byId.get(expected.id!);
       expect(row, `activité de fixture manquante : ${expected.type} (${expected.id})`).toBeDefined();
@@ -291,7 +303,7 @@ describe("fixtures : données 100 % fictives", () => {
 });
 
 describe("fixtures : volumes attendus", () => {
-  it("25 contacts de fixtures pour l'agence A, 5 pour l'agence B", async () => {
+  it("84 contacts de fixtures pour l'agence A (25 écrits à la main + 59 d'historique), 11 pour l'agence B (5 + 6)", async () => {
     // Counted by their deterministic identifiers: another suite or an E2E
     // journey may legitimately add a contact to a fixture agency (public
     // estimation form + Léa) without the fixtures being wrong.
@@ -312,6 +324,38 @@ describe("fixtures : volumes attendus", () => {
     expect(await countFor(FIXTURE_AGENCY_IDS.b, DATASET.b.contacts.map((contact) => contact.id!))).toBe(
       FIXTURE_EXPECTED_COUNTS.b.contacts,
     );
+  });
+
+  it("l'historique de ~90 jours est chargé : 84 dossiers répartis comme prévu, datés sur trois mois, avec leur trace de qualification", async () => {
+    // Counts only: the stage of a given historical contact moves with the load
+    // date (the dataset is relative to "now"), the totals per stage do not.
+    const { data, error } = await admin
+      .from("contacts")
+      .select("id, stage, created_at")
+      .eq("agency_id", FIXTURE_AGENCY_IDS.a);
+    expect(error).toBeNull();
+    const knownIds = new Set(DATASET.a.contacts.map((contact) => contact.id!));
+    const fixtureRows = (data ?? []).filter((row) => knownIds.has(row.id));
+    const byStage = new Map<string, number>();
+    for (const row of fixtureRows) byStage.set(row.stage, (byStage.get(row.stage) ?? 0) + 1);
+    // Other suites may have moved a fixture dossier: allow a small drift, not a different story.
+    expect(fixtureRows).toHaveLength(FIXTURE_EXPECTED_COUNTS.a.contacts);
+    expect(byStage.get("nouveau") ?? 0).toBeGreaterThanOrEqual(10);
+    expect(byStage.get("perdu") ?? 0).toBeGreaterThanOrEqual(10);
+    const oldest = Math.min(...fixtureRows.map((row) => Date.parse(row.created_at)));
+    const newest = Math.max(...fixtureRows.map((row) => Date.parse(row.created_at)));
+    expect(Date.now() - oldest).toBeGreaterThan(60 * 86_400_000);
+    expect(Date.now() - newest).toBeLessThan(2 * 86_400_000);
+
+    // Hugo's qualification trace, as the application writes it: at least one per advanced dossier.
+    const { count, error: countError } = await admin
+      .from("activities")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", FIXTURE_AGENCY_IDS.a)
+      .eq("type", "ai_qualification_done")
+      .eq("payload->>previous_stage", "nouveau");
+    expect(countError).toBeNull();
+    expect(count ?? 0).toBeGreaterThanOrEqual(60);
   });
 
   it("toutes les étapes du pipeline sont représentées dans l'agence A", async () => {

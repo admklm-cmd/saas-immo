@@ -186,3 +186,88 @@ export function stageChangeErrorCode(error: { message?: string | null; code?: st
   if ((error.code ?? "").trim() === "42501") return "forbidden";
   return "unexpected_error";
 }
+
+// -----------------------------------------------------------------------------
+// Funnel (conversion between stages) — read by the pipeline screen
+// -----------------------------------------------------------------------------
+
+/**
+ * Stages of the sales journey, in order. `perdu` is NOT a step of the funnel:
+ * it is reported apart (`PipelineFunnel.lost`), because a lost dossier left the
+ * journey at some stage instead of being "after" `mandat_signe`.
+ */
+export const PIPELINE_FUNNEL_STAGES = [
+  "nouveau",
+  "qualifie",
+  "chaud",
+  "rdv_planifie",
+  "estimation_faite",
+  "mandat_signe",
+] as const satisfies readonly PipelineStage[];
+
+export type PipelineFunnelStage = (typeof PIPELINE_FUNNEL_STAGES)[number];
+
+/**
+ * Activity types that carry a stage move in their payload
+ * (`payload.previous_stage` → `payload.stage`), as the application writes them:
+ *  - `contact_stage_changed`: a human, through `change_contact_stage`;
+ *  - `ai_qualification_done`: Hugo (nouveau / qualifie → qualifie / chaud);
+ *  - `ai_follow_through_done`: Sarah (→ estimation_faite).
+ * The appointment workflow moves a dossier to `rdv_planifie` without a stage
+ * payload: its trace is `appointment_confirmed` (see `FUNNEL_RDV_ACTIVITY_TYPE`).
+ */
+export const STAGE_TRANSITION_ACTIVITY_TYPES = [
+  "contact_stage_changed",
+  "ai_qualification_done",
+  "ai_follow_through_done",
+] as const;
+
+/** Trace of a dossier that reached `rdv_planifie`. */
+export const FUNNEL_RDV_ACTIVITY_TYPE = "appointment_confirmed";
+
+/**
+ * Perimeter of the funnel: EVERY dossier of the agency, whatever its creation
+ * date, as it stands at `at` (ISO-8601 UTC, the instant of the read). It is not
+ * a period: a dossier counted at a step reached it at some point in its life.
+ */
+export type PipelineFunnelScope = { key: "all_dossiers"; at: string };
+
+export type PipelineFunnelStep = {
+  stage: PipelineFunnelStage;
+  /**
+   * Dossiers that reached AT LEAST this stage: those now at this stage or
+   * further (`perdu` excluded), plus the lost ones whose furthest known stage is
+   * this one or further. Non-increasing from one step to the next, by
+   * construction. `steps[0].reached` is the total of dossiers (lost included).
+   */
+  reached: number;
+  /** Dossiers sitting at this stage right now (`perdu` excluded). */
+  current: number;
+  /** Lost dossiers whose furthest known stage is exactly this one. */
+  lostHere: number;
+  /**
+   * `reached / previous step's reached`, between 0 and 1 (not rounded: round at
+   * display time). `null` for the first step, or when the previous step is 0.
+   */
+  rateFromPrevious: number | null;
+  /** `reached / steps[0].reached`, between 0 and 1. `null` when there is no dossier. */
+  rateFromStart: number | null;
+};
+
+export type PipelineFunnel = {
+  scope: PipelineFunnelScope;
+  /** Every dossier of the agency, lost included (= `steps[0].reached`). */
+  total: number;
+  steps: PipelineFunnelStep[];
+  lost: {
+    /** Dossiers now at `perdu` (= sum of `steps[].lostHere`). */
+    total: number;
+    /**
+     * Lost dossiers with no recorded stage history: counted as having reached
+     * `nouveau` only (a lower bound — what the history does not say is not
+     * invented). Imported dossiers and dossiers moved before the history existed
+     * end up here.
+     */
+    untraced: number;
+  };
+};

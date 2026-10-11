@@ -388,7 +388,9 @@ test("clavier : la zone défile aux flèches, et Tab atteint « Mandat signé »
   const mandate = column(page, PIPELINE_STAGE_LABELS.mandat_signe);
   const lastTrigger = mandate.getByTestId("stage-menu-trigger").last();
   let reached = false;
-  for (let press = 0; press < 80 && !reached; press += 1) {
+  // Two tab stops per card (file link + stage menu): with the ~85 dossiers of the
+  // historical fixtures, « Mandat signé » (last column) is about 140 presses away.
+  for (let press = 0; press < 400 && !reached; press += 1) {
     await page.keyboard.press("Tab");
     reached = await lastTrigger.evaluate((node) => node === document.activeElement);
   }

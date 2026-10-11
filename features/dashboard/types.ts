@@ -263,3 +263,63 @@ export type DashboardSummary = {
   agents: DashboardAgents;
   upcomingAppointments: DashboardUpcomingAppointments;
 };
+
+// -----------------------------------------------------------------------------
+// Daily series — the area chart of the dashboard
+// -----------------------------------------------------------------------------
+
+/** Width of the daily series, in Paris calendar days (today included). */
+export const DASHBOARD_SERIES_DAYS = 30;
+
+/**
+ * Period of the daily series. Kept apart from `DashboardScope` on purpose, so
+ * that the existing label table (`Record<DashboardScopeKey, string>` in
+ * components/texts.ts) does not break: the UI adds a label for `last_30_days`
+ * and may then merge the two types.
+ */
+export type DashboardSeriesScope = {
+  key: "last_30_days";
+  /** Midnight Europe/Paris 29 days ago, ISO-8601 UTC. */
+  startsAt: string;
+  /** Instant of the read, ISO-8601 UTC (today is a partial day). */
+  endsAt: string;
+  days: typeof DASHBOARD_SERIES_DAYS;
+  timeZone: DashboardTimeZone;
+};
+
+/**
+ * One Paris calendar day of the series.
+ *
+ *   * `received`  — seller requests received that day: contacts created that
+ *     day (every source: forms, calls, e-mails, referrals, imports), by
+ *     `contacts.created_at`.
+ *   * `qualified` — dossiers that left `nouveau` for a qualified stage that day
+ *     (Hugo's qualification, or a human move), by the `occurred_at` of the
+ *     recorded stage-move activity. A dossier counts once, on its first move
+ *     inside the window.
+ *
+ * A day without activity is `0` — a measured zero, the calculation succeeded.
+ */
+export type DashboardDailyPoint = {
+  /** `YYYY-MM-DD`, Europe/Paris calendar day. */
+  date: string;
+  received: number;
+  qualified: number;
+};
+
+/**
+ * The 30-day series. `points` are in chronological order, exactly 30 of them,
+ * the last one being today (partial: it ends at `scope.endsAt`).
+ *
+ * `unavailable` means a read failed (detail logged server-side): display
+ * « Indisponible », never a flat line of zeros.
+ */
+export type DashboardDailySeries =
+  | {
+      status: "ok";
+      scope: DashboardSeriesScope;
+      points: DashboardDailyPoint[];
+      /** Sums over the 30 points. */
+      totals: { received: number; qualified: number };
+    }
+  | { status: "unavailable"; scope: DashboardSeriesScope };

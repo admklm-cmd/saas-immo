@@ -1,5 +1,6 @@
 import type { Database } from "@/types/database";
 
+import { buildHistoricalCohort, HISTORY_PLAN_A, HISTORY_PLAN_B, type HistoryPlan } from "./history";
 import {
   FIXTURE_AGENCY_IDS,
   FIXTURE_EMAIL_DOMAIN,
@@ -116,15 +117,17 @@ function proof(formId: string, lastOctet: number): Database["public"]["Tables"][
 // -----------------------------------------------------------------------------
 // Contact seeds
 // -----------------------------------------------------------------------------
-type ConsentSeed = {
+export type ConsentSeed = {
   channel: Enums["consent_channel"];
   status: Enums["consent_status"];
   daysAgo: number;
   source: string;
   text?: keyof typeof CONSENT_TEXTS;
+  /** Exact instant (ISO-8601). Overrides `daysAgo` (historical cohort). */
+  at?: string;
 };
 
-type PropertySeed = {
+export type PropertySeed = {
   property_type: Enums["property_type"];
   address: string | null;
   postal_code: string | null;
@@ -146,7 +149,7 @@ type PropertySeed = {
   estimated_value_source?: "agency" | "owner_declared";
 };
 
-type ContactSeed = {
+export type ContactSeed = {
   key: string;
   first_name: string;
   last_name: string;
@@ -160,6 +163,15 @@ type ContactSeed = {
   human_takeover?: boolean;
   assigned?: keyof typeof FIXTURE_USER_IDS | null;
   createdDaysAgo: number;
+  /** Exact creation instant (ISO-8601). Overrides `createdDaysAgo` (historical cohort). */
+  createdAt?: string;
+  /**
+   * Furthest pipeline stage ever reached, when it differs from `stage` (a
+   * `perdu` dossier that had gone further than `nouveau`). Drives the history.
+   */
+  furthest?: Enums["pipeline_stage"];
+  /** True when `fixtures/history.ts` writes the stage history of this contact itself. */
+  historyManaged?: boolean;
   property?: PropertySeed;
   consents?: ConsentSeed[];
 };
@@ -749,6 +761,7 @@ const CONTACTS_A: ContactSeed[] = [
     phone: fictionMobile("1024"),
     source: "estimation_form",
     stage: "perdu",
+    furthest: "qualifie",
     // Every channel withdrawn: nothing may ever be sent again.
     notes: "A confié le bien à une autre agence. Demande à ne plus être contacté.",
     sale_motivation: "Vente confiée ailleurs",
@@ -967,9 +980,20 @@ export const PROPERTIES_WITHOUT_ESTIMATED_VALUE = [
   "b-laurent-bonnet",
 ].map((key) => fixtureUuid(`property:${key}`));
 
+function planTotal(plan: HistoryPlan): number {
+  return (
+    Object.values(plan.stages).reduce((sum, count) => sum + count, 0) +
+    Object.values(plan.lostAt).reduce((sum, count) => sum + count, 0)
+  );
+}
+
+/**
+ * `core` = the hand-written contacts (stable ids, used by the E2E tests);
+ * `contacts` = core + the historical cohort of `fixtures/history.ts`.
+ */
 export const FIXTURE_EXPECTED_COUNTS = {
-  a: { contacts: CONTACTS_A.length },
-  b: { contacts: CONTACTS_B.length },
+  a: { core: CONTACTS_A.length, contacts: CONTACTS_A.length + planTotal(HISTORY_PLAN_A) },
+  b: { core: CONTACTS_B.length, contacts: CONTACTS_B.length + planTotal(HISTORY_PLAN_B) },
 } as const;
 
 // -----------------------------------------------------------------------------
@@ -989,6 +1013,7 @@ function buildFromSeeds(
 
   for (const seed of seeds) {
     const contactId = contactIdOf(seed.key);
+    const createdAt = seed.createdAt ?? past(now, seed.createdDaysAgo, 8, 15);
     contacts.push({
       id: contactId,
       agency_id: agencyId,
@@ -1003,6 +1028,8 @@ function buildFromSeeds(
       sale_timeline: seed.sale_timeline,
       human_takeover: seed.human_takeover ?? false,
       assigned_user_id: seed.assigned ? FIXTURE_USER_IDS[seed.assigned] : null,
+      // The creation date is part of the story (arrival curve of the dashboard).
+      created_at: createdAt,
     });
 
     if (seed.property) {
@@ -1010,6 +1037,7 @@ function buildFromSeeds(
         id: fixtureUuid(`property:${seed.key}`),
         agency_id: agencyId,
         contact_id: contactId,
+        created_at: createdAt,
         ...seed.property,
       });
     }
@@ -1022,7 +1050,7 @@ function buildFromSeeds(
         channel: consent.channel,
         status: consent.status,
         source: consent.source,
-        recorded_at: past(now, consent.daysAgo, 9, 30),
+        recorded_at: consent.at ?? past(now, consent.daysAgo, 9, 30),
         // A grant must carry the exact text, its version and a proof (DB check).
         // A withdrawal keeps a proof too: what triggered it, and when.
         presented_text: consent.status === "granted" ? CONSENT_TEXTS[consent.text ?? "estimation"] : null,
@@ -1040,19 +1068,27 @@ function buildFromSeeds(
       payload: { source: seed.source },
       actor_type: "system",
       is_simulation: true,
-      occurred_at: past(now, seed.createdDaysAgo, 8, 15),
+      occurred_at: createdAt,
     });
 
-    if (seed.stage !== "nouveau") {
+    // Hugo's qualification, with the payload the application itself writes
+    // (`previous_stage` / `stage`): this is what the dashboard curve and the
+    // funnel read. The human `contact_stage_changed` trace is reserved to the
+    // database RPC and cannot be written by the loader. A `perdu` dossier is
+    // qualified only when it had gone further than `nouveau`.
+    const wasQualified =
+      seed.stage === "perdu" ? seed.furthest !== undefined && seed.furthest !== "nouveau" : seed.stage !== "nouveau";
+    if (wasQualified && !seed.historyManaged) {
+      const reached = seed.stage === "chaud" ? "chaud" : "qualifie";
       activities.push({
         id: fixtureUuid(`activity:${seed.key}:stage`),
         agency_id: agencyId,
         contact_id: contactId,
-        type: "stage_changed",
-        summary: `Étape du pipeline : ${seed.stage}.`,
-        payload: { from: "nouveau", to: seed.stage },
-        actor_type: "user",
-        actor_user_id: seed.assigned ? FIXTURE_USER_IDS[seed.assigned] : FIXTURE_USER_IDS.directorA,
+        type: "ai_qualification_done",
+        summary: `Hugo — qualification : dossier passé à « ${reached} » (simulation).`,
+        payload: { agent: "hugo", previous_stage: "nouveau", stage: reached },
+        actor_type: "ai_agent",
+        actor_agent: "hugo",
         is_simulation: true,
         occurred_at: past(now, Math.max(1, seed.createdDaysAgo - 1), 11, 0),
       });
@@ -1068,7 +1104,8 @@ function buildFromSeeds(
         payload: { channels: (seed.consents ?? []).filter((c) => c.status === "withdrawn").map((c) => c.channel) },
         actor_type: "system",
         is_simulation: true,
-        occurred_at: past(now, 2, 14, 0),
+        occurred_at:
+          (seed.consents ?? []).find((consent) => consent.status === "withdrawn" && consent.at)?.at ?? past(now, 2, 14, 0),
       });
     }
   }
@@ -1095,6 +1132,9 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
   const contactA = (key: string) => contactIdOf(key);
   const contactB = (key: string) => contactIdOf(key);
 
+  const historyA = buildHistoricalCohort(HISTORY_PLAN_A, now);
+  const historyB = buildHistoricalCohort(HISTORY_PLAN_B, now);
+
   const a = buildFromSeeds(
     "a",
     {
@@ -1105,7 +1145,7 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
       ai_paused: false,
       ai_daily_run_limit: 100,
     },
-    CONTACTS_A,
+    [...CONTACTS_A, ...historyA.seeds],
     now,
   );
 
@@ -1119,7 +1159,7 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
       ai_paused: false,
       ai_daily_run_limit: 50,
     },
-    CONTACTS_B,
+    [...CONTACTS_B, ...historyB.seeds],
     now,
   );
 
@@ -1576,7 +1616,8 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
       contact_id: contactA("laurence-vidal"),
       type: "ai_qualification_done",
       summary: "Hugo a qualifié le projet (simulation).",
-      payload: {},
+      // A second pass on a dossier that was already qualified: the stage stays.
+      payload: { agent: "hugo", previous_stage: "qualifie", stage: "qualifie" },
       actor_type: "ai_agent",
       actor_agent: "hugo",
       is_simulation: true,
@@ -1605,6 +1646,18 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
       actor_user_id: FIXTURE_USER_IDS.directorA,
       is_simulation: true,
       occurred_at: past(now, 30, 15, 0),
+    },
+    {
+      id: id("activity:a:mandate-2"),
+      agency_id: agencyAId,
+      contact_id: contactA("muriel-faure"),
+      type: "mandate_signed",
+      summary: "Mandat simple signé, confirmé par un conseiller.",
+      payload: {},
+      actor_type: "user",
+      actor_user_id: FIXTURE_USER_IDS.agentA,
+      is_simulation: true,
+      occurred_at: past(now, 24, 14, 20),
     },
   );
 
@@ -1729,6 +1782,20 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
       },
     },
   ];
+
+  // --- Historical cohort (about three months of activity) --------------------
+  // Appended after the hand-written rows: their identifiers and their order do
+  // not move. All of it is simulated (see fixtures/history.ts).
+  a.appointments.push(...historyA.appointments);
+  // A bulk insert fills a missing key with NULL, so every lead carries its arrival date.
+  const arrivedNow = iso(now);
+  a.inboundLeads = a.inboundLeads.map((lead) => ({ ...lead, created_at: arrivedNow }));
+  b.inboundLeads = b.inboundLeads.map((lead) => ({ ...lead, created_at: arrivedNow }));
+  a.inboundLeads.push(...historyA.inboundLeads);
+  a.activities.push(...historyA.activities);
+  b.appointments.push(...historyB.appointments);
+  b.inboundLeads.push(...historyB.inboundLeads);
+  b.activities.push(...historyB.activities);
 
   return { a, b };
 }
