@@ -8,7 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { getContacts } from "@/features/contacts/queries";
 import { PipelineBoard } from "@/features/pipeline/components/PipelineBoard";
-import { getPipelineViewer } from "@/features/pipeline/queries";
+import { PipelineFunnelCard } from "@/features/pipeline/components/PipelineFunnelCard";
+import { getPipelineFunnel, getPipelineViewer } from "@/features/pipeline/queries";
 
 const TEXTS = APP_TEXTS.pipeline;
 const CONTACTS_TEXTS = APP_TEXTS.contacts;
@@ -25,7 +26,11 @@ export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand
  * and the database decides anyway.
  */
 export default async function PipelinePage() {
-  const [{ data: contacts, error }, viewer] = await Promise.all([getContacts(), getPipelineViewer()]);
+  const [{ data: contacts, error }, viewer, { data: funnel }] = await Promise.all([
+    getContacts(),
+    getPipelineViewer(),
+    getPipelineFunnel(),
+  ]);
   const canExitSignedMandate = viewer.data?.canExitSignedMandate ?? false;
 
   return (
@@ -63,7 +68,12 @@ export default async function PipelinePage() {
             }
           />
         ) : (
-          <PipelineBoard contacts={contacts} canExitSignedMandate={canExitSignedMandate} />
+          <>
+            <PipelineBoard contacts={contacts} canExitSignedMandate={canExitSignedMandate} />
+            <div className="mt-10">
+              <PipelineFunnelCard funnel={funnel} />
+            </div>
+          </>
         )}
       </div>
     </div>

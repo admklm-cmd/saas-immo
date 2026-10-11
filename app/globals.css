@@ -614,3 +614,57 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Analytics charts (docs/design-system.md §3.5.1.C). The vendored Bklit UI code
+ * (components/charts/bklit) reads its own variable names; they are mapped to the
+ * project tokens on the chart container ONLY, never on :root.
+ * `@theme inline` below only teaches Tailwind the utility names the vendored code
+ * uses (text-chart-label...); it emits no variable on :root.
+ */
+@theme inline {
+  --color-chart-tooltip-background: var(--chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(--chart-tooltip-muted);
+  --color-chart-label: var(--chart-label);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-muted-foreground: var(--muted-foreground);
+}
+
+.chart-scope {
+  --foreground: var(--color-ink);
+  --background: var(--color-surface);
+  --muted-foreground: var(--color-ink-subtle);
+  --chart-line-primary: var(--color-ink);
+  --chart-line-secondary: var(--color-accent-strong);
+  --chart-grid: var(--color-line);
+  --chart-foreground: var(--color-ink);
+  --chart-foreground-muted: var(--color-ink-subtle);
+  --chart-label: var(--color-ink-subtle);
+  --chart-background: var(--color-surface);
+  --chart-tooltip-background: var(--color-surface);
+  --chart-tooltip-foreground: var(--color-ink);
+  --chart-tooltip-muted: var(--color-ink-muted);
+  --chart-crosshair: var(--color-line-strong);
+  --chart-indicator-color: var(--color-line-strong);
+  --chart-indicator-secondary-color: var(--color-line-strong);
+  --chart-segment-background: color-mix(in srgb, var(--color-surface-sunken) 60%, transparent);
+  --chart-segment-line: var(--color-line-strong);
+  --chart-marker-background: var(--color-surface);
+  --chart-marker-border: var(--color-ink);
+  --chart-marker-foreground: var(--color-ink);
+  --chart-marker-badge-background: var(--color-ink);
+  --chart-marker-badge-foreground: var(--color-ink-inverse);
+  --chart-brush-border: var(--color-line-strong);
+  /* Funnel ramp: greys of the ink, darker towards the signed mandate (6 steps). */
+  --chart-1: color-mix(in srgb, var(--color-ink) 14%, transparent);
+  --chart-2: color-mix(in srgb, var(--color-ink) 26%, transparent);
+  --chart-3: color-mix(in srgb, var(--color-ink) 40%, transparent);
+  --chart-4: color-mix(in srgb, var(--color-ink) 56%, transparent);
+  --chart-5: color-mix(in srgb, var(--color-ink) 76%, transparent);
+  --chart-6: var(--color-ink);
+  --chart-halo-1: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --chart-halo-2: color-mix(in srgb, var(--color-ink) 4%, transparent);
+  --chart-halo-3: color-mix(in srgb, var(--color-ink) 2%, transparent);
+}

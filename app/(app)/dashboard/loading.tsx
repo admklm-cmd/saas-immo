@@ -51,6 +51,13 @@ export default function DashboardLoading() {
         ))}
       </div>
 
+      {/* « Activité sur 30 jours »: same aspect ratios as the chart (16/10, 3/1, 4/1). */}
+      <div className="mt-14 rounded-xl border border-line bg-surface p-6">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="mt-3 h-4 w-96 max-w-full" />
+        <Skeleton className="mt-6 aspect-16/10 w-full rounded-lg sm:aspect-3/1 xl:aspect-4/1" />
+      </div>
+
       <div className="mt-14 grid gap-6 xl:grid-cols-2">
         {Array.from({ length: 2 }, (_, card) => (
           <div key={card} className="rounded-xl border border-line bg-surface p-6">

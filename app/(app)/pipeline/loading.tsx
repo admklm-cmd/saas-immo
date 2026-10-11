@@ -55,6 +55,13 @@ export default function PipelineLoading() {
         </div>
         <Skeleton className="mt-4 h-20 w-full rounded-xl sm:w-64" />
       </div>
+
+      {/* « Passage d'une étape à l'autre »: same reserved height as the funnel. */}
+      <div className="mt-10 rounded-xl border border-line bg-surface p-6">
+        <Skeleton className="h-6 w-56" />
+        <Skeleton className="mt-3 h-4 w-96 max-w-full" />
+        <Skeleton className="mt-6 h-96 w-full rounded-lg md:h-80" />
+      </div>
     </div>
   );
 }

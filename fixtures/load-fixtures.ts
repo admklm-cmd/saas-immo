@@ -259,9 +259,12 @@ async function main(): Promise<void> {
 
   console.log(`  Agence A « ${a.agency.name} » :`, summarise(a));
   console.log(`  Agence B « ${b.agency.name} » :`, summarise(b));
-  console.log(`  Identifiants écrits dans ${CREDENTIALS_PATH} (ignoré par git).`);
-  for (const { user, password, generated } of users) {
-    console.log(`  - ${user.email} (${user.role}, agence ${user.agency.toUpperCase()}) : ${password}${generated ? "" : " (depuis l'environnement)"}`);
+  // Passwords are never printed (terminal scrollback, shared screens, CI logs): read them in the 0600 file.
+  console.log(`  Identifiants (mots de passe inclus) écrits dans ${CREDENTIALS_PATH} (ignoré par git).`);
+  for (const { user, generated } of users) {
+    console.log(
+      `  - ${user.email} (${user.role}, agence ${user.agency.toUpperCase()}) : mot de passe ${generated ? "généré" : `depuis ${user.passwordEnvVar}`}`,
+    );
   }
   if (estimationSecret.source === "environment") {
     console.log("  Secret de signature de l'estimation installé dans Vault (depuis ESTIMATION_IP_HMAC_SECRET).");

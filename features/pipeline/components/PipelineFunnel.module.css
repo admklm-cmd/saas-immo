@@ -1,0 +1,127 @@
+/*
+ * Layout of the funnel card (docs/design-system.md §3.5.1.B / E). ONE set of
+ * elements, two arrangements, so nothing is duplicated in the DOM:
+ *   - under 48rem: a column of six 56 px rows (label | slice | figure), 8 px apart;
+ *   - from 48rem: six equal columns (label and figure above, rates below the slice).
+ * `--i` is the index of the slice. The Bklit funnel draws its six cells with the
+ * same arithmetic (equal cells, 8 px gap), so these tracks line up with its slices.
+ */
+.grid {
+  --funnel-gap: 0.5rem; /* 8 px, the `gap` given to the chart */
+  --funnel-chart-h: 17rem;
+  position: relative;
+  display: grid;
+  gap: var(--funnel-gap);
+  grid-template-columns: 6.5rem minmax(0, 1fr) 4.5rem;
+  grid-template-rows: repeat(6, 3.5rem);
+}
+
+.chart {
+  grid-column: 2;
+  grid-row: 1 / span 6;
+  min-width: 0;
+}
+
+.label {
+  grid-column: 1;
+  grid-row: calc(var(--i) + 1);
+  align-self: center;
+  min-width: 0;
+}
+
+.value {
+  grid-column: 3;
+  grid-row: calc(var(--i) + 1);
+  align-self: center;
+  justify-self: end;
+}
+
+.rate {
+  grid-column: 3;
+  grid-row: calc(var(--i) + 1);
+  align-self: start;
+  justify-self: end;
+  /* Straddles the 8 px gap above its slice. */
+  transform: translateY(calc(-50% - var(--funnel-gap) / 2));
+  z-index: 2;
+}
+
+.note {
+  grid-column: 1 / span 3;
+  grid-row: 7;
+  justify-self: end;
+}
+
+.tip {
+  grid-column: 2;
+  grid-row: calc(var(--i) + 1);
+  align-self: center;
+  justify-self: center;
+  z-index: 30;
+  pointer-events: none;
+}
+
+@media (width >= 48rem) {
+  .grid {
+    --funnel-chart-h: 15rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: auto auto var(--funnel-chart-h) auto auto;
+    row-gap: 0;
+    column-gap: var(--funnel-gap);
+  }
+
+  .chart {
+    grid-column: 1 / span 6;
+    grid-row: 3;
+    margin-block: 0.75rem;
+  }
+
+  .label {
+    grid-column: calc(var(--i) + 1);
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .value {
+    grid-column: calc(var(--i) + 1);
+    grid-row: 2;
+    align-self: start;
+    justify-self: start;
+  }
+
+  .rate {
+    grid-column: calc(var(--i) + 1);
+    grid-row: 4;
+    align-self: start;
+    justify-self: start;
+    transform: translateX(calc(-50% - var(--funnel-gap) / 2));
+  }
+
+  .note {
+    grid-column: 6;
+    grid-row: 5;
+    justify-self: start;
+  }
+
+  .tip {
+    grid-column: calc(var(--i) + 1);
+    grid-row: 3;
+    align-self: start;
+    justify-self: center;
+    margin-top: 1.25rem;
+  }
+
+  .tipFirst {
+    justify-self: start;
+  }
+
+  .tipLast {
+    justify-self: end;
+  }
+}
+
+@media (width >= 80rem) {
+  .grid {
+    --funnel-chart-h: 16.25rem;
+  }
+}

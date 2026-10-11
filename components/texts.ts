@@ -248,6 +248,44 @@ export const APP_TEXTS = {
     columnUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
     columnEmpty: "Aucun dossier à cette étape.",
     lostSubtitle: "Hors parcours actif.",
+
+    /** « Passage d'une étape à l'autre » (docs/design-system.md §3.5.1.B). */
+    funnel: {
+      title: "Passage d’une étape à l’autre",
+      scope:
+        "Dossiers enregistrés dans l’agence, état actuel · chaque tranche compte les dossiers arrivés au moins à cette étape",
+      finding: "Constat sur les dossiers enregistrés, pas une prévision.",
+      lostLabel: "Perdus",
+      lostValue: (total: number) => `Perdus : ${total}`,
+      lostNote: "Comptés à part, hors de l’entonnoir.",
+      lostUntraced: (untraced: number) =>
+        untraced > 1
+          ? `Dont ${untraced} sans historique d’étape, comptés comme arrivés à « Nouveau » seulement.`
+          : `Dont ${untraced} sans historique d’étape, compté comme arrivé à « Nouveau » seulement.`,
+      lostUnavailable: "Perdus : Indisponible",
+      signedNote: "Confirmé par un humain",
+      noRate: "—",
+      notComputable: "Non calculable : aucun dossier à l’étape précédente",
+      rateName: (rate: string, from: string, to: string) => `${rate} des dossiers « ${from} » passent à « ${to} »`,
+      rateNameEmpty: (from: string, to: string) => `Passage de « ${from} » à « ${to} » : non calculable`,
+      ratio: (reached: number, previous: number) => `${reached} sur ${previous} dossiers`,
+      stageDossiers: (count: number) => (count > 1 ? `${count} dossiers` : `${count} dossier`),
+      tooltipPass: (rate: string, to: string) => `${rate} passent à « ${to} »`,
+      tableSummary: "Afficher les valeurs par étape",
+      tableCaption: "Dossiers arrivés à chaque étape et passage vers l’étape suivante",
+      colStage: "Étape",
+      colReached: "Dossiers arrivés à cette étape",
+      colRate: "Passage vers l’étape suivante",
+      chartLabel: (parts: string) =>
+        `Entonnoir du pipeline. ${parts} Les pourcentages de passage sont dans le tableau sous le graphique.`,
+      chartLabelPart: (stage: string, count: number) => `${stage} : ${count} ${count > 1 ? "dossiers" : "dossier"}.`,
+      keyboardHint: "Flèches : passer d’une étape à l’autre. Échap : fermer.",
+      liveStage: (stage: string, count: number, pass: string | null) =>
+        `${stage} : ${count} ${count > 1 ? "dossiers" : "dossier"}${pass ? `, ${pass}` : ""}`,
+      empty: "Aucun dossier enregistré pour le moment.",
+      unavailableTitle: "Indisponible",
+      unavailableBody: "Le calcul n’a pas pu être fait. Rechargez la page.",
+    },
     /** Position of a column in the seller's journey (readable on a phone, one column per screen). */
     stageIndex: (position: number, total: number) => `Étape ${position} sur ${total}`,
     /** Name of the horizontally scrolling board. Must never contain a stage label. */
@@ -913,6 +951,34 @@ export const APP_TEXTS = {
     openContact: "Ouvrir la fiche",
 
     todoTitle: "À faire maintenant",
+
+    /** « Activité sur 30 jours » (docs/design-system.md §3.5.1.A). */
+    activity: {
+      title: "Activité sur 30 jours",
+      scope: "Demandes vendeur reçues et dossiers qualifiés, par jour · 30 derniers jours · heure de Paris",
+      receivedSeries: "Demandes reçues",
+      qualifiedSeries: "Dossiers qualifiés",
+      receivedUnit: (total: number) => (total > 1 ? "demandes reçues" : "demande reçue"),
+      qualifiedUnit: (total: number) => (total > 1 ? "dossiers qualifiés" : "dossier qualifié"),
+      totalScope: "sur 30 jours",
+      note: "Chiffres comptés dans la base de l’agence. Un jour sans valeur est un jour à 0.",
+      todayNote: "Le dernier jour est en cours : il peut encore changer.",
+      legendSolid: "trait plein",
+      legendDashed: "trait en tirets",
+      tableSummary: "Afficher les valeurs jour par jour",
+      tableCaption: "Demandes reçues et dossiers qualifiés par jour, 30 derniers jours",
+      colDay: "Jour",
+      colReceived: "Demandes reçues",
+      colQualified: "Dossiers qualifiés",
+      chartLabel: (received: number, qualified: number) =>
+        `Courbe de l’activité sur 30 jours. Demandes reçues : ${received}. Dossiers qualifiés : ${qualified}. Le tableau des valeurs se trouve sous le graphique.`,
+      keyboardHint: "Flèches gauche et droite : changer de jour. Début et Fin : premier et dernier jour. Échap : fermer.",
+      liveDay: (day: string, received: number, qualified: number) =>
+        `${day} : ${received} ${received > 1 ? "demandes reçues" : "demande reçue"}, ${qualified} ${qualified > 1 ? "dossiers qualifiés" : "dossier qualifié"}`,
+      empty: "Aucune demande reçue sur les 30 derniers jours.",
+      unavailableTitle: "Indisponible",
+      unavailableBody: "Le calcul n’a pas pu être fait. Rechargez la page ; les autres blocs ne sont pas touchés.",
+    },
 
     messagesTitle: "Messages à valider",
     messagesUnit: (total: number) => (total > 1 ? "messages pas encore envoyés" : "message pas encore envoyé"),

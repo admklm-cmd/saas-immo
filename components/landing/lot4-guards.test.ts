@@ -27,10 +27,11 @@ const SOURCES = ["app", "components", "features", "lib"].flatMap((dir) => files(
 const rel = (path: string) => relative(ROOT, path).split(sep).join("/");
 
 describe("Lot 4 guards", () => {
-  it("imports animejs only in the two documented motion modules", () => {
+  it("imports animejs only in the three documented motion modules", () => {
     const importers = SOURCES.filter((path) => /from\s+["']animejs|import\(["']animejs|require\(["']animejs/.test(readFileSync(path, "utf8"))).map(rel);
     expect(importers.length).toBeGreaterThan(0);
     expect(importers.sort()).toEqual([
+      "components/charts/ChartStage.tsx",
       "components/landing/hero/nano-field-controller.ts",
       "components/landing/roi/roi-motion.ts",
     ]);

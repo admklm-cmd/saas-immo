@@ -4824,6 +4824,49 @@ cobalt strong 7,3:1). Focus visible : anneau global (`:focus-visible`) sur le gr
     et `motion` recopiées. Aucune dépendance Anime.js ajoutée ; `motion` et visx seulement si
     Bklit les exige (à signaler à l'orchestrateur : ajout de dépendances = décision à confirmer).
 
+#### H. Réalisation (11/10/2026, `frontend-ux`) : où vit le code, écarts constatés avec le code Bklit réel
+
+**Fichiers.** Code Bklit copié tel quel dans `components/charts/bklit/` (hors lint, voir `eslint.config.mjs` ;
+notice MIT dans `THIRD_PARTY_NOTICES.md`) · `components/charts/ChartStage.tsx` + `ChartReadyContext.ts` (seul
+îlot Anime.js) · `features/dashboard/components/Activity*.tsx` + `activity-chart.ts` · `features/pipeline/components/PipelineFunnel*.tsx`
++ `funnel-chart.ts` · variables `.chart-scope` et `@theme inline` en fin de `app/globals.css` · textes dans
+`APP_TEXTS.dashboard.activity` et `APP_TEXTS.pipeline.funnel`.
+
+**Écarts avec la spécification (noms de props inexistants ou comportement différent) :**
+1. `SegmentBackground`, `SegmentLineFrom`, `SegmentLineTo` n'existent pas. Équivalent : `Area showHighlight` (segment surligné,
+   variables `--chart-segment-background` / `--chart-segment-line` posées sur `.chart-scope`) et le filet du `ChartTooltip`.
+2. Domaine Y `[0, max(4, max)]` non réglable : `AreaChart` calcule `[0, 1,1 × max]` arrondi (`nice`). Les repères de la grille
+   sont forcés à des **entiers** (`Grid rowTickValues` = 0, milieu arrondi, maximum) ; jamais de 0,5.
+3. Variables réelles de Bklit : `--chart-tooltip-background`, `--chart-segment-background`, `--chart-segment-line`,
+   `--chart-foreground-muted`, `--chart-label`… (la spec disait `--chart-tooltip-bg`, `--chart-segment-bg`, `--chart-axis`).
+   Le tableau C reste la référence de **valeurs** ; les noms réels sont dans `.chart-scope`.
+4. Langue : les formateurs de date et de nombre de Bklit étaient en `en-US`. `chart-formatters.ts` (3 constantes) est le seul
+   fichier modifié en plus des deux imports : `fr-FR`, fuseau `Europe/Paris`, « 12 oct. » à l'axe, « lundi 12 octobre » dans l'infobulle.
+5. Tirets de la 2e série : `Area dashFromIndex={0} dashArray="4 3"` (le composant ne propose pas de `strokeDasharray` direct).
+6. Clavier de la courbe : l'infobulle Bklit ne suit que le pointeur. Le pilotage clavier est dans `ActivityAreaChart` (flèches,
+   Début/Fin, Échap) et s'affiche dans une ligne sous le graphique + zone `aria-live` ; l'infobulle flottante reste au survol.
+7. `FunnelChart` : pas de `labelLayout="outside"` (seulement `spread` / `grouped`), pas d'infobulle, pas de clavier, pas de
+   pourcentage entre tranches, et `grid` n'a pas de `lineColor` tokenisé par défaut. Réalisation : `showValues/showLabels/showPercentage` à
+   `false` ; libellés, chiffres et pourcentages sont du HTML posé **autour** du graphique sur une grille CSS qui reprend le calcul de
+   cellules de Bklit (6 colonnes égales, 8 px) ; infobulle, clavier et `aria-live` écrits dans `PipelineFunnelChart` ;
+   `hoveredIndex` / `onHoverChange` (contrôlés) relient souris et clavier.
+8. `layers` : les anneaux Bklit sont la couleur de la tranche à 18 % → 83 % d'opacité (pas 6/4/2 %). Les variables `--chart-halo-1/2/3`
+   sont définies mais non utilisées : le rendu retenu est la rampe de gris seule, avec les trois anneaux de Bklit. À juger à l'œil.
+9. `renderPattern` s'applique à toutes les tranches : un motif plein pour les autres, plus les pointillés à 12 % sur la tranche lue.
+10. Entrée Bklit : `animationDuration={900}` (courbe) ; `enterTransition` 0,6 s et `staggerDelay` 0,07 s (entonnoir). `MotionConfig
+    reducedMotion="user"` en tête de chaque îlot.
+11. Peu de rendu côté serveur : le graphique SVG n'est monté qu'à `ready` (après `ChartStage`) ; son emplacement a sa hauteur finale
+    (`aspect-16/10 sm:aspect-3/1 xl:aspect-4/1` ; entonnoir : lignes de 56 px en vertical, `--funnel-chart-h` en horizontal).
+12. Si la carte est déjà à l'écran à l'hydratation (≥ 35 %), l'entrée de la carte est sautée (la cacher ferait clignoter) ;
+    le graphique prend le relais tout de suite.
+
+**Précision métier retenue (prime sur §B « Données »)** : l'entonnoir est dessiné sur `reached` (les dossiers perdus sont comptés
+jusqu'à la dernière étape atteinte ; la tranche « Nouveau » = tous les dossiers). « Perdus » est affiché à part avec `lost.total` et
+la mention « Dont N sans historique d'étape… » (`lost.untraced`). Les taux viennent de `rateFromPrevious` (jamais recalculés).
+
+**Placement du pipeline** : conforme à la spec (sous la voie « Perdu »). Avec 84 dossiers la page fait ≈ 3 650 px à 1440 px et la carte
+commence vers 2 900 px : elle est lue tard. Un emplacement entre les onglets d'étapes et le tableau serait plus visible ; non fait (décision à valider).
+
 ### 3.6 Tâches (`features/tasks/components/`) et rendez-vous (`features/appointments/components/`)
 
 | Composant | Fichier | Rôle |

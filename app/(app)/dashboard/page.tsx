@@ -6,11 +6,12 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ActivityChartCard } from "@/features/dashboard/components/ActivityChartCard";
 import { AgentsSummary } from "@/features/dashboard/components/AgentsSummary";
 import { PipelineFrieze } from "@/features/dashboard/components/PipelineFrieze";
 import { TodoSection } from "@/features/dashboard/components/TodoSection";
 import { UpcomingAppointments } from "@/features/dashboard/components/UpcomingAppointments";
-import { getDashboardSummary } from "@/features/dashboard/queries";
+import { getDashboardDailySeries, getDashboardSummary } from "@/features/dashboard/queries";
 
 const TEXTS = APP_TEXTS.dashboard;
 
@@ -23,7 +24,9 @@ export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand
  *   1. The pipeline frieze: one dot per dossier at its stage, and the human
  *      checkpoints on the line — the demonstration of the screen.
  *   2. « À faire maintenant »: one row per kind of human decision.
- *   3. The AI agents (kill switch, executions) and the next appointments.
+ *   3. « Activité sur 30 jours »: reading, after the action (`getDashboardDailySeries`;
+ *      a failed read is « Indisponible », never a zero).
+ *   4. The AI agents (kill switch, executions) and the next appointments.
  *
  * Every figure is an exact count made server-side (`getDashboardSummary`),
  * displayed with its scope. A figure that could not be computed reads
@@ -32,7 +35,7 @@ export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand
  * entrance animation: the whole screen is in the server HTML.
  */
 export default async function DashboardPage() {
-  const { data: summary, error } = await getDashboardSummary();
+  const [{ data: summary, error }, { data: series }] = await Promise.all([getDashboardSummary(), getDashboardDailySeries()]);
   // Exact count of the header action, only when it was really computed (never a guessed 0).
   const messages = summary?.todo.messagesToValidate;
   const pendingMessages = messages?.status === "ok" && messages.value.total > 0 ? messages.value.total : null;
@@ -76,6 +79,7 @@ export default async function DashboardPage() {
         <div className="mt-10 flex flex-col gap-12 lg:mt-12 lg:gap-14">
           <PipelineFrieze pipeline={summary.pipeline} todo={summary.todo} />
           <TodoSection todo={summary.todo} />
+          <ActivityChartCard series={series} />
           <div className="grid gap-6 xl:grid-cols-2">
             <AgentsSummary agents={summary.agents} />
             <UpcomingAppointments list={summary.upcomingAppointments} />

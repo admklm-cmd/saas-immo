@@ -14,9 +14,14 @@ import { makeSummary } from "@/features/dashboard/components/summary-fixture";
 
 vi.mock("@/features/dashboard/queries", () => ({
   getDashboardSummary: vi.fn(),
+  getDashboardDailySeries: vi.fn(),
+}));
+// The chart island is covered by its own tests.
+vi.mock("@/features/dashboard/components/ActivityChartCard", () => ({
+  ActivityChartCard: () => <h2>{APP_TEXTS.dashboard.activity.title}</h2>,
 }));
 
-const { getDashboardSummary } = await import("@/features/dashboard/queries");
+const { getDashboardSummary, getDashboardDailySeries } = await import("@/features/dashboard/queries");
 const DashboardPage = (await import("./page")).default;
 
 const TEXTS = APP_TEXTS.dashboard;
@@ -26,18 +31,20 @@ afterEach(() => cleanup());
 describe("Écran Tableau de bord", () => {
   it("affiche la frise des dossiers en premier, puis « À faire maintenant », les agents et les rendez-vous", async () => {
     vi.mocked(getDashboardSummary).mockResolvedValue({ data: makeSummary(), error: null });
+    vi.mocked(getDashboardDailySeries).mockResolvedValue({ data: null, error: { code: "x", message: "x" } });
 
     render(await DashboardPage());
 
     expect(screen.getByRole("heading", { level: 1, name: TEXTS.title })).toBeDefined();
     const headings = screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent);
-    expect(headings.slice(0, 2)).toEqual([TEXTS.friezeTitle, TEXTS.todoTitle]);
+    expect(headings.slice(0, 3)).toEqual([TEXTS.friezeTitle, TEXTS.todoTitle, TEXTS.activity.title]);
     expect(headings).toEqual(expect.arrayContaining([TEXTS.agentsTitle, TEXTS.upcomingTitle]));
     expect(screen.queryByText(TEXTS.unavailable)).toBeNull();
   });
 
   it("affiche une erreur utile avec une action quand la session ou l'agence est invalide", async () => {
     const message = "Votre session a expiré. Reconnectez-vous.";
+    vi.mocked(getDashboardDailySeries).mockResolvedValue({ data: null, error: { code: "x", message: "x" } });
     vi.mocked(getDashboardSummary).mockResolvedValue({
       data: null,
       error: { code: "unauthenticated", message },

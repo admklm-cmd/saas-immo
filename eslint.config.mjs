@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     "blob-report/**",
     "supabase/.temp/**",
     "supabase/.branches/**",
+    // Vendored Bklit UI (MIT, copied from the shadcn registry, see THIRD_PARTY_NOTICES.md).
+    // Kept as published except two import paths; not ours to rewrite for the React Compiler rules.
+    "components/charts/bklit/**",
   ]),
 ]);
 
