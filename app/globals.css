@@ -241,7 +241,7 @@
 
   /* Bricolage never below 18 px: a small heading is set in Geist (§2.2.2).
      Utilities stay stronger, and future small headings are covered too. */
-  :is(h1, h2, h3, h4):is(.text-xs, .text-sm, .text-base, .text-lg, .text-overline) {
+  :is(h1, h2, h3, h4):is(.text-xs, .text-sm, .text-base, .text-lg, .text-heading, .text-overline) {
     font-family: var(--font-sans);
   }
 
@@ -569,6 +569,23 @@
  */
 [data-landing] .particle-veil::before {
   inset: calc((var(--veil-y) + 0.375rem) * -1) calc((var(--veil-x) + 0.25rem) * -1);
+}
+
+/*
+ * Landing only (fix of 10/10/2026): a veil never paints over a text. With
+ * `isolation: isolate` on every veiled block, each block was its own stacking
+ * context, painted in the order of the page: the veil of a block reached over
+ * the text of the block BEFORE it — the descenders of the first note under
+ * block A were cut by the veil of the second note (0.75rem overflow, 4px
+ * apart), and the overline « Le problème » sat under the 70 % + 75 % veils of
+ * the title below it (its ink-subtle read #76767d instead of #66666e). Without
+ * the isolation, every veil (`z-index: -1`) joins the stacking context of the
+ * landing wrapper (`[data-landing]`, z-index 10) or of the hero content
+ * (z-index 10): all the veils paint first, all the texts above them, still
+ * above the fixed background and the nanorobots.
+ */
+[data-landing] :is(.particle-veil, .network-veil-title, .network-veil-title-subtle [data-title-tone="subtle"]) {
+  isolation: auto;
 }
 
 /*

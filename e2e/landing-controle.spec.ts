@@ -32,10 +32,11 @@ async function showGrid(page: Page): Promise<void> {
 }
 
 /**
- * Counts the requestAnimationFrame calls that do NOT come from the network
- * background: scrolling makes the network follow the scroll (its own frames,
- * tested by `landing-reseau` and `landing-sans-boucle`); the section itself
- * must add none (L3-D4). The caller is read from the stack (dev build, names kept).
+ * Counts the requestAnimationFrame calls of the page, except the frame loop of
+ * the tech accent (`requestFrame`, `TechAccentEngine`: sweep of an accented word). The former network background is gone;
+ * the nanorobots of the hero pause off screen (§2.11.4 bis F), so with the
+ * control section on screen the section itself must add none (L3-D4). The
+ * caller is read from the stack (dev build, names kept).
  */
 async function countRafOutsideNetwork(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -43,7 +44,7 @@ async function countRafOutsideNetwork(page: Page): Promise<void> {
     target.__rafOther = 0;
     const previous = window.requestAnimationFrame.bind(window);
     window.requestAnimationFrame = (callback: FrameRequestCallback) => {
-      if (!/LivingEngine|requestFrame/.test(new Error().stack ?? "")) target.__rafOther += 1;
+      if (!/LivingEngine|requestFrame|TechAccentEngine/.test(new Error().stack ?? "")) target.__rafOther += 1;
       return previous(callback);
     };
   });
@@ -271,7 +272,7 @@ test.describe("section contrôle — état final immédiat", () => {
     await openHome(page);
     await expectFacts(page);
     await expectFinalTimeline(page);
-    await expect(page.locator("[data-loop]")).toHaveCount(1);
+    await expect(page.locator(`${SECTION} [data-loop]`)).toHaveCount(0); // no loop in the section itself
     await context.close();
   });
 });
@@ -311,17 +312,16 @@ test.describe("section contrôle en mouvement (L3-D3, L3-D4)", () => {
     await expect(timeline.locator("[data-block][data-shown='true']")).toHaveCount(0);
     await expect(page.getByTestId("control-playhead")).toHaveAttribute("data-day", "0");
 
-    // First the control scene with the timeline still below the fold: the network settles (its own
-    // requestAnimationFrame calls end), then the timeline comes on screen within the same scene.
+    // First the control section with the timeline still below the fold, then the timeline comes on screen.
     await page.locator(SECTION).evaluate((node) => window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 400, behavior: "instant" }));
-    const canvas = page.getByTestId("living-background");
-    await expect(canvas).toHaveAttribute("data-scene", "controle", { timeout: 10_000 });
-    await expect(canvas).toHaveAttribute("data-motion", "settled", { timeout: 15_000 });
+    // The nanorobots of the hero are off screen: paused, no frame of theirs.
+    await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "paused", { timeout: 2_000 });
     await expect(timeline).toHaveAttribute("data-visual-state", "idle");
+    // The frame already requested by the engine when it paused is the last one.
+    await page.waitForTimeout(500);
     const calls = await sectionRafCalls(page);
     await showGrid(page);
     await expect(timeline).toHaveAttribute("data-visual-state", "playing", { timeout: 2_000 });
-    await expect(canvas).toHaveAttribute("data-scene", "controle");
     await expect(timeline.locator("[data-block='firstContact']")).toHaveAttribute("data-decision", "pending");
     await expect(timeline).toHaveAttribute("data-visual-state", "done", { timeout: 5_000 });
     expect(await sectionRafCalls(page), "requestAnimationFrame calls (outside the network) while the timeline plays").toBe(calls);
@@ -349,7 +349,7 @@ test.describe("section contrôle en mouvement (L3-D3, L3-D4)", () => {
     const end = await snapshot();
     await page.waitForTimeout(10_000);
     expect(await snapshot()).toEqual(end);
-    await expect(page.locator("[data-loop]")).toHaveCount(1);
+    await expect(page.locator(`${SECTION} [data-loop]`)).toHaveCount(0); // no loop in the section itself
     const infinite = await page.evaluate(() =>
       document.getAnimations().filter((animation) => animation.effect?.getComputedTiming().iterations === Infinity).length,
     );

@@ -1,91 +1,29 @@
-import { expect, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
 
 /**
- * Helpers of the landing network tests (docs/design-system.md §2.11.4, §2.11.7).
- * Everything is measured in the page itself: no image library is needed.
+ * Helpers of the landing motion tests (docs/design-system.md §2.11.4,
+ * §2.11.4 bis, §2.11.7). Everything is measured in the page itself: no image
+ * library is needed. The former network canvas is gone: what is left counts the
+ * frames requested by the page and measures the contrast of the texts.
  */
 
-type Instrumented = Window & {
-  __rafCalls: number;
-  __motion: { state: string; at: number }[];
-  __litSeen: number;
-};
+type Instrumented = Window & { __rafCalls: number };
 
-/**
- * Init script: counts EVERY call to requestAnimationFrame made by the page,
- * and records the changes of `data-motion` / `data-lit` of the network canvas.
- */
+/** Init script: counts EVERY call to requestAnimationFrame made by the page. */
 export async function instrumentPage(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const target = window as unknown as Instrumented;
     target.__rafCalls = 0;
-    target.__motion = [];
-    target.__litSeen = 0;
     const original = window.requestAnimationFrame.bind(window);
     window.requestAnimationFrame = (callback: FrameRequestCallback) => {
       target.__rafCalls += 1;
       return original(callback);
     };
-    const observe = () =>
-      new MutationObserver((records) => {
-        for (const record of records) {
-          const element = record.target as HTMLElement;
-          if (element.dataset?.testid !== "living-background") continue;
-          if (record.attributeName === "data-motion") target.__motion.push({ state: element.dataset.motion ?? "", at: performance.now() });
-          if (record.attributeName === "data-lit") target.__litSeen = Math.max(target.__litSeen, Number(element.dataset.lit ?? 0));
-        }
-      }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ["data-motion", "data-lit"] });
-    if (document.documentElement) observe();
-    else document.addEventListener("DOMContentLoaded", observe);
   });
 }
 
 export function rafCalls(page: Page): Promise<number> {
   return page.evaluate(() => (window as unknown as Instrumented).__rafCalls);
-}
-
-export function motionLog(page: Page): Promise<{ state: string; at: number }[]> {
-  return page.evaluate(() => (window as unknown as Instrumented).__motion);
-}
-
-export function litSeen(page: Page): Promise<number> {
-  return page.evaluate(() => (window as unknown as Instrumented).__litSeen);
-}
-
-/** Milliseconds from the navigation start to the end of the load event. */
-export function loadEnd(page: Page): Promise<number> {
-  return page.evaluate(() => (performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming).loadEventEnd);
-}
-
-export async function waitForMotion(page: Page, state: string, timeout = 15_000): Promise<void> {
-  await expect(page.getByTestId("living-background")).toHaveAttribute("data-motion", state, { timeout });
-}
-
-/**
- * Pixels of the network canvas: mean opacity (« encre », share of a fully
- * inked canvas) and number of cobalt pixels (B − R > 80 and B > 150).
- */
-export function canvasPixels(page: Page): Promise<{ ink: number; cobalt: number }> {
-  return page.getByTestId("living-background").evaluate((element) => {
-    const canvas = element as HTMLCanvasElement;
-    const context = canvas.getContext("2d");
-    if (!context) return { ink: -1, cobalt: -1 };
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let alpha = 0;
-    let cobalt = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      const a = data[i + 3]!;
-      if (a === 0) continue;
-      alpha += a;
-      if (data[i + 2]! - data[i]! > 80 && data[i + 2]! > 150) cobalt += 1;
-    }
-    return { ink: alpha / (255 * canvas.width * canvas.height), cobalt };
-  });
-}
-
-/** The canvas as a PNG data URL (identical strings ⇔ identical pixels). */
-export function canvasSnapshot(page: Page): Promise<string> {
-  return page.getByTestId("living-background").evaluate((element) => (element as HTMLCanvasElement).toDataURL());
 }
 
 /** Puts the middle of a section at the middle of the viewport (instant scroll). */
@@ -231,24 +169,4 @@ export function contrastFailures(results: LineContrast[]): string[] {
     if (fail) failures.push(`${line.role} « ${line.text} » ${line.darkest.toFixed(2)} / ${line.median.toFixed(2)}`);
   }
   return failures;
-}
-
-/**
- * Mean alpha of the network canvas in vertical bands (docs/design-system.md
- * §2.11.7 n° 7 bis): the two extreme tenths of the width and the central 60 %.
- */
-export function canvasBands(page: Page): Promise<{ left: number; right: number; center: number }> {
-  return page.getByTestId("living-background").evaluate((element) => {
-    const canvas = element as HTMLCanvasElement;
-    const context = canvas.getContext("2d");
-    if (!context) return { left: -1, right: -1, center: -1 };
-    const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
-    const mean = (x0: number, x1: number) => {
-      let sum = 0;
-      for (let y = 0; y < height; y++) for (let x = x0; x < x1; x++) sum += data[(y * width + x) * 4 + 3]!;
-      return sum / (255 * (x1 - x0) * height);
-    };
-    const tenth = Math.round(width / 10);
-    return { left: mean(0, tenth), right: mean(width - tenth, width), center: mean(Math.round(width * 0.2), Math.round(width * 0.8)) };
-  });
 }

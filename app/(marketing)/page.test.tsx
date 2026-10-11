@@ -28,13 +28,16 @@ it("presents the hero, the five agents and the human safeguards", () => {
   expect(screen.getAllByText(LANDING_TEXTS.journey.badge).length).toBeGreaterThanOrEqual(2);
 });
 
-it("drives one background scene per section, and the background is decorative", () => {
+it("names every section, and the still background is decorative", () => {
   const { container } = render(<HomePage />);
   const scenes = Array.from(container.querySelectorAll("[data-living-scene]")).map((section) =>
     section.getAttribute("data-living-scene"),
   );
   expect(scenes).toEqual([...LIVING_SCENES]);
-  expect(screen.getByTestId("living-background").getAttribute("aria-hidden")).toBe("true");
+  expect(screen.getByTestId("particle-handoff-background").getAttribute("aria-hidden")).toBe("true");
+  // The former network canvas is gone: no canvas behind the page (§2.11.4 bis B).
+  expect(screen.queryByTestId("living-background")).toBeNull();
+  expect(screen.queryByTestId("nano-particle-field")).toBeNull();
 });
 
 it("offers both public estimation and agency access, and no floating contact button", () => {
@@ -59,9 +62,11 @@ it("gives three titles one effect each, never repeated, replayable on hover; the
     expect(title.hasAttribute("data-accent-effect"), id).toBe(false);
     expect(title.querySelectorAll("[data-accent-frame], [data-accent-mark], canvas, [data-letter]"), id).toHaveLength(0);
   }
-  // Exactly one element of the page may loop: block A of the hero (§2.11.8.1 n° 3).
-  expect(container.querySelectorAll("[data-loop]")).toHaveLength(1);
-  expect(container.querySelector("[data-loop]")?.getAttribute("data-testid")).toBe("hero-ecosystem");
+  // Two elements of the page may loop: the nanorobots and block A of the hero (§2.11.8.1 n° 3, §2.11.4 bis I).
+  expect(Array.from(container.querySelectorAll("[data-loop]")).map((element) => element.getAttribute("data-testid"))).toEqual([
+    "hero-nanorobots",
+    "hero-ecosystem",
+  ]);
   // The final panel ends on its note, no canvas inside it (§2.11.3 bis).
   const actions = screen.getByTestId("final-actions");
   expect(actions.lastElementChild?.textContent).toBe(LANDING_TEXTS.final.note);

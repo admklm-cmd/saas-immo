@@ -308,7 +308,7 @@ Règles :
 ou `text-overline` (ex. `h3` « L’agent au travail » des cartes, `h2` des colonnes du pipeline,
 `h2` en capitales de `RunOutcomeSummary`) est en **Geist**. Mise en œuvre recommandée, dans
 `@layer base` de `app/globals.css`, juste après la règle `h1–h4` :
-`:is(h1, h2, h3, h4):is(.text-xs, .text-sm, .text-base, .text-lg, .text-overline) { font-family: var(--font-sans); }`
+`:is(h1, h2, h3, h4):is(.text-xs, .text-sm, .text-base, .text-lg, .text-heading, .text-overline) { font-family: var(--font-sans); }`
 (les utilitaires restent prioritaires, la règle couvre aussi les futurs titres). Une autre mise
 en œuvre est acceptée si le résultat calculé est le même.
 
@@ -318,7 +318,7 @@ en œuvre est acceptée si le résultat calculé est le même.
 |---|---|---|---|---|
 | `text-poster` | `clamp(2.5rem, 1rem + 7.2vw, 7.5rem)` : 44 / 90 / 120 px, **borné par la colonne** : `font-size: min(var(--text-poster), 14cqi)`, `wdth` 92 (décision du 01/10/2026) | 0,95 | `-0.035em` | `h1` du hero |
 | `text-statement` | `clamp(2.25rem, 1.25rem + 3.9vw, 4rem)` : 36 / 60 / 64 px (maximum ramené de 72 à 64 px, décision du 01/10/2026) | 1,0 | `-0.03em` | `h2` des sept sections de la landing |
-| `text-page` → `text-hero` → `text-title` | 32 (< 640) / 42 (640–1023) / 48 px (≥ 1024) | 1,15 / 1,05 / 1,05 | `-0.02em` / `-0.025em` / `-0.025em` | `h1` de `/estimation` (colonne `max-w-2xl` : le poster n'y tiendrait pas) |
+| `text-page` → `text-hero` → `text-title` | 25,6 (< 640) / 33,6 (640–1023) / 38,4 px (≥ 1024) (jetons ramenés à 1,6 / 2,1 / 2,4 rem le 08/10/2026, commit 34c5e20) | 1,15 / 1,05 / 1,05 | `-0.02em` / `-0.025em` / `-0.025em` | `h1` de `/estimation` (colonne `max-w-2xl` : le poster n'y tiendrait pas) |
 | `text-lede` (nouveau) | `clamp(1.0625rem, 1rem + 0.3vw, 1.25rem)` : 17 → 20 px | 1,55 | 0 | Sous-titre du hero, introduction des sections, sous-titre de `/estimation`. `text-ink-muted`, `max-width: 52ch` |
 | `text-base` | 16 px | 1,6 | 0 | Corps |
 | `label-mono` | 11 px, capitales | 1,2 | `0.08em` | Sur-titre de section avec trait cobalt (§ 2.2.6) |

@@ -331,8 +331,8 @@ describe("EditorialTitle accentFace (docs/design-system.md §2.11.8.8 L4-C)", ()
     const accent = heading.querySelector("[data-accent]")!;
     expect(accent.classList.contains("title-accent")).toBe(true);
     expect(accent.classList.contains("title-accent-plain")).toBe(true);
-    // No italic overhang in the title face: the frame is centred on the box.
-    expect((accent as HTMLElement).style.getPropertyValue("--accent-overhang")).toBe("0em");
+    // No italic overhang in the title face; only the hook of the final « f » leans out a little.
+    expect((accent as HTMLElement).style.getPropertyValue("--accent-overhang")).toBe("0.03em");
   });
 
   it("marks every visual word, the accented one included, with data-title-word", () => {

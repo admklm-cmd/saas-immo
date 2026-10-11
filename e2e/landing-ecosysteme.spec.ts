@@ -26,6 +26,15 @@ async function openHome(page: Page): Promise<void> {
   await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
 }
 
+/**
+ * Block A in the middle of the window. Since the terminal of the hero
+ * (docs/design-system.md §2.11.4 bis E), block A starts below the fold at
+ * 1440 × 900; centred, band 1 (and its nanorobots) is off screen.
+ */
+async function showBlockA(page: Page): Promise<void> {
+  await page.locator(FIGURE).evaluate((figure) => figure.scrollIntoView({ block: "center", behavior: "instant" }));
+}
+
 async function boxes(page: Page) {
   return page.locator(`${FIGURE} [data-check]`).evaluateAll((nodes) =>
     nodes.map((node) => ({ key: node.getAttribute("data-case"), by: node.getAttribute("data-check"), checked: node.getAttribute("data-checked") === "true" })),
@@ -99,6 +108,8 @@ test.describe("bloc A : trois blocs (L4-A1, L4-A2)", () => {
     const top = all[0]!.top;
     expect(all.map((block) => Math.round(block.top - top))).toEqual([0, 28, 12]);
     expect(Math.abs(all[0]!.left - (1440 - all[2]!.right)), "centred").toBeLessThanOrEqual(1);
+    // The terminal pushes block A below the fold at 1440 × 900: centred, it must be fully on screen.
+    await showBlockA(page);
     const viewportTop = await page.locator(`${FIGURE} [data-block]`).first().evaluate((node) => node.getBoundingClientRect().top);
     expect(viewportTop).toBeLessThan(900);
     const geometry = await layout(page);
@@ -304,6 +315,7 @@ test.describe("bloc A en mouvement (L4-A4)", () => {
       document.addEventListener("DOMContentLoaded", watch);
     });
     await openHome(page);
+    await showBlockA(page);
     const figure = page.locator(FIGURE);
     await expect(figure).toHaveAttribute("data-loop-state", "playing");
     await expect(figure).toHaveAttribute("data-loop-cycles", "2", { timeout: 30_000 });
@@ -376,6 +388,7 @@ test.describe("bloc A en mouvement (L4-A4)", () => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
+    await showBlockA(page);
     const figure = page.locator(FIGURE);
     await expect(figure).toHaveAttribute("data-loop-state", "playing");
     await page.waitForTimeout(2_500);
@@ -397,7 +410,7 @@ test.describe("bloc A en mouvement (L4-A4)", () => {
     await page.waitForTimeout(1_500);
     expect(await snapshot()).toEqual(paused);
 
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await showBlockA(page);
     await expect(figure).toHaveAttribute("data-loop-state", "playing", { timeout: 1_000 });
     expect((await snapshot()).step, "resumes at the same step").toBe(paused.step);
 

@@ -8,16 +8,18 @@ import { signIn } from "./helpers/sign-in";
 /**
  * Public home page: the hero (title revealed line then word, tilted tag, black
  * then light action), block A « Vous » in the ecosystem of the agents labelled
- * as a simulation (docs/design-system.md §2.11.8.3), and the neural network
- * behind the page, which follows the section in view.
+ * as a simulation (docs/design-system.md §2.11.8.3), the still hand-off
+ * behind the page and, in band 1 of the hero only, the nanorobots and the
+ * terminal « humain ⇄ machine » (§2.11.4 bis).
  *
  * The suite runs in reduced motion (playwright.config.ts): everything is in its
  * final state at once. One group opts back into real motion to check that the
- * neural network plays its arrival, rests and follows the sections, that block
- * A plays its loop on screen, and that the Simulation badge plays one cycle on
- * / only (§2.11.4, §2.11.5). Block A is covered in depth by
- * e2e/landing-ecosysteme.spec.ts, the network by e2e/landing-reseau.spec.ts,
- * the whole page « no loop » (block A excepted) by e2e/landing-sans-boucle.spec.ts.
+ * nanorobots play on screen and pause off screen, that block A plays its loop
+ * on screen, and that the Simulation badge plays one cycle on / only (§2.11.5).
+ * Block A is covered in depth by e2e/landing-ecosysteme.spec.ts, the
+ * nanorobots and the terminal by e2e/landing-hero-nanorobots.spec.ts, the
+ * whole page « no loop » (block A and the nanorobots excepted) by
+ * e2e/landing-sans-boucle.spec.ts.
  */
 
 const COLD_START = 60_000;
@@ -74,7 +76,11 @@ test("accueil : titre, étiquette, deux actions et bloc « Vous » étiqueté si
   await expect(ecosystem).toHaveAttribute("data-loop-state", "reduced");
   expectFinalBoxes(await ecosystemBoxes(page));
   await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
-  await expect(page.getByTestId("living-background")).toHaveAttribute("data-motion", "reduced");
+  // The nanorobots of the hero: the still composition; the terminal complete, no pause button (§2.11.4 bis F).
+  await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "reduced");
+  await expect(page.getByTestId("hero-terminal")).toHaveAttribute("data-terminal-state", "reduced");
+  await expect(page.getByTestId("hero-motion-pause")).toHaveCount(0);
+  await expect(page.getByTestId("living-background")).toHaveCount(0);
 
   // One background scene per section, and nothing invented on the page.
   const scenes = await page.locator("[data-living-scene]").evaluateAll((sections) =>
@@ -226,35 +232,26 @@ test("panneau final (bloc C, §2.11.8.5) : titre centré, paragraphe, actions, n
 test("cas d'erreur : une adresse inconnue du site public répond 404, sans fond animé", async ({ page }) => {
   const response = await page.goto("/cette-page-n-existe-pas");
   expect(response?.status()).toBe(404);
-  await expect(page.getByTestId("living-background")).toHaveCount(0);
+  await expect(page.getByTestId("particle-handoff-background")).toHaveCount(0);
+  await expect(page.getByTestId("hero-nanorobots")).toHaveCount(0);
 });
 
 test.describe("avec animations", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("le réseau joue son arrivée, se pose, puis suit la section visible", async ({ page }) => {
+  test("les nanorobots du hero jouent à l'écran, puis se mettent en pause hors écran", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
-    const canvas = page.getByTestId("living-background");
-    await expect(canvas).toHaveAttribute("data-scene", "hero");
-    await expect(canvas).toHaveAttribute("data-motion", "settled", { timeout: 15_000 });
-    await expect(canvas).toHaveAttribute("data-sequences", "arrivee");
-
-    // Respects the device pixel ratio (capped), never a blurry or oversized buffer.
-    const ratio = await canvas.evaluate((element) => {
-      const node = element as HTMLCanvasElement;
-      return node.width / node.clientWidth;
-    });
-    expect(ratio).toBeGreaterThanOrEqual(1);
-    expect(ratio).toBeLessThanOrEqual(2);
+    const field = page.getByTestId("hero-nanorobots");
+    await expect(field).toHaveAttribute("data-loop-state", "playing", { timeout: 10_000 });
+    await expect(page.getByTestId("hero-motion-pause")).toBeVisible();
+    // No canvas behind the page any more (§2.11.4 bis B).
+    await expect(page.locator("canvas[data-testid='living-background']")).toHaveCount(0);
 
     await page.locator("section[data-living-scene='controle']").scrollIntoViewIfNeeded();
-    await page.mouse.wheel(0, 200);
-    await expect(canvas).toHaveAttribute("data-scene", "controle", { timeout: 10_000 });
-    await expect(canvas).toHaveAttribute("data-sequences", /controle/);
-    await expect(canvas).toHaveAttribute("data-motion", "settled", { timeout: 6_000 });
+    await expect(field).toHaveAttribute("data-loop-state", "paused", { timeout: 2_000 });
 
-    // The page pause is gone (docs/design-system.md §2.11.6): nothing on / lasts 5 s.
+    // The page-wide pause is gone (docs/design-system.md §2.11.6): only the pause of the hero motion exists.
     await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
   });
 
@@ -263,6 +260,8 @@ test.describe("avec animations", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
     const ecosystem = page.getByTestId("hero-ecosystem");
+    // Below the fold at 1440 × 900 since the terminal of the hero (§2.11.4 bis E): brought to the middle.
+    await ecosystem.evaluate((figure) => figure.scrollIntoView({ block: "center", behavior: "instant" }));
     await expect(ecosystem).toHaveAttribute("data-loop-state", "playing");
     await expect(ecosystem).toHaveAttribute("data-loop-cycles", "1");
     // The agents check their boxes first; a human box only later.

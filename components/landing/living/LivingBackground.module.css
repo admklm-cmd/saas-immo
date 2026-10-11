@@ -3,8 +3,6 @@
  * interactive. The page content is painted above it (see app/(marketing)/page.tsx).
  */
 .artwork,
-.nanoField,
-.measurementCanvas,
 .atmosphere {
   position: fixed;
   inset: 0;
@@ -14,41 +12,7 @@
   pointer-events: none;
 }
 
-.nanoField {
-  overflow: hidden;
-  -webkit-mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 18%, #000 48% 100%);
-  mask-image: radial-gradient(ellipse at 50% 45%, transparent 0 18%, #000 48% 100%);
-}
-
-.nanoParticle {
-  position: absolute;
-  aspect-ratio: 1;
-  border-radius: 999px;
-  background: var(--color-ink);
-  box-shadow: 0 0 0 1px rgb(24 24 27 / 0.08), 0 0 7px rgb(24 24 27 / 0.16);
-  will-change: transform, opacity;
-}
-
-.nanoParticle[data-accent] {
-  background: var(--color-accent);
-  box-shadow: 0 0 0 1px rgb(36 87 255 / 0.12), 0 0 10px rgb(36 87 255 / 0.3);
-}
-
-.nanoParticle[data-shape="chip"] {
-  border-radius: 1px;
-}
-
-.nanoParticle[data-shape="ring"] {
-  border: 1px solid var(--color-ink);
-  background: transparent;
-  box-shadow: 0 0 6px rgb(24 24 27 / 0.18);
-}
-
-/*
- * Human hand-off, rendered as a monochrome point cloud. This replaces the
- * visible neural graph while keeping the measured canvas below for the
- * bounded scene timing and performance telemetry used by the demo.
- */
+/* Human hand-off, rendered as a monochrome point cloud. Static. */
 .artwork {
   background-image: url("/images/particle-handoff.jpg");
   background-position: 54% 50%;
@@ -57,18 +21,11 @@
   opacity: 0.34;
 }
 
-/* The previous network still records its bounded timing, but is no longer a visual layer. */
-.measurementCanvas {
-  opacity: 0;
-}
-
 /*
- * Atmosphere of the reference, adapted (docs/design-system.md §2.11.4): the
- * radial vignette (transparent to 25 %, white 12 % at 75 % of the radius), a
- * white fade limited to the header (96 px) and a bottom fade capped at 50 %,
- * so the network stays visible at the top and the bottom of every screen.
- * Static; above the canvas, under the content. The only white gradients of
- * the network.
+ * Atmosphere of the reference, adapted (docs/design-system.md §2.11.4): a
+ * faint cobalt point at the centre (the meeting of the hands), the radial
+ * vignette, a white fade limited to the header (96 px) and a bottom fade
+ * capped at 50 %. Static; above the image, under the content.
  */
 .atmosphere {
   background:
@@ -83,20 +40,5 @@
     background-position: 54% 42%;
     background-size: auto 92%;
     opacity: 0.3;
-  }
-
-  .nanoParticle:nth-child(n + 41) {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .artwork {
-    opacity: 0.34;
-    transform: none;
-  }
-
-  .nanoParticle {
-    transform: none !important;
   }
 }

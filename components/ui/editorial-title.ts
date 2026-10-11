@@ -78,9 +78,11 @@ export function splitTextAccent(text: string, accent: string | undefined): [stri
  * (« administratif » 0.149 em measured in Chromium), most endings barely do
  * (« fictive » 0.024 em, « main » 0). Used to centre the focus frame on the
  * ink, not on the box (docs/design-system.md §2.11.2). In the title's own
- * face (upright, `accentFace="title"`, §2.11.8.8 L4-C) nothing leans out: 0.
+ * face (upright, `accentFace="title"`, §2.11.8.8 L4-C) only the hook of a
+ * final « f » leans out a little (« administratif »: 0.018 em at 1440 px,
+ * 0.034 em at 390 px, measured on 10/10/2026): 0.03; other endings 0.
  */
 export function accentOverhangEm(word: string, face: "serif" | "title" = "serif"): number {
-  if (face === "title") return 0;
+  if (face === "title") return word.endsWith("f") ? 0.03 : 0;
   return word.endsWith("f") ? 0.15 : 0.02;
 }

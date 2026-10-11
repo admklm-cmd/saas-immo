@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Guards of Lot 4 (docs/design-system.md §2.11.8.8 L4-A, L4-E):
- * - `animejs` is imported only by the ROI widgets and the living background;
+ * - `animejs` is imported only by the ROI widgets and the nanorobots of the hero;
  * - the app-tile tones (`--app-tile-*`) and their colours live in ONE CSS
  *   file (block A), and nowhere else in the code of the site.
  */
@@ -31,7 +31,7 @@ describe("Lot 4 guards", () => {
     const importers = SOURCES.filter((path) => /from\s+["']animejs|import\(["']animejs|require\(["']animejs/.test(readFileSync(path, "utf8"))).map(rel);
     expect(importers.length).toBeGreaterThan(0);
     expect(importers.sort()).toEqual([
-      "components/landing/living/LivingBackground.tsx",
+      "components/landing/hero/nano-field-controller.ts",
       "components/landing/roi/roi-motion.ts",
     ]);
   });

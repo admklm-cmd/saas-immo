@@ -205,11 +205,14 @@
   display: none;
   position: absolute;
   /* The ink starts 0.01 em after the box; it ends `--accent-overhang` past it
-     (italic overhang, set per word by EditorialTitle). */
-  left: -0.103em;
-  right: calc(-0.113em - var(--accent-overhang, 0.02em));
-  top: calc(var(--accent-ink-top) - 0.075em);
-  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.113em);
+     (italic overhang, set per word by EditorialTitle). The gaps are measured
+     from the ink to the INNER edge of the arms: the arms (`--focus-frame-width`)
+     are drawn outside them, never on the glyphs (fix of 10/10/2026: at 390 px
+     the bottom arms overlapped the ink of « administratif » by 1.5 px). */
+  left: calc(-0.103em - var(--focus-frame-width));
+  right: calc(-0.113em - var(--accent-overhang, 0.02em) - var(--focus-frame-width));
+  top: calc(var(--accent-ink-top) - 0.075em - var(--focus-frame-width));
+  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.113em + 2 * var(--focus-frame-width));
   pointer-events: none;
   transform-origin: center;
   --frame-color: var(--color-accent);
@@ -429,8 +432,8 @@
 }
 
 [data-accent-face="title"] .frame {
-  top: calc(var(--accent-ink-top) - 0.08em);
-  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.12em);
+  top: calc(var(--accent-ink-top) - 0.08em - var(--focus-frame-width));
+  height: calc(var(--accent-ink-bottom) - var(--accent-ink-top) + 0.12em + 2 * var(--focus-frame-width));
 }
 
 [data-accent-face="title"] .markBeforeDescender {

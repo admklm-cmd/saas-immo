@@ -42,6 +42,44 @@ export const LANDING_TEXTS = {
       "Données isolées entre agences",
     ],
     illustrationNote: "Animations : exemple fictif, simulation. Aucune activité en direct.",
+    /**
+     * Terminal « humain ⇄ machine » under the hands (docs/design-system.md
+     * §2.11.4 bis E): the relay between the agents and the team, typed once
+     * per load. Line 0 marks it as a simulation; no figure, client or result.
+     * The visible lines are hidden from assistive technology, which reads
+     * `srLines` once instead.
+     */
+    terminal: {
+      title: "Exemple fictif, simulation : le relais entre les agents et votre équipe",
+      lines: [
+        { kind: "comment", text: "# exemple fictif — simulation" },
+        { kind: "agent", from: "léa", to: "hugo", content: "fiche créée · doublon écarté" },
+        { kind: "agent", from: "hugo", to: "emma", content: "motivation : manquante, signalée" },
+        { kind: "agent", from: "emma", to: "vous", content: "premier message prêt · non envoyé" },
+        { kind: "human", from: "vous", to: "louis", content: "premier contact validé" },
+        { kind: "agent", from: "louis", to: "vous", content: "créneau proposé · à confirmer" },
+        { kind: "agent", from: "sarah", to: "vous", content: "mandat : à confirmer par vous" },
+        { kind: "comment", text: "# les agents préparent. vous décidez." },
+      ],
+      arrow: "→",
+      /** The word of the team: set in full ink, weight 600. */
+      human: "vous",
+      srLines: [
+        "Léa transmet à Hugo : fiche créée, doublon écarté.",
+        "Hugo transmet à Emma : motivation manquante, signalée.",
+        "Emma vous transmet le premier message, prêt et non envoyé.",
+        "Vous validez le premier contact ; Louis prend le relais.",
+        "Louis vous propose un créneau, à confirmer.",
+        "Sarah vous transmet le suivi ; le mandat reste à confirmer par vous.",
+        "Les agents préparent, vous décidez.",
+      ],
+      pause: {
+        pause: "pause",
+        resume: "reprendre",
+        pauseName: "Mettre en pause l'animation du haut de page",
+        resumeName: "Reprendre l'animation du haut de page",
+      },
+    },
   },
 
   journey: {

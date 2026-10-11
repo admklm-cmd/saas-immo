@@ -12,18 +12,18 @@ import { ReplayAnimationsButton } from "@/components/landing/replay/ReplayAnimat
 /**
  * Public home page of the agency website.
  *
- * The living background is a fixed, `aria-hidden` point-field hand-off
- * (illustration, simulation; docs/design-system.md §2.11.4). Its restrained
- * motion is decorative and becomes static with reduced motion; every section
- * still carries `data-living-scene` for the bounded demo timing. The content
- * is painted above it and is complete without JavaScript. Three titles carry an accent effect, each a different
+ * The background is a fixed, still, `aria-hidden` point-field hand-off
+ * (illustration; docs/design-system.md §2.11.4); the only background motion,
+ * the nanorobots, lives in band 1 of the hero (§2.11.4 bis). Every section
+ * carries `data-living-scene` (its name). The content is painted above it and
+ * is complete without JavaScript. Three titles carry an accent effect, each a different
  * one (§2.11.8.2), replayed when a mouse enters them (§2.11.2 D). No figure, client, testimonial or
  * price is shown.
  */
 export default function HomePage() {
   return (
     <>
-      <LivingBackground initialScene="hero" />
+      <LivingBackground />
       {/* overflow-x-clip: the soft veils behind the headings reach past the edges on a phone. */}
       <div data-landing="" className="relative z-10 overflow-x-clip">
         <LandingHero />

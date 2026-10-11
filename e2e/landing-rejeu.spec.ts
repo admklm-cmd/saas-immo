@@ -60,7 +60,7 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     }
   });
 
-  test("L4-D2 : section ROI à l'écran — widgets réarmés puis rejoués, valeurs saisies gardées, génération + 1, défilement inchangé, réseau sans séquence", async ({ page }) => {
+  test("L4-D2 : section ROI à l'écran — widgets réarmés puis rejoués, valeurs saisies gardées, génération + 1, défilement inchangé, nanorobots non concernés", async ({ page }) => {
     test.setTimeout(90_000);
     await instrumentPage(page);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -77,8 +77,8 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     await expect(negotiators).toHaveValue("5");
     // Let the network settle (it follows the visible section), then record.
     await page.waitForTimeout(4_000);
-    const network = page.getByTestId("living-background");
-    const frames = await network.getAttribute("data-frames");
+    const nanorobots = page.getByTestId("hero-nanorobots");
+    const exchanges = await nanorobots.getAttribute("data-exchanges");
     const scrollY = await page.evaluate(() => window.scrollY);
     const cycles = Number(await page.getByTestId("hero-ecosystem").getAttribute("data-loop-cycles"));
     await page.evaluate(() => {
@@ -106,11 +106,13 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     await expect(negotiators).toHaveValue("5");
     await expect(page.locator("[data-widget='time'] [data-roi-value] > [aria-hidden='true']").first()).toHaveText(/≈\s*340\s*h/);
     expect(Math.abs((await page.evaluate(() => window.scrollY)) - scrollY)).toBeLessThanOrEqual(1);
-    // The living background received nothing (no scroll in between).
-    expect(await network.getAttribute("data-frames")).toBe(frames);
+    // The background is not concerned: the nanorobots (off screen) neither restart nor count anew (§2.11.4 bis I).
+    await expect(nanorobots).toHaveAttribute("data-loop-state", "paused");
+    expect(await nanorobots.getAttribute("data-exchanges")).toBe(exchanges);
     // Block A (off screen) starts over at t = 0 when it comes back.
     await expect(page.getByTestId("hero-ecosystem")).toHaveAttribute("data-step", "final");
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    // Below the fold at 1440 × 900 since the terminal of the hero (§2.11.4 bis E): brought to the middle.
+    await page.getByTestId("hero-ecosystem").evaluate((figure) => figure.scrollIntoView({ block: "center", behavior: "instant" }));
     await expect(page.getByTestId("hero-ecosystem")).toHaveAttribute("data-loop-state", "playing", { timeout: 2_000 });
     expect(Number(await page.getByTestId("hero-ecosystem").getAttribute("data-loop-cycles"))).toBe(cycles + 1);
   });
