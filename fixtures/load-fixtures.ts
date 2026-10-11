@@ -13,6 +13,12 @@
  *  - no password is hard-coded: either an environment variable provides it, or
  *    a strong one is generated and written to fixtures/.generated-credentials.json
  *    (git-ignored, file mode 0600);
+ *  - the estimation IP-hash signing secret (SEC-001) is installed in the
+ *    database Vault through `set_estimation_ip_hmac_secret` (service role
+ *    only): taken from ESTIMATION_IP_HMAC_SECRET when set (shell or
+ *    .env.local), otherwise reused from the previous run, otherwise generated.
+ *    The Next.js server must hold the SAME value in ESTIMATION_IP_HMAC_SECRET;
+ *    a generated one is written to fixtures/.generated-credentials.json only;
  *  - the script is idempotent: it deletes the two fixture agencies (fixed
  *    identifiers) and their auth users first, then reloads everything.
  *
@@ -23,7 +29,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -67,6 +73,35 @@ function resolvePassword(user: FixtureUser): { password: string; generated: bool
     return { password: fromEnv, generated: false };
   }
   return { password: randomBytes(24).toString("base64url"), generated: true };
+}
+
+const MIN_ESTIMATION_SECRET_LENGTH = 32;
+
+type EstimationSecretSource = "environment" | "previous_run" | "generated";
+
+/**
+ * Same value on both sides or every public estimation request is refused:
+ * the environment wins, then the value of the previous run (so that a
+ * `db:reset` does not silently desynchronise a running dev server), then a
+ * fresh random one. Never hard-coded, never printed.
+ */
+async function resolveEstimationSecret(): Promise<{ secret: string; source: EstimationSecretSource }> {
+  const fromEnv = process.env.ESTIMATION_IP_HMAC_SECRET?.trim();
+  if (fromEnv && fromEnv.length >= MIN_ESTIMATION_SECRET_LENGTH) {
+    return { secret: fromEnv, source: "environment" };
+  }
+  try {
+    const previous = JSON.parse(await readFile(CREDENTIALS_PATH, "utf8")) as { estimationIpHmacSecret?: unknown };
+    if (
+      typeof previous.estimationIpHmacSecret === "string" &&
+      previous.estimationIpHmacSecret.length >= MIN_ESTIMATION_SECRET_LENGTH
+    ) {
+      return { secret: previous.estimationIpHmacSecret, source: "previous_run" };
+    }
+  } catch {
+    // No previous credentials file: generate below.
+  }
+  return { secret: randomBytes(32).toString("hex"), source: "generated" };
 }
 
 function fail(step: string, error: { message: string } | null): void {
@@ -189,6 +224,12 @@ async function main(): Promise<void> {
   await cleanup(admin);
   const users = await createUsers(admin);
 
+  const estimationSecret = await resolveEstimationSecret();
+  fail(
+    "install estimation IP-hash signing secret",
+    (await admin.rpc("set_estimation_ip_hmac_secret", { p_secret: estimationSecret.secret })).error,
+  );
+
   const { a, b } = buildFixtures(new Date());
   await insertAgency(admin, a);
   await insertAgency(admin, b);
@@ -207,6 +248,12 @@ async function main(): Promise<void> {
       agencyId: FIXTURE_AGENCY_IDS[user.agency],
       role: user.role,
     })),
+    // SEC-001: HMAC key shared by the database Vault and the Next.js server.
+    estimationIpHmacSecret: estimationSecret.secret,
+    estimationIpHmacSecretSource:
+      estimationSecret.source === "environment"
+        ? "ESTIMATION_IP_HMAC_SECRET"
+        : "généré (copier dans ESTIMATION_IP_HMAC_SECRET de .env.local pour le serveur Next)",
   };
   await writeFile(CREDENTIALS_PATH, `${JSON.stringify(credentials, null, 2)}\n`, { mode: 0o600 });
 
@@ -215,6 +262,15 @@ async function main(): Promise<void> {
   console.log(`  Identifiants écrits dans ${CREDENTIALS_PATH} (ignoré par git).`);
   for (const { user, password, generated } of users) {
     console.log(`  - ${user.email} (${user.role}, agence ${user.agency.toUpperCase()}) : ${password}${generated ? "" : " (depuis l'environnement)"}`);
+  }
+  if (estimationSecret.source === "environment") {
+    console.log("  Secret de signature de l'estimation installé dans Vault (depuis ESTIMATION_IP_HMAC_SECRET).");
+  } else {
+    console.log(
+      "  Secret de signature de l'estimation installé dans Vault, mais ESTIMATION_IP_HMAC_SECRET est absent de " +
+        "l'environnement : copiez la valeur `estimationIpHmacSecret` du fichier d'identifiants dans .env.local, " +
+        "sinon /estimation refusera toute demande.",
+    );
   }
   console.log(`${CONTEXT}: done.`);
 }

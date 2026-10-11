@@ -21,8 +21,8 @@ function candidate(overrides: Partial<EmmaFollowUpCandidateView> = {}): EmmaFoll
   return {
     id: `00000000-0000-4000-8000-${String(seq).padStart(12, "0")}`,
     contactName: `Dossier ${seq}`,
-    email: "x@example.test",
-    phone: null,
+    hasEmail: true,
+    hasPhone: false,
     stage: "qualifie",
     humanTakeover: false,
     channel: "email",

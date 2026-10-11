@@ -19,8 +19,8 @@ function candidateOf(overrides: Partial<EmmaFollowUpCandidateView> = {}): EmmaFo
   return {
     id: "11111111-1111-4111-8111-111111111111",
     contactName: "Camille Fournier",
-    email: "camille@example.test",
-    phone: null,
+    hasEmail: true,
+    hasPhone: false,
     stage: "qualifie",
     humanTakeover: false,
     channel: "email",
@@ -51,6 +51,26 @@ describe("EmmaFollowUpCard", () => {
     expect(screen.getByText("Email")).toBeDefined();
     // Every gate is open, and says so in words.
     expect(screen.getAllByText(new RegExp(APP_TEXTS.emmaFollowUps.gatePassed)).length).toBe(3);
+  });
+
+  it.each([
+    [true, false, `${APP_TEXTS.emmaFollowUps.emailAvailable}`],
+    [false, true, `${APP_TEXTS.emmaFollowUps.phoneAvailable}`],
+    [true, true, `${APP_TEXTS.emmaFollowUps.emailAvailable} · ${APP_TEXTS.emmaFollowUps.phoneAvailable}`],
+    [false, false, `${APP_TEXTS.emmaFollowUps.noReachableDetail}`],
+  ] as const)("hasEmail=%s, hasPhone=%s shows only availability, never the details", (hasEmail, hasPhone, expected) => {
+    const { container } = render(<EmmaFollowUpCard candidate={candidateOf({ hasEmail, hasPhone })} />);
+
+    const line = container.querySelector("h2 + p, h3 + p, h4 + p");
+    expect(line?.textContent).toContain(expected);
+    for (const text of [
+      APP_TEXTS.emmaFollowUps.emailAvailable,
+      APP_TEXTS.emmaFollowUps.phoneAvailable,
+      APP_TEXTS.emmaFollowUps.noReachableDetail,
+    ]) {
+      if (!expected.includes(text)) expect(line?.textContent).not.toContain(text);
+    }
+    expect(container.textContent).not.toContain("@");
   });
 
   it.each([

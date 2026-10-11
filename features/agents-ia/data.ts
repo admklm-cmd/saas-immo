@@ -677,8 +677,10 @@ export async function listEmmaFollowUpCandidates(
         return {
           id: contact.id,
           contactName: joinContactName(contact) ?? CONTACT_WITHOUT_NAME,
-          email: contact.email,
-          phone: contact.phone,
+          // SEC-002: availability only. The address and the number never
+          // reach the browser for this screen, which only shows whether one exists.
+          hasEmail: Boolean(contact.email),
+          hasPhone: Boolean(contact.phone),
           stage: contact.stage,
           humanTakeover: contact.human_takeover,
           channel: channelChoice.channel,

@@ -66,6 +66,18 @@ nul ou étranger, table `auth.users`, buckets de stockage.
 - Les mots de passe sont gérés et hachés par Supabase Auth ; **aucun mot de passe en dur** nulle part,
   y compris dans les fixtures (générés aléatoirement, écrits dans un fichier ignoré par git).
 - Le message d'erreur de connexion est identique pour « email inconnu » et « mot de passe faux ».
+- **Renouvellement de session côté serveur (SEC-003, corrigé le 10/10/2026)** : `proxy.ts` (racine,
+  Next.js 16) + `lib/supabase/proxy.ts` suivent le modèle officiel `@supabase/ssr` : un client par
+  requête, `auth.getClaims()` appelé immédiatement, cookies renouvelés écrits sur la requête **et**
+  sur la réponse, en-têtes anti-cache fournis par la bibliothèque appliqués. Le proxy **ne décide
+  d'aucune autorisation** (pas de redirection) : chaque page privée et chaque server action continue
+  d'appeler `auth.getUser()` elle-même. Supabase injoignable = la requête continue (le site public ne
+  tombe pas). Vérifié en build de production (`next start`, revue du 10/10/2026) : pages privées et
+  redirection vers `/connexion` en `private, no-cache, no-store` ; pages publiques statiques
+  (`/`, `/estimation`) en `s-maxage=31536000` **sans** cookie, mais dès que le proxy renouvelle une
+  session sur ces mêmes pages la réponse passe en `private, no-cache, no-store` + `Expires: 0` +
+  `Pragma: no-cache` (aucune session servie à un autre utilisateur par un cache partagé). Tests :
+  `lib/supabase/proxy.test.ts`, `e2e/session.spec.ts`.
 
 ### 2.3 Secrets
 
@@ -325,6 +337,19 @@ vérifié :
   borné que par les 30 soumissions/heure de l'agence. Vérifié en base pendant l'audit (27
   soumissions acceptées en variant l'empreinte à chaque appel, jusqu'au plafond d'agence). Le
   plafond par empreinte ne protège donc que contre un robot naïf qui passe par le formulaire.
+  **Corrigé le 10/10/2026 (SEC-001, migration `20261010130000_estimation_signed_ip_hash.sql`)** :
+  l'empreinte n'est plus acceptée seule. Le serveur Next la signe
+  (`HMAC-SHA256(secret, "estimation-ip:v1:<empreinte>:<secondes>")`,
+  `features/estimation/ip-signature.ts`) et la base recalcule la signature avec le même secret,
+  stocké dans Supabase Vault (`estimation_ip_hmac_secret`, installé hors bande par
+  `public.set_estimation_ip_hmac_secret`, exécutable par `service_role` seul) ; côté Next, variable
+  serveur `ESTIMATION_IP_HMAC_SECRET` (≥ 32 caractères, aucun repli). Signature valable 60 s
+  (+5 s de décalage d'horloge futur) ; comparaison par double HMAC (pas de comparaison directe
+  sensible au temps) ; ancienne signature de la fonction supprimée (`drop function`). Sans secret
+  installé, la base refuse tout (`estimation_unavailable`). Un appelant direct sans le secret ne
+  peut plus choisir son compartiment ; rejouer une signature captée dans les 60 s la laisse dans
+  **le même** compartiment, donc compté. Tests : `ip-signature.test.ts`,
+  `estimation.integration.test.ts` (« SEC-001 »).
 - **En-tête `x-forwarded-for` : l'entrée choisie est celle ajoutée par notre propre proxy**
   (`TRUSTED_PROXY_HOPS`, `features/estimation/ip-hash.ts`). L'en-tête est une liste que le client
   commence et que chaque proxy complète : lire la **première** entrée, comme avant le 23/09/2026,
@@ -374,10 +399,14 @@ vérifié :
 
 - **Pas de CAPTCHA, pas de WAF.** La seule défense contre un flot de robots est la limitation de
   débit décrite ci-dessus et le champ piège (faible contre un attaquant ciblé, voir plus haut).
-- **L'empreinte IP est contournable en une ligne**, pas seulement avec un botnet : un appelant
-  direct du RPC choisit la valeur de `p_ip_hash` (voir ci-dessus). Le plafond **par agence** borne
-  alors les dégâts sans les empêcher : **30 soumissions par heure, soit jusqu'à ~720 faux leads par
-  jour**, chacun avec des consentements enregistrés.
+- **L'empreinte IP reste aussi fiable que l'adresse vue par le serveur** (mise à jour du
+  10/10/2026) : l'appel direct du RPC avec une empreinte inventée est fermé (SEC-001), mais **sans
+  reverse proxy de confiance devant Next** (cas actuel : `next dev`), `x-forwarded-for` reste
+  déclaratif — un robot qui passe par le formulaire peut toujours changer d'adresse annoncée, et le
+  serveur signera l'empreinte correspondante. Même chose avec un botnet ou des proxys rotatifs. Le
+  plafond **par agence** borne alors les dégâts sans les empêcher : **30 soumissions par heure, soit
+  jusqu'à ~720 faux leads par jour**. Une limitation de débit **en frontal** (nginx/WAF, adresse
+  réelle de la connexion) reste **obligatoire avant toute exposition publique** (§4, point 7).
 - **Le plafond par agence est aussi un levier de déni de service** : 30 requêtes suffisent à
   bloquer le formulaire pour **tous** les visiteurs légitimes pendant une heure — sur le principal
   canal d'acquisition de l'agence. Vérifié en base pendant l'audit du 23/09/2026. Atténuation
@@ -532,8 +561,12 @@ change silencieusement ce qui est réellement installé.
 
 Le formulaire public d'estimation a désormais une limitation de débit par empreinte IP et par
 agence, et un champ piège — voir §2.8 pour ce qui est couvert et testé, et ses limites honnêtes
-(pas de CAPTCHA, pas de WAF, empreinte IP contournable, pas de purge automatique de
-`private.estimation_submissions`). La connexion, elle, s'appuie sur les limites intégrées de
+(pas de CAPTCHA, pas de WAF, pas de purge automatique de `private.estimation_submissions`).
+Depuis le 10/10/2026 (SEC-001), l'empreinte IP doit être signée par le serveur : un appel direct du
+RPC ne choisit plus son compartiment. Elle reste contournable par qui passe par le formulaire en
+variant `x-forwarded-for` tant qu'aucun reverse proxy de confiance n'est en frontal, et le plafond
+par agence (30/h) reste utilisable pour bloquer le formulaire : **limitation de débit frontale
+obligatoire avant exposition publique**. La connexion, elle, s'appuie sur les limites intégrées de
 Supabase Auth ; aucune limitation de débit dédiée n'existe pour `/connexion`.
 
 ### 3.2 Webhooks
@@ -596,16 +629,39 @@ de la charge utile, validation zod, idempotence, réponse rapide et traitement e
   outils qui utilisent la clé de service (`e2e/helpers/local-supabase.ts`,
   `lib/supabase/testing/`) sont protégés à l'exécution (`assertNotProduction` +
   `assertLocalSupabaseUrl`), mais la barrière reste conventionnelle à la compilation.
-- **Changements d'étape hors mandat sans trace possible (gravité moyenne)** : la politique
-  `contacts_update_members` laisse un membre modifier `contacts.stage` par `UPDATE` direct (PostgREST)
-  entre étapes autres que `mandat_signe` (ex. `perdu` → `chaud`), sans entrée d'historique. Aucune
-  fuite entre agences, aucun envoi possible par ce biais (le consentement et le coupe-circuit sont
-  revérifiés au moment de l'envoi), mais une décision humaine peut ne pas être tracée (répudiation
-  intra-agence). Hugo et Sarah écrivent aujourd'hui l'étape par `UPDATE` sous la session de
-  l'utilisateur : retirer le privilège sur la colonne les casserait. Durcissement recommandé au
-  prochain jalon : n'accepter un changement d'étape par session que via `change_contact_stage` **ou**
-  pendant un run ouvert de Hugo/Sarah (même principe que `guard_activity_actor`), ou déplacer ces
-  écritures dans des RPC transactionnels.
+- **Transitions d'étape (SEC-007, corrigé le 10/10/2026, migration
+  `20261010120000_contact_stage_direct_update_guard.sql`)** : le déclencheur
+  `private.guard_contact_stage_change` refuse tout changement de `contacts.stage` fait par une
+  session `authenticated`/`anon` (PostgREST) hors de l'autorisation à usage unique de la transaction
+  (`stage_change_requires_rpc`), pour toutes les paires d'étapes. Chemins restants : humain →
+  `change_contact_stage` (activité `contact_stage_changed`) ; Hugo/Sarah →
+  `public.apply_agent_stage_change` (`SECURITY DEFINER`, `search_path = ''`, `authenticated` seul),
+  liée à un run `running` **de cet agent, pour ce contact, lancé par l'appelant**, dans les agences de
+  l'appelant ; liste blanche (Hugo : `nouveau`→`qualifie`/`chaud`, `qualifie`→`chaud` ; Sarah :
+  `qualifie`/`chaud`/`rdv_planifie`→`estimation_faite`) ; `mandat_signe` et `perdu` jamais
+  atteignables ; coupe-circuit et reprise humaine revérifiés ; verrou optimiste (renvoie `false` si
+  un humain a changé l'étape entre-temps). Confirmation du rendez-vous : déclencheur `SECURITY
+  DEFINER` existant (activité `appointment_confirmed`). `service_role` n'est pas bloqué (chargeur de
+  fixtures, tests ; jamais dans un chemin utilisateur — vérifié) ; la garde du mandat signé
+  s'applique toujours à lui. Tests : `features/pipeline/stage-direct-update.integration.test.ts`
+  (dont isolation agence B → contact A). **Restes, assumés** :
+  - *Trace d'un changement par agent (faible)* : pas d'activité dédiée dans `activities` ; la trace
+    est le run (`ai_agent_runs` + `ai_agent_run_steps`). À ajouter si l'historique de la fiche doit
+    montrer ces changements (décision produit, `automatisation-ia`).
+  - *Run forgeable par un membre (faible)* : `ai_agent_runs` est insérable par tout membre (les
+    agents tournent sous la session de l'utilisateur). Un membre peut donc ouvrir lui-même un run
+    « hugo » et déplacer un contact de **sa** agence dans la liste blanche ci-dessus, avec un run à
+    son nom comme seule trace au lieu d'une activité humaine. Aucune fuite entre agences, ni
+    `mandat_signe`/`perdu`, ni envoi. Durcissement : exécuter les agents sous une identité serveur
+    dédiée (job), décision d'architecture.
+  - *Création directe d'un contact à n'importe quelle étape sauf `mandat_signe` (faible)* : la garde
+    ne porte que sur `UPDATE` ; un `INSERT` direct peut créer un contact déjà « chaud » ou
+    « estimation faite », sans historique.
+- **Minimisation de l'écran des relances (SEC-002, corrigé le 10/10/2026)** :
+  `listEmmaFollowUpCandidates` (`features/agents-ia/data.ts`) lit toujours `email`/`phone` côté
+  serveur (choix du canal), mais ne sérialise plus que `hasEmail`/`hasPhone` vers le navigateur
+  (`EmmaFollowUpCandidateView`). Test : `emma-follow-ups.integration.test.ts` (« minimisation
+  (SEC-002) »).
 - **Motif de changement d'étape — contrôles bidirectionnels refusés par l'application seulement** :
   depuis le 23/09/2026, le schéma zod (`features/pipeline/types.ts`, `BIDI_CONTROL_PATTERN`) refuse
   les caractères Unicode de mise en forme bidirectionnelle (propriété `Bidi_Control` complète :
@@ -700,3 +756,4 @@ Rien de ce qui suit n'est fait : le prototype n'est pas déployé.
 | 2026-10-01 | **Branche `feat/landing-motion`** (`git diff 10cd4c2..HEAD`, commits `f511ace` + `6543ac5`, 78 fichiers, lot purement frontend : effets de titre CSS `EditorialTitle`, parcours du hero joué une fois, `MotionToggle` supprimé, wordmark canvas `components/landing/wordmark/**` adapté de React Bits TechText, réseau neuronal canvas `components/landing/living/**`, voiles CSS, specs E2E réseau/sans boucle/wordmark, référence `docs/references/reseau-neuronal-demo.html`) | Aucun problème critique, élevé ni moyen. Aucun fichier `lib/`, `supabase/`, `fixtures/`, `features/`, `app/api/`, `next.config.ts`, `package*.json` ni `.env*` modifié ; CSP inchangée et compatible (canvas 2D : ni `eval`, ni worker, ni `blob:`, ni ressource externe ; seule URL CSS : `/brand/ascend-symbol-black.png` de l'origine). Aucun `dangerouslySetInnerHTML`/`innerHTML`/`eval` dans le code applicatif (`innerHTML` seulement dans 2 tests jsdom) ; textes rendus = constantes (`BRAND.shortName`, `landing-texts.ts`). Écouteurs et timers tous retirés au démontage, `rAF` uniquement pendant un mouvement, onglet caché = arrêt sans rejeu ; budgets bornés (`CLASS_BUDGET` ≤ 34 neurones / 48 impulsions / 46 000 points, `MAX_QUIET_RECTS` 40, DPR ≤ 2, séquences jouées une fois par nom, cascade bornée par échéance/sauts/réfractaire/force). Wordmark : `aria-hidden`, aucun `preventDefault`, `touch-action: pan-y pinch-zoom`, capture de pointeur relâchée (Échap, `pointerup`/`pointercancel`), aucun piège de focus. La référence HTML (script inline) n'est ni dans `public/` ni importée : jamais servie. Garde-fous visibles intacts (« Exemple fictif — simulation », « Animations : exemple fictif, simulation. Aucune activité en direct. », « aucun envoi », validation humaine, mandat confirmé par un humain). `/dev/*` inchangé (404 en production). **Licence React Bits vérifiée** (dépôt `DavidHDev/react-bits`, `LICENSE.md`) : MIT + Commons Clause v1.0 — usage commercial autorisé comme partie d'un produit, à condition de conserver la notice de copyright et de licence et de ne jamais vendre/redistribuer le composant lui-même. **1 correction de conformité** : notice complète ajoutée dans `THIRD_PARTY_NOTICES.md` + ligne de copyright dans les 5 fichiers adaptés, crédit de courtoisie TrueFocus (idée seule, implémentation CSS indépendante) ; test `tech-wordmark.test.ts` qui verrouille la notice. **Restes faibles** : la notice disparaît des bundles minifiés (prévoir une page « Licences » ou un commentaire légal conservé avant commercialisation, validation juriste) ; suppression de la pause globale à évaluer au regard du WCAG 2.2.2 (accessibilité, non sécurité). `tsc` et lint propres, 1901 tests Vitest verts (172 fichiers, dont le nouveau test de notice), `npm audit` : 0. Playwright non relancé (corrections limitées à des commentaires). Livraison autorisée. |
 | 2026-10-03 | **Branche `feat/landing-polish`** (commits `f83805c`, `57f7d0b`, `0d6df3a` + Lot 3 : section contrôle `components/landing/control/`, blocs A/B réordonnés ; lot purement frontend, site public `/`) + contrôle transversal du dépôt (secrets sur tout l'historique, `.env*`, `service_role`, RLS des 14 tables, en-têtes) | Aucun problème critique ni élevé. Six garde-fous de la section contrôle écrits en HTML serveur et montrés dans les visuels ; une seule boucle (bloc A) avec pauses ; licence TechText notifiée ; aucune ressource externe ni copie des sites modèles. **Restant** : 5 vulnérabilités élevées dans les dépendances de **lint** seulement (`braces` via `eslint-config-next`, GHSA-vfj7-8cjw-p6xm, aucun correctif publié, `npm audit --omit=dev` = 0) — acceptées, à surveiller, **ne pas lancer `npm audit fix --force`** ; CSP `'unsafe-inline'` et limitation de débit frontale toujours à traiter avant le VPS (§ 3.1, § 4). |
 | 2026-10-10 | **Audit backend, confidentialité IA et choix cloud** — état Git, SEC-001/002/003/006/007, frontières de confiance, Privacy Gateway, RAG, Supabase/AWS/OVHcloud, exploitation | Revue en lecture seule : aucun correctif déployé. Aucun LLM externe actif. Quatre travaux P1 confirmés : quota public contournable par choix de `p_ip_hash`, payload Emma trop complet, renouvellement SSR sans proxy et transitions hors mandat modifiables directement. Privacy Gateway déclarée obligatoire avant tout fournisseur réel ; RAG jugé inutile pour la confidentialité à ce stade. Synthèse et critères de fin : `docs/audits/2026-10-10-backend-security-privacy-cloud.md`. |
+| 2026-10-10 | **Branche `fix/security-p1`** (travail non commité sur `HEAD` `b12a0c9` : migrations `20261010120000` et `20261010130000`, `proxy.ts` + `lib/supabase/proxy.ts`, `features/estimation/ip-signature.ts`, Hugo/Sarah via `apply_agent_stage_change`, `listEmmaFollowUpCandidates`) — correctifs SEC-001/002/003/007 | **SEC-001, SEC-002, SEC-003, SEC-007 : corrigés et vérifiés.** Privilèges réels lus en base : `apply_agent_stage_change` et `change_contact_stage` exécutables par `authenticated` seul, `set_estimation_ip_hmac_secret` par `service_role` seul, fonctions `private.*` sans droit client, `search_path = ''` partout ; corps de `submit_estimation_request` identique à l'original hors contrôle de signature. Aucun secret commité ni journalisé, aucun `service_role` dans un chemin utilisateur, `.env.local` ignoré. **1 durcissement appliqué** (faible) : comparaison de signature SQL par double HMAC (au lieu d'une égalité directe) + test. **1 test d'isolation ajouté** : membre B avec son propre run ne déplace pas un contact de A. `Cache-Control` vérifié en build de production (§2.2). **Restes** : limitation de débit frontale obligatoire avant exposition (moyen, inchangé), run d'agent forgeable par un membre de la même agence (faible), pas d'activité dédiée aux changements d'étape par agent (faible), 2 vulnérabilités élevées préexistantes en dépendances de production (`sharp` < 0.35.5, `source-map-js` ≤ 1.2.1, via `next`) à traiter dans une branche dédiée. `tsc`, lint propres ; Vitest 186 fichiers / 2079 tests verts (état final, tests ajoutés compris) ; Playwright 48/48 sur les 7 parcours concernés. Livraison autorisée. |

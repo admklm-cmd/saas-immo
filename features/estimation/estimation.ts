@@ -25,6 +25,7 @@ import { fail, ok, type Result } from "@/lib/utils/result";
 import type { Database } from "@/types/database";
 
 import { hashClientIp, ipHashSaltLogMessage, resolveIpHashSalt } from "./ip-hash";
+import { ipHmacSecretLogMessage, resolveIpHmacSecret, signIpHash } from "./ip-signature";
 import {
   ESTIMATION_ERROR_MESSAGES,
   estimationRequestSchema,
@@ -58,6 +59,10 @@ export function mapEstimationDatabaseError(message: string | undefined): Estimat
   // refuses it, so only a direct RPC caller can reach this — same generic
   // answer as any other invalid submission.
   if (text === "inbound_lead_unsafe_text") return "validation_failed";
+  // SEC-001: a bad or expired bucket signature means a direct caller without
+  // the secret, or a server whose ESTIMATION_IP_HMAC_SECRET differs from the
+  // database Vault: generic "unavailable", never a hint about the mechanism.
+  // "estimation_unavailable" (no secret in the database),
   // "estimation_agency_unavailable" and anything unexpected: generic message,
   // no technical detail returned to the visitor.
   return "unavailable";
@@ -81,6 +86,15 @@ export async function submitEstimationRequestForClient(
     return fail<EstimationRequestResult>("unavailable", ESTIMATION_ERROR_MESSAGES.unavailable);
   }
 
+  // Same rule for the secret that signs the IP hash (SEC-001): the database
+  // refuses an unsigned bucket, so without it nothing can be stored anyway —
+  // refuse here, before any call, with an explicit server-side log.
+  const secretResolution = resolveIpHmacSecret();
+  if (!secretResolution.ok) {
+    console.error(ipHmacSecretLogMessage(secretResolution.problem));
+    return fail<EstimationRequestResult>("unavailable", ESTIMATION_ERROR_MESSAGES.unavailable);
+  }
+
   const parsed = estimationRequestSchema.safeParse(input);
   if (!parsed.success) {
     return fail<EstimationRequestResult>("validation_failed", ESTIMATION_ERROR_MESSAGES.validation_failed);
@@ -98,6 +112,8 @@ export async function submitEstimationRequestForClient(
   }
 
   const ipHash = hashClientIp(meta.clientIp, saltResolution.salt);
+  // Signed right before the call: the database accepts it for 60 seconds only.
+  const signedIpHash = signIpHash(ipHash, secretResolution.secret);
 
   // The generated `Database` types cannot express that these SQL parameters
   // are NULLABLE (Postgres function argument metadata has no such concept),
@@ -121,6 +137,8 @@ export async function submitEstimationRequestForClient(
     p_ip_hash: ipHash,
     p_user_agent: meta.userAgent,
     p_website: data.website,
+    p_ip_hash_issued_at: signedIpHash.issuedAt,
+    p_ip_hash_signature: signedIpHash.signature,
   } as unknown as SubmitEstimationRequestArgs;
 
   const { error } = await client.rpc("submit_estimation_request", args);

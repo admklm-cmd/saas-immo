@@ -12,6 +12,8 @@ const commonExclude = [
   "supabase/**",
   "playwright-report/**",
   "test-results/**",
+  // Temporary agent worktrees (copies of the repository): never part of a run.
+  ".claude/**",
 ];
 
 export default defineConfig({

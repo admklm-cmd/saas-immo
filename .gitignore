@@ -30,6 +30,8 @@ playwright/.cache/
 
 # claude code local settings
 .claude/settings.local.json
+# temporary agent worktrees (copies of the repository)
+.claude/worktrees/
 
 # misc
 .DS_Store

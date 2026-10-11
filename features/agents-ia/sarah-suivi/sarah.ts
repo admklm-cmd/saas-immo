@@ -424,16 +424,18 @@ export async function runSarahFollowThrough(
     // Belt and braces: even if the decision above were ever broken by a future
     // change, an unauthorised stage never reaches the database.
     if (stageDecision.changed && isStageAllowedForSarah(stageDecision.stage)) {
-      const { data: updatedContact, error } = await client
-        .from("contacts")
-        .update({ stage: stageDecision.stage })
-        .eq("agency_id", context.agencyId)
-        .eq("id", contact.id)
-        // Optimistic lock: a human decision made while the model was working
-        // always wins, especially `mandat_signe` and `perdu`.
-        .eq("stage", contact.stage)
-        .select("stage")
-        .maybeSingle();
+      // Audited agent path (SEC-007): a direct UPDATE of the stage is refused
+      // by the database. The RPC checks this run, Sarah's whitelist, the kill
+      // switch and a human takeover, and is an optimistic lock: a human
+      // decision made while the model was working always wins, especially
+      // `mandat_signe` and `perdu` (it returns false, nothing is written).
+      const { data: stageApplied, error } = await client.rpc("apply_agent_stage_change", {
+        target_contact: contact.id,
+        agent_run: runId,
+        expected_stage: contact.stage,
+        new_stage: stageDecision.stage,
+      });
+      const updatedContact = stageApplied === true;
       if (error) {
         await steps.step({
           phase: "persisted",

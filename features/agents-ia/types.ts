@@ -175,8 +175,12 @@ export type PendingMessageView = {
 export type EmmaFollowUpCandidateView = {
   id: string;
   contactName: string;
-  email: string | null;
-  phone: string | null;
+  /**
+   * Availability only (SEC-002): the raw email address and phone number never
+   * leave the server for this screen, which only shows whether one exists.
+   */
+  hasEmail: boolean;
+  hasPhone: boolean;
   stage: Enums["pipeline_stage"];
   humanTakeover: boolean;
   /** Channel selected by deterministic code from current consents, never by Emma. */

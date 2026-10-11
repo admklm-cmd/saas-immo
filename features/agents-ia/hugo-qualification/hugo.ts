@@ -306,8 +306,10 @@ export async function runHugoQualification(
 
     // --- writes ---------------------------------------------------------------
     const updatedColumns: string[] = [];
+    // The stage is NOT part of this direct update: the database refuses any
+    // stage change from a session outside an audited RPC (SEC-007). It is
+    // written below through `apply_agent_stage_change`, bound to this run.
     const contactUpdate: Tables["contacts"]["Update"] = { ...merged.contactUpdates };
-    if (decision.changed) contactUpdate.stage = decision.stage;
 
     if (Object.keys(contactUpdate).length > 0) {
       const { error } = await client
@@ -331,6 +333,41 @@ export async function runHugoQualification(
         return failFromDatabase<HugoRunResult>("runHugoQualification.contactUpdate", error);
       }
       updatedColumns.push(...Object.keys(contactUpdate).map((column) => `contacts.${column}`));
+    }
+
+    if (decision.changed) {
+      // Audited agent path (SEC-007): the database checks this run, Hugo's
+      // whitelist of transitions, the kill switch and a human takeover, and
+      // only moves the contact if it is still at the stage read at start.
+      const { data: stageApplied, error } = await client.rpc("apply_agent_stage_change", {
+        target_contact: contact.id,
+        agent_run: runId,
+        expected_stage: contact.stage,
+        new_stage: decision.stage,
+      });
+      if (error || stageApplied !== true) {
+        const code = error ? "contact_update_failed" : "contact_stage_changed";
+        await steps.step({
+          phase: "persisted",
+          label: error
+            ? "Écriture de l'étape refusée : aucune autre action."
+            : "Étape modifiée par un conseiller pendant l'analyse : la décision humaine est conservée.",
+          status: "failed",
+          detail: { error_code: code, updated_columns: updatedColumns },
+        });
+        await finishRun(client, runId, {
+          status: "failed",
+          error: code,
+          decision: error
+            ? "Écriture de l'étape refusée : aucune autre action."
+            : "Étape modifiée par un conseiller pendant l'analyse : Hugo n'a rien remplacé.",
+          usage: generation.usage,
+        });
+        return error
+          ? failFromDatabase<HugoRunResult>("runHugoQualification.stageChange", error)
+          : failWith<HugoRunResult>("contact_stage_changed");
+      }
+      updatedColumns.push("contacts.stage");
     }
 
     if (Object.keys(merged.propertyUpdates).length > 0) {

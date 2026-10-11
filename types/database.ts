@@ -874,6 +874,15 @@ export type Database = {
           window_total: number
         }[]
       }
+      apply_agent_stage_change: {
+        Args: {
+          agent_run: string
+          expected_stage: Database["public"]["Enums"]["pipeline_stage"]
+          new_stage: Database["public"]["Enums"]["pipeline_stage"]
+          target_contact: string
+        }
+        Returns: boolean
+      }
       change_contact_stage: {
         Args: {
           mandate_confirmed?: boolean
@@ -902,6 +911,10 @@ export type Database = {
         Args: { paused: boolean; target_agency: string }
         Returns: boolean
       }
+      set_estimation_ip_hmac_secret: {
+        Args: { p_secret: string }
+        Returns: undefined
+      }
       submit_estimation_request: {
         Args: {
           p_city: string
@@ -912,6 +925,8 @@ export type Database = {
           p_email: string
           p_first_name: string
           p_ip_hash: string
+          p_ip_hash_issued_at: number
+          p_ip_hash_signature: string
           p_last_name: string
           p_message: string
           p_phone: string

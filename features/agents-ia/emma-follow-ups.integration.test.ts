@@ -290,6 +290,33 @@ describe("listEmmaFollowUpCandidates — dossier en ordre", () => {
   });
 });
 
+describe("listEmmaFollowUpCandidates — minimisation (SEC-002)", () => {
+  it("ne renvoie jamais l'email ni le téléphone, seulement leur disponibilité", async () => {
+    const email = `minimisation.${env.runId}@example.test`;
+    const phone = "06 39 98 20 77";
+    const withBoth = await createContact("minimisation-complet", { email, phone });
+    const withNone = await createContact("minimisation-vide", { email: null, phone: null, consents: [] });
+
+    const result = await listEmmaFollowUpCandidates(agentA);
+    expect(result.error).toBeNull();
+
+    const serialized = JSON.stringify(result.data);
+    expect(serialized).not.toContain(email);
+    expect(serialized).not.toContain(phone);
+    for (const row of result.data!) {
+      expect(Object.keys(row)).not.toContain("email");
+      expect(Object.keys(row)).not.toContain("phone");
+    }
+
+    const complete = find(result.data!, withBoth) as unknown as Record<string, unknown>;
+    expect(complete.hasEmail).toBe(true);
+    expect(complete.hasPhone).toBe(true);
+    const empty = find(result.data!, withNone) as unknown as Record<string, unknown>;
+    expect(empty.hasEmail).toBe(false);
+    expect(empty.hasPhone).toBe(false);
+  });
+});
+
 describe("listEmmaFollowUpCandidates — isolation entre agences", () => {
   it("un membre de l'agence A ne voit jamais un dossier, un consentement ou un brouillon de l'agence B", async () => {
     const contactB = await createContact("isolation-b", { agency: "b" });

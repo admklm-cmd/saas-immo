@@ -139,8 +139,8 @@ export function EmmaFollowUpCard({
 
   const reason = blockedReasonText(candidate.blockedReason);
   const busy = state.kind === "running" || isRefreshing;
-  const email = candidate.email ? TEXTS.emailAvailable : null;
-  const phone = candidate.phone ? TEXTS.phoneAvailable : null;
+  const email = candidate.hasEmail ? TEXTS.emailAvailable : null;
+  const phone = candidate.hasPhone ? TEXTS.phoneAvailable : null;
   const details = [email, phone].filter(Boolean).join(" · ") || TEXTS.noReachableDetail;
 
   return (

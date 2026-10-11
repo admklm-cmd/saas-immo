@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,6 +13,9 @@ import { ESTIMATION_ERROR_MESSAGES, type EstimationRequestInput } from "./types"
  * does when the variable is missing or too short.
  */
 const TEST_ONLY_IP_HASH_SALT = "test-only-estimation-ip-hash-salt-0000000000";
+
+/** Test-only signing secret (SEC-001), same convention as the salt above. */
+const TEST_ONLY_IP_HMAC_SECRET = "test-only-estimation-ip-hmac-secret-000000000";
 
 const TEST_CLIENT_IP = "203.0.113.7";
 const EXPECTED_IP_HASH = createHash("sha256")
@@ -60,6 +63,11 @@ describe("mapEstimationDatabaseError", () => {
     expect(mapEstimationDatabaseError("inbound_lead_unsafe_text")).toBe("validation_failed");
   });
 
+  it("une signature d'empreinte refusée ou un secret absent en base donnent le message générique (SEC-001)", () => {
+    expect(mapEstimationDatabaseError("estimation_signature_invalid")).toBe("unavailable");
+    expect(mapEstimationDatabaseError("estimation_unavailable")).toBe("unavailable");
+  });
+
   it("replie toute autre erreur (y compris l'agence indisponible) sur un message générique", () => {
     expect(mapEstimationDatabaseError("estimation_agency_unavailable")).toBe("unavailable");
     expect(mapEstimationDatabaseError("connection refused")).toBe("unavailable");
@@ -70,6 +78,7 @@ describe("mapEstimationDatabaseError", () => {
 describe("submitEstimationRequestForClient", () => {
   beforeEach(() => {
     vi.stubEnv("ESTIMATION_IP_HASH_SALT", TEST_ONLY_IP_HASH_SALT);
+    vi.stubEnv("ESTIMATION_IP_HMAC_SECRET", TEST_ONLY_IP_HMAC_SECRET);
   });
 
   afterEach(() => {
@@ -103,12 +112,41 @@ describe("submitEstimationRequestForClient", () => {
       p_website: "",
     });
     expect(args.p_ip_hash).not.toBe(TEST_CLIENT_IP);
+    // SEC-001: the bucket is signed with the server secret, fresh, and the
+    // secret itself is never sent.
+    expect(typeof args.p_ip_hash_issued_at).toBe("number");
+    expect(Math.abs(Number(args.p_ip_hash_issued_at) - Date.now() / 1000)).toBeLessThan(5);
+    expect(args.p_ip_hash_signature).toBe(
+      createHmac("sha256", TEST_ONLY_IP_HMAC_SECRET)
+        .update(`estimation-ip:v1:${EXPECTED_IP_HASH}:${String(args.p_ip_hash_issued_at)}`)
+        .digest("hex"),
+    );
+    expect(JSON.stringify(args)).not.toContain(TEST_ONLY_IP_HMAC_SECRET);
     expect(JSON.stringify(args)).not.toContain(TEST_CLIENT_IP);
     expect(JSON.stringify(args)).not.toContain(TEST_ONLY_IP_HASH_SALT);
     // No `agency_id` in the arguments at all: the target agency is resolved
     // entirely server-side, inside the database function.
     expect(args).not.toHaveProperty("agency_id");
     expect(args).not.toHaveProperty("p_agency_id");
+  });
+
+  it("refuse sans appel à la base quand ESTIMATION_IP_HMAC_SECRET manque ou est trop court (SEC-001)", async () => {
+    for (const value of [undefined, "", "test-only-court"]) {
+      vi.stubEnv("ESTIMATION_IP_HMAC_SECRET", value);
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { client, rpc } = mockClient({ error: null });
+
+      const result = await submitEstimationRequestForClient(client, validInput(), {
+        clientIp: TEST_CLIENT_IP,
+        userAgent: "vitest",
+      });
+
+      expect(result.error?.code).toBe("unavailable");
+      expect(result.error?.message).toBe(ESTIMATION_ERROR_MESSAGES.unavailable);
+      expect(rpc).not.toHaveBeenCalled();
+      expect(String(consoleError.mock.calls[0]?.[0])).toContain("ESTIMATION_IP_HMAC_SECRET");
+      consoleError.mockRestore();
+    }
   });
 
   it("ne fait AUCUN appel réseau quand la validation zod échoue", async () => {

@@ -136,7 +136,7 @@ export const AGENT_ERROR_MESSAGES: Record<AgentErrorCode, string> = {
   appointment_report_missing:
     "Aucun compte-rendu n'a encore été saisi pour ce rendez-vous : Sarah n'en déduit rien et n'invente rien. Une tâche a été créée pour le conseiller qui l'a réalisé.",
   contact_stage_changed:
-    "Le dossier a été modifié par un conseiller pendant l'analyse. Sarah n'a pas remplacé cette décision : rechargez la fiche avant de relancer.",
+    "Le dossier a été modifié par un conseiller pendant l'analyse. L'agent IA n'a pas remplacé cette décision : rechargez la fiche avant de relancer.",
   // Same reasoning as `contact_not_found`: identical answer for "unknown" and
   // "belongs to another agency".
   outbound_message_not_found: "Message introuvable.",

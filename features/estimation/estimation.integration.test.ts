@@ -8,6 +8,7 @@ import { runLeaAcquisition } from "@/features/agents-ia/lea-acquisition/lea";
 import { FIXTURE_CONTACT_IDS } from "@/fixtures/dataset";
 import { FIXTURE_AGENCY_IDS, FIXTURE_EMAIL_DOMAIN } from "@/fixtures/fixture-ids";
 import { assertLocalSupabaseUrl } from "@/lib/supabase/local-only";
+import { ensureEstimationHmacSecret } from "@/lib/supabase/testing/estimation-secret";
 import type { Database } from "@/types/database";
 
 import {
@@ -16,6 +17,7 @@ import {
   type EstimationConsentChannel,
 } from "./consent-texts";
 import { mapEstimationDatabaseError, submitEstimationRequestForClient } from "./estimation";
+import { signIpHash } from "./ip-signature";
 import { ESTIMATION_ERROR_MESSAGES, type EstimationRequestInput } from "./types";
 
 /**
@@ -84,6 +86,10 @@ type SubmitEstimationRequestArgs = Database["public"]["Functions"]["submit_estim
  * concept) — same narrow, documented cast as `features/estimation/estimation.ts`.
  */
 function buildArgs(overrides: RpcArgsOverrides = {}): SubmitEstimationRequestArgs {
+  const ipHash = overrides.ipHash ?? `ip-${randomBytes(6).toString("hex")}`;
+  // SEC-001: the RPC only accepts an IP hash signed with the server secret
+  // (the same Vault secret the Next.js server holds), signed just now.
+  const signed = signIpHash(ipHash, hmacSecret);
   return {
     p_first_name: overrides.firstName ?? "Test",
     p_last_name: overrides.lastName ?? "Intégration Estimation",
@@ -99,9 +105,11 @@ function buildArgs(overrides: RpcArgsOverrides = {}): SubmitEstimationRequestArg
     p_consent_sms: overrides.consentSms ?? false,
     p_consent_whatsapp: overrides.consentWhatsapp ?? false,
     p_consent_phone: overrides.consentPhone ?? false,
-    p_ip_hash: overrides.ipHash ?? `ip-${randomBytes(6).toString("hex")}`,
+    p_ip_hash: ipHash,
     p_user_agent: overrides.userAgent ?? "vitest-integration",
     p_website: overrides.website ?? "",
+    p_ip_hash_issued_at: signed.issuedAt,
+    p_ip_hash_signature: signed.signature,
   } as unknown as SubmitEstimationRequestArgs;
 }
 
@@ -113,6 +121,7 @@ let admin: TypedClient;
 let anon: TypedClient;
 let pg: PgClient;
 let runId: string;
+let hmacSecret: string;
 
 beforeAll(async () => {
   const url = assertLocalSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL, "features/estimation integration tests");
@@ -127,6 +136,7 @@ beforeAll(async () => {
   pg = new PgClient({ connectionString: LOCAL_PG_URL });
   await pg.connect();
   runId = `est-${Date.now().toString(36)}-${randomBytes(3).toString("hex")}`;
+  hmacSecret = await ensureEstimationHmacSecret(pg);
 
   // Make both fixture agencies exist regardless of whether `npm run db:seed`
   // ran first (the estimation function ALWAYS targets the fixed id of
@@ -225,11 +235,12 @@ describe("atomicité", () => {
       );
 
       await pg.query("SAVEPOINT before_call");
+      const atomicSignature = signIpHash(`ip-${marker}`, hmacSecret);
       let threw = false;
       try {
         await pg.query(
           `select public.submit_estimation_request(
-             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17
+             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
            )`,
           [
             "Test",
@@ -249,6 +260,8 @@ describe("atomicité", () => {
             `ip-${marker}`,
             marker,
             "",
+            atomicSignature.issuedAt,
+            atomicSignature.signature,
           ],
         );
       } catch {
@@ -580,6 +593,7 @@ describe("sel de hachage d'IP manquant ou trop court", () => {
     // an earlier run (`consents` cannot be deleted — see the `finally` block).
     const salt = `${TEST_ONLY_IP_HASH_SALT}-${runId}`;
     vi.stubEnv("ESTIMATION_IP_HASH_SALT", salt);
+    vi.stubEnv("ESTIMATION_IP_HMAC_SECRET", hmacSecret);
     const email = `salt-ok-${runId}@example.test`;
     const userAgent = `vitest-salt-ok-${runId}`;
     const clientIp = "203.0.113.207";
@@ -796,5 +810,258 @@ describe("caractères de contrôle refusés par la base, même en appel direct",
       await pg.query("delete from public.inbound_leads where payload ->> 'email' = $1", [email]);
       await pg.query("delete from private.estimation_submissions where ip_hash = $1", [ipHash]);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SEC-001 — the per-IP rate limit can no longer be bypassed by a direct
+// anonymous caller choosing its own bucket (migration 20261010130000).
+//
+// Kept in THIS file on purpose: the agency-ceiling test above saturates the
+// shared fixture agency A for a moment, so these submissions must run in
+// series with it, never in a parallel test file.
+//
+// Every lead written here carries `sec001Marker` in its email and is deleted
+// in `afterEach`, with the rate-limit rows of the hashes used. The granted
+// consents (append-only, contact_id null) stay: they authorise no sending.
+// ---------------------------------------------------------------------------
+describe("SEC-001 — empreinte IP signée par le serveur", () => {
+  const usedHashes: string[] = [];
+  let sec001Marker: string;
+
+  beforeAll(() => {
+    sec001Marker = `sec001-${runId}`;
+  });
+
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    await pg.query("delete from public.inbound_leads where payload ->> 'email' like $1", [`%${sec001Marker}%`]);
+    if (usedHashes.length > 0) {
+      await pg.query("delete from private.estimation_submissions where ip_hash = any($1)", [usedHashes]);
+    }
+  });
+
+  function args(
+    ipHash: string,
+    signature: { issuedAt: number; signature: string } | null,
+    email: string,
+  ): Record<string, unknown> {
+    const base: Record<string, unknown> = {
+      p_first_name: "Test",
+      p_last_name: "Signature IP",
+      p_email: email,
+      p_phone: null,
+      p_property_type: "apartment",
+      p_city: "La Ciotat",
+      p_postal_code: "13600",
+      p_surface_m2: 55,
+      p_rooms: 2,
+      p_message: null,
+      p_consent_email: true,
+      p_consent_sms: false,
+      p_consent_whatsapp: false,
+      p_consent_phone: false,
+      p_ip_hash: ipHash,
+      p_user_agent: "vitest-sec-001",
+      p_website: "",
+    };
+    if (signature) {
+      base.p_ip_hash_issued_at = signature.issuedAt;
+      base.p_ip_hash_signature = signature.signature;
+    }
+    return base;
+  }
+
+  async function directCall(payload: Record<string, unknown>) {
+    // Untyped on purpose: an attacker is not bound by our generated types.
+    return (anon as unknown as SupabaseClient).rpc("submit_estimation_request", payload);
+  }
+
+  function freshHash(label: string): string {
+    const hash = createHash("sha256").update(`${sec001Marker}:${label}:${randomBytes(4).toString("hex")}`).digest("hex");
+    usedHashes.push(hash);
+    return hash;
+  }
+
+  async function submissionsFor(ipHash: string): Promise<number> {
+    const result = await pg.query<{ count: string }>(
+      "select count(*)::text as count from private.estimation_submissions where ip_hash = $1",
+      [ipHash],
+    );
+    return Number(result.rows[0]?.count ?? "0");
+  }
+
+  describe("appel anonyme direct de la RPC (SEC-001)", () => {
+    it("sans signature, un appelant ne peut plus choisir son compartiment : 5 empreintes inventées, 5 refus", async () => {
+      const accepted: string[] = [];
+      for (let index = 0; index < 5; index += 1) {
+        const hash = freshHash(`unsigned-${index}`);
+        const { error } = await directCall(args(hash, null, `unsigned-${index}.${sec001Marker}@example.test`));
+        if (!error) accepted.push(hash);
+        expect(await submissionsFor(hash)).toBe(0);
+      }
+      expect(accepted).toEqual([]);
+    });
+
+    it("une signature forgée (sans le secret) est refusée", async () => {
+      const hash = freshHash("forged");
+      const forged = signIpHash(hash, "x".repeat(64));
+      const { error } = await directCall(args(hash, forged, `forged.${sec001Marker}@example.test`));
+      expect(error?.message).toBe("estimation_signature_invalid");
+      expect(await submissionsFor(hash)).toBe(0);
+    });
+
+    it("la comparaison de signature passe par un double HMAC (pas de comparaison directe sensible au temps)", async () => {
+      const definition = await pg.query<{ def: string }>(
+        "select pg_get_functiondef('private.estimation_ip_signature_valid(text, bigint, text, text)'::regprocedure) as def",
+      );
+      const body = (definition.rows[0]?.def ?? "").replace(/\s+/g, " ");
+      expect(body).toContain("hmac(convert_to(p_signature, 'UTF8')");
+      expect(body).not.toMatch(/return expected = p_signature/);
+      // Behaviour unchanged: a signature differing only in its last byte is refused.
+      const hash = freshHash("last-byte");
+      const signed = signIpHash(hash, hmacSecret);
+      const lastChar = signed.signature.at(-1) === "0" ? "1" : "0";
+      const tampered = { ...signed, signature: `${signed.signature.slice(0, -1)}${lastChar}` };
+      const { error } = await directCall(args(hash, tampered, `last-byte.${sec001Marker}@example.test`));
+      expect(error?.message).toBe("estimation_signature_invalid");
+      expect(await submissionsFor(hash)).toBe(0);
+    });
+
+    it("une signature expirée (plus de 60 s) est refusée", async () => {
+      const hash = freshHash("expired");
+      const expired = signIpHash(hash, hmacSecret, new Date(Date.now() - 61_000));
+      const { error } = await directCall(args(hash, expired, `expired.${sec001Marker}@example.test`));
+      expect(error?.message).toBe("estimation_signature_invalid");
+      expect(await submissionsFor(hash)).toBe(0);
+    });
+
+    it("une signature datée dans le futur est refusée", async () => {
+      const hash = freshHash("future");
+      const future = signIpHash(hash, hmacSecret, new Date(Date.now() + 120_000));
+      const { error } = await directCall(args(hash, future, `future.${sec001Marker}@example.test`));
+      expect(error?.message).toBe("estimation_signature_invalid");
+    });
+
+    it("une signature valide rejouée avec une autre empreinte est refusée", async () => {
+      const hash = freshHash("original");
+      const other = freshHash("other");
+      const signed = signIpHash(hash, hmacSecret);
+      const { error } = await directCall(args(other, signed, `replay.${sec001Marker}@example.test`));
+      expect(error?.message).toBe("estimation_signature_invalid");
+      expect(await submissionsFor(other)).toBe(0);
+    });
+
+    it("le quota par IP tient : 3 demandes signées acceptées, la 4e refusée, y compris en rejouant une signature", async () => {
+      const hash = freshHash("quota");
+      const signed = signIpHash(hash, hmacSecret);
+      for (let index = 0; index < 3; index += 1) {
+        const { error } = await directCall(args(hash, signIpHash(hash, hmacSecret), `quota-${index}.${sec001Marker}@example.test`));
+        expect(error).toBeNull();
+      }
+      const fourth = await directCall(args(hash, signIpHash(hash, hmacSecret), `quota-3.${sec001Marker}@example.test`));
+      expect(fourth.error?.message).toBe("estimation_rate_limited");
+      const replayed = await directCall(args(hash, signed, `quota-replay.${sec001Marker}@example.test`));
+      expect(replayed.error?.message).toBe("estimation_rate_limited");
+      expect(await submissionsFor(hash)).toBe(3);
+    });
+
+    it("sans secret installé dans la base, la RPC refuse tout (transaction annulée)", async () => {
+      const hash = freshHash("no-secret");
+      const signed = signIpHash(hash, hmacSecret);
+      await pg.query("begin");
+      try {
+        await pg.query("delete from vault.secrets where name = 'estimation_ip_hmac_secret'");
+        await pg.query("set local role anon");
+        await expect(
+          pg.query(
+            `select public.submit_estimation_request(
+               'Test', 'Sans secret', $1, null, 'apartment', 'La Ciotat', '13600', 55, 2::smallint, null,
+               true, false, false, false, $2, 'vitest', '', $3::bigint, $4)`,
+            [`no-secret.${sec001Marker}@example.test`, hash, signed.issuedAt, signed.signature],
+          ),
+        ).rejects.toThrow("estimation_unavailable");
+      } finally {
+        await pg.query("rollback");
+      }
+      expect(await submissionsFor(hash)).toBe(0);
+    });
+  });
+
+  function serverInput(email: string): EstimationRequestInput {
+    return {
+      firstName: "Test",
+      lastName: "Parcours serveur",
+      email,
+      phone: null,
+      propertyType: "appartement",
+      city: "La Ciotat",
+      postalCode: "13600",
+      surfaceM2: 55,
+      rooms: 2,
+      message: "Demande envoyée par les tests d'intégration SEC-001 (fictive).",
+      consents: { email: true, sms: false, whatsapp: false, phone: false },
+      website: "",
+    };
+  }
+
+  /** Same salt + IP => same bucket as the server computes; recorded for cleanup. */
+  function stubSalt(clientIp: string): void {
+    const salt = randomBytes(32).toString("hex");
+    vi.stubEnv("ESTIMATION_IP_HASH_SALT", salt);
+    usedHashes.push(createHash("sha256").update(`${salt}:${clientIp}`).digest("hex"));
+  }
+
+  describe("parcours normal via le serveur Next", () => {
+    it("la fonction serveur signe l'empreinte et la demande est enregistrée", async () => {
+      const clientIp = "198.51.100.17";
+      stubSalt(clientIp);
+      vi.stubEnv("ESTIMATION_IP_HMAC_SECRET", hmacSecret);
+      const email = `server-path.${sec001Marker}@example.test`;
+
+      const result = await submitEstimationRequestForClient(anon, serverInput(email), {
+        clientIp,
+        userAgent: "vitest-sec-001",
+      });
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual({ status: "received" });
+
+      const lead = await pg.query("select id from public.inbound_leads where payload ->> 'email' = $1", [email]);
+      expect(lead.rowCount).toBe(1);
+    });
+
+    it("sans ESTIMATION_IP_HMAC_SECRET, le serveur refuse avant toute écriture (message générique)", async () => {
+      const clientIp = "198.51.100.18";
+      stubSalt(clientIp);
+      vi.stubEnv("ESTIMATION_IP_HMAC_SECRET", "");
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      const email = `server-no-secret.${sec001Marker}@example.test`;
+
+      const result = await submitEstimationRequestForClient(anon, serverInput(email), {
+        clientIp,
+        userAgent: "vitest-sec-001",
+      });
+      expect(result.error?.code).toBe("unavailable");
+      expect(String(consoleError.mock.calls[0]?.[0])).toContain("ESTIMATION_IP_HMAC_SECRET");
+      const lead = await pg.query("select id from public.inbound_leads where payload ->> 'email' = $1", [email]);
+      expect(lead.rowCount).toBe(0);
+    });
+
+    it("un secret côté Next différent de celui de la base : refus générique, rien d'écrit", async () => {
+      const clientIp = "198.51.100.19";
+      stubSalt(clientIp);
+      vi.stubEnv("ESTIMATION_IP_HMAC_SECRET", "z".repeat(64));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const email = `server-mismatch.${sec001Marker}@example.test`;
+
+      const result = await submitEstimationRequestForClient(anon, serverInput(email), {
+        clientIp,
+        userAgent: "vitest-sec-001",
+      });
+      expect(result.error?.code).toBe("unavailable");
+      const lead = await pg.query("select id from public.inbound_leads where payload ->> 'email' = $1", [email]);
+      expect(lead.rowCount).toBe(0);
+    });
   });
 });
