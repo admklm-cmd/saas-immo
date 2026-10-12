@@ -319,7 +319,38 @@ export function leadCity(payload: Json): string | null {
 }
 
 /**
+ * Exact totals behind Léa's inbox, so the screen can say « 50 plus récentes
+ * sur 206 » instead of silently cutting the list: every lead of the agency, and
+ * those still `pending`. Counts made in the database, never the length of a page.
+ */
+export async function countInboundLeads(client: TypedClient): Promise<Result<{ total: number; pending: number }>> {
+  try {
+    const contextResult = await resolveAgentContext(client);
+    if (contextResult.error) return { data: null, error: contextResult.error };
+    const { agencyId } = contextResult.data;
+
+    const [all, pending] = await Promise.all([
+      client.from("inbound_leads").select("id", { count: "exact", head: true }).eq("agency_id", agencyId),
+      client
+        .from("inbound_leads")
+        .select("id", { count: "exact", head: true })
+        .eq("agency_id", agencyId)
+        .eq("status", "pending"),
+    ]);
+    const total = requireExactCount("countInboundLeads.total", all);
+    if (total.error) return { data: null, error: total.error };
+    const waiting = requireExactCount("countInboundLeads.pending", pending);
+    if (waiting.error) return { data: null, error: waiting.error };
+    return ok({ total: total.data, pending: waiting.data });
+  } catch (cause) {
+    return failFromUnexpected<{ total: number; pending: number }>("countInboundLeads", cause);
+  }
+}
+
+/**
  * Léa's inbox: the agency's inbound leads, most recent first.
+ * Shows at most `INBOUND_LEADS_PAGE_SIZE` (all the pending ones first, then the
+ * most recent others): use `countInboundLeads` for the real totals.
  *
  * A lead is raw material, NOT a consent: nothing may be sent to these people
  * until a consent is recorded and checked at send time by the database.
@@ -330,17 +361,40 @@ export async function listInboundLeads(client: TypedClient): Promise<Result<Inbo
     if (contextResult.error) return { data: null, error: contextResult.error };
     const context: AgentContext = contextResult.data;
 
-    const { data, error } = await client
-      .from("inbound_leads")
-      .select("id, source, status, raw_text, payload, contact_id, processed_run_id, created_at")
-      .eq("agency_id", context.agencyId)
-      .order("created_at", { ascending: false })
-      .limit(INBOUND_LEADS_PAGE_SIZE);
-
+    // Every lead still waiting for Léa is listed (up to one page), however old:
+    // a plain "most recent 50" would hide a pending lead behind processed ones.
+    // The rest of the page is filled with the most recent other leads, and the
+    // union is shown most recent first. The exact totals are in `countInboundLeads`.
+    const columns = "id, source, status, raw_text, payload, contact_id, processed_run_id, created_at";
+    const [pendingQuery, othersQuery] = await Promise.all([
+      client
+        .from("inbound_leads")
+        .select(columns)
+        .eq("agency_id", context.agencyId)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .limit(INBOUND_LEADS_PAGE_SIZE),
+      client
+        .from("inbound_leads")
+        .select(columns)
+        .eq("agency_id", context.agencyId)
+        .neq("status", "pending")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .limit(INBOUND_LEADS_PAGE_SIZE),
+    ]);
+    const error = pendingQuery.error ?? othersQuery.error;
     if (error) return failFromDatabase<InboundLeadView[]>("listInboundLeads", error);
 
+    const pending = pendingQuery.data ?? [];
+    const others = (othersQuery.data ?? []).slice(0, Math.max(0, INBOUND_LEADS_PAGE_SIZE - pending.length));
+    const data = [...pending, ...others].sort(
+      (left, right) => Date.parse(right.created_at) - Date.parse(left.created_at) || left.id.localeCompare(right.id),
+    );
+
     return ok(
-      (data ?? []).map((row) => ({
+      data.map((row) => ({
         id: row.id,
         source: row.source,
         status: row.status,
@@ -585,6 +639,29 @@ export async function listMessagesToValidate(
 
 
 /**
+ * Exact number of dossiers Emma's workspace could list (open stages she can
+ * work on), so the screen can say « 100 premiers sur N » when the list is cut at
+ * `EMMA_CANDIDATES_LIMIT`. A database count, never the length of the page.
+ */
+export async function countEmmaFollowUpCandidates(client: TypedClient): Promise<Result<number>> {
+  try {
+    const contextResult = await resolveAgentContext(client);
+    if (contextResult.error) return { data: null, error: contextResult.error };
+    const response = await client
+      .from("contacts")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", contextResult.data.agencyId)
+      .in("stage", [...EMMA_ELIGIBLE_STAGES]);
+    return requireExactCount("countEmmaFollowUpCandidates", response);
+  } catch (cause) {
+    return failFromUnexpected<number>("countEmmaFollowUpCandidates", cause);
+  }
+}
+
+/** Longest list of Emma's workspace (oldest-updated dossiers first). */
+export const EMMA_CANDIDATES_LIMIT = 100;
+
+/**
  * Emma's manual workspace. It deliberately does not claim a relance is "due":
  * no cadence policy exists yet. The action remains authoritative and rechecks
  * every value at click time.
@@ -603,7 +680,8 @@ export async function listEmmaFollowUpCandidates(
       .eq("agency_id", context.agencyId)
       .in("stage", [...EMMA_ELIGIBLE_STAGES])
       .order("updated_at", { ascending: true })
-      .limit(100);
+      .order("id", { ascending: true })
+      .limit(EMMA_CANDIDATES_LIMIT);
     if (contactsQuery.error) {
       return failFromDatabase<EmmaFollowUpCandidateView[]>(
         "listEmmaFollowUpCandidates.contacts",

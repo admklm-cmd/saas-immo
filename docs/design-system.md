@@ -2460,6 +2460,380 @@ Nouveau fichier E2E attendu : `e2e/landing-hero-nanorobots.spec.ts` (C1–C7, C9
 existants à ajuster : `landing-sans-boucle.spec.ts` (C20), et toute assertion de `accueil.spec.ts`
 sur l'ordre de tabulation du hero (le bouton pause s'insère).
 
+#### 2.11.4 ter Hero — particules en métamorphose (12/10/2026)
+
+> **Statut : spécifié le 12/10/2026, non implémenté.** Demande de l'utilisateur : le fond du haut
+> de la page d'accueil n'est **plus une image fixe** avec quelques nanorobots posés dessus ; **le
+> fond lui-même est une animation de nanoparticules** — un nuage dispersé qui devient une **boule**,
+> puis une **pomme**, puis **les deux mains qui s'effleurent** (*La Création d'Adam*), et **reste
+> sur cette image finale, vivante**. Cette sous-section **remplace** §2.11.4 bis A à D et F à J
+> pour ce qui concerne les **puces échangeant par paires** (`HeroNanoField`, ses ancres, son
+> ordonnanceur) ; **le terminal « humain ⇄ machine » (§2.11.4 bis E) est conservé tel quel**. Elle
+> remplace aussi l'image `particle-handoff.jpg` en fond de page (`LivingBackground`, §2.11.4).
+
+##### A. Idée, lecture en cinq secondes
+
+- **Idée unique** : *une matière s'organise, prend forme, et finit par une main tendue entre
+  l'humain et la machine.* Le visiteur lit : nuage → boule → pomme (le fruit de la connaissance)
+  → deux mains presque en contact, et **un seul point cobalt** dans l'espace entre les deux index.
+- **Ce qui reste utilisable tout de suite** : le titre, le sous-titre et les deux boutons sont
+  lisibles et cliquables **dès la première image** (aucune forme ne les cache : voiles §2.11.4,
+  zone de forme décalée, section F). L'animation ne retarde ni la lecture ni une action.
+- **Pas de boucle de métamorphose** : la séquence se joue **une fois** (≈ 10,6 s), puis l'image
+  finale reste, avec un micro-mouvement lent et quelques nanorobots qui circulent sur les doigts
+  (exception à la règle « aucune boucle » déjà accordée le 10/10 pour le hero, étendue ici :
+  section M).
+
+##### B. Chorégraphie image par image (durées exactes, déterministe, graine fixe)
+
+`t` en secondes depuis le début de la séquence (= première image dessinée après hydratation ;
+le titre arrive en 1,4 s, le terminal commence à 1,6 s : inchangés).
+
+| t | Phase (`data-phase`) | Ce que voit le visiteur | Détails |
+|---|---|---|---|
+| 0,00 → 0,60 | `cloud` | **le nuage apparaît** : les points montent en opacité de 0 à leur valeur finale | positions dispersées sur toute la bande, densité plus forte aux bords, **courants lents** (dérive de 14 px, période 7 s) |
+| 0,60 → 1,40 | `cloud` | le nuage respire, aucun événement | mise en place du regard sur le titre (qui s'écrit à 1,4 s) |
+| 1,40 → 3,40 | `to-sphere` | le nuage **se concentre** en spirale vers le centre de la zone de forme et devient une **boule** | 2,0 s ; les points les plus à gauche partent en premier, la vague balaie vers la droite |
+| 3,40 → 4,80 | `sphere` | **boule** de points en rotation lente ; les nanorobots **tournent sur la boule** | rotation autour de l'axe vertical 0,30 rad/s, inclinaison fixe 12° ; 12 nanorobots sur 3 orbites inclinées (+20°, −35°, +70°), 0,9 à 1,1 rad/s |
+| 4,80 → 6,80 | `to-apple` | la boule **se creuse en haut, se resserre en bas** et devient une pomme | 2,0 s ; tige et feuille **naissent à 5,9 s** (dernier tiers) : leurs points viennent du haut de la boule |
+| 6,80 → 8,20 | `apple` | **pomme** entière en balancement lent ; nanorobots sur ses contours | lacet ± 14° (période 6 s), jamais de tour complet (la feuille reste à gauche, lisible) ; robots sur 2 méridiens et 1 parallèle de la pomme |
+| 8,20 → 10,60 | `to-hands` | la pomme **s'ouvre**, les points s'étirent latéralement et dessinent **deux avant-bras** qui avancent l'un vers l'autre ; **les index arrivent en dernier** | 2,4 s ; les points les plus proches du vide entre les doigts arrivent en dernier (retard maximal) : le dernier 0,6 s est l'approche des deux index |
+| 10,60 → 11,00 | `hands` | **image finale** : les deux mains, un espace d'environ 3 % de la largeur entre les index | le point cobalt apparaît (`opacity` 0 → 1, 300 ms) |
+| ≥ 11,00 | `hands` | **état vivant** (section E) | indéfini, en pause hors écran, onglet caché ou au bouton |
+
+Cette durée de 10,6 s **tombe volontairement** sur la fin du terminal : sa dernière ligne
+(`# les agents préparent. vous décidez.`) commence à 10,85 s (§2.11.4 bis E) — quand les mains sont
+en place. Aucun couplage de code : un simple accord de durées ; si l'une des deux est mise en pause,
+l'autre aussi (bouton unique, section H).
+
+##### C. Nature des transitions (jamais un fondu entre deux images)
+
+Chaque point garde la **même identité** d'un bout à l'autre ; il possède, pour chaque forme, une
+cible `P_k(i)`. Pour la transition de la forme *k* à la forme *k+1* (durée `T`) :
+
+1. **Appariement** : les points sont triés par **rang de courbe de Hilbert** (ou, à défaut, par
+   angle puis rayon) dans la forme de départ et dans la forme d'arrivée, puis appariés **rang pour
+   rang** (aucun croisement massif, le flux semble organisé). Calculé **une fois**, hors boucle.
+2. **Trajectoire courbe** : quadratique de Bézier `A → C → B` avec `C = milieu(A,B) + n·κ·|AB|` ;
+   `n` = normale unitaire, `κ = ±(0,10 à 0,30)` tiré par point (graine), **70 % des signes
+   identiques** pour que l'ensemble tourbillonne dans un même sens (vortex), 30 % opposés pour
+   éviter l'effet mécanique.
+3. **Léger retard par point** : `retard_i = c·T·r_i`, `r_i ∈ [0,1]` = rang du point dans l'ordre de
+   la vague (sphère et pomme : angle autour du centre ; mains : distance à l'espace entre les
+   index, **inversée**, pour que les doigts arrivent en dernier), `c = 0,35` (sphère, pomme), `0,40`
+   (mains) ; plus un bruit de ± 0,04·T. La progression d'un point dure `(1 − c)·T`.
+4. **Easing** : `easeInOutCubic` par point (`cubic-bezier(0.65, 0, 0.35, 1)`, comme `--ease-draw`).
+   Aucun rebond, aucun dépassement.
+5. **Profondeur** : chaque point a un `z` ; il est interpolé comme x et y. La taille et l'opacité
+   dépendent de `z` et du plan (section D), donc la boule et la pomme **se lisent en volume**.
+
+Aucune transition n'utilise `opacity` pour passer d'une forme à l'autre (seule la naissance du
+nuage et du point cobalt en utilisent).
+
+##### D. Les formes, les points, les couleurs
+
+**Couleur** : points `ink` (`#18181b`) sur blanc ; **un seul point cobalt** (`--color-accent`)
+dans l'état final (et au plus un « bit » cobalt porté par un nanorobot : maximum **2 éléments
+cobalt** visibles en même temps). Pas de lueur, pas d'ombre, pas de dégradé, pas de violet, pas
+de vert.
+
+**Trois plans de profondeur** (rendu en fonction de `z`, répartition fixe des identités) :
+
+| Plan | Part des points | Taille (CSS px) | Opacité | Vitesse de micro-mouvement |
+|---|---|---|---|---|
+| Proche | 20 % | 1,9 | 0,78 | 1,0 × |
+| Intermédiaire | 35 % | 1,4 | 0,50 | 0,75 × |
+| Arrière | 45 % | 1,0 | 0,22 | 0,5 × |
+
+**Nombre de points** (un seul plafond, jamais dépassé) :
+
+| Largeur | Points | Nanorobots |
+|---|---|---|
+| ≥ 1280 px | **14 000** | 14 |
+| 768 – 1279 px | 9 000 | 10 |
+| < 768 px ou `pointer: coarse` | **3 600** | 6 |
+
+Pour comparaison : les fonds de l'espace connecté plafonnent à 6 000 (§2.5.8) ; le hero est
+volontairement 2,3 fois plus dense. **Densité adaptative** (réutiliser le principe du moteur
+existant) : si la durée moyenne de calcul d'une image dépasse **5 ms** sur 30 images, le nombre de
+points baisse de 25 % (plancher 40 % du nombre de départ), jamais l'inverse.
+
+**Formes** (positions normalisées dans une zone de forme, section F) :
+
+1. **Nuage** — 14 000 positions tirées par une graine (`mulberry32`) : 70 % mélange de
+   gaussiennes larges sur la bande entière, 30 % en bandes lentes aux marges gauche et droite ;
+   champ de courants (bruit lissé, amplitude 14 px, période 7 s) pour la dérive. Aucune forme lisible.
+2. **Boule** — surface d'une sphère, échantillonnage de **Fibonacci** (répartition régulière),
+   diamètre = hauteur de la zone de forme × 0,92. Vue en perspective douce (focale 4 diamètres) ;
+   la demi-sphère arrière est plus petite et plus pâle **par le calcul de `z`**, pas par un masque.
+3. **Pomme (le fruit, entière, sans encoche, sans morsure)** — **solide de révolution** (comme la
+   boule : on la voit en volume quand elle se balance). Profil, `θ ∈ [0, π]` du haut vers le bas :
+   `rayon ρ(θ) = R·sinθ·(1 + 0,10·cosθ)` (épaules plus larges que la base), `hauteur y(θ) = R·cosθ·0,94`,
+   puis **creux sommital** : `y −= 0,20·R·max(0, 1 − (ρ/(0,40·R))²)²` et creux basal 0,06·R. **Tige** :
+   petit cylindre incurvé (0,30·R de long, rayon 0,035·R, courbure 0,10·R), 4 % des points ;
+   **feuille** : ellipse plate 0,34 R × 0,14 R, inclinée de 30°, **fixée à la tige côté gauche**,
+   avec une nervure plus dense (6 % des points). **Règle de reconnaissance** : silhouette
+   symétrique par rapport à l'axe vertical (hors feuille), **aucune encoche latérale, feuille à
+   gauche** — pour ne **jamais** évoquer le logo d'une marque (celui-ci a une morsure à droite et
+   une feuille à droite). Les valeurs sont **indicatives** : `frontend-ux` ajuste à l'œil sur capture
+   (critère : « une pomme » identifiable en < 1 s, sans morsure).
+4. **Mains** — **échantillonnage par densité** d'une image de référence en niveaux de gris (section
+   N) : probabilité d'un point = `(1 − luminance)^1,3` (rejet par graine), plus un renfort de 8 %
+   des points sur les **contours** (détection de bord) pour garder les doigts nets. L'image est
+   **pré-cuite** (section G) : aucune lecture d'image au chargement.
+
+**Nanorobots** (même langage visuel que le 10/10 : carré 6 × 6 CSS px, rayon 1, plein `ink`, port
+central 2 × 2 couleur `canvas`, **jamais de lueur**, 5 × 5 en dessous de 768 px) : dessinés dans le
+même canvas, **mêmes plans de profondeur**. Chacun suit un **rail** (courbe paramétrique) propre à
+la phase (section B et E). Pendant les transitions, chaque robot passe de son rail précédent à son
+nouveau rail **avec le même mécanisme (Bézier, retard, easing) qu'un point**, de sorte qu'il
+« migre » avec le nuage. Un robot « porteur » a un port cobalt (≤ 1 en même temps, ≤ 2 avec le point
+final).
+
+##### E. L'état final vivant (≥ 11 s, indéfini)
+
+| Élément | Comportement exact |
+|---|---|
+| **Micro-mouvement des points** | chaque point oscille autour de sa cible : deux sinus de périodes 4 à 9 s (graine), amplitude **0,4 px (arrière) à 1,4 px (proche)**, phase aléatoire par point ; aucun point ne quitte sa zone de plus de 1,4 px |
+| **Nanorobots sur les doigts** | 14 robots (10, 6) sur des **rails extraits de l'image finale** : par main, un rail du poignet vers la **pointe de l'index** (4 rails), un le long de l'avant-bras, un contour de la main ; vitesse **38 à 60 px/s** (`inOutSine` aux extrémités) ; arrivés au bout, ils **s'estompent en 300 ms** (`opacity`) puis réapparaissent à l'origine ; traîne de 3 points fantômes (24 px) à 40 / 20 / 10 % d'opacité, **pas de lueur** |
+| **Point cobalt du contact** | un carré cobalt 3 × 3 px (4 × 4 à ≥ 1280) **dans l'espace** entre les deux index, fixe |
+| **Impulsion** | toutes les **3,6 s** : un anneau fin (trait 1 px, `--color-accent`) s'élargit de 4 à 18 px en 1,6 s en s'estompant (`opacity .6 → 0`, `scale`) et, 0,5 s plus tard, **un bit cobalt** part de la pointe de l'index gauche et rejoint celle de l'index droit en 0,9 s (`inOutSine`), sans toucher : le geste de *La Création d'Adam* reste une **promesse**. Au plus un anneau et un bit à la fois |
+| **Cadence** | **30 images/s** dans l'état final (une image sur deux) pour économiser le processeur ; 60 images/s pendant la métamorphose |
+| **Interaction** | aucune : le canvas est inerte (`pointer-events: none`), pas de réaction au pointeur ni au clavier |
+
+##### F. Composition : où se place la forme, ce qui reste lisible
+
+Le hero devient une **scène unique** `hero-stage` (déjà existante) dont le canvas remplit toute la
+bande 1 (`position: absolute; inset: 0; z-index: 0`, `aria-hidden="true"`, `pointer-events:
+none`), **fond blanc opaque** (il recouvre la poussière de page, section J). Le contenu reste en
+`relative z-10`.
+
+- **Zone de forme** : un rectangle **sans texte** placé dans l'espace libre existant
+  `data-nano-stage`, agrandi à **`h-[clamp(15rem,32vh,24rem)]`** à partir de 1024 px (240 à
+  288 px à 900 de haut) ; entre les boutons (au-dessus) et le terminal (au-dessous). **Le centre de
+  la forme est le centre de cette zone** ; c'est aussi là que se pose le **point cobalt**.
+  Dimensions de la forme à 1440 : boule Ø 400 px, pomme 380 px de haut, **mains 980 × 420 px**
+  (deux avant-bras qui sortent du cadre par la gauche et la droite) ; à 1024 : Ø 340, 320, 800 × 340 ;
+  à 390 : Ø 260, 250, 340 × 160. **La forme déborde de la zone vers le haut et vers le bas** (les
+  points passent sous les boutons et sous le terminal, **derrière** eux) : c'est ce débordement
+  qui fait un fond, et non une illustration posée.
+- **Lisibilité du texte** : les voiles existants (`.particle-veil`, `.particle-veil-tight`, texte
+  `data-network-quiet`, §2.11.4) restent **inchangés** : titre, sous-titre, **terminal**, preuves.
+  Les boutons sont opaques. Exigence mesurée : **≥ 4,5:1 au pixel le plus sombre sous chaque
+  glyphe** (≥ 5,41:1 avec voile, comme le lot « typographie et particules »), à 1440, 1024 et 390,
+  **pendant et après** la séquence.
+- **Au-dessus de la forme** : la forme n'entre **jamais** dans le titre : le haut de la zone de
+  forme est ≥ 24 px sous le bas des boutons ; les points qui débordent vers le haut sont masqués
+  par le dégradé blanc de la bande (voile de 48 px au-dessus de la zone, `linear-gradient(180deg,
+  canvas, transparent)`), pas par un décalage de mise en page.
+- **Terminal** : conservé, dans la même position relative (sous la zone de forme), inchangé
+  (textes, rythme, bouton pause, accessibilité §2.11.4 bis E). Il reste le seul élément dont le
+  contenu est « du texte qui s'écrit ».
+
+##### G. Technique recommandée (`frontend-ux` tranche les détails)
+
+- **Un canvas 2D**, un seul, dans `hero-stage` (aucune dépendance : le moteur d'animation de ce
+  hero n'est **pas** Anime.js mais une petite boucle `requestAnimationFrame` propre au canvas ;
+  Anime.js 4.5.0 reste réservé aux éléments du DOM, dont le terminal). Réutiliser les utilitaires
+  existants de `components/motion/engine/` (`prng.ts`, `math.ts`, `depth.ts`, `layout.ts`) ;
+  **ne pas** étendre `ParticleEngine` (6 000 points, un mode « fond d'application », transitions
+  par présélection) : le hero demande 14 000 points, des trajectoires courbes avec retard par
+  point, des robots sur rails et un état final dédié.
+- **Données en tableaux typés** `Float32Array` (positions de départ, de chaque cible, identité de
+  plan, graine, retards) ; **aucune allocation par image** ; trois lots de dessin (un par plan), un
+  `fillRect` par point (carrés de 1 à 2 px, alignés au pixel quand le point est immobile).
+- **DPR plafonné** : `min(devicePixelRatio, 1,5)` à ≥ 768 px, `1,25` en dessous.
+  Le canvas suit la taille de `hero-stage` (`ResizeObserver`, 150 ms de délai, **aucun rejeu** de
+  la séquence : on recalcule la géométrie et on garde la phase et le temps).
+- **Pause réelle** : arrêt de la boucle quand `hero-stage` est visible à moins de 10 %
+  (`IntersectionObserver`), quand l'onglet est caché (`visibilitychange`), à la pause utilisateur ;
+  reprise **au même instant de la séquence** (le temps ne continue pas à courir quand on est
+  parti). Zéro minuteur armé à l'arrêt.
+- **Budget** : travail JavaScript par image **≤ 4 ms au 75ᵉ centile** sur ordinateur ; **p95 de
+  l'intervalle entre images ≤ 17 ms à 1440** pendant la métamorphose, **≤ 34 ms à 390 avec CPU
+  ralenti × 4** ; en cas de dépassement, la densité adaptative (section D) réduit les points.
+- **Données pré-cuites** (le navigateur ne lit jamais d'image au chargement) :
+  - `components/landing/hero/particles/hands.points.bin` : points de l'état final (x, y, `z`,
+    plan, ton), **≤ 20 000** entrées quantifiées en 16 bits (≈ 80 ko, ≈ 40 ko compressé) ;
+  - `components/landing/hero/particles/rails.json` : les rails des nanorobots (polylignes
+    lissées de 40 à 60 sommets), la position du **point de contact** et la distance entre les
+    index ;
+  - `public/images/hero/hands-poster.webp` : dernière image (≤ 60 ko), utilisée **seulement** sans
+    JavaScript (`<noscript>`) ;
+  - script `scripts/bake-hero-hands.mjs` (une exécution de développement, résultats **versionnés**)
+    qui lit `adam-hands.png` (section N) et produit les trois fichiers. **Ne pas ajouter de
+    dépendance** : utiliser `sharp` s'il est déjà installé (livré avec Next) ou une page de
+    développement dans le navigateur ; sinon, signaler (décision de l'utilisateur).
+- **Ce qu'il faut fournir** : (1) `public/images/hero/adam-hands.png` — l'image de référence des
+  mains (prompt exact en section N) ; (2) aucun autre actif : la boule et la pomme sont
+  **procédurales** (section D).
+- **Attributs de test** sur le canvas (`data-testid="hero-particles"`) : `data-phase`
+  (`cloud` \| `to-sphere` \| `sphere` \| `to-apple` \| `apple` \| `to-hands` \| `hands`),
+  `data-state` (`playing` \| `paused` \| `stopped` \| `reduced`), `data-points` (nombre de points
+  dessinés), `data-sequence-ms` (temps de séquence écoulé), `data-frame-p95` (ms, recalculé chaque
+  seconde sur 120 images), `data-loop="allowed"`.
+
+##### H. Pause, rejeu, mouvement réduit
+
+- **Bouton de pause existant** (`[ pause ]` / `[ reprendre ]` du terminal, §2.11.4 bis E) : **un
+  seul bouton pilote tout le hero**. Clic « pause » → la séquence **saute à l'image finale**
+  (`hands`, points immobiles, plus de robots qui circulent, plus d'impulsion, point cobalt fixe) et
+  le terminal saute à son état final ; `data-state="stopped"`. « Reprendre » relance **seulement
+  l'état vivant** (micro-mouvement, robots, impulsion) ; il ne rejoue pas la métamorphose.
+- **Rejeu** : le bouton existant `Rejouer les animations` remet le canvas à `t = 0` (nuage) et
+  le terminal à l'état armé ; la séquence repart ; **les deux démarrent ensemble**. Ajouter le canvas
+  au tableau « Contenu relancé » de §2.11.8.8 L4-D.
+- **`prefers-reduced-motion: reduce`** : **l'image finale statique, immédiatement** (première
+  image dessinée = `hands`, points sans micro-mouvement, quelques nanorobots **posés** sur les
+  index, point cobalt fixe, **sans anneau ni bit**) ; `data-state="reduced"` ; aucune boucle
+  `requestAnimationFrame` (une seule image dessinée, redessinée au redimensionnement) ; bouton
+  pause absent (rien ne bouge) ; bascule du réglage en direct : saut à l'image finale.
+- **Sans JavaScript** : `<noscript>` affiche `hands-poster.webp` en fond de `hero-stage`
+  (`position: absolute; inset: 0; object-fit: cover; opacity 0,9`) ; pas de séquence, pas de
+  bouton pause ; titre, boutons et terminal (texte complet) restent là.
+
+##### I. Terminal (conservé)
+
+Inchangé (§2.11.4 bis E) : position sous la zone de forme, textes, rythme, bouton pause, listes
+`sr-only`, état final à ≈ 12,2 s. **Seul changement** : l'espace libre `data-nano-stage` passe de
+`clamp(3.5rem,8vh,6rem)` à `clamp(15rem,32vh,24rem)` à partir de 1024 px (section F) ; sous 1024 px,
+`h-[clamp(14rem,34vh,20rem)]`. Si, sur la capture 1440 × 900, le terminal passe sous la ligne de
+flottaison, c'est **voulu** : le titre, les boutons et la **forme** sont au-dessus.
+
+##### J. Le reste de la page : fond blanc et petites particules
+
+- **Hors hero** : fond **blanc** (`bg-canvas`). **Plus d'image en fond.** L'ancien fond fixe
+  (`.artwork`, `.atmosphere`, point cobalt central, dégradés de lecture) est retiré.
+- **Petites particules** : un second canvas **fixe** (`PageDust`, derrière le contenu, `z-0`),
+  recouvert par le fond blanc opaque de `hero-stage` : il n'apparaît donc **qu'après** le hero.
+  Réglages : **220 particules** (≥ 1024 px), 120 (< 1024 px) ; carrés de 1,2 à 2 px ; deux plans
+  (60 % à `ink` 0,10 ; 40 % à `ink` 0,16, **jamais plus de 0,16**) ; dérive **3 à 8 px/s**, direction
+  et phase par graine, rebouclage aux bords ; 30 images/s ; **aucune connexion, aucun nanorobot, aucun
+  cobalt**. Elles ne se concentrent nulle part et ne s'arrêtent à aucune section : elles
+  traversent toute la page, **derrière tout contenu** ; les blocs de texte conservent leurs voiles
+  de lecture (§2.11.4) et les panneaux sombres (« final ») les recouvrent.
+- **Pause** : onglet caché ; **mouvement réduit** → une image fixe (positions de graine). Bouton :
+  non nécessaire (mouvement < 5 px/s et opacité ≤ 0,16, hors zone de texte par les voiles) ;
+  **décision à valider** (question 5) : sans accord, les particules de la page restent
+  **immobiles**.
+- Contraste mesuré obligatoire sous tout texte : ≥ 4,5:1 au pixel le plus sombre (méthode §2.11.4).
+
+##### K. Ce qui est supprimé
+
+`HeroNanoField.tsx` / `.module.css` / `.test.tsx`, `nano-exchange.ts`, `nano-scheduler.ts`,
+`nano-population.ts`, `nano-field-controller.ts` (et leurs tests) · la population de 64 puces et
+la règle d'évitement par paires · `public/images/particle-handoff.jpg` en fond (le fichier peut
+rester comme **source** de comparaison, hors du bundle) · `LivingBackground` : `artwork` et
+`atmosphere` (le composant devient `PageDust` ou est remplacé) · `data-testid="particle-handoff-background"`
+et `network-atmosphere`. **Conservés** : `HeroStage` (qui porte le contexte de pause), `HeroTerminal`
+et ses fichiers, les voiles `.particle-veil*`, `data-network-quiet`.
+
+##### L. Responsive
+
+| Largeur | Points | Forme | Zone de forme | Terminal |
+|---|---|---|---|---|
+| **1440** | 14 000, 14 robots | Ø 400 / 380 / 980 × 420 | 288 px | inchangé |
+| **1024** | 9 000, 10 robots | Ø 340 / 320 / 800 × 340 | 240 px | inchangé |
+| **390** | 3 600, 6 robots | Ø 260 / 250 / 340 × 160 | 14 à 20 rem | 11 px, pleine largeur ; aucune coupe |
+
+À 390 : la forme est centrée, les avant-bras sortent du cadre par la gauche et la droite ; la
+taille minimale des points reste 1 px (5 × 5 pour les robots) ; le bouton pause garde 44 × 44 px.
+Rien du texte n'est masqué à aucune largeur ; aucun défilement horizontal.
+
+##### M. Règles modifiées par cette sous-section
+
+- §2.11.1 n° 1 (« aucune boucle ») et §2.11.8.1 n° 3 : **le canvas du hero** (`data-loop="allowed"`)
+  remplace le calque `hero-nanorobots` comme **exception accordée par l'utilisateur** : la
+  métamorphose se joue **une fois** ; l'état vivant final est la seule boucle (30 images/s, en
+  pause hors écran, onglet caché et au bouton).
+- Le test `[data-loop]` reste à **2** éléments, mais ce ne sont plus les mêmes (`hero-ecosystem`,
+  `hero-particles`) : `hero-nanorobots` disparaît ; `PageDust` ajoute **une troisième** exception **si** la dérive est acceptée (question
+  5) ; sinon `data-loop` reste à 2.
+- §2.11.4 bis B (« image des mains inchangée, fixe ») est **annulé** : l'image n'est plus un fond.
+- Les lueurs restent interdites (aucun `shadowBlur`, aucun `filter`, aucun dégradé radial lumineux
+  sur le canvas).
+
+##### N. Image de référence pour Gemini (prompt exact)
+
+À produire **avant** l'implémentation de la forme « mains » (voir `docs/outils-ia.md`).
+**Format attendu** : PNG, **3200 × 1800 px** (16:9), **niveaux de gris sans transparence**, fond
+**blanc pur** (`#FFFFFF`), enregistré sous `public/images/hero/adam-hands.png`. Si le résultat n'est
+pas exploitable (fond non blanc, texte, décor), on le redemande ; **repli** : recadrage de
+`particle-handoff.jpg` sur les deux mains avec un masque polygonal qui supprime les dunes.
+
+```
+Draw ONLY the two hands from Michelangelo's "The Creation of Adam" (Sistine Chapel,
+1512), as a clean pencil-and-wash tonal drawing, seen exactly as in the fresco:
+on the left, Adam's relaxed, slightly drooping hand with the index finger extended
+and loosely curled; on the right, the divine hand reaching in with a firm, straight
+index finger. The two index fingertips are almost touching but NOT touching: leave
+a clear empty gap between them of about 3 percent of the image width. Both hands
+are shown with their forearms, which leave the frame on the left and on the right
+(cropped by the image border). Anatomically accurate, elegant, high-contrast.
+
+Technical requirements, all mandatory:
+- Output: 3200 x 1800 pixels, 16:9, PNG.
+- Pure white background (#FFFFFF), perfectly uniform.
+- No dunes, no landscape, no sky, no frame, no border, no vignette, no paper
+  texture, no cobweb, no text, no signature, no watermark.
+- No figures, no cherubs, no God's body, no Adam's body: ONLY the two hands and
+  their forearms.
+- Grayscale only (black to white): soft continuous shading with real tonal values
+  (a luminance map), darker in the folds and under the fingers, light on top of the
+  hands. NO stippling, NO halftone dots, NO hatching lines. NO color.
+- Hands centered horizontally; the gap between the two index fingertips is at
+  exactly 50 percent of the width and 50 percent of the height.
+- The arms fade gently to pure white toward the left and right edges (no hard cut).
+- No glow, no light rays, no gradient background.
+```
+
+Livrable complémentaire (optionnel, même format) : la **même composition en silhouette noire
+pleine sur blanc pur** (`adam-hands-mask.png`), pour calculer les contours exacts. Sans cette
+image, les contours sont déduits de la première par seuil.
+
+##### O. Critères d'acceptation vérifiables
+
+1. **Séquence** : avec mouvement autorisé, `data-phase` traverse dans l'ordre `cloud`, `to-sphere`,
+   `sphere`, `to-apple`, `apple`, `to-hands`, `hands`, et atteint `hands` à `data-sequence-ms ≥ 10 600`
+   (± 150 ms) ; ne revient jamais en arrière (sauf rejeu).
+2. **Utilisable tout de suite** : à `t = 0`, le titre `h1`, le sous-titre et les deux boutons sont
+   visibles et cliquables ; le bouton « Estimer un bien » fonctionne à `t = 2 s`, pendant une
+   transition.
+3. **Densité** : `data-points` = 14 000 / 9 000 / 3 600 (± 25 % si la densité adaptative a réduit)
+   à 1440 / 1024 / 390.
+4. **Forme finale** : à `hands`, capture 1440 × 900 : les deux index sont séparés par un espace
+   visible ; **un seul** point cobalt dans l'espace ; aucun point cobalt ailleurs, sauf ≤ 1 bit.
+5. **Pomme sans marque** : revue visuelle : pas d'encoche latérale, feuille à gauche (revue
+   manuelle sur capture à `data-phase="apple"`, **audit de l'utilisateur**).
+6. **Pas de boucle de métamorphose** : après `hands`, `data-phase` ne change plus ; `data-sequence-ms`
+   n'augmente plus (ou plafonne).
+7. **Pause** : clic « pause » → `data-state="stopped"`, état final, deux captures à 1 s
+   d'intervalle **identiques au pixel** ; « reprendre » → `playing` ; hors écran < 10 % →
+   `paused` en ≤ 1 s ; onglet caché → `paused`, reprise au même `data-sequence-ms`.
+8. **Mouvement réduit** (`emulateMedia({reducedMotion:'reduce'})`) : `data-phase="hands"` et
+   `data-state="reduced"` à `t = 0` ; deux captures à 3 s d'intervalle identiques ; aucune boucle
+   `requestAnimationFrame` ; pas de bouton pause ; terminal complet (inchangé).
+9. **Rejeu** : `Rejouer les animations` → `data-phase="cloud"`, `data-sequence-ms` ≈ 0 ; le terminal
+   repasse à `typing` ; les deux terminent à environ 10,6 s et 12,2 s.
+10. **Contraste** : ≥ 4,5:1 au pixel le plus sombre sous chaque texte du hero (titre, sous-titre,
+    terminal, preuves), mesuré sur captures à 1440, 1024, 390, aux phases `cloud`, `sphere`,
+    `apple`, `hands`.
+11. **Performance** : p95 de l'intervalle entre images ≤ 17 ms à 1440 pendant 12 s de séquence ;
+    ≤ 34 ms à 390 avec CPU × 4 ; JavaScript par image ≤ 4 ms (p75) ; DPR ≤ 1,5 ; arrêt confirmé hors
+    écran (aucune image dessinée en 1 s). **Valeurs réelles consignées par `frontend-ux`.**
+12. **Reste de la page** : `document.querySelectorAll('[data-nano-robot]').length === 0` ;
+    `particle-handoff-background` et `network-atmosphere` absents ; `PageDust` présent hors hero
+    uniquement (aucun point visible sous `hero-stage`) ; fond `canvas` blanc ; contraste sous texte
+    conforme.
+13. **Aucune couleur hors tokens** (pas de `#`, `rgb(` hors table des tokens dans le code du
+    canvas ; les couleurs sont lues sur les variables CSS).
+
+**E2E attendus** : nouveau `e2e/landing-hero-particles.spec.ts` (critères 1 à 4, 6 à 9, 11, 12) ;
+`landing-sans-boucle.spec.ts` mis à jour (`[data-loop]` : `hero-ecosystem`, `hero-particles`, +
+`page-dust` si accepté) ; suppression des tests de `HeroNanoField` ; `accueil.spec.ts` : l'ordre de
+tabulation du hero ne change pas. **Captures** : 1440, 1024, 390 aux phases `cloud`, `sphere`,
+`apple`, `hands` + 1440 en mouvement réduit, **auditées par l'utilisateur**.
+
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
 > **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule
@@ -4866,6 +5240,555 @@ la mention « Dont N sans historique d'étape… » (`lost.untraced`). Les taux 
 
 **Placement du pipeline** : conforme à la spec (sous la voie « Perdu »). Avec 84 dossiers la page fait ≈ 3 650 px à 1440 px et la carte
 commence vers 2 900 px : elle est lue tard. Un emplacement entre les onglets d'étapes et le tableau serait plus visible ; non fait (décision à valider).
+
+### 3.5.2 Tableau de bord — page de pilotage (12/10/2026, lot `feat/analytics-charts`)
+
+> **Statut : spécifié le 12/10/2026, non implémenté.** Source : demande de l'utilisateur après
+> audit du lot du 11/10 (« les graphiques sont le truc secondaire, tout en dessous », « je ne veux
+> pas de widgets carrés fades », « une page statistique pure »). Cette sous-section **remplace**
+> §3.5 (liste des blocs du tableau de bord) et §3.5.1 A (« Activité sur 30 jours » en carte après
+> `TodoSection`) pour `/dashboard` ; §3.5.1 B (entonnoir) est **déplacé** en tête de `/pipeline`
+> (section J) ; §3.5.1 C, D, F restent valables sauf mention contraire ici ; §3.5.1 H (écarts Bklit)
+> reste la référence des props réelles. Noms de composants Bklit hors `AreaChart`/`FunnelChart` :
+> **à vérifier dans le code copié** (voir « À transmettre », section O).
+
+#### A. Idée et lecture en cinq secondes
+
+- **Idée unique** : *combien de mandats l'agence a signés, par rapport à la période d'avant, et
+  d'où ils viennent.* Le tableau de bord n'est plus un poste de travail (les écrans de travail
+  existent : Messages à valider, Leads entrants, Tâches) : c'est **la page où le patron vient
+  regarder**.
+- **Ce que l'œil lit, dans l'ordre** : (1) un **très grand chiffre** blanc sur noir, les mandats
+  signés ; (2) sa phrase de comparaison, honnête (« +3 par rapport aux 12 mois précédents ») ;
+  (3) la **course** des deux périodes sur le grand graphique ; (4) trois chiffres typographiques
+  (transformation, délai, dossiers sans suite) ; (5) d'où viennent les demandes et où elles vont ;
+  (6) les agents au travail.
+- **Ce n'est pas** : une grille de tuiles, un tableau de compteurs, un fil d'actualité, une
+  promesse. Aucune carte avec bordure et ombre n'est répétée plus d'une fois sur la page.
+
+#### B. Composition d'ensemble (1440 × 900, colonne `page-frame` ≈ 1 200 px)
+
+Trois **surfaces de nature différente** (au lieu de six cartes semblables), de haut en bas :
+
+| # | Zone | Surface | Hauteur 1440 | Contenu |
+|---|---|---|---|---|
+| 0 | Barre de pilotage | aucune (collante) | 56 px | sélecteur de période · rappel « À traiter » |
+| 1 | **La Scène** (grand moment) | **bande noire** `bg-inverse`, rayon 24 px, pleine largeur de la colonne | 540 px | Chiffre géant « Mandats signés » + comparaison + grand graphique cumulé |
+| 2 | **La Feuille** | `bg-surface`, `border-line`, rayon 24 px — **une seule** feuille | ≈ 760 px | Rangée « Trois chiffres » puis rangée « Origine » + « Flux » ; blocs séparés par **filets**, jamais par cartes |
+| 3 | **L'Atelier** (agents au travail) | bande `bg-pearl-soft`, `border-line`, rayon 24 px | 400 px | scène illustrée (section F) |
+
+**Sans défiler à 1440 × 900** : en-tête de page (≈ 120 px) → barre de pilotage (56) → la Scène
+**entière** (540) → les 140 premiers pixels de la Feuille, soit le haut de la rangée « Trois
+chiffres » (invite à défiler). Le chiffre géant et le graphique sont visibles dès le premier
+affichage ; **rien d'important n'est sous la ligne de flottaison sauf Origine, Flux et Atelier**.
+
+Pour sortir de la grille de cartes : **changement d'échelle** (chiffre de 158 px contre 14 px de
+légende), **un fond sombre sur une seule zone** (la Scène ; aucune autre n'est noire), **chiffres
+typographiques** (Geist Mono 500) à la place de tuiles, **filets** à la place de bordures, **vide**
+généreux (espacement vertical entre zones `gap-6`, intérieur de la Feuille `p-10`).
+
+`PageHeader` (overline « Pilotage », icône, titre « Tableau de bord ») est conservé tel quel ;
+`meta` : badge « Mis à jour à {heure} » existant + `SimulationBadge` si agence de démonstration ;
+**`actions` est vidé** (le bouton « Messages à valider » descend dans le rappel, section C).
+
+#### C. Barre de pilotage : période et rappel
+
+**Place** : directement sous `PageHeader`, avant la Scène. **Collante** (`position: sticky`,
+`top` = hauteur de l'en-tête fixe de l'application, 0 sinon ; `z-30`) : à l'arrêt, transparente ;
+décollée, fond `canvas` à 88 % + `backdrop-blur-md` + filet bas `line` (flou discret autorisé par
+CLAUDE.md). On peut ainsi changer de période depuis n'importe quel bloc.
+
+**Sélecteur de période** (`PeriodSelector`, îlot client) :
+
+| Réglage | Valeur |
+|---|---|
+| Forme | **contrôle segmenté** de 4 segments égaux ; piste `bg-surface-sunken`, rayon pleine pastille ; hauteur 40 px (44 px < 768) ; largeur 22 rem ≥ 1024, **pleine largeur < 768** |
+| Libellés visibles | `7 jours` · `30 jours` · `3 mois` · `1 an` (Inter 14 px, 500) |
+| Segment actif | pastille `bg-inverse` + `text-ink-inverse`, qui **glisse** sous les libellés (`transform: translateX` seul, `--duration-base`, `ease-standard`) ; les libellés changent de couleur en 150 ms |
+| Valeur par défaut | `1 an` (décision recommandée à valider, question 1) |
+| Sémantique | `role="radiogroup"` `aria-label="Période d'analyse"` ; chaque segment `role="radio"` `aria-checked` ; **tabulation roving** (une seule tabulation entre dans le groupe ; flèches gauche/droite changent **et** valident ; Début/Fin vont aux extrémités) |
+| État dans l'URL | `?periode=7j` \| `30j` \| `3m` \| `1a`. Valeur absente ou inconnue → défaut. Le rendu serveur lit le paramètre (HTML complet sans JS). Au changement : `history.replaceState` (ou `router.replace(url, {scroll:false})`) **sans rechargement de page** ; l'URL est partageable |
+| Périmètre affiché | à droite du sélecteur, Geist Mono 12 px, `ink-subtle` : `Du 13 oct. 2025 au 12 oct. 2026 · comparé au 13 oct. 2024 – 12 oct. 2025 · heure de Paris` (dates calculées serveur, fuseau `Europe/Paris`) ; < 1024 px : seconde ligne sous le sélecteur ; < 768 : `Du … au … · heure de Paris` seul (la comparaison est dite dans la Scène) |
+| Annonce | zone `aria-live="polite"` `sr-only` : `Période : 12 derniers mois. Mandats signés : 38.` |
+
+**Rappel « À traiter »** (`ToDoReminder`, serveur) : aligné **à droite** de la barre, sur la même
+ligne que le sélecteur ≥ 1024 ; **sous le sélecteur** (ligne 2, défilable horizontalement,
+`scroll-snap`, aucune puce masquée) < 1024. Trois liens, séparés par un filet vertical `line`,
+texte 14 px :
+
+| Lien | Texte | Cible | Source (déjà comptée par `getDashboardSummary`) |
+|---|---|---|---|
+| 1 | `{n} messages à valider` / `1 message à valider` | `/agents-ia/a-valider` | `todo.messagesToValidate.total` |
+| 2 | `{n} leads entrants` / `1 lead entrant` | `/agents-ia/leads-entrants` (route existante, à confirmer dans le code) | `todo.inboundLeads.total` |
+| 3 | `{n} tâches` / `1 tâche` | `/taches` (route existante, à confirmer) | `todo.tasks.total` |
+| 4 *(si > 0 seulement)* | `{n} rendez-vous à confirmer` | `/rendez-vous` | somme « à confirmer » + « à clôturer » de `todo` |
+
+Le chiffre est en Geist Mono 500 `ink`, le libellé en `ink-muted`, soulignement au survol/focus.
+**Le lien 1 est le bouton principal** quand `n > 0` : pastille `bg-inverse` `text-ink-inverse`,
+flèche d'action (reprend `ButtonLink variant="primary" arrow="forward"`, **conserve
+`data-testid="dashboard-primary-action"`**) ; à 0 : lien discret `ink-subtle`, `Aucun message à
+valider`. Compte non calculé : `Indisponible` (jamais 0), sans masquer les autres. Aucun texte libre
+de prospect. **Le lien 4 existe pour qu'une décision humaine (créneau à confirmer) ne disparaisse
+pas du tableau de bord** : ce n'est pas une statistique de rendez-vous (question 4).
+
+#### D. Tokens ajoutés (à déclarer dans `@theme`, aucun hexadécimal en dur dans les composants)
+
+| Token | Valeur | Usage |
+|---|---|---|
+| `--text-pilotage-giant` | `clamp(6rem, 11vw, 10.5rem)` (96 px à 390, 112 px à 1024, 158 px à 1440) | Chiffre « Mandats signés » ; Geist Mono 500, interlettrage −0,04 em, interligne 0,95, `tabular-nums` |
+| `--text-pilotage-stat` | `clamp(3.5rem, 5vw, 4.5rem)` (56 px → 72 px) | Les trois chiffres de la Feuille ; mêmes réglages |
+| `--text-pilotage-unit` | `0.875rem` / 20 px | Unités et phrases de comparaison |
+| `--color-stage` | `var(--color-inverse)` `#0a0a0b` | Fond de la Scène |
+| `--color-stage-grid` | `rgb(250 250 250 / 0.08)` | Grille et points de texture de la Scène |
+| `--color-stage-line` | `var(--color-ink-inverse)` `#fafafa` | Courbe actuelle |
+| `--color-stage-line-muted` | `var(--color-ink-inverse-muted)` `#a8a8b0` (7,4:1 sur `#0a0a0b`) | Courbe précédente, légendes |
+| `--color-stage-tooltip` | `var(--color-inverse-soft)` `#1c1c1f` + bordure `rgb(250 250 250 / 0.14)` | Infobulle sur noir |
+
+**Contrastes calculés** : texte `#fafafa` sur `#0a0a0b` : 19,3:1 ; `#a8a8b0` : 7,4:1 ; **cobalt
+`#2457ff` sur `#0a0a0b` : ≈ 3,7:1** — suffisant **pour un repère graphique (≥ 3:1)**, **jamais pour
+du texte** : sur la Scène, le cobalt ne porte que des repères (anneau du dernier point, trait de
+survol), toujours doublés d'un texte blanc. Aucune autre teinte sur la Scène : ni vert, ni
+dégradé violet, ni lueur.
+
+**Texture de la Scène** : réseau de points de 1 px tous les 24 px, `--color-stage-grid`, masqué par
+un `radial-gradient` (visible aux bords, nul au centre) — le motif pointilliste de la marque
+(§1), purement statique (CSS), aucun mouvement.
+
+#### E. Les blocs, un par un
+
+**E1 — La Scène : « Mandats signés »** (`PilotageStage`, serveur pour le texte ; îlot client
+`StageChart` pour le graphique)
+
+*Ce qu'elle montre* : à gauche (≈ 360 px à 1440), le chiffre géant, son libellé, la comparaison ;
+à droite (≈ 760 × 400 px), la **course cumulée** : combien de mandats ont été signés *depuis le début de
+la période*, jour après jour (ou semaine, ou mois), **avec la période précédente en pointillé,
+alignée**. La fin des deux courbes **est** le chiffre géant et le chiffre entre parenthèses de la
+comparaison : on voit l'écart se creuser.
+
+Structure à gauche (de haut en bas) : surtitre `Overline` (§2.2.6, trait cobalt conservé) `MANDATS
+SIGNÉS · {période}` · **chiffre géant** · libellé `mandats signés` + `Confirmés par un humain` (une
+ligne, `ink-inverse-muted`, garde-fou) · **comparaison** (section G) · **barres comparatives** :
+deux traits horizontaux de 3 px, `Cette période` en `stage-line` plein, `Période précédente` en
+`stage-line-muted` **en tirets 4 3**, longueurs proportionnelles aux deux totaux (le plus grand =
+100 % de 280 px) ; chaque trait suit son libellé et son chiffre en Geist Mono 12 px. En haut à
+droite de la Scène : badge `Simulation` (variante « sur fond noir » : bordure `ink-inverse` 40 %,
+point et texte `ink-inverse` ; **si `SimulationBadge` n'a pas cette variante, frontend-ux l'ajoute
+sans toucher aux existantes**).
+
+*Composant Bklit* : `AreaChart` (déjà copié) avec **deux `Area`** :
+
+| Série | `dataKey` | Trait | Remplissage | Distinction hors couleur |
+|---|---|---|---|---|
+| Période actuelle (cumul) | `cumCurrent` | `--color-stage-line`, 2,5 px, `curveMonotoneX` | `--color-stage-line` à 10 % → 0 % (dégradé vertical, une seule teinte) | trait plein + **marqueurs** ronds de 3 px à chaque point réel |
+| Période précédente (cumul) | `cumPrevious` | `--color-stage-line-muted`, 1,5 px, `dashArray="5 5"` | aucun | **tirets** + pas de marqueurs |
+
+Marqueur final : le dernier point de la série actuelle porte un **anneau cobalt** statique (rayon
+6 px, trait 1,5 px `--color-accent`) et une étiquette `38` (Geist Mono 13 px, blanc) à droite ;
+le dernier point de la précédente porte `35` (`stage-line-muted`). Aucun pulse, aucune lueur.
+Domaine Y `[0, max(4, cumul maximal)]` arrondi au pas entier suivant (jamais de décimale) ; **3
+repères** entiers (0, milieu arrondi, max) en grille `--color-stage-grid`, étiquettes à gauche en
+Geist Mono 11 px `ink-inverse-muted`. **Marges internes (corrige les étiquettes coupées du
+11/10)** : gauche 28, droite 56 (réserve des étiquettes finales), haut 16, bas 32 ; **première
+étiquette d'axe X ancrée `start`, dernière ancrée `end`**, jamais centrées sur un bord.
+
+*Axe X selon la période* (fuseau Paris, `Intl.DateTimeFormat("fr-FR")`) :
+
+| Période | Points (données) | Étiquettes 1440 | 1024 | 390 |
+|---|---|---|---|---|
+| 7 jours | 7 jours | `lun.` … `dim.` (1 par jour) | idem | 4 (jours 1, 3, 5, 7) |
+| 30 jours | 30 jours | `13 sept.` tous les 5 jours | tous les 7 | 4 |
+| 3 mois | 13 semaines | `sem. du 14 juil.` tous les 2 sem., court `14 juil.` | idem | 4 |
+| 1 an | 12 mois | `nov.` `déc.` … 12 étiquettes | 6 (1 sur 2) | 4 (mois 1, 4, 8, 12) |
+
+*Infobulle* (`ChartTooltip`, fond `--color-stage-tooltip`, rayon `--radius-md`, texte 13 px) —
+titre : la date longue (`lundi 12 octobre`, `semaine du 14 juillet`, `octobre 2025`) ; trois
+lignes : `Mandats signés ce mois-ci  4` · `Cumul depuis le début  15` · `Période précédente  3 (cumul 12)`.
+Valeurs en Geist Mono entières. Survol : filet vertical 1 px `stage-line` à 30 % ; point actif
+agrandi (rayon 5). Tactile : toucher + glisser. **Clavier** : mêmes touches que §3.5.1 A
+(flèches, Début, Fin, Échap) + zone `aria-live` : `octobre 2025 : 4 mandats signés, cumul 15 ;
+période précédente : 3, cumul 12.`
+
+*Mise en scène Anime.js* (enveloppe `ChartStage`, une seule timeline, **≤ 1,4 s**) : t 0 la Scène
+est déjà là (HTML serveur, fond noir) ; **t 80** surtitre `opacity` + `translateY 8 px` (320 ms) ;
+**t 160** chiffre géant `opacity` + `translateY 14 px` (520 ms, `ease-standard`) ; **t 320** libellé
+et comparaison (même geste, 300 ms, décalage 70 ms) ; **t 380** les deux barres comparatives
+`scaleX 0 → 1` depuis la gauche (origine gauche, 420 ms, décalage 120 ms) ; **t 300** le graphique
+passe `ready` : tracé Bklit (`animationDuration={700}`) ; **t 1000** étiquettes finales
+`opacity` + `scale .9 → 1` (200 ms) et anneau cobalt `opacity 0 → 1` (200 ms). Le texte de chaque
+chiffre **est déjà sa valeur finale** dans le HTML (aucun compteur au premier chargement).
+*Survol/focus* : voir infobulle ; la courbe non survolée n'est jamais atténuée.
+*Changement de période* : section H.
+
+*États* :
+
+| Cas | Rendu |
+|---|---|
+| **Chargement** (lazy chunk) | la Scène noire est déjà là à sa hauteur finale ; à droite un `Skeleton` sombre (barres `rgb(250 250 250 / .06)`, `animate-shimmer`) à la taille du graphique ; chiffre et libellés présents (HTML serveur) |
+| **Vide** (0 mandat sur la période *et* sur la précédente, calcul réussi) | chiffre `0` réel ; graphique **remplacé** par une ligne : `Aucun mandat signé sur cette période ni sur la précédente.` (blanc, 16 px) et une règle horizontale de 1 px au bas de la zone (pas de courbe plate dessinée) |
+| **Indisponible** | chiffre : `Indisponible` (Geist Mono 500, 48 px, `ink-inverse`) ; sous-texte : `Le calcul n'a pas pu être fait. Changez de période ou rechargez la page ; les autres blocs ne sont pas touchés.` ; pas de comparaison, pas de graphique, **jamais un 0** |
+| **Période précédente indisponible** (ex. pas d'historique avant le 13 oct. 2025) | chiffre actuel affiché ; comparaison : `Période précédente : indisponible` (+ cause datée si connue : `aucune donnée avant le 13 oct. 2025`) ; graphique : la seule série actuelle ; légende : seule `Cette période` |
+
+Texte exact du bloc :
+
+| Clé | Texte |
+|---|---|
+| surtitre | `MANDATS SIGNÉS · 12 DERNIERS MOIS` (variantes : `7 DERNIERS JOURS`, `30 DERNIERS JOURS`, `3 DERNIERS MOIS`) |
+| libellé | `mandats signés` · `Confirmés par un humain` |
+| périmètre du graphique | `Cumul des mandats signés depuis le début de la période · mois par mois · heure de Paris` (« jour par jour », « semaine par semaine ») |
+| légende | `Cette période` (trait plein) · `Période précédente` (tirets) |
+| alt tableau | `Afficher les valeurs` ; colonnes `Mois` (ou `Jour`, `Semaine`) · `Mandats signés` · `Cumul` · `Période précédente` · `Cumul précédent` |
+| aria du graphique | `Course cumulée des mandats signés sur {période}. Total : {n}. Période précédente : {m}. Le tableau des valeurs se trouve sous le graphique.` |
+
+**E2 — Trois chiffres** (rangée de la Feuille, `PilotageFigures`, serveur) : trois colonnes
+égales séparées par un **filet vertical** `line` (pas de carte), chacune : surtitre mono 11 px →
+chiffre (`--text-pilotage-stat`) → phrase → comparaison. Entrée Anime.js : décalage 70 ms, 300 ms,
+`opacity` + `translateY 8 px`, déclenchée à 35 % de visibilité (une fois).
+
+| | Taux de transformation | Délai médian de première prise en charge | Dossiers sans prochaine action |
+|---|---|---|---|
+| Surtitre | `TRANSFORMATION` | `PREMIÈRE PRISE EN CHARGE` | `SANS PROCHAINE ACTION` |
+| Chiffre | `9 %` (entier, `Math.round`, espace fine insécable avant `%`) | `3 h 20` · `47 min` · `1 j 4 h` (deux unités au plus) | `12` |
+| Phrase | `des demandes sont devenues des mandats` | `délai médian entre la réception d'une demande et sa première prise en charge` | `dossiers ouverts sans prochaine action` |
+| Fondement honnête | `38 mandats pour 412 demandes reçues, sur 12 mois` | `Médiane calculée sur 380 demandes` | `État actuel, toutes dates` |
+| Comparaison | `−1 point par rapport aux 12 mois précédents (10 %)` | `−47 min par rapport aux 12 mois précédents (4 h 07)` | **aucune** (instantané) |
+| Lien | — | — | `Voir les contacts` → `/contacts` (filtre à confirmer, section O) |
+| Vide | demandes = 0 : `Aucune demande reçue sur cette période : taux non calculable.` | 0 demande prise en charge : `Aucune demande prise en charge sur cette période.` | 0 : `Aucun dossier sans prochaine action.` (une ligne ✓ neutre) |
+| Indisponible | `Indisponible` + `Le calcul n'a pas pu être fait.` | idem | idem |
+
+Le « % » n'est autorisé que pour ce chiffre (amendement : §3.5 « ni pourcentage » reste vrai pour
+`DashboardFigure`) ; il porte toujours son numérateur et son dénominateur. Un jeu de données de
+moins de 5 demandes : le taux est affiché **avec** `Peu de demandes sur cette période : à lire
+avec prudence.` (honnêteté statistique). Aucune cible, aucun « bon » ou « mauvais » score.
+
+**E3 — Origine des demandes** (`OriginDonut`, Feuille, colonne de gauche 5/12 ≈ 460 px)
+
+*Montre* : d'où viennent les demandes (le « tracking »). *Bklit* : `PieChart` en anneau
+(`innerRadius` 62 %, `padAngle` 0,02 rad, `cornerRadius` 2, départ à 12 h, sens horaire, du plus
+grand au plus petit, diamètre 260 px à 1440, 220 px à 1024, 200 px à 390). Au centre : total en
+`--text-pilotage-stat`, `demandes` en 14 px (`Math.round` jamais appliqué : entier exact).
+
+*Parts* : **4 origines nommées au plus + « Autres »** (regroupement fait côté composant à partir
+des données ; `Non renseignée` est une origine à part entière si la base la porte, jamais
+déguisée). Remplissage `ink` à **100 / 78 / 60 / 48 %** (≥ 3:1 sur blanc pour la plus pâle, 48 % ≈
+#959598), « Autres » : 48 % + **hachures diagonales** `ink` (motif `renderPattern`) ; séparation
+**2 px blanc** entre parts. Aucune teinte, pas de cobalt (réservé au survol : la part survolée
+reçoit un trait extérieur 2 px cobalt `--color-accent`). Légende **à droite de l'anneau** (liste,
+pas de cercle seul) : pastille de 10 px (même remplissage/motif que la part) · libellé · valeur
+(Geist Mono) · part (`34 %`, `Math.round`, somme non forcée à 100 ; notice `Parts arrondies à
+l'entier` en 11 px).
+
+*Texte* : titre `Origine des demandes` (`h2` CRM) ; périmètre `Demandes reçues sur 12 mois · origine enregistrée à la réception` ; vide `Aucune demande reçue sur cette période.` ; indisponible `Indisponible` + `Le calcul n'a pas pu être fait.` ; aria `Origine des demandes sur {période} : {libellé} {n}, …` ; tableau `Afficher les valeurs` (`Origine` · `Demandes` · `Part`).
+*Anime.js / Bklit* : à 35 % de visibilité, les parts se déploient dans le sens horaire (Bklit, 700 ms, décalage 70 ms) ; la légende apparaît ligne par ligne (`opacity`, 70 ms) ; **survol d'une ligne de légende ou d'une part** : les autres parts à 40 % d'opacité, 150 ms, la part grandit de 4 px de rayon (`transform`, jamais de layout). Clavier : le groupe est focalisable, flèches parcourent les parts, `aria-live` annonce `{libellé} : {n} demandes, {p} %`.
+
+**E4 — Flux : « Du premier contact au mandat »** (`FlowSankey`, Feuille, colonne de droite 7/12 ≈ 650 × 300 px)
+
+*Montre, en un graphique* : combien de demandes **entrent**, combien sont **chauffées**, combien
+sont **perdues**, combien deviennent **mandat**. *Bklit* : `SankeyChart`. Quatre colonnes de
+nœuds, rampe de gris, **un seul** nœud noir (le mandat) :
+
+| Colonne | Nœuds | Remplissage |
+|---|---|---|
+| 1 | `Demandes reçues` | `ink` 100 % |
+| 2 | `Chauds` · `Pas encore chauds` · `Perdus avant chaud` | 78 % · 48 % · hachures 48 % |
+| 3 | `Mandats signés` (depuis Chauds) · `Chauds en cours` · `Perdus après chaud` | **100 % noir** (disque « issue », cohérent avec la frise) · 62 % · hachures 48 % |
+
+Les liens : `ink` à 14 % (18 % au survol), `curved`. `nodeWidth` 14 px, `nodePadding` 18 px.
+Libellé et chiffre **hors du nœud** (à droite du nœud ; colonne 3 à gauche), jamais dessus
+(contraste). Les valeurs viennent de données qui **se conservent** (§O) : la somme des sorties d'un
+nœud = son entrée ; si la base ne la conserve pas, le composant **affiche un nœud `Sans historique
+d'étape`** plutôt que d'ajuster un chiffre (cohérent avec `lost.untraced`, §3.5.1 H). Les
+« perdus » sont en pointillés `border-dashed` comme `PipelineLostLane`.
+
+*Texte* : titre `Du premier contact au mandat` ; périmètre `Demandes reçues sur 12 mois et ce qu'elles sont devenues à ce jour · dossiers enregistrés` ; note `Constat sur les dossiers enregistrés, pas une prévision.` ; vide (0 demande) `Aucune demande reçue sur cette période.` ; indisponible `Indisponible` + `Le calcul n'a pas pu être fait.` ; aria `Flux des demandes sur {période} : {n} reçues, {c} chaudes, {p} perdues, {m} mandats signés. Le tableau des valeurs se trouve sous le graphique.` ; tableau `Étape` · `Dossiers` · `Vers`.
+*Mouvement* : à 35 % de visibilité, nœuds `opacity` (200 ms, décalage 70 ms par colonne), **liens en `opacity` 0 → 1 et `scaleX` 0.96 → 1** (origine gauche, 500 ms) ; survol d'un nœud ou lien : les autres liens à 40 %, 150 ms ; clavier : Tab entre dans le graphique, flèches parcourent les nœuds, `aria-live` annonce `{nœud} : {n} dossiers, {p} vers {suivant}`.
+
+Rangée « Origine » + « Flux » : hauteur commune 340 px ; **filet vertical** `line` entre les deux ;
+titre de chaque bloc en `h2` CRM 18 px ; aucune carte intérieure.
+
+#### F. L'Atelier : « les agents au travail » (`AgentsAtelier`)
+
+**Idée unique** : *cinq agents se passent les dossiers ; un humain valide ; le mandat n'est
+signé que par un humain.* Ce n'est pas un tableau : c'est une **chaîne de montage lisible**, dans
+le langage du hero (nanorobots, bit cobalt qui se transmet) et de la famille d'icônes.
+
+**Scène (1440 × 320 px)** — un rail horizontal à `y = 130`, sept stations placées à
+8 / 22,5 / 37 / 51,5 / 66 / 80,5 / 94 % de la largeur utile :
+
+| Station | Représentation (existante, **ne rien redessiner**) | Ce que l'agent fait dans la scène (une fois, ≈ 350 ms de séjour) |
+|---|---|---|
+| Léa | `AgentAppIcon` glyph `lea`, `size` ≥ 56 px, état `active` quand un jeton la traverse | un trait fin balaie le jeton (`scaleX`) ; un second jeton identique est **fusionné** (un seul sort) |
+| Hugo | idem `hugo` | trois cases du jeton se **remplissent** ; **une reste en pointillé vide** (information manquante *signalée*, jamais inventée) |
+| Emma | idem `emma` | des lignes de lettre apparaissent sur le jeton ; il sort **marqué « non envoyé »** (barre diagonale fine) |
+| **Validation humaine** | `AgentAppIcon kind="human"` (double contour) | les jetons **s'arrêtent** ; anneau cobalt **uniquement** s'il y a de vraies validations en attente |
+| Louis | `louis` | une case de créneau se pose sur le jeton ; reste « à confirmer » |
+| Sarah | `sarah` | le jeton reçoit un second trait (suivi) |
+| **Mandat** | `AgentAppIcon glyph="mandate" kind="outcome"` (disque noir) | seul le jeton **confirmé par un humain** y entre ; texte `Confirmé par un humain` |
+
+**Jeton** = un dossier : carré 8 × 8 px, rayon 1, `ink`, port central 2 × 2 `surface` (même
+forme que l'acteur nanorobot du hero, §2.11.4 bis C). **Bit** de transmission = carré cobalt 3 × 3
+qui voyage d'une station à la suivante en même temps que le jeton (`transform` seul). **Au plus 2
+points cobalt visibles en même temps.**
+
+**Les vrais chiffres dans la scène** (rien n'est animé qui ne soit vrai ; le nombre de jetons
+dessinés n'est pas le nombre de dossiers) :
+
+- **Sous chaque agent**, en dur dans le HTML (jamais seulement animé) : `412` (Geist Mono 20 px)
+  + `dossiers traités` ; ligne 2 `3 bloqués par un garde-fou` (`ink-muted`, **dit « pas une
+  erreur »** au survol/focus, comme `RunCountsList`) ; ligne 3 `0 erreur technique` (si > 0 :
+  `ErrorDots` existant à côté du texte, **seule teinte autorisée**, jamais seul).
+- **Largeur du rail** entre deux stations = `3 + 5 × (n_amont / n_max)` px (trait plein arrondi
+  `ink-subtle`) : le volume réel se **lit** dans l'épaisseur.
+- **Jetons arrêtés** : si `blocked > 0` pour un agent, `min(blocked, 2)` jetons s'arrêtent devant la
+  station, **creux (pointillés)**, derrière une **barrière** (barre `ink` de 2 × 22 px
+  perpendiculaire au rail) ; `+{n}` si > 2. Le texte `{n} bloqués par un garde-fou` est déjà
+  lisible dessous.
+- **Erreur technique** : le jeton s'arrête à demi **fendu** (deux moitiés écartées de 3 px) et
+  `ErrorDots` ; distinct d'un blocage (barrière) : on lit « arrêté volontairement » ≠ « cassé ».
+- **Validation humaine** : sous la tuile, `{n} en attente de vous` (état actuel, lu dans
+  `todo.messagesToValidate`) ; `min(n, 3)` jetons **restent posés** devant elle (les vraies
+  attentes) ; zéro → la tuile est calme.
+- **Mandat** : `{n} mandats signés` (même valeur que la Scène), `Confirmé par un humain`.
+
+**Coupe-circuit actif** (lu à part, visible même si les exécutions sont indisponibles) : aucune
+timeline ne démarre ; le rail passe en **tirets** ; toutes les tuiles `state="inactive"` ;
+les jetons sont **posés, creux** devant Léa ; une barrière épaisse (4 × 40 px) coupe le rail à
+l'entrée ; bandeau dans la scène (`Coupe-circuit actif · les agents sont à l'arrêt`,
+`border-line-strong`, 14 px) + lien `Gérer` → `/agents-ia`. Les chiffres des périodes passées
+restent affichés (ils sont vrais). Coupe-circuit inactif : `Coupe-circuit : inactif` + `Gérer` en
+`ink-subtle`, dans l'en-tête de l'Atelier.
+
+**Exécutions indisponibles** : rail en tirets fins, aucun jeton, chaque station affiche
+`Indisponible` ; **aucune animation** (pas de fausse activité). **Zéro exécution calculée** :
+`0` réels, rail plein mais jetons absents, texte `Aucune exécution sur cette période.`.
+
+**Chorégraphie** (Anime.js 4.5.0, **une timeline**, joué **une fois** à 40 % de visibilité, ≈ 9 s,
+déterministe, aucun aléa) : 8 jetons, départ de Léa tous les 600 ms ; traversée d'un tronçon
+900 ms (`inOutSine`), séjour 350 ms (le micro-geste du tableau), bit cobalt qui part avec le jeton
+(`translateX`, 900 ms) ; arrêts barrière/validation selon les vrais chiffres ci-dessus ; dernier
+jeton à Mandat vers t = 8,8 s. Ensuite : **tout reste posé**, aucun mouvement permanent.
+Bouton `Rejouer la scène` (mono 12 px, `ink-muted`, en bas à droite, cible 44 × 28 px) relance la
+timeline ; l'animation est **interruptible** (changement de période : la scène se remet à son état
+final de la nouvelle période, sans rejouer ; l'utilisateur rejoue à la demande). Les jetons
+partent d'une position réelle de la page : aucun `requestAnimationFrame` actif au repos.
+
+**Mouvement réduit** : état final complet immédiat — jetons posés (arrêtés, en attente, au
+mandat), barrières, chiffres, rail ; pas de bouton `Rejouer` (rien à rejouer). **Sans JavaScript** :
+même composition (HTML/SVG serveur) ; seul le rejeu manque.
+
+**Accessibilité** : les graphismes sont `aria-hidden` ; le texte réel est une `<ol>` visible
+(colonnes de chiffres) : `Léa, acquisition : 412 dossiers traités, 3 bloqués par un garde-fou, 0
+erreur technique.` … ; `Validation humaine : 12 en attente de vous.` ; `Mandat : 38 signés,
+confirmés par un humain.` Titre `h2` `Les agents au travail`, périmètre `{12 derniers mois} · chaque
+jeton représente un dossier type ; les chiffres sont ceux de la période`. Badge `Simulation` à
+droite du titre si agence de démonstration.
+
+**Responsive** : 1440 : horizontal 7 stations (labels 14 px). 1024 : horizontal, noms sous les
+tuiles sur 2 lignes si besoin, séparation 128 px minimale. **< 768 : le rail devient vertical**
+(stations empilées à gauche, chiffres à droite, 7 × 72 px = 504 px), jetons descendants ; les
+mêmes arrêts et barrières ; **aucun défilement horizontal** ; `Rejouer la scène` 44 × 44 px.
+
+#### G. Comparer à la période précédente : une seule règle d'écriture
+
+| Cas | Phrase (exacte) |
+|---|---|
+| Plus que la période précédente | `+3 par rapport aux 12 mois précédents (35)` |
+| Moins | `−2 par rapport aux 12 mois précédents (40)` (vrai signe moins `−`) |
+| Égal | `Identique aux 12 mois précédents (38)` |
+| Précédent = 0 | `+5 par rapport aux 12 mois précédents (0)` |
+| Précédent indisponible | `Période précédente : indisponible` (jamais un delta) |
+| Libellé de période | `aux 7 jours précédents` · `aux 30 jours précédents` · `aux 3 mois précédents` · `aux 12 mois précédents` |
+
+Forme : Geist Mono 14 px, **couleur identique** quel que soit le signe (`ink-inverse` sur la
+Scène, `ink` sur la Feuille), **aucune flèche, aucun vert/orange, aucun pourcentage** (sauf
+points de transformation). La valeur absolue de la période précédente est toujours écrite entre
+parenthèses. **Interdit** : toute comparaison à une situation « avant Ascend » (ce chiffre
+n'existe pas).
+
+#### H. Mouvement : changement de période, entrées, survol
+
+**Changement de période** (clic, flèche, ou URL au retour arrière) — *tout le contenu est déjà là
+(données des quatre périodes envoyées dans la page, voir O)*, donc **aucune attente réseau** :
+
+| t (ms) | Quoi | Valeurs |
+|---|---|---|
+| 0 | pastille du sélecteur | glisse (`translateX`, 220 ms) |
+| 0 → 140 | anciens graphiques (Scène, anneau, flux) | `opacity 1 → 0`, `translateY 0 → −4 px` (`ease-exit`) |
+| 0 → 420 | **chiffres** (mandats, taux, délai) | passent de l'ancienne à la nouvelle valeur **en défilant** (≤ 420 ms, 8 pas, `outQuad`) **seulement si la question 2 est acceptée** ; sinon fondu croisé 140 ms. La valeur finale est dans le DOM dès l'instant 0 ; le texte animé est `aria-hidden` |
+| 140 | nouveaux graphiques montés (clé = période) | Bklit : tracé 600 ms ; anneau 600 ms ; flux 500 ms ; `ready` décalé de 140 ms |
+| 140 → 700 | phrases de comparaison, barres comparatives | `opacity`/`scaleX` comme à l'entrée, 70 ms de décalage |
+| ≤ 900 | fin | moteur au repos |
+
+Interruption : un nouveau choix **annule** (`timeline.pause()` puis état final de la période
+**choisie en dernier**, appliqué immédiatement) — jamais d'empilement. Redimensionnement : aucun
+rejeu. Zone `aria-live` : une seule annonce, à la fin du dernier changement.
+**`prefers-reduced-motion`** : aucune timeline, tout change instantanément (valeurs, graphiques,
+pastille), tooltips immédiats, `Rejouer la scène` absent, comparaison inchangée.
+
+**Entrée de page** : Scène (section E1), puis chaque zone sous la ligne de flottaison à 35 % de
+visibilité (`IntersectionObserver`, une fois), `opacity` + `translateY 12 px`, 550 ms,
+`ease-standard`. **Survol** : 150 ms, `opacity`/peinture seulement ; jamais de translation d'un
+graphique. **Interdits** : pulses, lueurs, boucle, compteur au premier chargement, rotation.
+
+#### I. Devenir de l'ancien tableau de bord
+
+| Ancien bloc | Sort |
+|---|---|
+| `PipelineFrieze` | **Quitte `/dashboard`.** Reste disponible dans le code (non supprimé dans ce lot) ; le pipeline a sa propre ligne d'étapes |
+| `TodoSection`, `TodoRow`, `ActionListCard` (listes) | **Quittent la page**. Remplacés par le rappel `À traiter` (section C) renvoyant vers les écrans existants |
+| `UpcomingAppointments` | **Retiré** (pas de statistique ni de liste de rendez-vous ; l'écran Rendez-vous existe) |
+| `AgentsSummary`, `RunCountsList` | **Remplacés** par l'Atelier (section F) ; **tous ses garde-fous sont conservés** (coupe-circuit lu à part, bloqué ≠ erreur, lien `/agents-ia`, badge Simulation) |
+| `ActivityChartCard` | **Remplacé** par la Scène |
+
+Aucune suppression de fichier dans ce lot : le nettoyage du code mort se fait après audit de
+l'utilisateur. Les tests de ces composants restent verts ; `app/(app)/dashboard/page.test.tsx`
+et `loading.tsx` sont réécrits (le squelette reproduit la Scène noire, la Feuille et l'Atelier à
+leur hauteur finale).
+
+#### J. Pipeline : l'entonnoir remonte en tête (`/pipeline`)
+
+**Nouvel ordre** : `PageHeader` → **`PipelineFunnelCard`** (bande, plus une carte) →
+`PipelineStageNav` → voie « Perdu » → tableau/colonnes. Le dossier de travail reste **sous** la
+ligne de flottaison à 900 px mais **le haut de l'entonnoir est visible dès l'ouverture** (sa
+position haute ≤ 200 px à 1440).
+
+- **Forme** : plus de `Card` avec ombre : **bande** `border-y line` pleine largeur de la colonne,
+  fond `surface`, hauteur **230 px à 1440** (entonnoir 150 px + libellés), 220 px à 1024.
+  Titre `Passage d'une étape à l'autre` (h2) + `SimulationBadge` + périmètre sur la même ligne
+  au-dessus. `Perdus : n` à droite du titre (rangée en pointillés réduite à un texte + filet
+  pointillé), pas de bloc séparé.
+- **Rampe de gris corrigée** (tranches trop pâles) : `ink` à **48 / 58 / 68 / 80 / 90 / 100 %**
+  (Nouveau → Mandat signé) ; la plus pâle (48 %) a 3:1 sur blanc ; filet extérieur 1 px `ink` à
+  100 % **sur la tranche active seulement** ; libellés et chiffres restent **hors** des tranches.
+  Anneaux (`layers={3}`) conservés, sans cobalt.
+- **< 768 px** : vertical, **lignes de 40 px + 4 px d'écart = 260 px** (au lieu de 376), le
+  pourcentage de passage est **dans la ligne** (`12 · 62 %` à droite), plus de connecteur séparé ;
+  le tableau des valeurs reste dans un `details` fermé. Corrige « hauteur à 390 ».
+- Le composant et l'infobulle/clavier §3.5.1 B restent identiques ; seul l'emplacement, la
+  hauteur, la rampe et le conteneur changent. Les textes de §3.5.1 B sont conservés.
+
+#### K. Défauts du lot du 11/10 corrigés par cette spécification
+
+| Défaut constaté (captures `test-results/analytics-charts/`) | Correction |
+|---|---|
+| Étiquettes d'axe coupées aux bords (`12 sept.` tronqué à gauche, `11 oct.` à droite) | Marges internes 28 / 56, première étiquette ancrée `start`, dernière `end` (E1) |
+| Courbe en pics (deux séries « par jour » avec beaucoup de zéros) illisible | Courbes **cumulées** (une idée : la course), marqueurs aux vrais points ; le détail par période est dans l'infobulle et le tableau |
+| Tranches pâles de l'entonnoir | Rampe 48 → 100 % (section J) |
+| Hauteur de l'entonnoir à 390 (376 px) | 260 px (section J) |
+| Graphiques relégués sous 84 cartes / sous les listes | Statistiques = contenu de base (sections B, E, J) |
+| Cartes identiques | Trois surfaces de nature différente (section B) |
+
+#### L. Responsive (récapitulatif)
+
+| Largeur | Barre | Scène | Feuille | Atelier |
+|---|---|---|---|---|
+| **1440** | une ligne, sélecteur à gauche, rappel à droite | 2 colonnes (360 / 760), 540 px | trois chiffres en 3 colonnes ; Origine 5/12 + Flux 7/12 | horizontal 7 stations, 320 px |
+| **1024** | sélecteur ; rappel en 2ᵉ ligne défilable | 2 colonnes (300 / 640), 480 px, chiffre 112 px | trois colonnes ; Origine + Flux **en deux lignes pleine largeur** | horizontal, 300 px |
+| **390** | sélecteur pleine largeur 44 px ; rappel en 2ᵉ ligne, défilement horizontal avec accroche | **une colonne** : chiffre 96 px, comparaison, barres, puis graphique 16/10 (≥ 200 px, 4 repères) ; ≈ 640 px ; rayon 20 px | trois chiffres **empilés** (filets horizontaux, 56 px) ; Origine : anneau 200 px + légende dessous ; Flux : **vertical** (nœuds empilés, libellés à gauche, 3 colonnes → 3 rangs, hauteur 420 px) | **vertical**, 7 × 72 px |
+
+Ce qui ne se masque **jamais** : le chiffre géant, sa phrase de comparaison, le périmètre de la
+période, `Confirmé par un humain`, `Simulation`, les chiffres de chaque agent, le coupe-circuit,
+le texte `bloqués par un garde-fou`. Cibles tactiles ≥ 44 × 44 px (segments, liens du rappel,
+`Rejouer la scène`). Textes longs : retour à la ligne, jamais d'ellipse.
+
+#### M. Accessibilité
+
+Chaque graphique : SVG `aria-hidden`, doublé d'un résumé (`aria-label` du groupe), d'un **tableau
+dans `details`** (visible, clavier, lecteurs d'écran ; `open` sans JavaScript), et d'une zone
+`aria-live="polite"`. Infobulles et sélecteur au clavier (flèches). Aucune information portée
+par la couleur seule : plein/tirets (courbes), hachures (perdus, « Autres »), libellés écrits,
+pourcentages écrits. Contrastes : texte ≥ 4,5:1 (mesuré), repères graphiques ≥ 3:1 (mesuré :
+courbe précédente 7,4:1, cobalt sur noir 3,7:1, part la plus pâle 3:1). Focus : anneau global
+visible, y compris sur fond noir (anneau `ink-inverse` 2 px décalé de 2 px sur la Scène).
+Hiérarchie de titres : `h1` page, `h2` par bloc, chiffres hors titres.
+
+#### N. Performance (budget)
+
+- **Au-dessus de la ligne de flottaison** : la Scène (HTML serveur, texte et chiffres), la barre
+  de pilotage, le chiffre. `StageChart` (visx + `motion`) est importé par `next/dynamic`
+  (`ssr: false`), emplacement à sa hauteur finale (`aspect-ratio`, **CLS 0**).
+- **Sous la ligne de flottaison** : `OriginDonut`, `FlowSankey` et `AgentsAtelier` sont des
+  chunks séparés, **chargés quand leur zone approche (`IntersectionObserver`, `rootMargin: 400px`)** ;
+  jamais dans le bundle initial.
+- **Plafonds de travail** (à mesurer et consigner, pas à promettre) : JS ajouté par `/dashboard` à
+  l'arrivée ≤ 110 ko gzip ; chaque chunk différé ≤ 60 ko gzip ; LCP ≤ 2,0 s sur le profil de test
+  habituel ; aucune tâche longue (> 50 ms) imputable aux graphiques après l'entrée ; moteur
+  d'animation au repos (`requestAnimationFrame` = 0) 200 ms après la dernière séquence.
+- Données : **un seul appel serveur** pour les quatre périodes, charge utile ≤ 40 ko (agrégats,
+  jamais de lignes brutes).
+
+#### O. Données requises (pour `automatisation-ia`, aucune modification de base)
+
+Une fonction `getPilotageAnalytics()` (lecture, `agency_id` revérifié) qui renvoie les **quatre
+périodes** `7j|30j|3m|1a`, chacune **indépendamment** `{status: "ok", value} | {status:
+"unavailable"}` (une période en échec ne masque pas les trois autres), avec pour chacune la
+**période courante et la précédente de même durée** (bornes ISO, fuseau Paris, historique
+fictif de **24 mois** au minimum pour que `1 an` ait une comparaison) :
+
+1. `signed` (mandats signés, confirmés humain) ; `received` ; **taux** = `signed ÷ received` sur la
+   même période, avec numérateur et dénominateur ; `medianFirstResponseSeconds` + `sampleSize` +
+   la définition de « prise en charge » dans `docs/product.md` ; `noNextAction` (instantané, une
+   seule valeur) et la route/filtre de la liste de ces dossiers.
+2. `series` : `{bucketStart, bucketEnd, received, signed}` par jour (7 j, 30 j), semaine (3 m),
+   mois (1 a), et `previous` de **même longueur, alignée par index**. Le cumul se calcule côté
+   composant à partir de ces valeurs (jamais d'autre calcul).
+3. `origins` : `[{key, label, count}]` avec `unknown` explicite, total.
+4. `flow` : `received`, `notYetHot`, `hot`, `lostBeforeHot`, `lostAfterHot`, `signedFromHot`,
+   `stillHot`, `untraced` — **conservation** : `received = hot + notYetHot + lostBeforeHot` et `hot
+   = signedFromHot + stillHot + lostAfterHot` ; même sémantique que `reached`/`lost.untraced` de
+   l'entonnoir.
+5. `agents` : pour Léa, Hugo, Emma, Louis, Sarah : `processed`, `blocked`, `errors`, chacun
+   `ok|unavailable` ; état du coupe-circuit lu **séparément**.
+6. Reprise des totaux du rappel : `todo.messagesToValidate`, `todo.inboundLeads`, `todo.tasks`,
+   rendez-vous à confirmer + à clôturer (déjà calculés par `getDashboardSummary`).
+
+**Dépendances à confirmer par l'orchestrateur** (décision de l'utilisateur) : `PieChart` et
+`SankeyChart` de Bklit utilisent `@visx/shape` (déjà présent pour `AreaChart`) et un module Sankey
+(`@visx/sankey`, `d3-sankey`) probablement absent ; **ne rien ajouter sans validation**.
+
+#### P. Critères d'acceptation vérifiables
+
+1. `/dashboard` à 1440 × 900 : la Scène **entière** est visible sans défiler (bas de la Scène ≤ 900 px) ;
+   le chiffre géant mesure ≥ 150 px de haut de police ; le graphique est visible.
+2. `/dashboard?periode=30j` rend la période 30 jours dans le **HTML serveur** (sans JS) ; une valeur
+   inconnue retombe sur le défaut ; changer de période met à jour `?periode=` sans rechargement.
+3. Aucun bloc listes/carte de l'ancien tableau de bord n'est rendu ; le rappel `À traiter` expose
+   les liens 1 à 3 (et 4 si > 0) avec les **chiffres exacts** de `getDashboardSummary`.
+4. Chaque chiffre affiché = donnée serveur ; un mock en échec affiche `Indisponible` (jamais `0`),
+   pour chacun des blocs, sans masquer les autres.
+5. La période précédente est toujours en **tirets** ; aucune occurrence de « avant Ascend » ;
+   la phrase de comparaison respecte le tableau G pour `+`, `−`, égal, précédent à 0, indisponible.
+6. Mouvement réduit : 0 timeline Anime.js, tous les graphiques et la scène dans leur état final, `Rejouer la
+   scène` absent, `requestAnimationFrame` = 0 après 200 ms.
+7. Animations normales : entrée de la Scène ≤ 1,4 s ; changement de période ≤ 900 ms ; un second
+   clic pendant la transition aboutit à l'état final de la dernière période ; CLS = 0.
+8. Atelier : `data-blocked-visible` = `min(blocked, 2)` pour chaque agent ; coupe-circuit actif →
+   aucune timeline, tuiles inactives, barrière visible ; exécutions indisponibles → aucune
+   animation et `Indisponible` ; **jamais** plus de 2 points cobalt visibles.
+9. Mobile 390 : aucun défilement horizontal de la page (hors rappel et tableaux dans `details`) ;
+   cibles ≥ 44 px ; chiffre géant lisible sans coupe ; Flux vertical ; entonnoir du pipeline ≤ 260 px.
+10. `/pipeline` : `PipelineFunnelCard` **avant** `PipelineStageNav` ; rampe 48 → 100 % ; première et
+    dernière étiquettes d'axe non coupées (`scrollWidth ≤ clientWidth`).
+11. Contraste mesuré (axe/Lighthouse) : 0 violation sérieuse ; cobalt sur noir jamais en texte.
+12. Aucune couleur hors tokens (test de garde existant `charts-colors.guard.test.ts` étendu aux
+    nouveaux composants ; `--color-danger` seulement via `ErrorDots`).
+
+**E2E attendus** (`e2e/dashboard-pilotage.spec.ts`, 1440 / 1024 / 390, sans attendre la fin d'une
+animation — règle d'or §2.5.5) : critères 1, 2, 3, 4, 6, 8, 9 ; un test « changer de période puis
+revenir en arrière du navigateur » ; un test clavier du sélecteur et d'un graphique ;
+`e2e/pipeline-entonnoir.spec.ts` : critère 10. Captures : 1440 / 1024 / 390 pour chaque période
+(`1a`, `30j`), mouvement réduit, et Atelier en trois états (normal, coupe-circuit, indisponible).
+
+#### Q. Règles amendées et décisions qui reviennent à l'utilisateur
+
+- §2.5.4 règle 3 (« pas de compteur qui défile ») : **assouplie uniquement lors d'un changement de
+  période** (ancienne valeur vraie → nouvelle valeur vraie, ≤ 420 ms, valeur finale déjà dans le
+  DOM) ; **jamais au premier chargement**. **Décision utilisateur** (question 2) ; sans accord :
+  fondu croisé.
+- §3.5 « ni tendance, ni flèche, ni pourcentage » : reste vrai pour `DashboardFigure` ; la comparaison
+  absolue (`+3 par rapport à…`) et le taux de transformation sont des exceptions écrites ici.
+- §3.2 « aucun taux » : levé uniquement pour l'entonnoir (déjà) et les parts de l'anneau.
+- §2.5.4 règle 4 (« aucune animation infinie ») : **respectée** (Atelier joué une fois, rejouable).
+  Une boucle lente de la scène serait une exception à valider (question 3).
 
 ### 3.6 Tâches (`features/tasks/components/`) et rendez-vous (`features/appointments/components/`)
 

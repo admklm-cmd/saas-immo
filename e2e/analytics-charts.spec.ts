@@ -18,7 +18,7 @@ import { signIn } from "./helpers/sign-in";
  *   * reduced motion: charts visible at once, tooltip and keyboard work, the
  *     browser is idle (no animation frame) afterwards;
  *   * 1440 / 1024 / 390: no horizontal scroll, labels never cut, vertical funnel on a phone;
- *   * isolation: agency B sees its own figures 11 → 7 → 3 → 1 → 0 → 0;
+ *   * isolation: agency B sees its own figures 16 → 10 → 5 → 2 → 1 → 1;
  *   * without a session, neither card is rendered.
  * No consent checkbox exists in these journeys.
  */
@@ -304,14 +304,14 @@ test.describe("mouvement normal", () => {
   });
 });
 
-test("isolation : l'agence B voit ses propres chiffres, 11, 7, 3, 1, 0, 0", async ({ page }) => {
+test("isolation : l'agence B voit ses propres chiffres, 16, 10, 5, 2, 1, 1", async ({ page }) => {
   await signIn(page, "userB");
   await openPipeline(page);
-  expect(await funnelValues(page)).toEqual([11, 7, 3, 1, 0, 0]);
-  // Rates computed from its own counts; a stage with nothing before it reads a dash.
+  expect(await funnelValues(page)).toEqual([16, 10, 5, 2, 1, 1]);
+  // Rates computed from its own counts (10/16, 5/10, 2/5, 1/2, 1/1): every step has a predecessor, so no dash.
   const rates = (await page.getByTestId("funnel-rate").allTextContents()).map((text) => text.replace(/\s/g, ""));
-  expect(rates).toEqual(["→64%", "→43%", "→33%", "→0%", "→—"].map((rate) => rate.replace(/\s/g, "")));
-  await expect(page.getByTestId("funnel-not-computable")).toHaveText(FUNNEL.notComputable);
+  expect(rates).toEqual(["→63%", "→50%", "→40%", "→50%", "→100%"].map((rate) => rate.replace(/\s/g, "")));
+  await expect(page.getByTestId("funnel-not-computable")).toHaveCount(0);
   for (const name of ["Frederic Masson", "Elodie Mercier"]) await expect(page.locator("body")).not.toContainText(name);
 
   const card = await openDashboard(page);

@@ -3,11 +3,12 @@ import type { Database } from "@/types/database";
 import type { ConsentSeed, ContactSeed, PropertySeed } from "./dataset";
 import { FIXTURE_EMAIL_DOMAIN, FIXTURE_USER_IDS, fictionLandline, fictionMobile, fixtureUuid } from "./fixture-ids";
 
+
 /**
- * Historical cohort of the fictitious agencies: about three months of
- * plausible activity, so that the dashboard curve and the pipeline funnel are
- * computed from rows that look like a real agency's, not from a handful of
- * hand-written contacts.
+ * Historical cohort of the fictitious agencies: about twelve months of
+ * plausible activity, so that the dashboard curves, the pipeline funnel and the
+ * boss's statistics page are computed from rows that look like a real
+ * agency's, not from a handful of hand-written contacts.
  *
  * Properties of this module:
  *  - PURE and DETERMINISTIC: a seeded generator (mulberry32) and relative
@@ -18,13 +19,18 @@ import { FIXTURE_EMAIL_DOMAIN, FIXTURE_USER_IDS, fictionLandline, fictionMobile,
  *    carry "(fictive)".
  *  - It only writes what the application itself writes: a contact, its
  *    property, its consents, the inbound lead it came from, Léa / Hugo / Sarah
- *    activities (always `is_simulation = true`), appointments. It never forges
- *    `contact_stage_changed` (reserved to the human RPC) and never writes
- *    `ai_agent_runs` (their `started_at` is stamped by the database, so they
- *    could not be dated in the past — and they would eat today's daily AI
- *    volume limit).
- *  - Arrivals are irregular: more on weekdays, quiet weekends, a few spikes,
- *    a slightly busier recent month.
+ *    activities (always `is_simulation = true`), appointments, open follow-up
+ *    tasks. It never forges `contact_stage_changed` (reserved to the human RPC)
+ *    and never writes `ai_agent_runs` (their `started_at` is stamped by the
+ *    database, so they could not be dated in the past — and they would eat
+ *    today's daily AI volume limit).
+ *  - A signed mandate is ALWAYS a human act: a `mandate_signed` activity whose
+ *    actor is a member of the agency, never an agent.
+ *  - Seasonality: arrivals follow a plausible real-estate year (busy spring and
+ *    "rentrée", quiet August and end of December), more on weekdays, a few
+ *    spikes. Signed mandates are dated FIRST (spread over the year) and their
+ *    dossier is created one to three months before: an old dossier is mostly
+ *    closed (signed or lost), a dossier still in progress is recent.
  */
 
 type Tables = Database["public"]["Tables"];
@@ -54,18 +60,25 @@ export type HistoryPlan = {
   prefix: string;
   /** Seed of the generator. */
   seed: number;
-  /** Contacts that are still in the pipeline, by current stage. */
+  /** Contacts that are still in the pipeline, by current stage (`mandat_signe` = signed). */
   stages: Record<HistoryFunnelStage, number>;
   /** Contacts now `perdu`, by the furthest stage they had reached. */
   lostAt: Record<HistoryFunnelStage, number>;
   /** Contacts that arrived today (they are part of `stages.nouveau`). */
   todayArrivals: number;
+  /** Oldest creation age (days) of a lost dossier. */
   maxAgeDays: number;
+  /** Signed mandates are dated within the last `signedWithinDays` days. */
+  signedWithinDays: number;
   /** First 4-digit block of the fiction phone numbers of this cohort. */
   phoneBase: number;
   users: readonly UserKey[];
+  /** Share of the advisors' dossiers, aligned with `users` (relative weights). */
+  advisorWeights: readonly number[];
   /** Write appointments (agency A only: B stays small). */
   withAppointments: boolean;
+  /** Write an open follow-up task on most open dossiers (agency A only). */
+  withOpenTasks: boolean;
   /** Inbound leads that are not a contact (spam) / a duplicate of one. */
   extraRejectedLeads: number;
   extraDuplicateLeads: number;
@@ -76,30 +89,36 @@ export type HistoryPlan = {
 export const HISTORY_PLAN_A: HistoryPlan = {
   agency: "a",
   prefix: "hist-a",
-  seed: 20260711,
-  stages: { nouveau: 11, qualifie: 17, chaud: 8, rdv_planifie: 5, estimation_faite: 3, mandat_signe: 3 },
-  lostAt: { nouveau: 3, qualifie: 4, chaud: 2, rdv_planifie: 2, estimation_faite: 1, mandat_signe: 0 },
+  seed: 20261011,
+  stages: { nouveau: 6, qualifie: 8, chaud: 5, rdv_planifie: 3, estimation_faite: 3, mandat_signe: 22 },
+  lostAt: { nouveau: 88, qualifie: 60, chaud: 36, rdv_planifie: 22, estimation_faite: 14, mandat_signe: 0 },
   todayArrivals: 2,
-  maxAgeDays: 89,
+  maxAgeDays: 364,
+  signedWithinDays: 362,
   phoneBase: 3000,
   users: ["agentA", "directorA", "ownerA"],
+  advisorWeights: [46, 30, 24],
   withAppointments: true,
-  extraRejectedLeads: 4,
-  extraDuplicateLeads: 3,
+  withOpenTasks: true,
+  extraRejectedLeads: 9,
+  extraDuplicateLeads: 7,
   nameOffset: 0,
 };
 
 export const HISTORY_PLAN_B: HistoryPlan = {
   agency: "b",
   prefix: "hist-b",
-  seed: 20260712,
-  stages: { nouveau: 2, qualifie: 2, chaud: 1, rdv_planifie: 0, estimation_faite: 0, mandat_signe: 0 },
-  lostAt: { nouveau: 0, qualifie: 1, chaud: 0, rdv_planifie: 0, estimation_faite: 0, mandat_signe: 0 },
+  seed: 20261012,
+  stages: { nouveau: 2, qualifie: 2, chaud: 1, rdv_planifie: 0, estimation_faite: 0, mandat_signe: 1 },
+  lostAt: { nouveau: 2, qualifie: 2, chaud: 1, rdv_planifie: 0, estimation_faite: 0, mandat_signe: 0 },
   todayArrivals: 0,
-  maxAgeDays: 40,
+  maxAgeDays: 300,
+  signedWithinDays: 120,
   phoneBase: 4000,
   users: ["userB"],
+  advisorWeights: [1],
   withAppointments: false,
+  withOpenTasks: false,
   extraRejectedLeads: 0,
   extraDuplicateLeads: 0,
   nameOffset: 70,
@@ -110,7 +129,9 @@ export type HistoryCohort = {
   activities: Tables["activities"]["Insert"][];
   inboundLeads: Tables["inbound_leads"]["Insert"][];
   appointments: Tables["appointments"]["Insert"][];
+  tasks: Tables["tasks"]["Insert"][];
 };
+
 
 // -----------------------------------------------------------------------------
 // Seeded generator
@@ -277,16 +298,23 @@ const LOST_REASONS: Record<HistoryFunnelStage, readonly string[]> = {
   mandat_signe: [],
 };
 
+/**
+ * Origin of the requests: not uniform. The online estimation dominates, then
+ * the website form and the phone; recommendations are a solid minority; the
+ * partner feed (portals / partners) and the desk walk-ins (`manual_entry`) are
+ * smaller. Only values of the real `contact_source` enum.
+ */
 const SOURCE_WEIGHTS: readonly [Source, number][] = [
-  ["estimation_form", 40],
-  ["website_form", 14],
-  ["inbound_call", 12],
+  ["estimation_form", 38],
+  ["website_form", 13],
+  ["inbound_call", 14],
   ["inbound_email", 6],
-  ["referral", 10],
-  ["partner_api", 5],
-  ["software_import", 4],
-  ["manual_entry", 9],
+  ["referral", 12],
+  ["partner_api", 7],
+  ["software_import", 3],
+  ["manual_entry", 7],
 ];
+
 
 /** Sources that arrive as a raw lead in Léa's inbox before becoming a contact. */
 const LEAD_SOURCES: ReadonlySet<Source> = new Set<Source>(["estimation_form", "website_form", "inbound_email", "partner_api"]);
@@ -301,8 +329,8 @@ const FORM_IDS: Partial<Record<Source, string>> = {
 // -----------------------------------------------------------------------------
 // Time helpers
 // -----------------------------------------------------------------------------
-const MIN_START_MINUTE = 7 * 60 + 5; // 07:05 UTC = 09:05 Paris (summer)
-const MAX_START_MINUTE = 17 * 60 + 20; // 17:20 UTC = 19:20 Paris
+const MIN_START_MINUTE = 7 * 60 + 5; // 07:05 UTC = 08:05 / 09:05 Paris
+const MAX_START_MINUTE = 17 * 60 + 20; // 17:20 UTC = 18:20 / 19:20 Paris
 
 /**
  * UTC calendar day `daysAgo` days before `now`, at `minuteOfDay` UTC. Business
@@ -319,23 +347,88 @@ function dayOfWeekUtc(now: Date, daysAgo: number): number {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysAgo)).getUTCDay();
 }
 
+/** Arrival rhythm of the requests: weekdays busy, weekends quiet. */
 const WEEKDAY_WEIGHT: Record<number, number> = { 0: 0.12, 1: 1.15, 2: 1.22, 3: 1.1, 4: 1.05, 5: 0.92, 6: 0.32 };
+/** Mandates are signed on working days, almost never on a Sunday. */
+const SIGNING_WEEKDAY_WEIGHT: Record<number, number> = { 0: 0.02, 1: 1, 2: 1.05, 3: 1, 4: 1.05, 5: 0.9, 6: 0.18 };
+/** Real-estate seasonality, January to December: busy spring and "rentrée", quiet August and December. */
+const MONTH_WEIGHT: readonly number[] = [0.85, 0.95, 1.15, 1.3, 1.3, 1.2, 0.95, 0.55, 1.2, 1.2, 0.95, 0.7];
 /** Days (counted back from today) with a visible peak: a mailing, a press article… */
-const SPIKE_DAYS: ReadonlySet<number> = new Set([6, 13, 22, 36, 58]);
+const SPIKE_DAYS: ReadonlySet<number> = new Set([6, 13, 22, 36, 58, 77, 104, 131, 160, 188, 215, 246, 301, 337]);
 
-function dayWeights(now: Date, maxAgeDays: number): number[] {
+function seasonFactor(date: Date): number {
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
+  let weight = MONTH_WEIGHT[month]!;
+  if ((month === 11 && day >= 20) || (month === 0 && day <= 2)) weight *= 0.45; // end-of-year break
+  if (month === 7 && day >= 8 && day <= 22) weight *= 0.7; // mid-August
+  return weight;
+}
+
+/** Weight of each day back from today (index 0 = yesterday), for arrivals or for signatures. */
+function dayWeights(now: Date, horizonDays: number, mode: "arrival" | "signing"): number[] {
   const weights: number[] = [];
-  for (let daysAgo = 1; daysAgo <= maxAgeDays; daysAgo += 1) {
-    let weight = WEEKDAY_WEIGHT[dayOfWeekUtc(now, daysAgo)] ?? 1;
-    if (daysAgo <= 29) weight *= 1.5;
-    if (SPIKE_DAYS.has(daysAgo)) weight *= 3;
+  for (let daysAgo = 1; daysAgo <= horizonDays; daysAgo += 1) {
+    const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysAgo));
+    const dow = date.getUTCDay();
+    let weight = (mode === "arrival" ? WEEKDAY_WEIGHT[dow] : SIGNING_WEEKDAY_WEIGHT[dow]) ?? 1;
+    weight *= seasonFactor(date);
+    if (mode === "arrival") {
+      if (SPIKE_DAYS.has(daysAgo)) weight *= 2.2;
+    }
     weights.push(weight);
   }
   return weights;
 }
 
+/** A day back in [min, max], drawn with the given weights. */
+function drawDay(rng: Rng, weights: readonly number[], min: number, max: number): number {
+  const slice = weights.slice(min - 1, Math.min(max, weights.length));
+  return min + rng.weighted(slice);
+}
+
+/**
+ * `count` days back in [min, max], one per equal slice of the cumulative weight
+ * (stratified sampling): irregular, but spread over the whole year and its
+ * seasonality instead of clumping by chance. Shuffled before use.
+ */
+function stratifiedDays(rng: Rng, weights: readonly number[], min: number, max: number, count: number): number[] {
+  const slice = weights.slice(min - 1, Math.min(max, weights.length));
+  const total = slice.reduce((sum, weight) => sum + weight, 0);
+  const days: number[] = [];
+  let accumulated = 0;
+  let index = 0;
+  for (let rank = 0; rank < count; rank += 1) {
+    const target = ((rank + rng.next()) / count) * total;
+    while (index < slice.length - 1 && accumulated + slice[index]! <= target) {
+      accumulated += slice[index]!;
+      index += 1;
+    }
+    days.push(min + index);
+  }
+  return rng.shuffle(days);
+}
+
 function isoOf(date: Date): string {
   return date.toISOString();
+}
+
+function isWeekend(date: Date): boolean {
+  return [0, 6].includes(date.getUTCDay());
+}
+
+/** Moves a Saturday / Sunday back to the previous Friday. */
+function previousWeekday(date: Date): Date {
+  let result = date;
+  while (isWeekend(result)) result = new Date(result.getTime() - DAY_MS);
+  return result;
+}
+
+/** Moves a Saturday / Sunday forward to the next Monday. */
+function nextWeekday(date: Date): Date {
+  let result = date;
+  while (isWeekend(result)) result = new Date(result.getTime() + DAY_MS);
+  return result;
 }
 
 /** Next event of a chain: later than `previous`, never after `latest`. */
@@ -354,26 +447,24 @@ type Draft = {
   index: number;
   key: string;
   ageDays: number;
-  jitteredAge: number;
-  /** Same, with a much wider jitter: recent requests are sometimes qualified within hours. */
-  wideJitteredAge: number;
   createdAt: Date;
   /** Current stage. */
   stage: Stage;
   /** Furthest funnel stage ever reached (equals `stage` unless `perdu`). */
   furthest: HistoryFunnelStage;
+  /** Instant of the human confirmation of the mandate (signed dossiers only). */
+  signedAt: Date | null;
 };
 
-/** Minimal age (days) for a contact to plausibly be at a stage. */
-const MIN_AGE_STAGE: Record<HistoryFunnelStage, number> = {
-  nouveau: 0,
-  qualifie: 1,
-  chaud: 4,
-  rdv_planifie: 8,
-  estimation_faite: 21,
-  mandat_signe: 34,
+/** Age range (days) of a dossier that is STILL in the pipeline at a stage: an open dossier is recent. */
+const OPEN_AGE_RANGE: Record<Exclude<HistoryFunnelStage, "mandat_signe">, readonly [number, number]> = {
+  nouveau: [1, 16],
+  qualifie: [2, 60],
+  chaud: [5, 85],
+  rdv_planifie: [9, 95],
+  estimation_faite: [22, 150],
 };
-/** Same, for a dossier that was lost after reaching that stage. */
+/** Minimal age (days) of a dossier lost after reaching that stage. */
 const MIN_AGE_LOST: Record<HistoryFunnelStage, number> = {
   nouveau: 4,
   qualifie: 6,
@@ -382,57 +473,78 @@ const MIN_AGE_LOST: Record<HistoryFunnelStage, number> = {
   estimation_faite: 28,
   mandat_signe: 60,
 };
+/** Time between the creation of the dossier and the signature of the mandate: 26 to 96 days. */
+const MIN_CYCLE_DAYS = 26;
 
-const ADVANCED_FIRST = [...HISTORY_FUNNEL_STAGES].reverse();
+type Slot = { stage: Stage; furthest: HistoryFunnelStage };
 
-function assignStages(rng: Rng, drafts: Draft[], plan: HistoryPlan): void {
-  const unassigned = new Set(drafts.filter((draft) => draft.ageDays > 0));
+/**
+ * One draft per contact of the plan: when it arrived and what became of it.
+ * Signed mandates are dated first (spread over the year, working days, season),
+ * their dossier was created one to three months earlier. Lost dossiers are old
+ * enough for the stage they reached. Open dossiers are recent.
+ */
+function planDrafts(rng: Rng, plan: HistoryPlan, now: Date): Draft[] {
+  const slots: Slot[] = [];
+  for (const stage of HISTORY_FUNNEL_STAGES) {
+    for (let count = 0; count < plan.stages[stage]; count += 1) slots.push({ stage, furthest: stage });
+  }
+  for (const stage of HISTORY_FUNNEL_STAGES) {
+    for (let count = 0; count < plan.lostAt[stage]; count += 1) slots.push({ stage: "perdu", furthest: stage });
+  }
+  // The order only fixes which identity (name, phone…) goes with which story.
+  const ordered = createRng(plan.seed ^ 0x5bd1e995).shuffle(slots);
 
-  // 1. Lost dossiers: random among the contacts old enough for their stage.
-  for (const stage of ADVANCED_FIRST) {
-    const needed = plan.lostAt[stage];
-    if (needed === 0) continue;
-    const candidates = rng.shuffle([...unassigned].filter((draft) => draft.ageDays >= MIN_AGE_LOST[stage]));
-    if (candidates.length < needed) throw new Error(`fixtures history: not enough old contacts for lost@${stage}`);
-    for (const draft of candidates.slice(0, needed)) {
-      draft.stage = "perdu";
-      draft.furthest = stage;
-      unassigned.delete(draft);
+  const horizon = Math.max(plan.maxAgeDays, plan.signedWithinDays);
+  const arrival = dayWeights(now, horizon, "arrival");
+  const signing = dayWeights(now, horizon, "signing");
+  // A recent request is more likely to be still open than closed: fewer lost dossiers in the last months.
+  const lostArrival = arrival.map((weight, index) => weight * Math.min(1, 0.4 + (index + 1) / 110));
+  const signedDays = stratifiedDays(rng, signing, 2, plan.signedWithinDays, plan.stages.mandat_signe);
+  let todayLeft = plan.todayArrivals;
+  let todayRank = 0;
+
+  return ordered.map((slot, index): Draft => {
+    const key = `${plan.prefix}-${String(index + 1).padStart(3, "0")}`;
+
+    if (slot.stage === "nouveau" && todayLeft > 0) {
+      todayLeft -= 1;
+      const minutesAgo = todayRank === 0 ? 47 : 155 + (todayRank - 1) * 61;
+      todayRank += 1;
+      return {
+        index,
+        key,
+        ageDays: 0,
+        createdAt: new Date(now.getTime() - minutesAgo * MINUTE_MS),
+        stage: slot.stage,
+        furthest: slot.furthest,
+        signedAt: null,
+      };
     }
-  }
 
-  // 2. Dossiers still in the pipeline: the oldest take the most advanced stages.
-  for (const stage of ADVANCED_FIRST) {
-    if (stage === "nouveau") continue;
-    const needed = plan.stages[stage];
-    const candidates = [...unassigned]
-      .filter((draft) => draft.ageDays >= MIN_AGE_STAGE[stage])
-      .sort((first, second) => {
-        const key = stage === "qualifie" ? "wideJitteredAge" : "jitteredAge";
-        return second[key] - first[key] || first.index - second.index;
-      });
-    if (candidates.length < needed) throw new Error(`fixtures history: not enough old contacts for ${stage}`);
-    for (const draft of candidates.slice(0, needed)) {
-      draft.stage = stage;
-      draft.furthest = stage;
-      unassigned.delete(draft);
+    let ageDays: number;
+    let signedAt: Date | null = null;
+    if (slot.stage === "mandat_signe") {
+      const signedDaysAgo = signedDays.pop()!;
+      ageDays = signedDaysAgo + MIN_CYCLE_DAYS + rng.int(0, 36) + rng.int(0, 34);
+      signedAt = utcDayAt(now, signedDaysAgo, rng.int(8 * 60 + 30, 16 * 60 + 30));
+    } else if (slot.stage === "perdu") {
+      ageDays = drawDay(rng, lostArrival, MIN_AGE_LOST[slot.furthest], plan.maxAgeDays);
+    } else {
+      const [min, max] = OPEN_AGE_RANGE[slot.stage as keyof typeof OPEN_AGE_RANGE];
+      ageDays = drawDay(rng, arrival, min, max);
     }
-  }
-
-  // 3. Whatever is left (the most recent) is new.
-  const todayCount = drafts.filter((draft) => draft.ageDays === 0).length;
-  if (unassigned.size + todayCount !== plan.stages.nouveau) {
-    throw new Error(`fixtures history: ${unassigned.size + todayCount} "nouveau" left, plan says ${plan.stages.nouveau}`);
-  }
-  for (const draft of unassigned) {
-    draft.stage = "nouveau";
-    draft.furthest = "nouveau";
-  }
+    const weekend = [0, 6].includes(dayOfWeekUtc(now, ageDays));
+    const createdAt = utcDayAt(
+      now,
+      ageDays,
+      weekend ? rng.int(8 * 60 + 30, 15 * 60 + 30) : rng.int(MIN_START_MINUTE, MAX_START_MINUTE),
+    );
+    return { index, key, ageDays, createdAt, stage: slot.stage, furthest: slot.furthest, signedAt };
+  });
 }
 
-// -----------------------------------------------------------------------------
-// Builder
-// -----------------------------------------------------------------------------
+
 function ascii(value: string): string {
   return value
     .normalize("NFD")
@@ -470,8 +582,8 @@ function describeProperty(property: PropertySeed): string {
 function makeProperty(rng: Rng, furthest: HistoryFunnelStage, isLost: boolean): PropertySeed {
   const commune = COMMUNES[rng.weighted(COMMUNES.map((entry) => entry.weight))]!;
   const typeRoll = rng.next();
-  const property_type: Enums["property_type"] =
-    typeRoll < 0.6 ? "apartment" : typeRoll < 0.93 ? "house" : typeRoll < 0.97 ? "land" : "commercial";
+  // A residential agency: flats and houses, a few building plots, no commercial premises.
+  const property_type: Enums["property_type"] = typeRoll < 0.6 ? "apartment" : typeRoll < 0.95 ? "house" : "land";
   const surfaces = [rng.int(28, 112), rng.int(72, 215), rng.int(320, 1450), rng.int(38, 170)] as const;
   const surface =
     property_type === "apartment" ? surfaces[0] : property_type === "house" ? surfaces[1] : property_type === "land" ? surfaces[2] : surfaces[3];
@@ -572,70 +684,63 @@ function leadRawText(source: Source, property: PropertySeed | undefined, name: s
   }
 }
 
+/**
+ * Share of the requests an agent takes up within the hour (the others wait for
+ * a missing detail or for the next morning). Shared with the hand-written
+ * contacts so the median first-handling delay is not dragged by one cohort.
+ */
+export const QUICK_HANDLING_SHARE = 0.72;
+
+type ApptPlan = {
+  startsAt: Date;
+  endsAt: Date;
+  confirmedAt: Date;
+  status: Tables["appointments"]["Insert"]["status"];
+  completedAt: Date | null;
+  cancelledAt: Date | null;
+};
+
+/** What each open stage's follow-up task says (the task of a dossier waiting for the advisor). */
+const OPEN_TASKS: Partial<Record<Stage, { chance: number; type: string; title: string }>> = {
+  nouveau: { chance: 0.45, type: "call_back_seller", title: "Rappeler le vendeur pour qualifier la demande" },
+  qualifie: { chance: 0.8, type: "schedule_estimation", title: "Proposer un rendez-vous d'estimation" },
+  chaud: { chance: 0.9, type: "schedule_estimation", title: "Fixer la date de l'estimation" },
+  estimation_faite: { chance: 0.85, type: "follow_up_after_estimation", title: "Relancer le vendeur après l'estimation" },
+};
+
 export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCohort {
   const rng = createRng(plan.seed);
   const latest = new Date(now.getTime() - 90_000);
   const agencyId = plan.agency === "a" ? fixtureUuid("agency:calanques-immobilier") : fixtureUuid("agency:test-isolation");
 
-  const total =
-    Object.values(plan.stages).reduce((sum, count) => sum + count, 0) +
-    Object.values(plan.lostAt).reduce((sum, count) => sum + count, 0);
-
-  // --- 1. When does each contact arrive? --------------------------------------
-  const weights = dayWeights(now, plan.maxAgeDays);
-  const drafts: Draft[] = [];
-  for (let index = 0; index < total; index += 1) {
-    const isToday = index < plan.todayArrivals;
-    let createdAt: Date;
-    let ageDays: number;
-    if (isToday) {
-      ageDays = 0;
-      createdAt = new Date(now.getTime() - (index === 0 ? 47 : 155 + (index - 1) * 61) * MINUTE_MS);
-    } else {
-      ageDays = rng.weighted(weights) + 1;
-      const weekend = [0, 6].includes(dayOfWeekUtc(now, ageDays));
-      createdAt = utcDayAt(
-        now,
-        ageDays,
-        weekend ? rng.int(8 * 60 + 30, 15 * 60 + 30) : rng.int(MIN_START_MINUTE, MAX_START_MINUTE),
-      );
-    }
-    drafts.push({
-      index,
-      key: `${plan.prefix}-${String(index + 1).padStart(2, "0")}`,
-      ageDays,
-      jitteredAge: ageDays + (rng.next() - 0.5) * 16,
-      wideJitteredAge: ageDays + (rng.next() - 0.5) * 56,
-      createdAt,
-      stage: "nouveau",
-      furthest: "nouveau",
-    });
-  }
-
-  assignStages(rng, drafts, plan);
+  // --- 1. When does each contact arrive, and what became of it? ---------------
+  const drafts = planDrafts(rng, plan, now);
 
   // --- 2. Everything else about each contact -----------------------------------
   // Identity (names, source, phone, property, consents) comes from per-contact
   // streams that do not depend on the load date: a contact keeps its name, its
   // e-mail and its address whichever day the fixtures are reloaded. Only its
-  // dates and its stage move with "now".
+  // dates move with "now".
   const lastNames = createRng(plan.seed ^ 0x9e3779b1).shuffle(LAST_NAMES.slice(0, LAST_NAMES.length));
   const extra = createRng(plan.seed + 777);
   const seeds: ContactSeed[] = [];
   const activities: Tables["activities"]["Insert"][] = [];
   const leads: Tables["inbound_leads"]["Insert"][] = [];
   const appointments: Tables["appointments"]["Insert"][] = [];
+  const tasks: Tables["tasks"]["Insert"][] = [];
   const contactIdByKey = new Map<string, string>();
   // Calendar days (from today) already used by the hand-written upcoming appointments.
   const usedUpcomingDays = new Set<number>([4, 6, 11]);
+  const fallbackUser: UserKey = plan.users.includes("directorA") ? "directorA" : plan.users[0]!;
 
-  // Chronological order keeps the generator stable when the plan changes.
   for (const draft of drafts) {
     const lost = draft.stage === "perdu";
+    const signed = draft.stage === "mandat_signe";
     const attr = createRng(plan.seed * 7919 + draft.index * 104729 + 13);
     const ev = createRng(plan.seed * 104729 + draft.index * 7919 + 31);
     const source = pickSource(attr);
-    const firstName = FIRST_NAMES[(draft.index * 7 + plan.nameOffset) % FIRST_NAMES.length]!;
+    // 60 first names x 80 last names, shifted every 80 contacts: no pair repeats before 320 contacts.
+    const firstName = FIRST_NAMES[(draft.index * 7 + Math.floor(draft.index / 80) * 11 + plan.nameOffset) % FIRST_NAMES.length]!;
     const lastName = lastNames[(draft.index + plan.nameOffset) % lastNames.length]!;
     const slug = `${ascii(firstName)}.${ascii(lastName)}`;
     const phoneBlock = String(plan.phoneBase + draft.index).padStart(4, "0");
@@ -649,9 +754,11 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
     const builtProperty = makeProperty(attr, draft.furthest, lost);
     const property = furthestRank >= 3 || noPropertyRoll >= 0.1 ? builtProperty : undefined;
     const qualified = furthestRank >= 1;
-    const assigned = attr.pick(plan.users);
-
-    const consents = makeConsents(attr, ev, source, draft.createdAt, lost, latest);
+    const advisor = plan.users[attr.weighted(plan.advisorWeights)]!;
+    const leaveUnassigned = attr.chance(0.4);
+    // A brand-new request waits for an advisor; every dossier past it has one.
+    const assigned: UserKey | null = draft.stage === "nouveau" && leaveUnassigned ? null : advisor;
+    const actorUserId = FIXTURE_USER_IDS[assigned ?? fallbackUser];
 
     let notes = (() => {
       const what = property ? describeProperty(property) : "un bien dont la nature n'est pas précisée";
@@ -683,35 +790,15 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
     const motivation = qualified && motivationRoll < 0.88 ? motivationPick : null;
     const timeline = qualified && timelineRoll < 0.9 ? timelinePick : null;
 
-    seeds.push({
-      key: draft.key,
-      first_name: firstName,
-      last_name: lastName,
-      email,
-      phone,
-      source,
-      stage: draft.stage,
-      notes,
-      sale_motivation: motivation,
-      sale_timeline: timeline,
-      human_takeover: false,
-      assigned,
-      createdDaysAgo: draft.ageDays,
-      createdAt: isoOf(draft.createdAt),
-      furthest: draft.furthest,
-      historyManaged: true,
-      ...(property ? { property } : {}),
-      consents,
-    });
     const contactId = fixtureUuid(`contact:${draft.key}`);
     contactIdByKey.set(draft.key, contactId);
     const propertyId = property ? fixtureUuid(`property:${draft.key}`) : null;
-    const assignedUserId = FIXTURE_USER_IDS[assigned];
+    const created = draft.createdAt;
 
     // --- Inbound lead (the raw request, processed by Léa) ------------------------
     const leadId = fixtureUuid(`lead:${draft.key}`);
     if (LEAD_SOURCES.has(source)) {
-      const leadAt = new Date(draft.createdAt.getTime() - ev.int(2, 9) * MINUTE_MS);
+      const leadAt = new Date(created.getTime() - ev.int(2, 9) * MINUTE_MS);
       leads.push({
         id: leadId,
         agency_id: agencyId,
@@ -739,11 +826,131 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
         actor_type: "ai_agent",
         actor_agent: "lea",
         is_simulation: true,
-        occurred_at: isoOf(new Date(draft.createdAt.getTime() + MINUTE_MS)),
+        occurred_at: isoOf(new Date(created.getTime() + MINUTE_MS)),
       });
     }
 
-    // --- Stage history: only what the application itself writes ------------------
+    // --- The dossier's story (times only) ------------------------------------------
+    let qualifiedAt: Date | null = null;
+    let hotAt: Date | null = null;
+    let directToHot = false;
+    let estimatedAt: Date | null = null;
+    let appt: ApptPlan | null = null;
+    let cursor = created;
+
+    const makeAppointment = (afterHot: Date, start: Date, status: ApptPlan["status"]): ApptPlan => {
+      const endsAt = new Date(start.getTime() + 60 * MINUTE_MS);
+      const confirmedAt = new Date(
+        Math.min(
+          start.getTime() - 30 * MINUTE_MS,
+          Math.max(afterHot.getTime() + 5 * MINUTE_MS, start.getTime() - ev.int(1, 4) * DAY_MS),
+        ),
+      );
+      return {
+        startsAt: start,
+        endsAt,
+        confirmedAt: new Date(Math.min(confirmedAt.getTime(), latest.getTime())),
+        status,
+        completedAt: status === "done" ? new Date(Math.min(endsAt.getTime() + ev.int(20, 120) * MINUTE_MS, latest.getTime())) : null,
+        cancelledAt:
+          status === "cancelled" ? new Date(Math.min(start.getTime() - 2 * 60 * MINUTE_MS, latest.getTime())) : null,
+      };
+    };
+
+    if (signed && draft.signedAt) {
+      // Planned backwards from the human signature: every step falls between
+      // the creation and the signature, whatever the length of the cycle.
+      const signedAt = draft.signedAt;
+      const span = signedAt.getTime() - created.getTime();
+      const quick = ev.chance(QUICK_HANDLING_SHARE);
+      const lag = quick ? ev.int(4, 70) * MINUTE_MS : ev.int(180, 2880) * MINUTE_MS;
+      qualifiedAt = new Date(created.getTime() + Math.min(lag, span * 0.1));
+      directToHot = ev.chance(0.2);
+      const hotRoll = ev.next();
+      if (!directToHot) hotAt = new Date(Math.max(qualifiedAt.getTime() + 5 * MINUTE_MS, created.getTime() + span * (0.1 + hotRoll * 0.12)));
+      const afterHot = hotAt ?? qualifiedAt;
+      const apptRoll = ev.next();
+      const hour = ev.pick([8 * 60, 9 * 60 + 30, 11 * 60, 13 * 60 + 30, 15 * 60]);
+      let start = previousWeekday(utcDayAt(new Date(created.getTime() + span * (0.34 + apptRoll * 0.26)), 0, hour));
+      if (start.getTime() < afterHot.getTime() + 6 * 60 * MINUTE_MS) {
+        start = nextWeekday(utcDayAt(new Date(afterHot.getTime() + 2 * DAY_MS), 0, hour));
+      }
+      if (plan.withAppointments && propertyId) {
+        appt = makeAppointment(afterHot, start, "done");
+        estimatedAt = new Date(appt.completedAt!.getTime() + ev.int(20, 600) * MINUTE_MS);
+        cursor = estimatedAt;
+      } else {
+        cursor = afterHot;
+      }
+    } else {
+      // Missing-information flag by Hugo: a request he cannot qualify (no stage move).
+      if (furthestRank === 0 && draft.ageDays >= 1 && ev.chance(0.9)) {
+        const flaggedAt = new Date(
+          Math.min(
+            latest.getTime(),
+            created.getTime() + (ev.chance(QUICK_HANDLING_SHARE) ? ev.int(5, 180) * MINUTE_MS : ev.int(180, 2880) * MINUTE_MS),
+          ),
+        );
+        activities.push({
+          id: fixtureUuid(`activity:${draft.key}:missing`),
+          agency_id: agencyId,
+          contact_id: contactId,
+          type: "ai_information_missing",
+          summary: "Hugo a signalé des informations manquantes : le dossier attend un complément (simulation).",
+          payload: { agent: "hugo", missing: ["motivation", "timeline"] },
+          actor_type: "ai_agent",
+          actor_agent: "hugo",
+          is_simulation: true,
+          occurred_at: isoOf(flaggedAt),
+        });
+        cursor = flaggedAt;
+      }
+      if (furthestRank >= 1) {
+        const span = Math.max(MINUTE_MS * 10, latest.getTime() - created.getTime());
+        const quick = ev.chance(QUICK_HANDLING_SHARE);
+        const lag = quick ? ev.int(4, 70) * MINUTE_MS : ev.int(180, 2880) * MINUTE_MS;
+        qualifiedAt = new Date(Math.min(created.getTime() + lag, created.getTime() + span * 0.5));
+        directToHot = furthestRank >= 2 && ev.chance(0.2);
+        cursor = qualifiedAt;
+        if (furthestRank >= 2 && !directToHot) {
+          hotAt = followUp(ev, cursor, 1, 8, latest);
+          cursor = hotAt;
+        }
+      }
+      if (plan.withAppointments && furthestRank >= 3 && propertyId) {
+        const confirmedStillAhead = draft.stage === "rdv_planifie";
+        let start: Date;
+        let status: ApptPlan["status"];
+        if (confirmedStillAhead) {
+          // Distinct days at 09:00 UTC: no overlap with the hand-written ones.
+          let offset = 2;
+          start = utcDayAt(now, -offset, 9 * 60);
+          while ([0, 6].includes(start.getUTCDay()) || usedUpcomingDays.has(offset)) {
+            offset += 1;
+            start = utcDayAt(now, -offset, 9 * 60);
+          }
+          usedUpcomingDays.add(offset);
+          status = "confirmed";
+        } else {
+          start = followUp(ev, cursor, 2, 9, new Date(latest.getTime() - 2 * DAY_MS));
+          start = previousWeekday(utcDayAt(start, 0, ev.pick([8 * 60, 9 * 60 + 30, 11 * 60, 13 * 60 + 30, 15 * 60])));
+          if (start.getTime() <= cursor.getTime()) start = new Date(cursor.getTime() + 2 * 60 * MINUTE_MS);
+          status = draft.stage === "perdu" && draft.furthest === "rdv_planifie" ? "cancelled" : "done";
+        }
+        appt = makeAppointment(cursor, start, status);
+        cursor = appt.confirmedAt;
+        if (appt.cancelledAt && appt.cancelledAt.getTime() > cursor.getTime()) cursor = appt.cancelledAt;
+        if (appt.completedAt) {
+          cursor = appt.completedAt;
+          if (furthestRank >= 4) {
+            estimatedAt = new Date(Math.min(appt.completedAt.getTime() + ev.int(20, 600) * MINUTE_MS, latest.getTime()));
+            cursor = estimatedAt;
+          }
+        }
+      }
+    }
+
+    // --- Rows of the story ----------------------------------------------------------
     const transition = (
       label: string,
       type: "ai_qualification_done" | "ai_follow_through_done",
@@ -751,7 +958,7 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
       at: Date,
       previous: Stage,
       stage: Stage,
-      extra: Record<string, unknown> = {},
+      extraPayload: Record<string, unknown> = {},
     ) => {
       activities.push({
         id: fixtureUuid(`activity:${draft.key}:${label}`),
@@ -762,7 +969,7 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
           agent === "hugo"
             ? `Hugo — qualification : dossier passé à « ${stage} » (simulation).`
             : `Sarah — suivi : dossier passé à « ${stage} » après le rendez-vous (simulation).`,
-        payload: { agent, previous_stage: previous, stage, ...extra },
+        payload: { agent, previous_stage: previous, stage, ...extraPayload },
         actor_type: "ai_agent",
         actor_agent: agent,
         is_simulation: true,
@@ -770,66 +977,28 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
       });
     };
 
-    let cursor = draft.createdAt;
-    if (furthestRank >= 1) {
-      const span = Math.max(MINUTE_MS * 10, latest.getTime() - draft.createdAt.getTime());
-      const quick = ev.chance(0.55);
-      const lag = quick ? ev.int(4, 70) * MINUTE_MS : ev.int(1, 3) * DAY_MS + ev.int(0, 240) * MINUTE_MS;
-      const qualifiedAt = new Date(Math.min(draft.createdAt.getTime() + lag, draft.createdAt.getTime() + span * 0.5));
-      const directToHot = furthestRank >= 2 && ev.chance(0.2);
-      transition("qualified", "ai_qualification_done", "hugo", qualifiedAt, "nouveau", directToHot ? "chaud" : "qualifie");
-      cursor = qualifiedAt;
-      if (furthestRank >= 2 && !directToHot) {
-        cursor = followUp(ev, cursor, 1, 8, latest);
-        transition("hot", "ai_qualification_done", "hugo", cursor, "qualifie", "chaud");
-      }
-    }
+    if (qualifiedAt) transition("qualified", "ai_qualification_done", "hugo", qualifiedAt, "nouveau", directToHot ? "chaud" : "qualifie");
+    if (hotAt) transition("hot", "ai_qualification_done", "hugo", hotAt, "qualifie", "chaud");
 
-    // --- Appointments -------------------------------------------------------------
-    if (plan.withAppointments && furthestRank >= 3 && propertyId) {
+    if (appt && propertyId) {
       const appointmentId = fixtureUuid(`appointment:${draft.key}`);
-      const confirmedStillAhead = draft.stage === "rdv_planifie";
-      let startsAt: Date;
-      let status: Tables["appointments"]["Insert"]["status"];
-      if (confirmedStillAhead) {
-        // Distinct days at 09:00 UTC: no overlap with the hand-written ones.
-        let offset = 2;
-        let start = utcDayAt(now, -offset, 9 * 60);
-        while ([0, 6].includes(start.getUTCDay()) || usedUpcomingDays.has(offset)) {
-          offset += 1;
-          start = utcDayAt(now, -offset, 9 * 60);
-        }
-        usedUpcomingDays.add(offset);
-        startsAt = start;
-        status = "confirmed";
-      } else {
-        let guess = followUp(ev, cursor, 2, 9, new Date(latest.getTime() - 2 * DAY_MS));
-        guess = utcDayAt(guess, 0, ev.pick([8 * 60, 9 * 60 + 30, 11 * 60, 13 * 60 + 30, 15 * 60]));
-        while ([0, 6].includes(guess.getUTCDay())) guess = new Date(guess.getTime() - DAY_MS);
-        if (guess.getTime() <= cursor.getTime()) guess = new Date(cursor.getTime() + 2 * 60 * MINUTE_MS);
-        startsAt = guess;
-        status = draft.stage === "perdu" && draft.furthest === "rdv_planifie" ? "cancelled" : "done";
-      }
-      const endsAt = new Date(startsAt.getTime() + 60 * MINUTE_MS);
-      const confirmedAt = new Date(Math.max(cursor.getTime() + 5 * MINUTE_MS, Math.min(startsAt.getTime() - ev.int(1, 4) * DAY_MS, latest.getTime())));
       const reportNotes =
-        status === "done" && ev.chance(0.6)
+        appt.status === "done" && ev.chance(0.6)
           ? `Visite d'estimation : ${property ? describeProperty(property) : "bien"}. État général correct, le vendeur ${
               ev.chance(0.5) ? "souhaite une mise en vente rapide" : "hésite encore sur le prix de présentation"
             }. Rapport remis en main propre.`
           : null;
-
       appointments.push({
         id: appointmentId,
         agency_id: agencyId,
         contact_id: contactId,
         property_id: propertyId,
-        assigned_user_id: assignedUserId,
-        status,
+        assigned_user_id: actorUserId,
+        status: appt.status,
         is_simulation: true,
-        starts_at: isoOf(startsAt),
-        ends_at: isoOf(endsAt),
-        ...(reportNotes ? { report_notes: reportNotes, report_recorded_by: assignedUserId } : {}),
+        starts_at: isoOf(appt.startsAt),
+        ends_at: isoOf(appt.endsAt),
+        ...(reportNotes ? { report_notes: reportNotes, report_recorded_by: actorUserId } : {}),
       });
       activities.push({
         id: fixtureUuid(`activity:${draft.key}:appointment-confirmed`),
@@ -839,13 +1008,11 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
         summary: "Rendez-vous d'estimation confirmé (simulation).",
         payload: { appointment_id: appointmentId, status: "confirmed" },
         actor_type: "user",
-        actor_user_id: assignedUserId,
+        actor_user_id: actorUserId,
         is_simulation: true,
-        occurred_at: isoOf(new Date(Math.min(confirmedAt.getTime(), latest.getTime()))),
+        occurred_at: isoOf(appt.confirmedAt),
       });
-      cursor = new Date(Math.min(confirmedAt.getTime(), latest.getTime()));
-
-      if (status === "cancelled") {
+      if (appt.cancelledAt) {
         activities.push({
           id: fixtureUuid(`activity:${draft.key}:appointment-cancelled`),
           agency_id: agencyId,
@@ -854,13 +1021,12 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
           summary: "Rendez-vous annulé (simulation).",
           payload: { appointment_id: appointmentId, status: "cancelled" },
           actor_type: "user",
-          actor_user_id: assignedUserId,
+          actor_user_id: actorUserId,
           is_simulation: true,
-          occurred_at: isoOf(new Date(Math.min(startsAt.getTime() - 2 * 60 * MINUTE_MS, latest.getTime()))),
+          occurred_at: isoOf(appt.cancelledAt),
         });
       }
-      if (status === "done") {
-        const completedAt = new Date(Math.min(endsAt.getTime() + ev.int(20, 120) * MINUTE_MS, latest.getTime()));
+      if (appt.completedAt) {
         activities.push({
           id: fixtureUuid(`activity:${draft.key}:appointment-completed`),
           agency_id: agencyId,
@@ -869,23 +1035,20 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
           summary: "Rendez-vous d'estimation réalisé (simulation).",
           payload: { appointment_id: appointmentId, status: "done" },
           actor_type: "user",
-          actor_user_id: assignedUserId,
+          actor_user_id: actorUserId,
           is_simulation: true,
-          occurred_at: isoOf(completedAt),
+          occurred_at: isoOf(appt.completedAt),
         });
-        cursor = completedAt;
-        if (furthestRank >= 4) {
-          const followedAt = new Date(Math.min(completedAt.getTime() + ev.int(20, 600) * MINUTE_MS, latest.getTime()));
-          transition("estimated", "ai_follow_through_done", "sarah", followedAt, "rdv_planifie", "estimation_faite", {
-            appointment_id: appointmentId,
-          });
-          cursor = followedAt;
-        }
+      }
+      if (estimatedAt) {
+        transition("estimated", "ai_follow_through_done", "sarah", estimatedAt, "rdv_planifie", "estimation_faite", {
+          appointment_id: appointmentId,
+        });
       }
     }
 
     // --- Signed mandate: confirmed by a human, never by an agent -----------------
-    if (draft.stage === "mandat_signe") {
+    if (signed && draft.signedAt) {
       activities.push({
         id: fixtureUuid(`activity:${draft.key}:mandate`),
         agency_id: agencyId,
@@ -894,16 +1057,64 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
         summary: "Mandat signé, confirmé par un membre de l'agence.",
         payload: {},
         actor_type: "user",
-        actor_user_id: assignedUserId,
+        actor_user_id: actorUserId,
         is_simulation: true,
-        occurred_at: isoOf(followUp(ev, cursor, 2, 14, latest)),
+        occurred_at: isoOf(draft.signedAt),
+      });
+      cursor = draft.signedAt;
+    }
+
+    // --- Date of the last news about the dossier (loss date for a lost one) ---------
+    const lossAt = lost ? followUp(ev, cursor, 1, 21, latest) : null;
+    const updatedAt = lossAt ?? (cursor.getTime() > created.getTime() ? cursor : created);
+    // A withdrawal, if any, happens while the dossier is still alive (before its loss date).
+    const consents = makeConsents(attr, ev, source, created, lost, lossAt ?? latest);
+
+    // --- Next action: an open follow-up task on most open dossiers ----------------
+    const taskPlan = OPEN_TASKS[draft.stage];
+    const taskRoll = ev.next();
+    const dueOffsetDays = ev.int(-5, 6);
+    const taskDelayMinutes = ev.int(5, 90);
+    if (plan.withOpenTasks && taskPlan && draft.ageDays >= 1 && taskRoll < taskPlan.chance) {
+      tasks.push({
+        id: fixtureUuid(`task:${draft.key}:next`),
+        agency_id: agencyId,
+        contact_id: contactId,
+        type: taskPlan.type,
+        title: taskPlan.title,
+        status: "open",
+        assigned_user_id: FIXTURE_USER_IDS[assigned ?? fallbackUser],
+        due_at: isoOf(utcDayAt(now, -dueOffsetDays, 9 * 60)),
+        created_at: isoOf(new Date(Math.min(updatedAt.getTime() + taskDelayMinutes * MINUTE_MS, latest.getTime()))),
       });
     }
+
+    seeds.push({
+      key: draft.key,
+      first_name: firstName,
+      last_name: lastName,
+      email,
+      phone,
+      source,
+      stage: draft.stage,
+      notes,
+      sale_motivation: motivation,
+      sale_timeline: timeline,
+      human_takeover: false,
+      assigned,
+      createdDaysAgo: draft.ageDays,
+      createdAt: isoOf(created),
+      updatedAt: isoOf(updatedAt),
+      furthest: draft.furthest,
+      historyManaged: true,
+      ...(property ? { property } : {}),
+      consents,
+    });
   }
 
   // --- 3. Leads that never became a contact -------------------------------------
   for (let index = 0; index < plan.extraRejectedLeads; index += 1) {
-    const daysAgo = [4, 17, 31, 52][index % 4]! + Math.floor(index / 4);
+    const daysAgo = 4 + index * 38 + extra.int(0, 22);
     leads.push({
       id: fixtureUuid(`lead:${plan.prefix}:rejected:${index}`),
       agency_id: agencyId,
@@ -920,7 +1131,7 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
     });
   }
   for (let index = 0; index < plan.extraDuplicateLeads; index += 1) {
-    const target = drafts[(index * 11 + 5) % drafts.length]!;
+    const target = drafts[(index * 37 + 5) % drafts.length]!;
     const duplicateAt = new Date(target.createdAt.getTime() + extra.int(2, 9) * DAY_MS);
     if (duplicateAt.getTime() > latest.getTime()) continue;
     const seed = seeds.find((candidate) => candidate.key === target.key)!;
@@ -942,5 +1153,5 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
     });
   }
 
-  return { seeds, activities, inboundLeads: leads, appointments };
+  return { seeds, activities, inboundLeads: leads, appointments, tasks };
 }

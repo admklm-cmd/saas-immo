@@ -11,6 +11,7 @@ import { z } from "zod";
 
 import { resolveAgentContext } from "@/lib/agents/context";
 import { failFromDatabase, failFromUnexpected } from "@/lib/agents/errors";
+import { fetchAllByIds, fetchAllPages } from "@/lib/agents/paginate";
 import { AGENT_LABELS } from "@/lib/agents/messages";
 import type { AgentContext, Enums, TypedClient } from "@/lib/agents/types";
 import { ok, type Result } from "@/lib/utils/result";
@@ -44,7 +45,7 @@ function displayName(firstName: string | null, lastName: string | null): string 
   return name.length > 0 ? name : NO_NAME_LABEL;
 }
 
-type ContactRow = {
+export type ContactRow = {
   id: string;
   first_name: string | null;
   last_name: string | null;
@@ -88,73 +89,104 @@ function toListItem(
   };
 }
 
-/** All the contacts of the caller's agency, most recent first. */
+/**
+ * All the contacts of the caller's agency, most recent first.
+ *
+ * Volume: the contacts are read page by page (PostgREST answers at most 1000
+ * rows), then their properties and open tasks by chunks of 100 ids (a single
+ * `in (...)` with every id breaks the request URL from about 190 contacts).
+ * A read that cannot be completed fails the whole list: it is never cut short.
+ */
 export async function listContacts(client: TypedClient): Promise<Result<ContactListItem[]>> {
   try {
     const contextResult = await resolveAgentContext(client);
     if (contextResult.error) return { data: null, error: contextResult.error };
     const context: AgentContext = contextResult.data;
 
-    const contactsQuery = await client
-      .from("contacts")
-      .select(CONTACT_COLUMNS)
-      .eq("agency_id", context.agencyId)
-      .order("created_at", { ascending: false });
-
-    if (contactsQuery.error) {
-      return failFromDatabase<ContactListItem[]>("listContacts", contactsQuery.error);
-    }
-    const rows = (contactsQuery.data ?? []) as ContactRow[];
-    if (rows.length === 0) return ok([]);
-
-    const ids = rows.map((row) => row.id);
-
-    const propertiesQuery = await client
-      .from("properties")
-      .select(PROPERTY_COLUMNS)
-      .eq("agency_id", context.agencyId)
-      .in("contact_id", ids);
-    if (propertiesQuery.error) {
-      return failFromDatabase<ContactListItem[]>("listContacts.properties", propertiesQuery.error);
-    }
-
-    const tasksQuery = await client
-      .from("tasks")
-      .select("id, contact_id")
-      .eq("agency_id", context.agencyId)
-      .eq("status", "open")
-      .in("contact_id", ids);
-    if (tasksQuery.error) {
-      return failFromDatabase<ContactListItem[]>("listContacts.tasks", tasksQuery.error);
-    }
-
-    const propertyByContact = new Map<string, ContactProperty>();
-    for (const property of (propertiesQuery.data ?? []) as PropertyRow[]) {
-      if (!propertyByContact.has(property.contact_id)) {
-        propertyByContact.set(property.contact_id, {
-          id: property.id,
-          property_type: property.property_type,
-          address: property.address,
-          postal_code: property.postal_code,
-          city: property.city,
-          sector: property.sector,
-          surface_m2: property.surface_m2,
-          rooms: property.rooms,
-        });
-      }
-    }
-
-    const openTasks = new Map<string, number>();
-    for (const task of tasksQuery.data ?? []) {
-      if (task.contact_id) openTasks.set(task.contact_id, (openTasks.get(task.contact_id) ?? 0) + 1);
-    }
-
-    return ok(
-      rows.map((row) => toListItem(row, propertyByContact.get(row.id) ?? null, openTasks.get(row.id) ?? 0)),
+    const contactsQuery = await fetchAllPages<ContactRow>("listContacts", (from, to) =>
+      client
+        .from("contacts")
+        .select(CONTACT_COLUMNS)
+        .eq("agency_id", context.agencyId)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: true })
+        .range(from, to),
     );
+    if (contactsQuery.error) return { data: null, error: contactsQuery.error };
+    return await withPropertiesAndOpenTasks(client, context.agencyId, contactsQuery.data, "listContacts");
   } catch (cause) {
     return failFromUnexpected<ContactListItem[]>("listContacts", cause);
   }
+}
+
+/** Columns read for a contact card (shared with the pipeline board). */
+export const CONTACT_LIST_COLUMNS = CONTACT_COLUMNS;
+
+/**
+ * Turns raw contact rows into list items: attaches the first property and the
+ * open-task count of each, reading both by chunks of 100 ids (never one request
+ * carrying every id). Exported for the pipeline board, which lists a few
+ * dossiers per stage with the same card shape.
+ */
+export async function withPropertiesAndOpenTasks(
+  client: TypedClient,
+  agencyId: string,
+  rows: readonly ContactRow[],
+  context: string,
+): Promise<Result<ContactListItem[]>> {
+  if (rows.length === 0) return ok([]);
+
+  const ids = rows.map((row) => row.id);
+
+  const [propertiesQuery, tasksQuery] = await Promise.all([
+    fetchAllByIds<PropertyRow>(`${context}.properties`, ids, (chunk, from, to) =>
+      client
+        .from("properties")
+        .select(PROPERTY_COLUMNS)
+        .eq("agency_id", agencyId)
+        .in("contact_id", chunk)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+    fetchAllByIds<{ id: string; contact_id: string | null }>(`${context}.tasks`, ids, (chunk, from, to) =>
+      client
+        .from("tasks")
+        .select("id, contact_id")
+        .eq("agency_id", agencyId)
+        .eq("status", "open")
+        .in("contact_id", chunk)
+        .order("id", { ascending: true })
+        .range(from, to),
+    ),
+  ]);
+  if (propertiesQuery.error) return { data: null, error: propertiesQuery.error };
+  if (tasksQuery.error) return { data: null, error: tasksQuery.error };
+
+  const propertyByContact = new Map<string, ContactProperty>();
+  for (const property of propertiesQuery.data) {
+    if (!propertyByContact.has(property.contact_id)) {
+      propertyByContact.set(property.contact_id, {
+        id: property.id,
+        property_type: property.property_type,
+        address: property.address,
+        postal_code: property.postal_code,
+        city: property.city,
+        sector: property.sector,
+        surface_m2: property.surface_m2,
+        rooms: property.rooms,
+      });
+    }
+  }
+
+  const openTasks = new Map<string, number>();
+  for (const task of tasksQuery.data) {
+    if (task.contact_id) openTasks.set(task.contact_id, (openTasks.get(task.contact_id) ?? 0) + 1);
+  }
+
+  return ok(
+    rows.map((row) => toListItem(row, propertyByContact.get(row.id) ?? null, openTasks.get(row.id) ?? 0)),
+  );
 }
 
 /** One contact of the caller's agency. "Contact introuvable." otherwise. */

@@ -18,6 +18,40 @@ export const MAX_PAGES = 20;
 
 type PageResponse<Row> = { data: Row[] | null; error: DatabaseErrorLike | null };
 
+/**
+ * Ids per `in (...)` request. A UUID is 36 characters: 100 of them keep the URL
+ * far below the limit of PostgREST and of any proxy (around 190 ids with a
+ * single request used to break the contacts list). Same value as the funnel.
+ */
+export const IN_CHUNK_SIZE = 100;
+
+/** Splits a list into consecutive chunks (the last one may be shorter). */
+export function chunkArray<T>(items: readonly T[], size: number = IN_CHUNK_SIZE): T[][] {
+  if (!Number.isInteger(size) || size < 1) throw new RangeError(`chunkArray: size must be a positive integer, got ${size}`);
+  const chunks: T[][] = [];
+  for (let offset = 0; offset < items.length; offset += size) chunks.push(items.slice(offset, offset + size));
+  return chunks;
+}
+
+/**
+ * Reads every row matching a list of ids that is too long for one request:
+ * one `in (...)` request per chunk of `IN_CHUNK_SIZE` ids, each one paginated.
+ * Fails — never truncates — as soon as one chunk fails.
+ */
+export async function fetchAllByIds<Row>(
+  context: string,
+  ids: readonly string[],
+  fetchPage: (chunk: string[], from: number, to: number) => PromiseLike<PageResponse<Row>>,
+): Promise<Result<Row[]>> {
+  const rows: Row[] = [];
+  for (const chunk of chunkArray(ids)) {
+    const result = await fetchAllPages<Row>(context, (from, to) => fetchPage(chunk, from, to));
+    if (result.error) return result;
+    rows.push(...result.data);
+  }
+  return ok(rows);
+}
+
 export async function fetchAllPages<Row>(
   context: string,
   fetchPage: (from: number, to: number) => PromiseLike<PageResponse<Row>>,

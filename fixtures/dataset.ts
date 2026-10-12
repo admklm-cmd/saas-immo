@@ -1,6 +1,6 @@
 import type { Database } from "@/types/database";
 
-import { buildHistoricalCohort, HISTORY_PLAN_A, HISTORY_PLAN_B, type HistoryPlan } from "./history";
+import { buildHistoricalCohort, HISTORY_PLAN_A, HISTORY_PLAN_B, QUICK_HANDLING_SHARE, type HistoryPlan } from "./history";
 import {
   FIXTURE_AGENCY_IDS,
   FIXTURE_EMAIL_DOMAIN,
@@ -106,6 +106,20 @@ export const CONSENT_TEXTS = {
     "Je peux retirer mon consentement à tout moment en répondant STOP.",
 } as const;
 
+/**
+ * When Hugo qualified a hand-written contact: within the hour for most of them,
+ * a few hours to a day later for the others (same rhythm as the historical
+ * cohort). Deterministic from the key, never in the future.
+ */
+function handwrittenQualificationAt(key: string, createdAt: string, now: Date): string {
+  let hash = 0;
+  for (const char of key) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  const quick = (hash % 100) / 100 < QUICK_HANDLING_SHARE;
+  const lagMinutes = quick ? 10 + (hash % 80) : 180 + ((hash * 37) % 1260);
+  const at = Date.parse(createdAt) + lagMinutes * 60_000;
+  return iso(new Date(Math.min(at, now.getTime() - 5 * 60_000)));
+}
+
 function proof(formId: string, lastOctet: number): Database["public"]["Tables"]["consents"]["Row"]["proof"] {
   return {
     form_id: formId,
@@ -165,6 +179,8 @@ export type ContactSeed = {
   createdDaysAgo: number;
   /** Exact creation instant (ISO-8601). Overrides `createdDaysAgo` (historical cohort). */
   createdAt?: string;
+  /** Exact last-update instant (ISO-8601). Defaults to the load time (database default). */
+  updatedAt?: string;
   /**
    * Furthest pipeline stage ever reached, when it differs from `stage` (a
    * `perdu` dossier that had gone further than `nouveau`). Drives the history.
@@ -1030,6 +1046,8 @@ function buildFromSeeds(
       assigned_user_id: seed.assigned ? FIXTURE_USER_IDS[seed.assigned] : null,
       // The creation date is part of the story (arrival curve of the dashboard).
       created_at: createdAt,
+      // A bulk insert fills a missing key with NULL: every contact carries one.
+      updated_at: seed.updatedAt ?? iso(now),
     });
 
     if (seed.property) {
@@ -1090,7 +1108,7 @@ function buildFromSeeds(
         actor_type: "ai_agent",
         actor_agent: "hugo",
         is_simulation: true,
-        occurred_at: past(now, Math.max(1, seed.createdDaysAgo - 1), 11, 0),
+        occurred_at: handwrittenQualificationAt(seed.key, createdAt, now),
       });
     }
 
@@ -1787,6 +1805,12 @@ export function buildFixtures(now: Date = new Date()): { a: FixtureDataset; b: F
   // Appended after the hand-written rows: their identifiers and their order do
   // not move. All of it is simulated (see fixtures/history.ts).
   a.appointments.push(...historyA.appointments);
+  a.tasks.push(...historyA.tasks);
+  b.tasks.push(...historyB.tasks);
+  // Same reason: every task carries its creation date.
+  const createdNow = iso(now);
+  a.tasks = a.tasks.map((task) => ({ ...task, created_at: task.created_at ?? createdNow }));
+  b.tasks = b.tasks.map((task) => ({ ...task, created_at: task.created_at ?? createdNow }));
   // A bulk insert fills a missing key with NULL, so every lead carries its arrival date.
   const arrivedNow = iso(now);
   a.inboundLeads = a.inboundLeads.map((lead) => ({ ...lead, created_at: arrivedNow }));

@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 
+import { chunkArray } from "@/lib/agents/paginate";
 import type { Database } from "@/types/database";
 
 import { assertLocalSupabaseUrl, assertNotProduction } from "../lib/supabase/local-only";
@@ -303,20 +304,25 @@ describe("fixtures : données 100 % fictives", () => {
 });
 
 describe("fixtures : volumes attendus", () => {
-  it("84 contacts de fixtures pour l'agence A (25 écrits à la main + 59 d'historique), 11 pour l'agence B (5 + 6)", async () => {
+  it("292 contacts de fixtures pour l'agence A (25 écrits à la main + 267 d'historique sur un an), 16 pour l'agence B (5 + 11)", async () => {
     // Counted by their deterministic identifiers: another suite or an E2E
     // journey may legitimately add a contact to a fixture agency (public
     // estimation form + Léa) without the fixtures being wrong.
     expect(DATASET.a.contacts).toHaveLength(FIXTURE_EXPECTED_COUNTS.a.contacts);
     expect(DATASET.b.contacts).toHaveLength(FIXTURE_EXPECTED_COUNTS.b.contacts);
+    // By chunks of 100 ids: one `in (...)` with ~300 identifiers exceeds the request URL limit.
     const countFor = async (agencyId: string, ids: string[]) => {
-      const { count, error } = await admin
-        .from("contacts")
-        .select("id", { count: "exact", head: true })
-        .eq("agency_id", agencyId)
-        .in("id", ids);
-      expect(error).toBeNull();
-      return count;
+      let total = 0;
+      for (const chunk of chunkArray(ids)) {
+        const { count, error } = await admin
+          .from("contacts")
+          .select("id", { count: "exact", head: true })
+          .eq("agency_id", agencyId)
+          .in("id", chunk);
+        expect(error).toBeNull();
+        total += count ?? 0;
+      }
+      return total;
     };
     expect(await countFor(FIXTURE_AGENCY_IDS.a, DATASET.a.contacts.map((contact) => contact.id!))).toBe(
       FIXTURE_EXPECTED_COUNTS.a.contacts,
@@ -326,13 +332,15 @@ describe("fixtures : volumes attendus", () => {
     );
   });
 
-  it("l'historique de ~90 jours est chargé : 84 dossiers répartis comme prévu, datés sur trois mois, avec leur trace de qualification", async () => {
+  it("l'historique d'un an est chargé : 292 dossiers répartis comme prévu, datés sur douze mois, avec leur trace de qualification", async () => {
     // Counts only: the stage of a given historical contact moves with the load
     // date (the dataset is relative to "now"), the totals per stage do not.
     const { data, error } = await admin
       .from("contacts")
       .select("id, stage, created_at")
-      .eq("agency_id", FIXTURE_AGENCY_IDS.a);
+      .eq("agency_id", FIXTURE_AGENCY_IDS.a)
+      .order("id")
+      .range(0, 999);
     expect(error).toBeNull();
     const knownIds = new Set(DATASET.a.contacts.map((contact) => contact.id!));
     const fixtureRows = (data ?? []).filter((row) => knownIds.has(row.id));
@@ -344,7 +352,7 @@ describe("fixtures : volumes attendus", () => {
     expect(byStage.get("perdu") ?? 0).toBeGreaterThanOrEqual(10);
     const oldest = Math.min(...fixtureRows.map((row) => Date.parse(row.created_at)));
     const newest = Math.max(...fixtureRows.map((row) => Date.parse(row.created_at)));
-    expect(Date.now() - oldest).toBeGreaterThan(60 * 86_400_000);
+    expect(Date.now() - oldest).toBeGreaterThan(364 * 86_400_000);
     expect(Date.now() - newest).toBeLessThan(2 * 86_400_000);
 
     // Hugo's qualification trace, as the application writes it: at least one per advanced dossier.
@@ -355,7 +363,7 @@ describe("fixtures : volumes attendus", () => {
       .eq("type", "ai_qualification_done")
       .eq("payload->>previous_stage", "nouveau");
     expect(countError).toBeNull();
-    expect(count ?? 0).toBeGreaterThanOrEqual(60);
+    expect(count ?? 0).toBeGreaterThanOrEqual(150);
   });
 
   it("toutes les étapes du pipeline sont représentées dans l'agence A", async () => {

@@ -14,6 +14,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { Result } from "@/lib/utils/result";
 
 import {
+  countEmmaFollowUpCandidates,
+  countInboundLeads,
   findAiPausedState,
   findRunSteps,
   getAgentsDashboard,
@@ -34,6 +36,24 @@ import type {
   PendingMessageView,
   ReportedAppointmentView,
 } from "./types";
+
+/**
+ * Exact number of dossiers behind Emma's workspace (the list shows at most 100,
+ * the oldest-updated first): display « 100 premiers sur N » when N is larger.
+ */
+export async function getEmmaFollowUpCandidatesTotal(): Promise<Result<number>> {
+  const client = await createClient();
+  return countEmmaFollowUpCandidates(client);
+}
+
+/**
+ * Exact totals behind Léa's inbox (`getInboundLeads` shows at most 50 leads: all
+ * the pending ones first, then the most recent others).
+ */
+export async function getInboundLeadsTotals(): Promise<Result<{ total: number; pending: number }>> {
+  const client = await createClient();
+  return countInboundLeads(client);
+}
 
 /** Manual Emma workspace; the action rechecks every displayed condition. */
 export async function getEmmaFollowUpCandidates(): Promise<Result<EmmaFollowUpCandidateView[]>> {

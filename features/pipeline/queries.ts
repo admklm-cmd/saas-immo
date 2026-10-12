@@ -10,9 +10,10 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Result } from "@/lib/utils/result";
 
+import { buildPipelineBoard } from "./board";
 import { buildPipelineFunnel } from "./funnel";
 import { resolvePipelineViewer } from "./stage-change";
-import type { PipelineFunnel, PipelineViewer } from "./types";
+import type { PipelineBoard, PipelineBoardInput, PipelineFunnel, PipelineViewer } from "./types";
 
 /**
  * Role of the signed-in user in their agency, so the pipeline can explain why
@@ -22,6 +23,17 @@ import type { PipelineFunnel, PipelineViewer } from "./types";
 export async function getPipelineViewer(): Promise<Result<PipelineViewer>> {
   const client = await createClient();
   return resolvePipelineViewer(client);
+}
+
+/**
+ * The pipeline board of the caller's agency, BOUNDED: for each stage an exact
+ * `total` and at most `limit` cards (`closedLimit`, default 12, for
+ * `mandat_signe` and `perdu`; 100 for the open stages). Display « {items.length}
+ * sur {total} » when `hasMore`. `{ data: null, error }` on any failure.
+ */
+export async function getPipelineBoard(input: PipelineBoardInput = {}): Promise<Result<PipelineBoard>> {
+  const client = await createClient();
+  return buildPipelineBoard(client, input);
 }
 
 /**

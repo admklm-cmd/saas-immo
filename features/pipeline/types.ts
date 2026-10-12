@@ -11,6 +11,7 @@
 
 import { z } from "zod";
 
+import type { ContactListItem } from "@/features/contacts/types";
 import type { MembershipRole, PipelineStage } from "@/lib/agents/types";
 import { CONTROL_CHARACTER_PATTERN } from "@/lib/claude/schemas";
 
@@ -270,4 +271,59 @@ export type PipelineFunnel = {
      */
     untraced: number;
   };
+};
+
+
+// -----------------------------------------------------------------------------
+// Bounded board — one column per stage, exact totals, capped cards
+// -----------------------------------------------------------------------------
+
+/** Closed stages: they pile up over the year, so their columns are capped small. */
+export const PIPELINE_BOARD_CLOSED_STAGES = ["mandat_signe", "perdu"] as const satisfies readonly PipelineStage[];
+
+/** Default number of cards shown in a closed column. */
+export const PIPELINE_BOARD_DEFAULT_CLOSED_LIMIT = 12;
+/** Largest number of cards a closed column may ask for. */
+export const PIPELINE_BOARD_MAX_CLOSED_LIMIT = 100;
+/** Cap of an open column (a safety net: an agency rarely has that many dossiers in progress). */
+export const PIPELINE_BOARD_OPEN_LIMIT = 100;
+
+export const pipelineBoardInputSchema = z
+  .object({
+    closedLimit: z
+      .number()
+      .int()
+      .min(1)
+      .max(PIPELINE_BOARD_MAX_CLOSED_LIMIT)
+      .default(PIPELINE_BOARD_DEFAULT_CLOSED_LIMIT),
+  })
+  .strict();
+
+export type PipelineBoardInput = z.input<typeof pipelineBoardInputSchema>;
+
+export type PipelineBoardColumn = {
+  stage: PipelineStage;
+  /** EXACT number of dossiers at this stage (database count, never the length of `items`). */
+  total: number;
+  /** The cards to show: at most `limit`, in `order`. Same shape as the contacts list. */
+  items: ContactListItem[];
+  /** Cap applied to this column. */
+  limit: number;
+  /** `total > items.length`: say « {items.length} sur {total} » and offer the full list. */
+  hasMore: boolean;
+  /**
+   * `created_desc`: most recent request first (open stages).
+   * `updated_desc`: most recently touched first (closed stages: the latest signed
+   * or lost dossiers).
+   */
+  order: "created_desc" | "updated_desc";
+};
+
+export type PipelineBoard = {
+  /** Instant of the read, ISO-8601 UTC. */
+  generatedAt: string;
+  /** Sum of the exact column totals = every dossier of the agency. */
+  totalContacts: number;
+  /** One column per stage, in `PIPELINE_STAGES` order (`perdu` last). */
+  columns: PipelineBoardColumn[];
 };
