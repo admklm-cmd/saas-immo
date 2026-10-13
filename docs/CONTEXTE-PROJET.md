@@ -77,7 +77,7 @@ Dépôt : `github.com/admklm-cmd/saas-immo`. Dossier de travail : `mon-saas/saas
 |---|---|---|
 | `main` | commit initial seulement | en attente de la pull request n° 1 |
 | `feat/nanorobot-motion` | tout le prototype, compte de démo du propriétaire, correctifs de sécurité, nouveau haut de page | pull request n° 1 vers `main`, prête |
-| `feat/analytics-charts` | graphiques du tableau de bord et du pipeline, données fictives enrichies | en cours |
+| `feat/analytics-charts` | page de pilotage (tableau de bord), entonnoir du pipeline, graphiques Bklit UI, historique fictif de 24 mois (547 contacts pour l’agence principale) | poussée, pull request à ouvrir après la n° 1 |
 | `feat/ai-ready` | Privacy Gateway et connexion IA réelle éteinte | poussée, **ne pas fusionner sans accord** |
 
 Jamais de push direct sur `main`, jamais de `--force`.
