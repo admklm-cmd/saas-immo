@@ -171,7 +171,7 @@ export function PilotageDashboard({ views, initialPeriod, reminder, noActionSamp
           <PeriodSelector value={selected} onChange={choose} />
           {reminder}
         </div>
-        <p className="figure mt-2 text-xs leading-5 text-ink-subtle" data-testid="pilotage-scope">
+        <p className="figure particle-veil particle-veil-tight mt-2 w-fit max-w-full text-xs leading-5 text-ink-subtle" data-testid="pilotage-scope">
           <span className="hidden md:inline">{view.scopeLine}</span>
           <span className="md:hidden">{view.scopeShort}</span>
         </p>

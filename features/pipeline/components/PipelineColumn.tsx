@@ -121,11 +121,11 @@ export function PipelineColumn({
         </p>
       ) : collapsed ? (
         <details data-testid={`pipeline-column-${stage}-details`} className="self-start">
-          <summary className="ui-focus inline-flex min-h-11 cursor-pointer items-center rounded-xs text-sm text-ink-muted underline underline-offset-4 hover:text-ink">
+          <summary className="ui-focus particle-veil particle-veil-tight inline-flex min-h-11 cursor-pointer items-center rounded-xs text-sm text-ink-muted underline underline-offset-4 hover:text-ink">
             {TEXTS.columnExpand(contacts.length)}
           </summary>
           <div className="mt-2">{cards}</div>
-          {bounded ? <p className="mt-3 text-xs text-ink-subtle">{TEXTS.columnMore}</p> : null}
+          {bounded ? <p className="particle-veil particle-veil-tight mt-3 w-fit max-w-full text-xs text-ink-subtle">{TEXTS.columnMore}</p> : null}
         </details>
       ) : (
         cards

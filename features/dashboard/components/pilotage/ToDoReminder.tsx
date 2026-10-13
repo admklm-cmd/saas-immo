@@ -51,7 +51,7 @@ export function ToDoReminder({ todo }: ToDoReminderProps) {
   const appointments = appointmentsWaiting(todo);
 
   return (
-    <nav aria-label={REMINDER.label} data-testid="todo-reminder" className="min-w-0">
+    <nav aria-label={REMINDER.label} data-testid="todo-reminder" className="particle-veil particle-veil-tight min-w-0">
       <ul className="flex snap-x items-center gap-x-5 overflow-x-auto pb-1 lg:justify-end lg:overflow-visible lg:pb-0 [&>li+li]:border-l [&>li+li]:border-line [&>li+li]:pl-5">
         <li className="flex-none snap-start">
           {messages !== null && messages > 0 ? (
