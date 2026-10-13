@@ -118,29 +118,28 @@ async function openContactFile(page: Page): Promise<Locator> {
 }
 
 async function readSignedCount(page: Page): Promise<number> {
-  await page.goto("/dashboard");
+  await page.goto("/dashboard?periode=1a");
   await expect(page.getByRole("heading", { level: 1, name: DASHBOARD.title })).toBeVisible({ timeout: COLD_START });
-  const figure = page.getByTestId("dashboard-stage-mandat_signe").getByTestId("dashboard-figure");
-  await expect(figure).toHaveAttribute("data-status", "ok");
-  const text = (await figure.innerText()).trim();
+  const stage = page.getByTestId("pilotage-stage");
+  await expect(stage).toHaveAttribute("data-status", "ok");
+  const text = (await stage.getByTestId("stage-giant").locator(".sr-only").innerText()).trim();
   const value = Number.parseInt(text, 10);
   expect(Number.isNaN(value), `figure « ${text} »`).toBe(false);
   return value;
 }
 
-/** Today's execution counts on the dashboard: technical errors and guard-rail blocks. */
+/** Execution counts of the last 7 days (the Atelier, summed over the five agents): technical errors and guard-rail blocks. */
 async function readTodayRunCounts(page: Page): Promise<{ failed: number; blocked: number }> {
-  await page.goto("/dashboard");
+  await page.goto("/dashboard?periode=7j");
   await expect(page.getByRole("heading", { level: 1, name: DASHBOARD.title })).toBeVisible({ timeout: COLD_START });
-  const today = page.getByTestId("dashboard-runs-today");
-  await expect(today).toHaveAttribute("data-status", "ok");
-  const read = async (key: "failed" | "blocked") => {
-    const text = (await today.getByTestId(`dashboard-runs-today-${key}`).locator("dd").innerText()).trim();
-    const value = Number.parseInt(text, 10);
-    expect(Number.isNaN(value), `${key} « ${text} »`).toBe(false);
-    return value;
+  const atelier = page.getByTestId("pilotage-atelier");
+  await expect(atelier).toHaveAttribute("data-mode", /live|paused/);
+  const sum = async (testId: string) => {
+    const texts = await atelier.getByTestId(testId).allInnerTexts();
+    expect(texts.length).toBe(5);
+    return texts.reduce((total, text) => total + Number.parseInt(text, 10), 0);
   };
-  return { failed: await read("failed"), blocked: await read("blocked") };
+  return { failed: await sum("atelier-errors"), blocked: await sum("atelier-blocked") };
 }
 
 /** Validates the draft of the journey's contact, then triggers the simulated send. */
@@ -364,7 +363,11 @@ test("7. pipeline : un humain passe le dossier en « Mandat signé », case de c
   await dialog.getByRole("button", { name: STAGE_CHANGE.enterSubmit }).click();
 
   await expect(dialog).toBeHidden({ timeout: COLD_START });
-  await expect(pipelineCard(page, "mandat_signe")).toBeVisible({ timeout: COLD_START });
+  // « Mandat signé » is folded by default on the bounded board: open the fold to read the card.
+  await expect(async () => {
+    await page.evaluate(() => document.querySelectorAll("[data-pipeline-column] details").forEach((d) => ((d as HTMLDetailsElement).open = true)));
+    await expect(pipelineCard(page, "mandat_signe")).toBeVisible({ timeout: 1_500 });
+  }).toPass({ timeout: COLD_START });
   await expect(pipelineCard(page, "estimation_faite")).toHaveCount(0);
 });
 
@@ -375,9 +378,7 @@ test("8. tableau de bord et historique : le mandat est compté, chaque étape es
   expect(journey.signedBefore).not.toBeNull();
   expect(signedAfter).toBe(journey.signedBefore! + 1);
   // Nothing of this journey is left waiting for a decision.
-  await expect(page.getByTestId("dashboard-messages")).not.toContainText(FULL_NAME);
-  await expect(page.getByTestId("dashboard-appointments-to-confirm")).not.toContainText(FULL_NAME);
-  await expect(page.getByTestId("dashboard-appointments-to-close")).not.toContainText(FULL_NAME);
+  await expect(page.getByTestId("pilotage")).not.toContainText(FULL_NAME);
 
   await openContactFile(page);
   await expect(page.locator("main [data-stage]").first()).toHaveAttribute("data-stage", "mandat_signe");

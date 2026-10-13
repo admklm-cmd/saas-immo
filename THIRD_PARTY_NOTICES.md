@@ -86,6 +86,18 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   nothing else is edited. Excluded from the project lint (see `eslint.config.mjs`).
 - Licence: MIT, reproduced verbatim.
 
+### Bklit UI, second lot (pie chart, sankey chart) — 2026-10-12
+
+- Source: registry items `@bklit/pie-chart` and `@bklit/sankey-chart` (https://ui.bklit.com/r/pie-chart.json,
+  https://ui.bklit.com/r/sankey-chart.json), same MIT licence as above.
+- Copied into `components/charts/bklit/` (`pie-*.tsx`, `chart-center-typography.ts`, `chart-stat-flow.tsx`) and
+  `components/charts/bklit/sankey/`. Changes: `@/lib/utils` imports point to `cn.ts`; `chart-stat-flow.tsx` renders the
+  centre figure as plain text in `fr-FR` instead of `@number-flow/react` (dependency not installed); in the sankey,
+  `sankey-node.tsx` gains `valueLabel` and `labelSide` props, a light halo behind labels (the registry hard-codes
+  « sessions »), `sankey-tooltip.tsx` gains `nodeLabel` / `linkLabel`, and a colour fallback in `sankey-context.tsx` is removed.
+- New npm dependencies (exact versions, MIT): `@visx/sankey` 4.0.0 (brings `d3-sankey`), `@visx/pattern` 4.0.0,
+  `@visx/gradient` 4.0.0, `@visx/group` 4.0.0.
+
 ```
 MIT License
 

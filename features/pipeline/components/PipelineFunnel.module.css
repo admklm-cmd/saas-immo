@@ -13,7 +13,7 @@
   display: grid;
   gap: var(--funnel-gap);
   grid-template-columns: 6.5rem minmax(0, 1fr) 4.5rem;
-  grid-template-rows: repeat(6, 3.5rem);
+  grid-template-rows: repeat(6, 2.25rem);
 }
 
 .chart {
@@ -63,7 +63,7 @@
 
 @media (width >= 48rem) {
   .grid {
-    --funnel-chart-h: 15rem;
+    --funnel-chart-h: 8rem;
     grid-template-columns: repeat(6, minmax(0, 1fr));
     grid-template-rows: auto auto var(--funnel-chart-h) auto auto;
     row-gap: 0;
@@ -122,6 +122,6 @@
 
 @media (width >= 80rem) {
   .grid {
-    --funnel-chart-h: 16.25rem;
+    --funnel-chart-h: 9.5rem;
   }
 }

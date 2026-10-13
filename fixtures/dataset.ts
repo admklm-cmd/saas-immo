@@ -999,7 +999,10 @@ export const PROPERTIES_WITHOUT_ESTIMATED_VALUE = [
 function planTotal(plan: HistoryPlan): number {
   return (
     Object.values(plan.stages).reduce((sum, count) => sum + count, 0) +
-    Object.values(plan.lostAt).reduce((sum, count) => sum + count, 0)
+    Object.values(plan.lostAt).reduce((sum, count) => sum + count, 0) +
+    (plan.previousYear
+      ? plan.previousYear.signed + Object.values(plan.previousYear.lostAt).reduce((sum, count) => sum + count, 0)
+      : 0)
   );
 }
 

@@ -1,67 +1,51 @@
 import type { Metadata } from "next";
 
-import { formatDateTime } from "@/components/format";
 import { APP_TEXTS } from "@/components/texts";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { ActivityChartCard } from "@/features/dashboard/components/ActivityChartCard";
-import { AgentsSummary } from "@/features/dashboard/components/AgentsSummary";
-import { PipelineFrieze } from "@/features/dashboard/components/PipelineFrieze";
-import { TodoSection } from "@/features/dashboard/components/TodoSection";
-import { UpcomingAppointments } from "@/features/dashboard/components/UpcomingAppointments";
-import { getDashboardDailySeries, getDashboardSummary } from "@/features/dashboard/queries";
+import { NoActionSample } from "@/features/dashboard/components/pilotage/NoActionSample";
+import { formatClock, parsePeriodParam, PERIOD_ORDER } from "@/features/dashboard/components/pilotage/pilotage-format";
+import { buildPilotageView, unavailableView, type PilotageView } from "@/features/dashboard/components/pilotage/pilotage-view";
+import { PilotageDashboard } from "@/features/dashboard/components/pilotage/PilotageDashboard";
+import { ToDoReminder } from "@/features/dashboard/components/pilotage/ToDoReminder";
+import type { PilotagePeriodKey } from "@/features/dashboard/pilotage-periods";
+import type { PilotageWithoutNextAction } from "@/features/dashboard/pilotage-types";
+import { getDashboardPilotage, getDashboardSummary } from "@/features/dashboard/queries";
 
 const TEXTS = APP_TEXTS.dashboard;
 
 export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand.name}` };
 
+type PageProps = { searchParams: Promise<{ periode?: string | string[] }> };
+
 /**
- * `/dashboard` — where the dossiers of the agency stand, and what waits for a
- * person right now (docs/design-system.md §3.5).
+ * `/dashboard` — the page where the boss comes to look (docs/design-system.md §3.5.2): a
+ * pure statistics page. « La Scène » (signed mandates against the previous period),
+ * « la Feuille » (three figures, where the requests come from, where they go) and
+ * « l'Atelier » (the five agents at work), under a sticky period bar and a reminder of what
+ * waits for a person.
  *
- *   1. The pipeline frieze: one dot per dossier at its stage, and the human
- *      checkpoints on the line — the demonstration of the screen.
- *   2. « À faire maintenant »: one row per kind of human decision.
- *   3. « Activité sur 30 jours »: reading, after the action (`getDashboardDailySeries`;
- *      a failed read is « Indisponible », never a zero).
- *   4. The AI agents (kill switch, executions) and the next appointments.
- *
- * Every figure is an exact count made server-side (`getDashboardSummary`),
- * displayed with its scope. A figure that could not be computed reads
- * « Indisponible » without hiding the others; only an invalid session or
- * agency replaces the whole screen with an error. Nothing is hidden behind an
- * entrance animation: the whole screen is in the server HTML.
+ * The four periods are read in parallel on the server and sent as plain numbers and labels,
+ * so a change of period is instant; `?periode=` (7j, 30j, 3m, 1a) decides the period of the
+ * server HTML. Every figure is computed from recorded rows; a block that failed reads
+ * « Indisponible » without hiding the others, and nothing is ever replaced by a zero.
  */
-export default async function DashboardPage() {
-  const [{ data: summary, error }, { data: series }] = await Promise.all([getDashboardSummary(), getDashboardDailySeries()]);
-  // Exact count of the header action, only when it was really computed (never a guessed 0).
-  const messages = summary?.todo.messagesToValidate;
-  const pendingMessages = messages?.status === "ok" && messages.value.total > 0 ? messages.value.total : null;
+export default async function DashboardPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const initialPeriod = parsePeriodParam(params.periode);
 
-  return (
-    <div className="page-frame">
-      <PageHeader
-        overline={APP_TEXTS.nav.groupPilotage}
-        icon="dashboard"
-        title={TEXTS.title}
-        meta={
-          summary ? (
-            <Badge tone="outline">
-              <time dateTime={summary.generatedAt}>{TEXTS.generatedAt(formatDateTime(summary.generatedAt))}</time>
-            </Badge>
-          ) : null
-        }
-        actions={
-          <ButtonLink href="/agents-ia/a-valider" variant="primary" arrow="forward" data-testid="dashboard-primary-action">
-            {TEXTS.primaryAction}
-            {pendingMessages ? <span className="figure ml-1 opacity-70">{pendingMessages}</span> : null}
-          </ButtonLink>
-        }
-      />
+  const [summaryResult, ...pilotageResults] = await Promise.all([
+    getDashboardSummary(),
+    ...PERIOD_ORDER.map((key) => getDashboardPilotage(key)),
+  ]);
+  const { data: summary, error } = summaryResult;
 
-      {error ? (
+  if (error) {
+    return (
+      <div className="page-frame">
+        <PageHeader overline={APP_TEXTS.nav.groupPilotage} icon="dashboard" title={TEXTS.title} />
         <Alert
           tone="error"
           title={TEXTS.errorTitle}
@@ -75,17 +59,50 @@ export default async function DashboardPage() {
         >
           {error.message}
         </Alert>
-      ) : (
-        <div className="mt-10 flex flex-col gap-12 lg:mt-12 lg:gap-14">
-          <PipelineFrieze pipeline={summary.pipeline} todo={summary.todo} />
-          <TodoSection todo={summary.todo} />
-          <ActivityChartCard series={series} />
-          <div className="grid gap-6 xl:grid-cols-2">
-            <AgentsSummary agents={summary.agents} />
-            <UpcomingAppointments list={summary.upcomingAppointments} />
-          </div>
-        </div>
-      )}
+      </div>
+    );
+  }
+
+  const views = {} as Record<PilotagePeriodKey, PilotageView>;
+  let withoutNextAction: PilotageWithoutNextAction | null = null;
+  let pausedFromPilotage: boolean | null = null;
+  PERIOD_ORDER.forEach((key, index) => {
+    const data = pilotageResults[index]?.data ?? null;
+    views[key] = data ? buildPilotageView(data) : unavailableView(key);
+    if (data?.withoutNextAction.status === "ok" && !withoutNextAction) withoutNextAction = data.withoutNextAction.value;
+    if (data?.agents.status === "ok" && pausedFromPilotage === null) pausedFromPilotage = data.agents.value.paused;
+  });
+
+  // The kill switch is read on its own: it stays true to the agency even when the activity counts failed.
+  const killIndicator = summary.agents.killSwitch;
+  const killSwitch =
+    killIndicator.status === "ok"
+      ? ({ status: "ok", paused: killIndicator.value.aiPaused } as const)
+      : pausedFromPilotage !== null
+        ? ({ status: "ok", paused: pausedFromPilotage } as const)
+        : ({ status: "unavailable" } as const);
+  const messages = summary.todo.messagesToValidate;
+
+  return (
+    <div className="page-frame" data-testid="dashboard-page">
+      <PageHeader
+        overline={APP_TEXTS.nav.groupPilotage}
+        icon="dashboard"
+        title={TEXTS.title}
+        meta={
+          <Badge tone="outline">
+            <time dateTime={summary.generatedAt}>{TEXTS.pilotage.generatedAtShort(formatClock(summary.generatedAt))}</time>
+          </Badge>
+        }
+      />
+      <PilotageDashboard
+        views={views}
+        initialPeriod={initialPeriod}
+        reminder={<ToDoReminder todo={summary.todo} />}
+        noActionSample={withoutNextAction ? <NoActionSample data={withoutNextAction} /> : null}
+        killSwitch={killSwitch}
+        humanWaiting={messages.status === "ok" ? messages.value.total : null}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { FIXTURE_EMAIL_DOMAIN, FIXTURE_USER_IDS, fictionLandline, fictionMobile,
 
 
 /**
- * Historical cohort of the fictitious agencies: about twelve months of
+ * Historical cohort of the fictitious agencies: about twenty-four months of
  * plausible activity, so that the dashboard curves, the pipeline funnel and the
  * boss's statistics page are computed from rows that look like a real
  * agency's, not from a handful of hand-written contacts.
@@ -70,6 +70,18 @@ export type HistoryPlan = {
   maxAgeDays: number;
   /** Signed mandates are dated within the last `signedWithinDays` days. */
   signedWithinDays: number;
+  /**
+   * Dossiers of the year BEFORE (older than a year, so all closed): signed
+   * mandates and lost dossiers by furthest stage. Optional.
+   */
+  previousYear?: {
+    signed: number;
+    lostAt: Record<HistoryFunnelStage, number>;
+    /** Oldest creation age (days) of a lost dossier of that year. */
+    maxAgeDays: number;
+    /** Its signed mandates are dated between a year and `signedWithinDays` days ago. */
+    signedWithinDays: number;
+  };
   /** First 4-digit block of the fiction phone numbers of this cohort. */
   phoneBase: number;
   users: readonly UserKey[];
@@ -95,6 +107,15 @@ export const HISTORY_PLAN_A: HistoryPlan = {
   todayArrivals: 2,
   maxAgeDays: 364,
   signedWithinDays: 362,
+  // The year before: a slightly less active agency (about 10 % fewer requests),
+  // every dossier closed. The oldest ones go back beyond two years so the
+  // history covers the whole previous period of a one-year comparison.
+  previousYear: {
+    signed: 18,
+    lostAt: { nouveau: 97, qualifie: 64, chaud: 38, rdv_planifie: 23, estimation_faite: 15, mandat_signe: 0 },
+    maxAgeDays: 752,
+    signedWithinDays: 700,
+  },
   phoneBase: 3000,
   users: ["agentA", "directorA", "ownerA"],
   advisorWeights: [46, 30, 24],
@@ -114,6 +135,12 @@ export const HISTORY_PLAN_B: HistoryPlan = {
   todayArrivals: 0,
   maxAgeDays: 300,
   signedWithinDays: 120,
+  previousYear: {
+    signed: 1,
+    lostAt: { nouveau: 1, qualifie: 2, chaud: 1, rdv_planifie: 0, estimation_faite: 0, mandat_signe: 0 },
+    maxAgeDays: 560,
+    signedWithinDays: 500,
+  },
   phoneBase: 4000,
   users: ["userB"],
   advisorWeights: [1],
@@ -354,7 +381,9 @@ const SIGNING_WEEKDAY_WEIGHT: Record<number, number> = { 0: 0.02, 1: 1, 2: 1.05,
 /** Real-estate seasonality, January to December: busy spring and "rentrée", quiet August and December. */
 const MONTH_WEIGHT: readonly number[] = [0.85, 0.95, 1.15, 1.3, 1.3, 1.2, 0.95, 0.55, 1.2, 1.2, 0.95, 0.7];
 /** Days (counted back from today) with a visible peak: a mailing, a press article… */
-const SPIKE_DAYS: ReadonlySet<number> = new Set([6, 13, 22, 36, 58, 77, 104, 131, 160, 188, 215, 246, 301, 337]);
+const SPIKE_DAYS: ReadonlySet<number> = new Set([
+  6, 13, 22, 36, 58, 77, 104, 131, 160, 188, 215, 246, 301, 337, 379, 418, 455, 497, 531, 574, 612, 655, 689, 712,
+]);
 
 function seasonFactor(date: Date): number {
   const month = date.getUTCMonth();
@@ -476,7 +505,7 @@ const MIN_AGE_LOST: Record<HistoryFunnelStage, number> = {
 /** Time between the creation of the dossier and the signature of the mandate: 26 to 96 days. */
 const MIN_CYCLE_DAYS = 26;
 
-type Slot = { stage: Stage; furthest: HistoryFunnelStage };
+type Slot = { stage: Stage; furthest: HistoryFunnelStage; previous?: boolean };
 
 /**
  * One draft per contact of the plan: when it arrived and what became of it.
@@ -492,15 +521,27 @@ function planDrafts(rng: Rng, plan: HistoryPlan, now: Date): Draft[] {
   for (const stage of HISTORY_FUNNEL_STAGES) {
     for (let count = 0; count < plan.lostAt[stage]; count += 1) slots.push({ stage: "perdu", furthest: stage });
   }
+  const before = plan.previousYear;
+  if (before) {
+    for (let count = 0; count < before.signed; count += 1) {
+      slots.push({ stage: "mandat_signe", furthest: "mandat_signe", previous: true });
+    }
+    for (const stage of HISTORY_FUNNEL_STAGES) {
+      for (let count = 0; count < before.lostAt[stage]; count += 1) {
+        slots.push({ stage: "perdu", furthest: stage, previous: true });
+      }
+    }
+  }
   // The order only fixes which identity (name, phone…) goes with which story.
   const ordered = createRng(plan.seed ^ 0x5bd1e995).shuffle(slots);
 
-  const horizon = Math.max(plan.maxAgeDays, plan.signedWithinDays);
+  const horizon = Math.max(plan.maxAgeDays, plan.signedWithinDays, before?.maxAgeDays ?? 0, before?.signedWithinDays ?? 0);
   const arrival = dayWeights(now, horizon, "arrival");
   const signing = dayWeights(now, horizon, "signing");
   // A recent request is more likely to be still open than closed: fewer lost dossiers in the last months.
   const lostArrival = arrival.map((weight, index) => weight * Math.min(1, 0.4 + (index + 1) / 110));
   const signedDays = stratifiedDays(rng, signing, 2, plan.signedWithinDays, plan.stages.mandat_signe);
+  const previousSignedDays = before ? stratifiedDays(rng, signing, 366, before.signedWithinDays, before.signed) : [];
   let todayLeft = plan.todayArrivals;
   let todayRank = 0;
 
@@ -525,11 +566,13 @@ function planDrafts(rng: Rng, plan: HistoryPlan, now: Date): Draft[] {
     let ageDays: number;
     let signedAt: Date | null = null;
     if (slot.stage === "mandat_signe") {
-      const signedDaysAgo = signedDays.pop()!;
+      const signedDaysAgo = (slot.previous ? previousSignedDays : signedDays).pop()!;
       ageDays = signedDaysAgo + MIN_CYCLE_DAYS + rng.int(0, 36) + rng.int(0, 34);
       signedAt = utcDayAt(now, signedDaysAgo, rng.int(8 * 60 + 30, 16 * 60 + 30));
     } else if (slot.stage === "perdu") {
-      ageDays = drawDay(rng, lostArrival, MIN_AGE_LOST[slot.furthest], plan.maxAgeDays);
+      ageDays = slot.previous
+        ? drawDay(rng, lostArrival, Math.max(366, MIN_AGE_LOST[slot.furthest]), before!.maxAgeDays)
+        : drawDay(rng, lostArrival, MIN_AGE_LOST[slot.furthest], plan.maxAgeDays);
     } else {
       const [min, max] = OPEN_AGE_RANGE[slot.stage as keyof typeof OPEN_AGE_RANGE];
       ageDays = drawDay(rng, arrival, min, max);

@@ -246,6 +246,11 @@ export const APP_TEXTS = {
     columnCount: (total: number) => (total > 1 ? `${total} dossiers` : `${total} dossier`),
     /** Unit written after the big figure of a column (figure + unit read as `columnCount`). */
     columnUnit: (total: number) => (total > 1 ? "dossiers" : "dossier"),
+    /** Bounded column: only the latest dossiers are drawn, the count stays exact. */
+    columnShowing: (shown: number, total: number) => `${shown} sur ${total}`,
+    columnExpand: (shown: number) => (shown > 1 ? `Afficher les ${shown} derniers dossiers` : "Afficher le dernier dossier"),
+    columnMore: "Les plus récents sont affichés. La liste complète est dans les contacts.",
+    columnAllLink: "Tous les contacts",
     columnEmpty: "Aucun dossier à cette étape.",
     lostSubtitle: "Hors parcours actif.",
 
@@ -978,6 +983,188 @@ export const APP_TEXTS = {
       empty: "Aucune demande reçue sur les 30 derniers jours.",
       unavailableTitle: "Indisponible",
       unavailableBody: "Le calcul n’a pas pu être fait. Rechargez la page ; les autres blocs ne sont pas touchés.",
+    },
+
+    /**
+     * Boss's statistics page (docs/design-system.md §3.5.2). Every sentence of the page
+     * lives here; the numbers are inserted by pure functions (`pilotage-format.ts`).
+     */
+    pilotage: {
+      title: "Tableau de bord",
+      periodGroupLabel: "Période d’analyse",
+      periods: {
+        "7d": { short: "7 jours", span: "7 jours", eyebrow: "7 derniers jours", previous: "aux 7 jours précédents", grain: "jour par jour", grainTitle: "Jour", announce: "7 derniers jours" },
+        "30d": { short: "30 jours", span: "30 jours", eyebrow: "30 derniers jours", previous: "aux 30 jours précédents", grain: "jour par jour", grainTitle: "Jour", announce: "30 derniers jours" },
+        "90d": { short: "3 mois", span: "3 mois", eyebrow: "3 derniers mois", previous: "aux 3 mois précédents", grain: "semaine par semaine", grainTitle: "Semaine", announce: "3 derniers mois" },
+        "365d": { short: "1 an", span: "12 mois", eyebrow: "12 derniers mois", previous: "aux 12 mois précédents", grain: "mois par mois", grainTitle: "Mois", announce: "12 derniers mois" },
+      },
+      scopeLine: (from: string, to: string, prevFrom: string, prevTo: string) =>
+        `Du ${from} au ${to} · comparé au ${prevFrom} – ${prevTo} · heure de Paris`,
+      scopeLineShort: (from: string, to: string) => `Du ${from} au ${to} · heure de Paris`,
+      announce: (period: string, mandates: string) => `Période : ${period}. Mandats signés : ${mandates}.`,
+      unavailable: "Indisponible",
+      unavailableCalc: "Le calcul n’a pas pu être fait.",
+      unavailableHint:
+        "Le calcul n’a pas pu être fait. Changez de période ou rechargez la page ; les autres blocs ne sont pas touchés.",
+      notMeasurable: "—",
+
+      reminder: {
+        label: "À traiter",
+        messages: (n: number) => (n > 1 ? "messages à valider" : "message à valider"),
+        messagesNone: "Aucun message à valider",
+        leads: (n: number) => (n > 1 ? "leads entrants" : "lead entrant"),
+        tasks: (n: number) => (n > 1 ? "tâches" : "tâche"),
+        appointments: () => "rendez-vous à confirmer",
+        unavailable: "Indisponible",
+      },
+
+      stage: {
+        overline: (period: string) => `Mandats signés · ${period}`,
+        unit: "mandats signés",
+        unitOne: "mandat signé",
+        human: "Confirmés par un humain",
+        currentBar: "Cette période",
+        previousBar: "Période précédente",
+        chartScope: (grain: string) => `Cumul des mandats signés depuis le début de la période · ${grain} · heure de Paris`,
+        empty: "Aucun mandat signé sur cette période ni sur la précédente.",
+        previousSince: (date: string) => `historique disponible depuis le ${date}`,
+        tableSummary: "Afficher les valeurs",
+        tableCaption: (period: string) => `Mandats signés sur ${period}, avec le cumul et la période précédente`,
+        colSigned: "Mandats signés",
+        colCumulative: "Cumul",
+        colPreviousSigned: "Période précédente",
+        colPreviousCumulative: "Cumul précédent",
+        chartLabel: (period: string, total: number, previous: string) =>
+          `Course cumulée des mandats signés sur ${period}. Total : ${total}. Période précédente : ${previous}. Le tableau des valeurs se trouve sous le graphique.`,
+        tooltipSigned: "Mandats signés",
+        tooltipCumulative: "Cumul depuis le début",
+        tooltipPrevious: "Période précédente",
+        tooltipPreviousValue: (value: number, cumulative: number) => `${value} (cumul ${cumulative})`,
+        keyboardHint:
+          "Flèches gauche et droite : changer de point. Début et Fin : premier et dernier point. Échap : fermer.",
+        live: (label: string, signed: number, cumulative: number, previous: string) =>
+          `${label} : ${signed} ${signed > 1 ? "mandats signés" : "mandat signé"}, cumul ${cumulative}${previous}`,
+        liveWithPrevious: (value: number, cumulative: number) => `; période précédente : ${value}, cumul ${cumulative}`,
+        partialNote: "Le dernier point est en cours : il peut encore changer.",
+      },
+
+      comparison: {
+        up: (delta: string, phrase: string, previous: string) => `+${delta} par rapport ${phrase} (${previous})`,
+        down: (delta: string, phrase: string, previous: string) => `−${delta} par rapport ${phrase} (${previous})`,
+        same: (phrase: string, previous: string) => `Identique ${phrase} (${previous})`,
+        unavailable: "Période précédente : indisponible",
+        notMeasurable: "Période précédente : non mesurable",
+        pointOne: "point",
+        pointMany: "points",
+      },
+
+      figures: {
+        conversion: {
+          overline: "Transformation",
+          sentence: "des demandes sont devenues des mandats",
+          basis: (mandates: number, requests: number, period: string) =>
+            `${mandates} ${mandates > 1 ? "mandats" : "mandat"} pour ${requests} ${requests > 1 ? "demandes reçues" : "demande reçue"}, sur ${period}`,
+          empty: "Aucune demande reçue sur cette période : taux non calculable.",
+          caution: "Peu de demandes sur cette période : à lire avec prudence.",
+        },
+        delay: {
+          overline: "Première prise en charge",
+          sentence: "délai médian entre la réception d’une demande et sa première prise en charge",
+          basis: (measured: number, unhandled: number) =>
+            `${measured} ${measured > 1 ? "dossiers mesurés" : "dossier mesuré"}, ${unhandled} pas encore pris en charge`,
+          empty: "Aucune demande prise en charge sur cette période.",
+        },
+        noAction: {
+          overline: "Sans prochaine action",
+          sentence: "dossiers ouverts sans prochaine action",
+          basis: (count: number, open: number) =>
+            `${count} sur ${open} ${open > 1 ? "dossiers ouverts" : "dossier ouvert"} · état actuel, toutes dates`,
+          empty: "Aucun dossier sans prochaine action.",
+          link: "Voir les contacts",
+          sampleLabel: "Dossiers laissés seuls le plus longtemps",
+        },
+      },
+
+      origin: {
+        title: "Origine des demandes",
+        scope: (period: string) => `Demandes reçues sur ${period} · origine enregistrée à la réception`,
+        centerLabel: "demandes",
+        others: "Autres",
+        rounding: "Parts arrondies à l’entier",
+        empty: "Aucune demande reçue sur cette période.",
+        tableSummary: "Afficher les valeurs",
+        tableCaption: (period: string) => `Origine des demandes sur ${period}`,
+        colOrigin: "Origine",
+        colCount: "Demandes",
+        colShare: "Part",
+        label: (period: string, parts: string) => `Origine des demandes sur ${period} : ${parts}.`,
+        live: (label: string, count: number, share: number) =>
+          `${label} : ${count} ${count > 1 ? "demandes" : "demande"}, ${share} %`,
+        keyboardHint: "Flèches : parcourir les origines. Échap : fermer.",
+      },
+
+      flow: {
+        title: "Du premier contact au mandat",
+        scope: (period: string) =>
+          `Demandes reçues sur ${period} et ce qu’elles sont devenues à ce jour · dossiers enregistrés`,
+        note: "Constat sur les dossiers enregistrés, pas une prévision.",
+        untraced: (n: number) =>
+          `Dont ${n} ${n > 1 ? "dossiers perdus sans" : "dossier perdu sans"} historique d’étape, comptés avant « chaud ».`,
+        empty: "Aucune demande reçue sur cette période.",
+        inconsistent: "Le détail du parcours ne se recoupe pas : il n’est pas affiché plutôt que corrigé.",
+        received: "Demandes reçues",
+        hot: "Chauds",
+        notHot: "Pas encore chauds",
+        lostBefore: "Perdus avant chaud",
+        signed: "Mandats signés",
+        stillHot: "Chauds en cours",
+        lostAfter: "Perdus après chaud",
+        tableSummary: "Afficher les valeurs",
+        tableCaption: (period: string) => `Flux des demandes sur ${period}`,
+        colStep: "Étape",
+        colDossiers: "Dossiers",
+        colTo: "Vers",
+        label: (period: string, received: number, hot: number, lost: number, signed: number) =>
+          `Flux des demandes sur ${period} : ${received} reçues, ${hot} chaudes, ${lost} perdues, ${signed} mandats signés. Le tableau des valeurs se trouve sous le graphique.`,
+        live: (node: string, n: number, detail: string) => `${node} : ${n} ${n > 1 ? "dossiers" : "dossier"}${detail}`,
+        liveTo: (n: number, target: string) => `, ${n} vers ${target}`,
+        tooltipFlow: "Dossiers",
+        keyboardHint: "Flèches : parcourir les étapes. Échap : fermer.",
+      },
+
+      atelier: {
+        title: "Les agents au travail",
+        scope: (period: string) =>
+          `${period} · chaque jeton représente un dossier type ; les chiffres sont ceux de la période`,
+        recorded: "actions inscrites au journal",
+        recordedOne: "action inscrite au journal",
+        blocked: (n: number) => `${n} ${n > 1 ? "bloquées" : "bloquée"} par un garde-fou`,
+        blockedHint: "Un blocage n’est pas une erreur : un garde-fou a refusé l’exécution.",
+        errors: (n: number) => `${n} ${n > 1 ? "erreurs techniques" : "erreur technique"}`,
+        humanName: "Validation humaine",
+        humanWaiting: (n: number) => `${n} en attente de vous`,
+        humanNone: "Rien en attente",
+        mandateName: "Mandat",
+        mandateCount: (n: number) => `${n} ${n > 1 ? "signés" : "signé"}`,
+        mandateSeal: "Confirmé par un humain",
+        none: "Aucune action inscrite sur cette période.",
+        killSwitchOn: "Coupe-circuit actif · les agents sont à l’arrêt",
+        killSwitchOff: "Coupe-circuit : inactif",
+        manage: "Gérer",
+        replay: "Rejouer la scène",
+        tokenNote: "Chaque jeton représente un dossier type, pas un dossier réel.",
+        agents: {
+          lea: { name: "Léa", job: "acquisition" },
+          hugo: { name: "Hugo", job: "qualification" },
+          emma: { name: "Emma", job: "relation" },
+          louis: { name: "Louis", job: "rendez-vous" },
+          sarah: { name: "Sarah", job: "suivi" },
+        },
+        itemLabel: (name: string, job: string, actions: number, blocked: number, failed: number) =>
+          `${name}, ${job} : ${actions} ${actions > 1 ? "actions inscrites au journal" : "action inscrite au journal"}, ${blocked} bloquées par un garde-fou, ${failed} erreur technique.`,
+      },
+
+      generatedAtShort: (time: string) => `Mis à jour à ${time}`,
     },
 
     messagesTitle: "Messages à valider",

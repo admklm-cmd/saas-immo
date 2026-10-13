@@ -31,6 +31,8 @@ const isSource = (f: string) => /\.(tsx?|css)$/.test(f) && !f.includes(".test.")
 
 const files = [
   ...walk(path.join(ROOT, "components", "charts")).filter(isSource),
+  // The boss's statistics page (docs §3.5.2): tokens only, no colour literal.
+  ...walk(path.join(ROOT, "features", "dashboard", "components", "pilotage")).filter((f) => isSource(f) && !f.includes("fixture")),
   ...["dashboard", "pipeline"].flatMap((feature) =>
     walk(path.join(ROOT, "features", feature, "components")).filter(
       (f) => /(Activity|Funnel|activity|funnel)/.test(path.basename(f)) && isSource(f),

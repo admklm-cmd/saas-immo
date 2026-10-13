@@ -6,10 +6,9 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/ButtonLink";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { getContacts } from "@/features/contacts/queries";
 import { PipelineBoard } from "@/features/pipeline/components/PipelineBoard";
 import { PipelineFunnelCard } from "@/features/pipeline/components/PipelineFunnelCard";
-import { getPipelineFunnel, getPipelineViewer } from "@/features/pipeline/queries";
+import { getPipelineBoard, getPipelineFunnel, getPipelineViewer } from "@/features/pipeline/queries";
 
 const TEXTS = APP_TEXTS.pipeline;
 const CONTACTS_TEXTS = APP_TEXTS.contacts;
@@ -17,17 +16,18 @@ const CONTACTS_TEXTS = APP_TEXTS.contacts;
 export const metadata: Metadata = { title: `${TEXTS.title} — ${APP_TEXTS.brand.name}` };
 
 /**
- * `/pipeline` — the agency's contacts by stage.
+ * `/pipeline` — the funnel first (« Passage d'une étape à l'autre »: what the pipeline
+ * really does, docs/design-system.md §3.5.2.J), then the contacts by stage.
  *
- * No drag-and-drop: each card links to the contact file and offers a
- * « Changer d'étape » menu (server action `changeContactStage`). The viewer's
- * role only EXPLAINS why leaving « Mandat signé » is reserved to a director;
- * if it cannot be read, the menu falls back to the most restrictive display
- * and the database decides anyway.
+ * The board is bounded (`getPipelineBoard`): exact count per stage, the latest cards, the
+ * two closed stages folded. No drag-and-drop: each card links to the contact file and offers
+ * a « Changer d'étape » menu (server action `changeContactStage`). The viewer's role only
+ * EXPLAINS why leaving « Mandat signé » is reserved to a director; if it cannot be read, the
+ * menu falls back to the most restrictive display and the database decides anyway.
  */
 export default async function PipelinePage() {
-  const [{ data: contacts, error }, viewer, { data: funnel }] = await Promise.all([
-    getContacts(),
+  const [{ data: board, error }, viewer, { data: funnel }] = await Promise.all([
+    getPipelineBoard(),
     getPipelineViewer(),
     getPipelineFunnel(),
   ]);
@@ -39,7 +39,7 @@ export default async function PipelinePage() {
         overline={APP_TEXTS.nav.groupPilotage}
         icon="pipeline"
         title={TEXTS.title}
-        meta={contacts && contacts.length > 0 ? <Badge tone="outline">{CONTACTS_TEXTS.count(contacts.length)}</Badge> : null}
+        meta={board && board.totalContacts > 0 ? <Badge tone="outline">{CONTACTS_TEXTS.count(board.totalContacts)}</Badge> : null}
       />
 
       <div className="mt-8">
@@ -55,7 +55,7 @@ export default async function PipelinePage() {
           >
             {error.message}
           </Alert>
-        ) : contacts.length === 0 ? (
+        ) : board.totalContacts === 0 ? (
           <EmptyState
             icon="pipeline"
             title={CONTACTS_TEXTS.emptyTitle}
@@ -69,9 +69,9 @@ export default async function PipelinePage() {
           />
         ) : (
           <>
-            <PipelineBoard contacts={contacts} canExitSignedMandate={canExitSignedMandate} />
+            <PipelineFunnelCard funnel={funnel} />
             <div className="mt-10">
-              <PipelineFunnelCard funnel={funnel} />
+              <PipelineBoard columns={board.columns} canExitSignedMandate={canExitSignedMandate} />
             </div>
           </>
         )}

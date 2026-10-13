@@ -12,6 +12,10 @@ const LOST = "perdu" as const;
 export type PipelineLostLaneProps = {
   contacts: readonly ContactListItem[];
   canExitSignedMandate?: boolean;
+  /** Exact number of lost dossiers when `contacts` only holds the latest ones (bounded board). */
+  exactTotal?: number;
+  /** Folded under a disclosure until asked for. */
+  collapsed?: boolean;
 };
 
 /**
@@ -20,9 +24,17 @@ export type PipelineLostLaneProps = {
  * frame, muted surface, subdued figure — never colour alone: the label and
  * the dashed style both say it. Its cards wrap in a grid (no scrolling).
  */
-export function PipelineLostLane({ contacts, canExitSignedMandate = false }: PipelineLostLaneProps) {
+export function PipelineLostLane({ contacts, canExitSignedMandate = false, exactTotal, collapsed = false }: PipelineLostLaneProps) {
   const headingId = `pipeline-column-${LOST}`;
-  const count = contacts.length;
+  const count = exactTotal ?? contacts.length;
+  const bounded = exactTotal !== undefined && exactTotal > contacts.length;
+  const cards = (
+    <ul className="mt-4 grid grid-cols-1 items-start gap-2.5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
+      {contacts.map((contact) => (
+        <PipelineContactCard key={contact.id} contact={contact} canExitSignedMandate={canExitSignedMandate} />
+      ))}
+    </ul>
+  );
 
   return (
     <section
@@ -43,18 +55,27 @@ export function PipelineLostLane({ contacts, canExitSignedMandate = false }: Pip
         <p data-testid="pipeline-column-count" className="flex items-baseline gap-1.5">
           <span className="text-heading font-semibold text-ink-subtle figure">{count}</span>{" "}
           <span className="text-xs text-ink-muted">{TEXTS.columnUnit(count)}</span>
+          {bounded ? (
+            <span className="text-xs text-ink-subtle" data-testid="pipeline-column-showing">
+              · {TEXTS.columnShowing(contacts.length, count)}
+            </span>
+          ) : null}
         </p>
         <p className="text-xs text-ink-subtle sm:ml-auto">{TEXTS.lostSubtitle}</p>
       </header>
 
       {count === 0 ? (
         <p className="mt-4 text-sm text-ink-subtle">{TEXTS.columnEmpty}</p>
+      ) : collapsed ? (
+        <details data-testid="pipeline-column-perdu-details" className="mt-2">
+          <summary className="ui-focus inline-flex min-h-11 cursor-pointer items-center rounded-xs text-sm text-ink-muted underline underline-offset-4 hover:text-ink">
+            {TEXTS.columnExpand(contacts.length)}
+          </summary>
+          {cards}
+          {bounded ? <p className="mt-3 text-xs text-ink-subtle">{TEXTS.columnMore}</p> : null}
+        </details>
       ) : (
-        <ul className="mt-4 grid grid-cols-1 items-start gap-2.5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,1fr))]">
-          {contacts.map((contact) => (
-            <PipelineContactCard key={contact.id} contact={contact} canExitSignedMandate={canExitSignedMandate} />
-          ))}
-        </ul>
+        cards
       )}
     </section>
   );

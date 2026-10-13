@@ -21,7 +21,6 @@ import { signIn } from "./helpers/sign-in";
  * propose or confirm appointments).
  */
 const TEXTS = APP_TEXTS.appointments;
-const DASHBOARD = APP_TEXTS.dashboard;
 const COLD_START = 60_000;
 
 test.beforeEach(() => {
@@ -32,22 +31,13 @@ function views(page: Page) {
   return page.getByRole("navigation", { name: TEXTS.viewsLabel });
 }
 
-test("parcours principal : « Tout voir » du tableau de bord mène ici, avec le même total à venir", async ({ page }) => {
+test("parcours principal : la liste « À venir » a un total, et chaque rendez-vous simulé le dit", async ({ page }) => {
   await signIn(page, "agentA");
-  await page.goto("/dashboard");
-
-  const card = page.getByTestId("dashboard-upcoming");
-  const figure = card.getByTestId("dashboard-figure");
-  await expect(figure).toHaveAttribute("data-status", "ok", { timeout: COLD_START });
-  const upcoming = Number.parseInt((await figure.locator("p").first().textContent()) ?? "", 10);
-  expect(Number.isNaN(upcoming)).toBe(false);
-
-  await card.getByRole("link", { name: new RegExp(`${DASHBOARD.viewAll}|${DASHBOARD.upcomingLink}`) }).click();
-  await expect(page).toHaveURL(/\/rendez-vous$/, { timeout: COLD_START });
+  await page.goto("/rendez-vous");
   await expect(page.getByRole("heading", { level: 1, name: TEXTS.title })).toBeVisible({ timeout: COLD_START });
 
   await expect(views(page).getByRole("link", { name: TEXTS.views.upcoming })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByTestId("appointments-total-value")).toHaveText(String(upcoming));
+  await expect(page.getByTestId("appointments-total-value")).toHaveText(/^\d+$/);
   await expect(page.getByTestId("appointments-total")).toContainText(TEXTS.scopes.upcoming);
 
   // Fixtures hold upcoming appointments: each simulated one says so in words.

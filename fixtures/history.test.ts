@@ -47,14 +47,14 @@ describe("historical cohort", () => {
   it("has the volumes the dashboard needs", () => {
     expect(a.contacts).toHaveLength(FIXTURE_EXPECTED_COUNTS.a.contacts);
     expect(b.contacts).toHaveLength(FIXTURE_EXPECTED_COUNTS.b.contacts);
-    // A year of an independent agency: 260 to 340 seller contacts.
-    expect(a.contacts.length).toBeGreaterThanOrEqual(260);
-    expect(a.contacts.length).toBeLessThanOrEqual(340);
-    expect(b.contacts.length).toBeLessThanOrEqual(20);
+    // Two years of an independent agency: 520 to 620 seller contacts.
+    expect(a.contacts.length).toBeGreaterThanOrEqual(520);
+    expect(a.contacts.length).toBeLessThanOrEqual(620);
+    expect(b.contacts.length).toBeLessThanOrEqual(25);
     expect(a.contacts.length).toBeGreaterThan(b.contacts.length * 10);
   });
 
-  it("spreads agency A over every stage with a believable year (a recent open pipeline, 15 to 30 mandates, most dossiers closed)", () => {
+  it("spreads agency A over every stage with a believable two years (a recent open pipeline, 35 to 50 mandates, most dossiers closed)", () => {
     const byStage = new Map<string, number>();
     for (const contact of a.contacts) byStage.set(contact.stage!, (byStage.get(contact.stage!) ?? 0) + 1);
     expect(Object.fromEntries(byStage)).toEqual({
@@ -63,12 +63,12 @@ describe("historical cohort", () => {
       chaud: 9,
       rdv_planifie: 6,
       estimation_faite: 6,
-      mandat_signe: 24,
-      perdu: 222,
+      mandat_signe: 42,
+      perdu: 459,
     });
     // Mandates: a stock built over the year (not a round figure), not the end of a queue.
-    expect(byStage.get("mandat_signe")!).toBeGreaterThanOrEqual(15);
-    expect(byStage.get("mandat_signe")!).toBeLessThanOrEqual(30);
+    expect(byStage.get("mandat_signe")!).toBeGreaterThanOrEqual(35);
+    expect(byStage.get("mandat_signe")!).toBeLessThanOrEqual(50);
     // The pipeline still in progress is small next to what is closed.
     const open = ["nouveau", "qualifie", "chaud", "rdv_planifie", "estimation_faite"].reduce((sum, stage) => sum + (byStage.get(stage) ?? 0), 0);
     expect(open).toBeLessThan(a.contacts.length * 0.2);
@@ -96,7 +96,7 @@ describe("historical cohort", () => {
       }
     }
     const funnel = computeFunnel({ at: NOW.toISOString(), currentByStage, lost });
-    expect(funnel.steps.map((step) => step.reached)).toEqual([292, 191, 117, 72, 44, 24]);
+    expect(funnel.steps.map((step) => step.reached)).toEqual([547, 349, 211, 128, 77, 42]);
     for (let index = 1; index < funnel.steps.length; index += 1) {
       expect(funnel.steps[index]!.reached).toBeLessThan(funnel.steps[index - 1]!.reached);
     }
@@ -105,7 +105,7 @@ describe("historical cohort", () => {
       expect(step.rateFromPrevious!).toBeGreaterThan(0.3);
       expect(step.rateFromPrevious!).toBeLessThan(0.9);
     }
-    expect(funnel.lost.total).toBe(222);
+    expect(funnel.lost.total).toBe(459);
   });
 
   it("is 100 % fictitious: .test e-mails, Arcep phones, simulated history, unique identifiers", () => {
@@ -185,7 +185,7 @@ describe.each(LOAD_DATES.map((date) => [date.toISOString(), date] as const))("hi
     );
   });
 
-  it("always gives the same funnel numbers (292 / 191 / 117 / 72 / 44 / 24), whatever the weekday", () => {
+  it("always gives the same funnel numbers (547 / 349 / 211 / 128 / 77 / 42), whatever the weekday", () => {
     const stageOf = new Map(a.contacts.map((contact) => [contact.id!, contact.stage!]));
     const history = new Map<string, { type: string; payload: unknown }[]>();
     for (const activity of a.activities) {
@@ -203,7 +203,7 @@ describe.each(LOAD_DATES.map((date) => [date.toISOString(), date] as const))("hi
         currentByStage[stage as PipelineFunnelStage] += 1;
       }
     }
-    expect(computeFunnel({ at: now.toISOString(), currentByStage, lost }).steps.map((step) => step.reached)).toEqual([292, 191, 117, 72, 44, 24]);
+    expect(computeFunnel({ at: now.toISOString(), currentByStage, lost }).steps.map((step) => step.reached)).toEqual([547, 349, 211, 128, 77, 42]);
   });
 
   it("builds (the plan is feasible whatever the weekday) with the same stages", () => {
@@ -280,13 +280,48 @@ describe.each(LOAD_DATES.map((date) => [date.toISOString(), date] as const))("hi
     expect(new Set(days).size).toBeGreaterThanOrEqual(5);
   });
 
-  it("covers the whole year, 365 days back, with the contacts of the hand-written core kept", () => {
+  it("covers two years, beyond 730 days back, with the contacts of the hand-written core kept", () => {
     const oldest = Math.min(...a.contacts.map((contact) => Date.parse(contact.created_at!)));
-    expect((now.getTime() - oldest) / 86_400_000).toBeGreaterThan(364);
+    expect((now.getTime() - oldest) / 86_400_000).toBeGreaterThan(735);
     expect(a.contacts.filter((contact) => now.getTime() - Date.parse(contact.created_at!) > 330 * 86_400_000).length).toBeGreaterThan(0);
     // Agency B also has dossiers dated over the year, and one signed mandate.
     expect(b.contacts.length).toBeGreaterThanOrEqual(10);
     expect(b.contacts.filter((contact) => contact.stage === "mandat_signe").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("splits the history in two years: a slightly less active previous year, all closed, with its own mandates", () => {
+    const DAY = 86_400_000;
+    const ageOf = (iso: string) => (now.getTime() - Date.parse(iso)) / DAY;
+    const OPEN = ["nouveau", "qualifie", "chaud", "rdv_planifie", "estimation_faite"];
+    const current = a.contacts.filter((contact) => ageOf(contact.created_at!) <= 365);
+    const previous = a.contacts.filter((contact) => ageOf(contact.created_at!) > 365 && ageOf(contact.created_at!) <= 730);
+    expect(current.length).toBeGreaterThan(previous.length);
+    expect(previous.length).toBeGreaterThan(current.length * 0.75);
+    expect(previous.length).toBeLessThan(current.length * 0.97);
+    // Every dossier older than a year is closed.
+    for (const contact of a.contacts.filter((candidate) => ageOf(candidate.created_at!) > 365)) {
+      expect(OPEN, contact.id).not.toContain(contact.stage);
+    }
+    // Mandates by year of signature.
+    const signedAges = a.activities.filter((activity) => activity.type === "mandate_signed").map((activity) => ageOf(activity.occurred_at!));
+    const signedCurrent = signedAges.filter((age) => age <= 365).length;
+    const signedPrevious = signedAges.filter((age) => age > 365 && age <= 730).length;
+    expect(signedCurrent).toBeGreaterThanOrEqual(20);
+    expect(signedCurrent).toBeLessThanOrEqual(30);
+    expect(signedPrevious).toBeGreaterThanOrEqual(15);
+    expect(signedPrevious).toBeLessThanOrEqual(22);
+    expect(signedPrevious).toBeLessThan(signedCurrent);
+    // Open stages are those of the current pipeline only.
+    const openTotals = Object.fromEntries(OPEN.map((stage) => [stage, a.contacts.filter((contact) => contact.stage === stage).length]));
+    expect(openTotals).toEqual({ nouveau: 12, qualifie: 13, chaud: 9, rdv_planifie: 6, estimation_faite: 6 });
+  });
+
+  it("gives agency B closed dossiers over the previous year (one mandate) so the isolation of the annual comparison is tested", () => {
+    const ageOf = (iso: string) => (now.getTime() - Date.parse(iso)) / 86_400_000;
+    const previous = b.contacts.filter((contact) => ageOf(contact.created_at!) > 365);
+    expect(previous.length).toBeGreaterThanOrEqual(3);
+    expect(previous.every((contact) => ["perdu", "mandat_signe"].includes(contact.stage!))).toBe(true);
+    expect(previous.filter((contact) => contact.stage === "mandat_signe").length).toBeLessThanOrEqual(1);
   });
 
   it("dates every signed mandate by a human, after the dossier was created and after the agents' steps", () => {
@@ -383,6 +418,26 @@ describe("seasonality of the year (fixed load date)", () => {
     const spring = ["2026-03", "2026-04", "2026-05"].map((key) => perMonth.get(key) ?? 0);
     const springAverage = spring.reduce((sum, value) => sum + value, 0) / spring.length;
     expect(perMonth.get("2026-08")!).toBeLessThan(springAverage * 0.8);
+  });
+
+  it("is quiet in August of the previous year too, and busy in its spring", () => {
+    const spring = ["2025-03", "2025-04", "2025-05"].map((key) => perMonth.get(key) ?? 0);
+    const springAverage = spring.reduce((sum, value) => sum + value, 0) / spring.length;
+    expect(perMonth.get("2025-08")!).toBeLessThan(springAverage * 0.6);
+    // The previous year is a little quieter than the current one over the same months.
+    const sum = (keys: string[]) => keys.reduce((total, key) => total + (perMonth.get(key) ?? 0), 0);
+    const months = ["03", "04", "05", "06", "07", "09"];
+    expect(sum(months.map((month) => `2025-${month}`))).toBeLessThan(sum(months.map((month) => `2026-${month}`)));
+  });
+
+  it("signs mandates across the previous year too (at least eight different months)", () => {
+    const months = new Set(
+      a.activities
+        .filter((activity) => activity.type === "mandate_signed")
+        .filter((activity) => (fixed.getTime() - Date.parse(activity.occurred_at!)) / 86_400_000 > 365)
+        .map((activity) => activity.occurred_at!.slice(0, 7)),
+    );
+    expect(months.size).toBeGreaterThanOrEqual(8);
   });
 
   it("signs mandates across the year (at least nine different months out of twelve)", () => {

@@ -6,7 +6,8 @@ import { NOTABLE_CONTACTS } from "@/fixtures/dataset";
 import { fixtureUuid } from "@/fixtures/fixture-ids";
 
 import { restoreContactStage } from "./helpers/contact-stage";
-import { signIn } from "./helpers/sign-in";
+import { adminClient } from "./helpers/local-supabase";
+import { fixtureUser, signIn } from "./helpers/sign-in";
 
 /**
  * `/pipeline` — board of the agency's contacts by stage.
@@ -32,8 +33,16 @@ const CONTACT_TEXTS = APP_TEXTS.contacts;
 const STAGE_TEXTS = TEXTS.stageChange;
 const COLD_START = 60_000;
 
-test.beforeEach(() => {
+test.beforeEach(async ({ page }) => {
   test.setTimeout(120_000);
+  // The closed stages are folded by default (bounded board): the journeys below read their
+  // cards, so they open the folds first. The folded default has its own test.
+  if (test.info().title.includes("repliés par défaut")) return;
+  await page.addInitScript(() => {
+    const open = () => document.querySelectorAll("[data-pipeline-column] details").forEach((d) => ((d as HTMLDetailsElement).open = true));
+    new MutationObserver(open).observe(document, { childList: true, subtree: true });
+    document.addEventListener("DOMContentLoaded", open);
+  });
 });
 
 function navigation(page: Page): Locator {
@@ -437,7 +446,7 @@ test.describe("mouvement réduit", () => {
     await expect(column(page, PIPELINE_STAGE_LABELS.mandat_signe)).toBeAttached({ timeout: COLD_START });
     for (const stage of ACTIVE_STAGES) {
       await expect(page.getByTestId(`pipeline-column-${stage}`).getByTestId("pipeline-column-count")).toHaveText(
-        /^\d+ dossiers?$/,
+        /^\d+ dossiers?(· \d+ sur \d+)?$/,
       );
     }
     // Arrival animations are cut to 0.01 ms: nothing keeps running in the page.
@@ -540,4 +549,38 @@ test("« Changer d'étape » : les mots apparaissent au survol et au focus clavi
   await expect.poll(opacity).toBe(0);
   await trigger.hover();
   await expect.poll(opacity).toBe(1);
+});
+
+test.describe("tableau borné : totaux exacts, colonnes closes repliées", () => {
+  test("« Mandat signé » et « Perdu » sont repliés par défaut, le total reste exact, « n sur N » est dit", async ({ page }) => {
+    await signIn(page, "agentA");
+    await page.goto("/pipeline");
+    await expect(page.getByTestId("pipeline-column-nouveau")).toBeVisible({ timeout: COLD_START });
+
+    for (const stage of ["mandat_signe", "perdu"] as const) {
+      const details = page.getByTestId(`pipeline-column-${stage}-details`);
+      await expect(details).toBeVisible();
+      expect(await details.evaluate((el) => (el as HTMLDetailsElement).open)).toBe(false);
+      // The count above the fold is the database count, not the number of cards drawn.
+      const total = Number.parseInt((await page.getByTestId(`pipeline-column-${stage}`).getByTestId("pipeline-column-count").innerText()).trim(), 10);
+      const cards = await page.getByTestId(`pipeline-column-${stage}`).getByTestId("pipeline-contact").count();
+      expect(total).toBeGreaterThanOrEqual(cards);
+      if (total > cards) await expect(page.getByTestId(`pipeline-column-${stage}`).getByTestId("pipeline-column-showing")).toContainText(`${cards} sur ${total}`);
+    }
+
+    // The funnel comes first: its top is on screen when the page opens.
+    const funnelTop = (await page.getByTestId("pipeline-funnel").boundingBox())!.y;
+    expect(funnelTop).toBeLessThan(400);
+    await expect(page.getByRole("checkbox")).toHaveCount(0);
+  });
+
+  test("la somme des totaux des colonnes est le nombre de contacts de l'agence", async ({ page }) => {
+    await signIn(page, "agentA");
+    await page.goto("/pipeline");
+    await expect(page.getByTestId("pipeline-column-nouveau")).toBeVisible({ timeout: COLD_START });
+    const counts = await page.getByTestId("pipeline-column-count").evaluateAll((els) => els.map((el) => Number.parseInt((el.textContent ?? "").trim(), 10)));
+    const user = await fixtureUser("agentA");
+    const { count } = await adminClient().from("contacts").select("id", { count: "exact", head: true }).eq("agency_id", user.agencyId);
+    expect(counts.reduce((sum, value) => sum + value, 0)).toBe(count);
+  });
 });

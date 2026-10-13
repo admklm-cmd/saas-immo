@@ -111,6 +111,25 @@
   --color-icon-indigo: #6366f1;
   --color-icon-violet: #a78bfa;
 
+  /* --- Boss's statistics page (docs/design-system.md §3.5.2.D) ------------------ */
+  /* « La Scène »: the one black band of the page. Cobalt on it is a graphic mark
+     (3.7:1), never text. */
+  --color-stage: var(--color-inverse);
+  --color-stage-grid: rgb(250 250 250 / 0.08);
+  --color-stage-line: var(--color-ink-inverse);
+  --color-stage-line-muted: var(--color-ink-inverse-muted);
+  --color-stage-tooltip: var(--color-inverse-soft);
+  --color-stage-tooltip-line: rgb(250 250 250 / 0.14);
+  /* Giant figure (mandates) and the three typographic figures of the sheet. */
+  --text-pilotage-giant: clamp(6rem, 11vw, 10.5rem);
+  --text-pilotage-giant--line-height: 0.95;
+  --text-pilotage-giant--letter-spacing: -0.04em;
+  --text-pilotage-stat: clamp(3.5rem, 5vw, 4.5rem);
+  --text-pilotage-stat--line-height: 0.95;
+  --text-pilotage-stat--letter-spacing: -0.04em;
+  --text-pilotage-unit: 0.875rem;
+  --text-pilotage-unit--line-height: 1.25rem;
+
   /* --- Breakpoints --------------------------------------------------------- */
   /* Tailwind's defaults (sm 640, md 768, lg 1024, xl 1280, 2xl 1536) plus the
      1440 px reference width of the product (`wide:`): a dense screen may keep a
@@ -667,4 +686,86 @@
   --chart-halo-1: color-mix(in srgb, var(--color-ink) 6%, transparent);
   --chart-halo-2: color-mix(in srgb, var(--color-ink) 4%, transparent);
   --chart-halo-3: color-mix(in srgb, var(--color-ink) 2%, transparent);
+}
+
+/*
+ * Boss's statistics page (docs/design-system.md §3.5.2). Additions only: nothing
+ * above is changed. `.chart-scope-stage` re-maps the chart variables on the black
+ * « Scène »; `.chart-scope-sheet` gives the origins ring its ramp (ink 100 / 78 /
+ * 60 / 48 %, the palest part keeps 3:1 on white); `.chart-scope-band` is the
+ * funnel ramp of the pipeline band (48 → 100 %, no pale slice).
+ */
+.chart-scope-stage {
+  --foreground: var(--color-ink-inverse);
+  --background: var(--color-stage);
+  --muted-foreground: var(--color-ink-inverse-muted);
+  --chart-line-primary: var(--color-stage-line);
+  --chart-line-secondary: var(--color-stage-line-muted);
+  --chart-grid: var(--color-stage-grid);
+  --chart-foreground: var(--color-ink-inverse);
+  --chart-foreground-muted: var(--color-ink-inverse-muted);
+  --chart-label: var(--color-ink-inverse-muted);
+  --chart-background: var(--color-stage);
+  --chart-tooltip-background: var(--color-stage-tooltip);
+  --chart-tooltip-foreground: var(--color-ink-inverse);
+  --chart-tooltip-muted: var(--color-ink-inverse-muted);
+  --chart-crosshair: color-mix(in srgb, var(--color-stage-line) 30%, transparent);
+  --chart-indicator-color: color-mix(in srgb, var(--color-stage-line) 30%, transparent);
+  --chart-indicator-secondary-color: color-mix(in srgb, var(--color-stage-line) 30%, transparent);
+  --chart-marker-background: var(--color-stage);
+  --chart-marker-border: var(--color-stage-line);
+  --chart-marker-foreground: var(--color-stage-line);
+}
+
+.chart-scope-sheet {
+  --chart-1: var(--color-ink);
+  --chart-2: color-mix(in srgb, var(--color-ink) 78%, transparent);
+  --chart-3: color-mix(in srgb, var(--color-ink) 60%, transparent);
+  --chart-4: color-mix(in srgb, var(--color-ink) 48%, transparent);
+  --chart-5: color-mix(in srgb, var(--color-ink) 48%, transparent);
+  --chart-flow-link: color-mix(in srgb, var(--color-ink) 14%, transparent);
+  --chart-flow-link-hover: color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+.chart-scope-band {
+  --chart-1: color-mix(in srgb, var(--color-ink) 48%, transparent);
+  --chart-2: color-mix(in srgb, var(--color-ink) 58%, transparent);
+  --chart-3: color-mix(in srgb, var(--color-ink) 68%, transparent);
+  --chart-4: color-mix(in srgb, var(--color-ink) 80%, transparent);
+  --chart-5: color-mix(in srgb, var(--color-ink) 90%, transparent);
+  --chart-6: var(--color-ink);
+}
+
+/* Dot network of the Scène: 1 px dots every 24 px, visible at the edges, nil at the centre. */
+.stage-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, var(--color-stage-grid) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  mask-image: radial-gradient(ellipse at center, transparent 30%, black 100%);
+  -webkit-mask-image: radial-gradient(ellipse at center, transparent 30%, black 100%);
+}
+
+/* Comparison bars of the Scène: they draw from the left on first paint (pure CSS, no flash). */
+@keyframes stage-bar {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.stage-bar {
+  transform-origin: left center;
+  animation: stage-bar 420ms var(--ease-standard) both;
+  animation-delay: var(--stage-bar-delay, 380ms);
+}
+
+/* Focus ring on the black Scène: the global ring is cobalt (3.7:1 there), so it is doubled by a light ring. */
+.stage-scope :focus-visible {
+  outline: 2px solid var(--color-ink-inverse);
+  outline-offset: 2px;
 }

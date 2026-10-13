@@ -25,7 +25,6 @@ import { clearE2eTasks, E2E_TASK_TITLE, resetE2eTask } from "./helpers/tasks";
  * fixture task — a closed task cannot be reopened from the interface.
  */
 const TEXTS = APP_TEXTS.tasks;
-const DASHBOARD = APP_TEXTS.dashboard;
 const COLD_START = 60_000;
 const CONTACT_ID = NOTABLE_CONTACTS.qualifiable;
 
@@ -40,9 +39,9 @@ test.afterAll(async () => {
 
 async function dashboardOpenTasks(page: Page): Promise<number> {
   await page.goto("/dashboard");
-  const figure = page.getByTestId("dashboard-tasks").getByTestId("dashboard-figure");
-  await expect(figure).toHaveAttribute("data-status", "ok", { timeout: COLD_START });
-  const text = (await figure.locator("p").first().textContent()) ?? "";
+  const link = page.getByTestId("todo-tasks");
+  await expect(link).toBeVisible({ timeout: COLD_START });
+  const text = (await link.locator(".figure").textContent()) ?? "";
   const count = Number.parseInt(text, 10);
   expect(Number.isNaN(count)).toBe(false);
   return count;
@@ -64,10 +63,7 @@ test("parcours principal : du tableau de bord à « Marquer comme faite », tota
   const before = await dashboardOpenTasks(page);
 
   // The dashboard card leads here (« Tout voir » when the sample is partial).
-  await page
-    .getByTestId("dashboard-tasks")
-    .getByRole("link", { name: new RegExp(`${DASHBOARD.viewAll}|${DASHBOARD.tasksLink}`) })
-    .click();
+  await page.getByTestId("todo-tasks").click();
   await expect(page).toHaveURL(/\/taches$/, { timeout: COLD_START });
   await expect(page.getByRole("heading", { level: 1, name: TEXTS.title })).toBeVisible({ timeout: COLD_START });
 

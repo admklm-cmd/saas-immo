@@ -97,7 +97,7 @@ export function PipelineFunnelChart({ slices }: PipelineFunnelChartProps) {
         onBlur={() => setActive(null)}
         onMouseLeave={() => setActive(null)}
         data-testid="funnel-chart"
-        className="chart-scope rounded-lg"
+        className="chart-scope chart-scope-band rounded-lg"
       >
         <div className={styles.grid}>
           {slices.map((slice, i) => (

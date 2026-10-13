@@ -2462,7 +2462,7 @@ sur l'ordre de tabulation du hero (le bouton pause s'insère).
 
 #### 2.11.4 ter Hero — particules en métamorphose (12/10/2026)
 
-> **Statut : spécifié le 12/10/2026, non implémenté.** Demande de l'utilisateur : le fond du haut
+> **Statut : implémenté le 12/10/2026 (voir « R. Réalisation » en fin de sous-section).** Demande de l'utilisateur : le fond du haut
 > de la page d'accueil n'est **plus une image fixe** avec quelques nanorobots posés dessus ; **le
 > fond lui-même est une animation de nanoparticules** — un nuage dispersé qui devient une **boule**,
 > puis une **pomme**, puis **les deux mains qui s'effleurent** (*La Création d'Adam*), et **reste
@@ -5789,6 +5789,34 @@ revenir en arrière du navigateur » ; un test clavier du sélecteur et d'un gra
 - §3.2 « aucun taux » : levé uniquement pour l'entonnoir (déjà) et les parts de l'anneau.
 - §2.5.4 règle 4 (« aucune animation infinie ») : **respectée** (Atelier joué une fois, rejouable).
   Une boucle lente de la scène serait une exception à valider (question 3).
+
+#### R. Réalisation (12/10/2026, `frontend-ux`) : où vit le code, écarts constatés
+
+**Fichiers.** `features/dashboard/components/pilotage/` : `pilotage-format.ts` (formatage pur : période dans l'URL, phrases de
+comparaison, délais, taux), `pilotage-view.ts` (vue sérialisable d'une période : chaînes et nombres seulement, aucun nom de contact),
+`PilotageDashboard` (îlot client : période, URL, transitions), `PeriodSelector`, `ToDoReminder` (serveur), `PilotageStage` + `StageChart`
++ `StageOverlay` (Scène), `PilotageFigures` + `RollingFigure`, `OriginBlock` + `OriginRing`, `FlowBlock` + `FlowSankey`, `AgentsAtelier` +
+`AtelierStation` + `atelier-model.ts` + `atelier-timeline.ts`, `Deferred` (chargement à l'approche), `pilotage-motion.ts` (seule porte vers Anime.js).
+Composants Bklit ajoutés : `pie-*` (anneau) et `sankey/` ; textes dans `APP_TEXTS.dashboard.pilotage` ; tokens `--color-stage*`,
+`--text-pilotage-*` dans `@theme`, variables `.chart-scope-stage`, `.chart-scope-sheet`, `.chart-scope-band` en fin de `globals.css`.
+
+**Constantes faciles à changer** (`pilotage-format.ts`) : `DEFAULT_PERIOD` (« 1 an »), `ROLLING_FIGURES` (chiffre qui défile au changement de
+période, jamais au premier chargement), `ROLLING_MS` (420), `FEW_REQUESTS` (5), `MAX_NAMED_ORIGINS` (4). Atelier : scène jouée une fois,
+rejouable (`atelier-timeline.ts`) ; lien « rendez-vous à confirmer » seulement si N > 0.
+
+**Écarts avec la spécification :**
+1. Les quatre périodes viennent de quatre appels `getDashboardPilotage(period)` en parallèle (pas de `getPilotageAnalytics()`).
+2. Barre de pilotage : le périmètre écrit passe sur une **seconde ligne** (à 1440 la colonne fait ≈ 1 100 px, sélecteur + périmètre + rappel n'y tiennent pas).
+3. Entrée de la Scène : texte et barres comparatives en **CSS** (`animate-rise`, `stage-bar`) pour ne jamais clignoter avant l'hydratation ;
+   Anime.js sert au défilement des chiffres, au fondu des graphiques au changement de période, aux repères de fin de courbe, à l'entrée des zones
+   sous la ligne de flottaison (`ChartStage`) et à la scène des agents.
+4. Retour arrière : `history.pushState` (et non `replaceState`) pour que le bouton Précédent restaure la période.
+5. Flux : partition d'affichage des 7 nœuds calculée à partir de `flow` (soustractions de comptes serveur, nulle si elles ne se recoupent pas) ; les perdus sans
+   historique d'étape sont comptés « avant chaud » et signalés par une phrase. < 640 px : trois rangs de barres au lieu du Sankey (qui est horizontal seulement).
+6. Anneau : le centre de Bklit montre le total, ou la part survolée ; `NumberFlow` n'est pas installé, le chiffre est du texte simple.
+7. Le lien « rendez-vous à confirmer » mène à `/agents-ia/suivi-rendez-vous` (l'écran où le créneau se confirme), pas à `/rendez-vous`.
+8. Pipeline : bande dans une carte arrondie (et non un `border-y` pleine largeur), ligne « Perdus » + note à droite du titre ; colonnes « Mandat signé » et « Perdu » repliées
+   par défaut (`details`), « n sur N » quand la colonne est bornée.
 
 ### 3.6 Tâches (`features/tasks/components/`) et rendez-vous (`features/appointments/components/`)
 
