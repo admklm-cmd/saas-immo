@@ -3076,6 +3076,221 @@ deux avant-bras restent épars, comme annoncé en S.7. Une image dédiée (`adam
 **Tableau de bord, correctifs de R bis (13/10/2026).** Marge basse du graphique de la bande noire : 32 → 56 px et boîte du graphique + 1,5 rem (`h-70 sm:h-78 lg:h-86 xl:h-94`) : la bande ne grandit que de ces 24 px ;
 le sur-titre de la bande est devenu une étiquette de donnée (`data-testid="stage-period-label"`, `label-mono` en casse de phrase, `ink-inverse-muted`) : un seul `overline` par écran.
 
+##### T. Retours utilisateur du 13/10/2026 (2) : nouvelle ouverture, titre « invite de commandes », page en particules
+
+> **Statut : spécifié le 13/10/2026 (web-designer), pas encore implémenté.** Quatre retours de l'utilisateur, à la lettre :
+> (1) « la dernière image est parfaite » : **l'acte 2 ne change pas** (S.3 à S.6, S.9 à S.11, critères 15 à 22) ;
+> (2) l'ouverture « petite boule puis pomme » ne convient pas : « une **boule complète, beaucoup plus grande, qui fait vraiment toute la
+> première page** ; au lieu de prendre que le milieu, **elle prend aussi le titre** », puis « d'abord la boule, ensuite **la main qui
+> prend la boule**, ensuite **les deux doigts qui se touchent** » (la pomme disparaît) ; (3) le titre du hero : « change la police,
+> façon **Windows command prompt** » ; (4) le reste de la page : « c'est très vide », « **100 fois plus** de particules, ce n'est pas une
+> manière de parler, c'est littéralement plus », avec des pulsations. **Amende** A, B, D (nuage et pomme supprimés), F (la grande
+> sphère n'est plus dans la zone de forme), J (poussière de page), M, S.5 (robots de l'acte 1), S.8 (« boule et pomme entières »), et les critères
+> 1, 3, 5 de O et 14 de S.12. **Inchangés** : les mains, leurs réglages S.7, la zone de forme des mains (position finale), le terminal, les voiles §2.11.4,
+> le bouton pause et le rejeu, `hands.baked.json`, `hands-poster.webp`, la densité adaptative (D) et le principe « un point = une identité ».
+> Références de l'utilisateur dans `docs/references/hero-2026-10-13/` (**œuvres de tiers : modèles d'intention uniquement, jamais copiées ni échantillonnées ; le dossier est ignoré par Git**).
+
+**T.1 Ce que l'utilisateur doit comprendre en moins de cinq secondes.** Une boule de points immense, qui tourne derrière le titre ;
+une main se forme et la prend ; une seconde main arrive et les deux index s'approchent. Le texte du hero reste lisible du début à la fin.
+**Intention retenue des trois références** : `ref-2` (sphère de points en rotation, pôles plus denses, face arrière pâle) pour la **boule** ;
+`ref-3` (boule lumineuse = zone la plus dense de l'image, main en trame) pour **la boule dans la main** ; `ref-1` (nuage qui ondule comme une fumée)
+pour le **souffle** de la surface. **Arbitrage assumé** : les filaments de `ref-1` demandent plusieurs centaines de milliers de points : non reproduits ;
+on garde l'ondulation douce de la surface (T.2).
+
+##### T.2 Acte 1, nouvelle chorégraphie (jouée une fois, déterministe, 10,6 s, même fin qu'avant)
+
+**Nouvelle liste de `data-phase`** : `sphere` → `to-hand` → `hand` → `to-hands` → `hands`. **Disparaissent** : `cloud`, `to-sphere`, `to-apple`, `apple`.
+Le raccord avec l'acte 2 est **inchangé** : `hands` à 10 600 ms, `s(0) = 0`, écart de repos `G0`, carré cobalt de 10,6 à 10,9 s, dernière ligne du terminal à 10,85 s (S.5).
+
+| t (s) | `data-phase` | Ce que voit le visiteur | Détails exacts |
+|---|---|---|---|
+| 0,0 → 0,8 | `sphere` (naissance) | la **grande boule se gonfle** depuis son centre : une sphère de points qui apparaît à l'échelle 0,6 → 1,0 | rayon `r = R·(0,6 + 0,4·easeOutCubic(p))`, `p = clamp((t − d_i)/0,8)`, `d_i ∈ [0 ; 0,4 s]` tiré par point (graine) ; opacité des points 0 → valeur finale sur 0,8 s. Ce n'est pas un fondu d'une image fixe : la matière grandit. |
+| 0,8 → 3,8 | `sphere` | la boule **tourne lentement** et **respire** ; le titre, le sous-titre et les boutons sont au premier plan, **lisibles et cliquables dès l'image 0** | rotation autour de l'axe vertical **0,22 rad/s** (tour complet en 28 s), inclinaison fixe **16°** (le pôle nord se voit un peu) ; **rotation différentielle** façon fumée : `lacet_i = 0,22·t·(1 + 0,30·cos(2·lat_i))` (l'équateur tourne 30 % plus vite que les pôles, la surface « glisse » sans quitter la sphère) ; **souffle** : déplacement radial `1 + 0,035·n_i(t)` avec `n_i = (sin(3·lon_i + 0,55·t) + sin(2·lat_i·π − 0,40·t + 1,3) + sin(5·lon_i − 3·lat_i + 0,30·t))/3` (3 sinus de périodes ≈ 11, 16, 21 s ; amplitude maximale 3,5 % de R, soit ≈ 14 px à 1440). Aucune « lueur ». |
+| 3,8 → 6,6 | `to-hand` | la **moitié droite** de la boule se **resserre** en une boule dense ; la **moitié gauche** s'étire et dessine **la main gauche** (celle d'Adam), qui **referme ses doigts sur la boule** ; les points « en trop » (T.3) convergent vers la boule et s'éteignent | 2,8 s, `easeInOutCubic` par point, trajectoires de Bézier de C.2 ; retards : main gauche = distance à l'index gauche **inversée** (doigts en dernier, `c = 0,40`) ; boule = rang par angle autour de son centre (`c = 0,35`, comme l'ancienne transition boule → pomme). |
+| 6,6 → 8,2 | `hand` | **la main tient la boule** : la boule (la zone la plus dense et la plus ronde de l'image, centre plus sombre : `ref-3`) tourne dans le creux des doigts, la main respire | 1,6 s ; la boule tourne à **0,7 rad/s** ; main gauche **reculée** de `HOLD_SHIFT = 0,06·W` vers la gauche (80 px à 1440) ; micro-mouvement de E, amplitude de S.4 ; la boule garde `HANDS_EMPHASIS` (opacité +0,5). |
+| 8,2 → 10,6 | `to-hands` | la boule **passe à l'autre main** : ses points glissent sous l'écart entre les index et dessinent **la main droite** (index en dernier) ; la main gauche **avance** de `HOLD_SHIFT` vers le centre ; **les deux index arrivent à `G0`** | 2,4 s ; main droite : retards C.3 mains (`c = 0,40`, distance à l'espace entre les index inversée) ; main gauche : glissement `easeInOutSine` de 0,4 s à 2,4 s, sans retard par point ; à 10,6 s l'image est **identique pixel pour pixel à l'image finale actuelle** (mêmes points, mêmes positions, `A = 0`). |
+| ≥ 10,6 | `hands` | **acte 2** (S) | inchangé |
+
+**Quelle moitié fait quoi (décision, pas de pomme).** Les 14 000 identités se partagent par le **côté de leur cible dans les mains** (x de la cible < 0 : main
+gauche ; sinon : main droite). L'appariement de la sphère aux mains se fait **par rang de x** (la moitié gauche de la boule devient la main gauche, la moitié droite devient
+la boule puis la main droite), raffiné par rang de Hilbert à l'intérieur de chaque moitié (C.1). Un seul jeu d'identités sert donc les trois images (grande boule, boule tenue, mains) :
+**aucune identité ne change de rôle en cours de route** sauf « moitié droite = boule, puis main droite ».
+
+**Position et taille de la boule tenue** (unités des mains : largeur de l'image source `W`, origine = milieu entre les deux pointes d'index, y vers le bas) : **centre
+`(−0,163 ; +0,074)·W`** (≈ 216 px à gauche et 98 px sous le point de contact à 1440 : au creux des doigts qui pendent, **valeur de départ à ajuster à l'œil sur capture**),
+**rayon `0,07·W`** (Ø ≈ 186 px à 1440 ; plancher de Ø 72 px sur téléphone). Composition de la boule : **65 % en surface** (Fibonacci) et **35 % en volume**
+(tirage gaussien, σ = 0,38·rayon) : la boule est **la zone la plus dense** et son centre est plus sombre. Contraintes : la boule **touche** visuellement les doigts de la
+main gauche (écart < 12 px) sans recouvrir l'index ; elle reste à ≥ 0,06·W sous le point de contact ; la main droite n'existe pas encore (aucun point hors de la boule dans la moitié droite
+de l'écran, à 2 % près, pendant `hand`). **Si, sur capture, la boule et la main ne se lisent pas séparément** (la boule se confond avec le dos de la main), variante B autorisée :
+centre relevé à `(−0,163 ; +0,030)·W` (la boule repose **sur** les doigts). La priorité est la lecture « une main tient une boule », jamais la fidélité anatomique.
+
+**Nanorobots dans l'acte 1** (nombre total inchangé, 14 / 12 / 8, cobalt interdit avant 10,6 s) : pendant `sphere`, **6 / 4 / 3** robots (9 / 8 / 7 px, plein `ink`, port `canvas`)
+sur 3 orbites inclinées de la grande sphère (+20°, −35°, +70°, 0,5 rad/s, au rayon de la surface, face arrière plus pâle) ; pendant `hand`, **3** robots sur une ellipse autour de la boule
+(1,25·rayon × 0,5·rayon, 0,9 rad/s) ; à `to-hands`, ils rejoignent les rails des mains par le même mécanisme de migration (Bézier, retard, easing) et les autres naissent au poignet en 300 ms
+(S.5 : « aucun robot n'apparaît brutalement » reste vrai). Le moteur choisit les robots migrants.
+
+**Suppressions** (`frontend-ux`) : `buildApple`, `appleParts`, `appleProfile`, `appleScale`, `appleYawAt`, `APPLE_*`, `SHAPE_PX.apple`, `layout.apple`, les rails de robots de la pomme ;
+`buildCloud` et `CLOUD_DRIFT*` (la naissance est une sphère qui se gonfle) ; les phases `cloud`, `to-sphere`, `to-apple`, `apple` dans `timeline.ts`. **Ajouts** : `layout.sphere` plein écran, `layout.ball`,
+`HOLD_SHIFT`, `BALL_AT`, `BALL_RADIUS_SHARE`, la table de budget T.4.
+
+##### T.3 La grande sphère : taille, position, points, rendu
+
+| Largeur de fenêtre | Diamètre `D` | Centre | Points (identités + « peau ») | Taille des points (plans 0/1/2) |
+|---|---|---|---|---|
+| **1440 × 900** | `0,98 × (hauteur de fenêtre − haut de la scène)` ≈ **818 px** (la scène commence sous l'en-tête, 65 px) | centre de la partie visible de la première page : `x = largeur/2`, `y = (hauteur de fenêtre − haut de la scène)/2` en coordonnées de la scène (≈ 417 px, soit 482 px de la page) | **26 000** = 14 000 + **12 000 de peau** | 2,4 / 1,75 / 1,25 px (× 1,25 les valeurs de D) |
+| **1024 × 768** | même formule ≈ **690 px** | idem | **15 000** = 9 000 + 6 000 | 2,4 / 1,75 / 1,25 |
+| **390 × 844** | `min(0,98 × hauteur disponible, 1,0 × largeur)` = **390 px** (**boule complète, jamais coupée**, bord à bord) | idem (≈ y 450 de la page) | **5 400** = 3 600 + 1 800 | 1,9 / 1,4 / 1,0 (inchangé : l'écran est petit) |
+
+La boule est **toujours entière dans la fenêtre** (aucune coupe, y compris à une hauteur de fenêtre de 560 px : elle rétrécit). Elle couvre le titre, le sous-titre et les boutons
+(le centre du `h1` et le centre de la rangée de boutons sont à l'intérieur du disque, à 1440 et à 1024 ; à 390 le disque couvre le sous-titre et les boutons, le titre en entier est dans la
+hauteur du disque).
+
+**Points de « peau »** : points qui n'existent que pour l'ouverture, pour que la boule soit **pleine** (14 000 points seuls feraient un point tous les 13 px sur 818 px : une constellation, pas une boule ;
+à 26 000, un point tous les 9 px : une boule). Ils font **partie de la boule** (`sphere`), **convergent vers la boule tenue** pendant `to-hand` et **s'éteignent** (opacité 1 → 0 sur les 45 derniers % de leur trajectoire,
+`smoothstep`) : **seule exception** à la règle C « aucun passage par l'opacité » ; ils ont disparu à 6,6 s. L'acte 2 ne les connaît pas. La **densité adaptative** (D) retire **d'abord la peau** (× 0,5, puis 0) avant
+de toucher aux identités (plancher inchangé : 14 000 / 9 000 / 3 600).
+
+**Pôles plus denses (`ref-2`)** : 8 % des points (4 % par pôle) sont répartis dans une calotte de **16°** autour de chaque pôle (≈ 2,1 × la densité moyenne) ; le reste en Fibonacci. **Face arrière** : le mécanisme
+`BACK_Z` existant (un plan plus pâle) ; en plus taille × 0,8 pour les points de la face arrière. **Trois plans de profondeur** : inchangés (D), sauf la taille (tableau ci-dessus).
+
+**Lisibilité du titre par-dessus la boule (point critique) : deux garde-fous qui s'ajoutent.**
+1. **Zone calme dans le moteur** : à chaque changement de géométrie (le `ResizeObserver` existant, 150 ms), le moteur lit les rectangles des éléments `[data-network-quiet]` visibles de la bande 1
+   (le bloc du titre, le sous-titre ; les boutons et l'étiquette sont opaques) en coordonnées de la scène, les **agrandit de 32 px (côtés) × 20 px (haut, bas)** et les arrondit (rayon 24 px). **Point dans le rectangle :
+   opacité × 0,25** ; **anneau de 24 px autour : × 0,6** ; ailleurs × 1 (3 niveaux par plan : 9 lots de dessin au plus, un test point-dans-rectangle par point et par rectangle, coût < 0,3 ms). La boule semble avoir **une fenêtre calme** devant le texte, aux bords doux ;
+   elle ne devient pas un trou net. Applicable à **tout l'acte 1** (la boule tenue et les mains y passent aussi) ; **désactivée dès `hands`** (l'image finale est inchangée, voiles seuls, comme aujourd'hui).
+2. **Voiles CSS inchangés** (§2.11.4, `.network-veil-title` 70 %, `.particle-veil` 90 %, boutons et étiquette opaques) : ils **garantissent** le contraste même si la zone calme échoue. Calcul de contrôle : pixel le plus sombre du canvas seul sous un rectangle calme
+   = `255 − 0,25 × 0,85 × 231 ≈ 206` (niveau de gris) ; sous le voile à 70 %, titre en `ink` (#18181b) ≥ **11:1** ; sous le voile à 90 %, sous-titre en `ink-muted` (#5a5a60) ≥ **6,3:1**. **Mesurable** : critère 29.
+
+##### T.4 Budget de performance de l'acte 1 (honnête : à mesurer, repli prévu)
+
+| Largeur | Points acte 1 | p95 intervalle d'image | JavaScript par image (p75) | Cadence | Repli automatique |
+|---|---|---|---|---|---|
+| **1440** | 26 000 | **≤ 17 ms** (60 images/s) | **≤ 4 ms** | 60 | si > 4 ms sur 30 images ou p95 > 20 ms : peau × 0,5 puis 0 (retour aux 14 000 de l'acte 2) |
+| **1024** | 15 000 | ≤ 17 ms | ≤ 4 ms | 60 | idem |
+| **390, processeur × 4** | 5 400 | **≤ 34 ms** | ≤ 4 ms | 30 | idem ; plancher 3 600 |
+
+Le calcul de la grande sphère (rotation différentielle, souffle : 2 `sin` par point) coûte ≈ 3 fois une interpolation de Bézier ; **estimation** ≈ 1,2 ms pour 26 000 points + le dessin (un `fillRect` par point, 3 plans × 3 niveaux).
+**Si la mesure à 1440 dépasse le budget avec 26 000 points**, palier documenté : **20 000** (14 000 + 6 000) ; l'acte 2 (14 000) est déjà mesuré (16,8 ms, 2,2 ms) et ne bouge pas.
+DPR ≤ 1,5 (1,25 sous 768 px). `data-points` = points dessinés ; nouveaux attributs de test : `data-skin` (points de peau dessinés, 0 dès 6,6 s), `data-ball` (`x,y,rayon,part` : part des identités de la moitié droite
+à l'intérieur du disque de la boule à 115 % du rayon), `data-quiet` (nombre de rectangles calmes actifs). **Pause hors écran / onglet caché / bouton** : inchangées (H).
+
+##### T.5 Titre du hero en police « invite de commandes »
+
+**Police : Inconsolata** (Google Fonts, libre, SIL OFL, chargée par `next/font/google` donc **auto-hébergée** ; la CSP `font-src 'self' data:` ne change pas ; aucune requête externe à l'exécution). **Argument visuel** : l'invite de commandes de Windows (cmd.exe, PowerShell) s'affiche
+en **Consolas** ; Inconsolata en est le cousin libre le plus proche (dessin humaniste, **zéro barré**, `l`, `1`, `i` à empattement net, **chasse de 0,5 em**). Écartées : **VT323** (pixel, graisse unique 400 : trop mince et trop « rétro hacker » en 54 px, contraire à « sobre, façon Apple »),
+**Cousine** (métrique de Courier New, chasse 0,6 em : le titre tiendrait difficilement sur 2 lignes), **IBM Plex Mono** et **JetBrains Mono** (caractère propre à d'autres univers : éditeur de code, pas l'invite de Windows), **Geist Mono** (déjà chargée, mais c'est la police des chiffres du produit : le titre ne se distinguerait plus des données ; trop proche d'une grotesque pour dire « terminal »).
+**Chargement** : `Inconsolata({ subsets: ["latin"], weight: "700", display: "swap", variable: "--font-inconsolata" })` dans `app/layout.tsx` (un seul fichier statique ≈ 20 ko) ; token `@theme` `--font-prompt: var(--font-inconsolata), Consolas, "Cascadia Mono", "Lucida Console", ui-monospace, monospace`
+(**sous Windows la pile de secours est la vraie police de cmd**). Rôle ajouté à §2.2.2 : « Titre du hero (invite) ». **Portée : le `h1` du hero uniquement.** Tous les autres titres restent en Bricolage ; la refonte typographique globale reste une décision à part.
+
+| Propriété | Valeur |
+|---|---|
+| Famille, graisse | `font-prompt`, **700** (les traits font ≈ 6 px à 54 px : lisibles sur la boule) |
+| Taille, ≥ 40 rem de colonne (`@container`) | `min(5,8cqi, 3,4rem)` ≈ **54 px** à 1440 et à 1024 (colonne 928 px), 41 px à 768 |
+| Taille, < 40 rem de colonne | `min(9cqi, 2,4rem)` ≈ **31 px** à 390 (colonne 342 px) |
+| Interligne | **1,12** (1,15 sous 40 rem) |
+| Crénage | **0** (`letter-spacing: normal`, `font-variation-settings` retiré : plus de `wdth` 92 ; une chasse fixe ne se resserre pas) |
+| Casse | **casse actuelle conservée** (« Chaque demande vendeur avance. / Votre agence garde la main. ») : le texte accessible est identique, la voix de la marque aussi ; le minuscule « façon terminal » aurait changé le `h1` lu |
+| Lignes | **2 lignes d'auteur à ≥ 40 rem** (30 et 27 caractères × 0,5 em = 15 em et 13,5 em : 807 px et 726 px à 1440, 840 px au plus avec la police de secours Consolas : tient dans 928 px) ; **4 lignes au plus à 390** (`text-wrap: balance` par ligne d'auteur, déjà en place) |
+| Mot accentué « main » | **conservé tel quel** : même police, même graisse, **trait cobalt dessous** (`accentEffect="underline"`, relecture `accentReplay`) ; `accentFace="title"` ; `frontend-ux` vérifie que le trait tombe bien sous les 4 lettres d'une chasse fixe |
+| Invite | un `>` **suspendu dans la marge gauche de la 1ʳᵉ ligne** (`position: absolute; right: 100%; margin-right: 0,5ch`), `ink-muted`, `aria-hidden`, **seulement à ≥ 64 rem** (en dessous, il sortirait de l'écran) ; **pas de `C:\>`** (5 caractères : à 1024 il sortirait de la fenêtre) |
+| Curseur | **un bloc plein** `0,5em × 0,72em`, `ink`, après le point de la dernière ligne (`margin-left: 0,12em`), `aria-hidden`, `pointer-events: none`, élément `data-testid="hero-cursor"`. **Clignote 4 fois** (période 1,06 s, `steps(1)`, `animation-iteration-count: 4`, début 0,9 s : après l'arrivée du titre) **puis reste plein** : le curseur « attend » = « votre agence garde la main » (c'est à vous). Durée de clignotement 4,2 s **< 5 s** : pas de pause requise (WCAG 2.2.2). **`prefers-reduced-motion`** : bloc plein fixe, aucun clignotement. « Rejouer les animations » le réarme. |
+| Étiquette « 5 agents · contrôle humain » | **sort du titre** : elle était posée en absolu en haut à droite du bloc (`-top-8`, `-right-12`, rotation 3°) et chevauchait la fin de la 1ʳᵉ ligne dès que cette ligne remplit la colonne (chevauchement signalé à 1024). Elle passe **dans le flux, centrée, au-dessus du titre** (`mb-5`), sans rotation ni ombre, en `.label-mono` (Geist Mono 11 px, 500, majuscules, 0,08em), bordure 1 px `ink`, fond `surface`, rayon plein, padding 5 × 10 px. **Aucun chevauchement possible à aucune largeur** (critère 32). |
+| Apparition | inchangée (`reveal="load"`, flou → net ligne par ligne) |
+| Accessibilité | le `h1` reste **un vrai texte** : copie `sr-only` du texte entier (lue une fois), lignes visuelles `aria-hidden`, curseur et `>` `aria-hidden` ; nom accessible = `HERO_TITLE` exactement |
+| Cohérence | le **sous-titre et les boutons restent en Geist** : le contraste mono (la commande, en grand) / grotesque (l'explication, lisible) est voulu et la refonte globale reste à part ; seule l'étiquette passe en `.label-mono` (jeton existant) pour faire le lien avec le titre |
+
+**Hauteur de la bande, sans bouger les mains.** Le titre à 2 lignes est ≈ 110 px moins haut que celui à 3 lignes, l'étiquette en ajoute ≈ 44 : les boutons remontent de ≈ 70 px à 1440 (≈ 60 à 1024). La zone de forme (spacer entre les boutons et le terminal) **reçoit une marge haute
+qui ramène le centre des mains à la même position dans la fenêtre que sur la capture du 13/10** (`test-results/hero-morph/mains-eloignes-*.png`, tolérance **± 8 px** à 1440 × 900, 1024 × 768 et 390 × 844) : l'acte 2 « ne change pas » **de position non plus**, et le terminal reste où il est. Valeur attendue : ≈ +70 px à 1440.
+`frontend-ux` mesure l'écart sur capture et règle la marge ; la hauteur de la zone (S.8) n'est pas modifiée.
+
+##### T.6 Le reste de la page : un champ de particules « 100 fois plus », qui pulse
+
+**Cible littérale.** Aujourd'hui `page-dust` : 220 points (120 sous 1024 px), opacité 0,10 à 0,16. Demain : **≈ 22 000 points visibles en même temps à 1440 × 900**, ≈ 1 point pour 60 px² de fenêtre (espacement moyen 7,7 px) ; la **même densité par surface** à toutes les tailles :
+
+| Fenêtre | Points visibles | Plans (lointain / médian / proche) | Remarque honnête |
+|---|---|---|---|
+| **1440 × 900** | **≈ 22 000** (`N = clamp(L × H / 60 ; 4 000 ; 24 000)`) | 11 000 / 7 700 / 3 300 | **100 ×** l'actuel |
+| **1024 × 768** | ≈ 13 100 | 6 550 / 4 600 / 1 950 | densité par surface identique |
+| **390 × 844** | **≈ 5 400** | 2 700 / 1 900 / 800 | **≈ 45 × l'ancienne densité par surface du téléphone** (120 points), pas 100 ×. 22 000 points sur un téléphone feraient un point tous les 4 px (un voile gris, pas des particules) **et** ne tiendraient pas à 20 images/s sur un téléphone modeste. Palier réaliste et assumé. |
+
+**Rendu** (couleur `ink` lue sur la variable CSS, jamais en dur) :
+
+| Plan | Part | Taille | Opacité | Dérive |
+|---|---|---|---|---|
+| Lointain | 50 % | 1,0 px | **0,16** | 3 px/s, cap 20° |
+| Médian | 35 % | 1,4 px | **0,26** | 5 px/s, cap 110° |
+| Proche | 15 % | 1,9 px | **0,38** | 8 px/s, cap 200° |
+
+(plus visibles qu'aujourd'hui : 0,16 maximum devient 0,38 ; une particule ne dépasse **jamais 0,55** une fois la surbrillance d'une onde ajoutée ; **recouvrement maximal d'un pixel : 0,60** de couverture d'encre.)
+
+**Technique recommandée (tient le budget ; `frontend-ux` peut en choisir une autre qui tient les mêmes chiffres).** Dessiner 22 000 `rect` par image coûterait ≈ 5 ms de JavaScript : trop pour un décor. On **pré-dessine une seule fois** (au chargement et au redimensionnement) **trois tuiles** (une par plan, 1024 × 1024 px, avec le nombre de points
+proportionnel) puis, à chaque image, on les **recopie** (`drawImage`, au plus 4 copies par plan pour le rebouclage) **décalées de leur dérive** : ≈ 12 copies par image, **< 1 ms**. Le motif ne se répète pas visiblement (trois tuiles de périodes différentes : 1024, 1216, 1408 px, dérives de directions différentes).
+**Respiration par plan** : l'opacité globale de chaque plan oscille de **± 12 %** (périodes **9,0 / 7,0 / 5,5 s**, phases 0 / 2,1 / 4,2 rad) : pas un clignotement, une « respiration » du champ entier. **Pulsations (ondes)** :
+- **Origine** : le centre de l'élément `[data-pulse-origin]` (à poser sur le titre de chaque section : problème, solution, agents, contrôle, résultat, final, et le bloc A) **le plus proche du milieu de la fenêtre**, tant qu'il est visible à ≥ 40 %.
+- **Émission** : un anneau **toutes les 6 s** (le premier 0,5 s après l'arrivée de l'origine) ; **2 anneaux vivants au plus** (les suivants sont sautés).
+- **Anneau** : rayon 0 → **760 px** (480 px sous 768 px) à **110 px/s** (≈ 6,9 s de vie) ; profil gaussien, demi-largeur **σ = 26 px** ; surbrillance : opacité du point `× (1 + 1,2·g)`, taille `+ 0,5 px`, `g = exp(−((d − r)/σ)²)`, **atténuée** de `(1 − r/R_max)^1,2` : l'onde meurt en douceur. Seuls les points à moins de 2,5 σ de l'anneau sont **redessinés par-dessus** (≈ 3 000 à 6 000 points : < 1,5 ms) ; test par distance sur les 22 000 points (< 0,2 ms). **Aucun cobalt** (la couleur du champ reste l'encre : une impulsion bleue signifie qu'une information circule, ici c'est de l'ambiance).
+- **Sémantique honnête** : ornement seulement, `aria-hidden`, jamais présenté comme un chargement, jamais sur un texte comme un signal.
+- **WCAG 2.3.1** : un point change d'opacité en ≈ 0,5 s au passage d'une onde (< 3 changements par seconde).
+
+**Cadence et pause.** **30 images/s** sur ordinateur et tablette (minuteur `setInterval`, comme aujourd'hui : les gardes « aucun `requestAnimationFrame` hors du hero » des specs bloc A, ROI, contrôle et « sans boucle » restent vraies), **20 images/s** sur téléphone (la dérive de 8 px/s ne bouge que de 0,4 px par image : aucun saccade visible).
+**Rien n'est dessiné tant que la scène du hero (opaque) couvre toute la fenêtre** (bas de `hero-stage` au-delà du bas de la fenêtre) : sinon la sphère de 26 000 points et le champ de 22 000 points tourneraient en même temps pour rien. **Pause** : onglet caché, `prefers-reduced-motion`, **bouton pause du terminal** (état partagé : le contexte `HeroMotionContext` doit
+être fourni **au-dessus** du hero **et** du fond `LivingBackground`, qui sont aujourd'hui des frères ; au clic le champ **se fige sur place** : ni saut, ni anneau, respiration à 1) ; « reprendre » relance le champ. **Mouvement réduit** : **une image fixe**, aucune onde, aucune respiration, aucune boucle. `data-loop="allowed"` et `data-loop-state` conservés ; le nombre d'éléments `[data-loop]` reste **3** (`hero-ecosystem`, `hero-particles`, `page-dust`).
+
+**Budget** : JavaScript par image **≤ 2 ms (p75) à 1440**, **≤ 3 ms à 390 avec processeur × 4** ; p95 de l'intervalle d'image ≤ 34 ms (30 images/s) sur ordinateur, ≤ 50 ms (20 images/s) sur téléphone avec processeur × 4 ; **défilement** : aucune image de plus de 50 ms attribuable au champ pendant un défilement scripté de 10 s ; DPR ≤ 1,5.
+**Repli automatique** (mesuré sur 60 images) : N1, un seul anneau et 20 images/s ; N2, points × 0,5 (tuiles reconstruites) sans anneau ; N3, image fixe. Jamais l'inverse.
+
+**Lisibilité du texte de la page avec ce champ** (le plus important). **Aucune règle de voile n'est assouplie** : tout texte de la page reste soit sur une surface opaque (carte, tuile, panneau noir), soit sous un voile (`.particle-veil` 90 %, `.network-veil-title` 70 %, §2.11.4). Calcul du pire cas : pixel le plus sombre du champ, deux points proches + une onde au maximum = couverture d'encre **plafonnée à 0,60** → `255 − 0,60 × 231 = 116` ; sous un voile à 90 % : `0,9 × 255 + 0,1 × 116 ≈ 241` (luminance 0,88) →
+texte `ink-subtle` (#66666e) ≥ **5,2:1**, `ink-muted` (#5a5a60) ≥ **6,3:1** ; sous le voile à 70 % : titre `ink` ≥ **9:1**. **Les gardes à relancer** : `e2e/landing-contraste.spec.ts` (contraste mesuré au pixel le plus sombre sous chaque ligne, **avec une onde forcée à son maximum sous chaque texte** : hook de test, critère 37) ; `e2e/voiles-lisibilite.spec.ts` (espace connecté : **non concerné**, les fonds de l'espace connecté, §2.5.8, ne changent pas, mais le test doit passer) ; la garde « tout texte est sur une surface opaque ou sous un voile » de la landing (aucun texte nu sur le champ, 100 % des nœuds de texte visibles).
+
+##### T.7 Mouvement réduit, sans JavaScript, pause (récapitulatif)
+
+- **Mouvement réduit** : **image finale fixe, immédiatement** (inchangé : les deux mains au repos, 4 robots posés, carré cobalt fixe, `data-act="live"`, `data-live-step="rest"`) : **la grande sphère n'est jamais dessinée** (aucune information n'est perdue : tout est dans le texte). Titre : curseur plein fixe. Champ de la page : une image fixe.
+- **Sans JavaScript** : `<noscript>` affiche le poster actuel `hands-poster.webp` (inchangé) ; le titre reste en police `font-prompt` (CSS pur), curseur plein ; pas de champ de particules.
+- **Pause (bouton du terminal)** : hero → image finale de repos (inchangé) ; champ de la page → figé sur place. **Recommandé** (question 2) : un second bouton fixe `Pause` à droite de « Rejouer les animations » (même pastille, 44 × 44 sous 640 px) pour que la pause reste atteignable **après défilement** ; le bouton du terminal reste le point d'entrée demandé par l'utilisateur.
+- **Rejeu** (« Rejouer les animations ») : `data-phase="sphere"`, `data-sequence-ms ≈ 0`, curseur réarmé, champ de la page : les anneaux repartent à zéro.
+
+##### T.8 Variante « hero noir » (une ligne, non retenue)
+
+Les trois références sont **blanc sur noir** ; l'utilisateur a validé l'image finale **noir sur blanc**, on le garde. Un hero noir imposerait : scène `--color-ink` (#18181b), points `canvas`, titre et boutons en `ink-inverse` (#fafafa, ≥ 15:1 ; `ink-inverse-muted` #a8a8b0 ≥ 7,9:1), voiles `.particle-veil` inversés, en-tête sombre au-dessus du hero, rupture franche en bas de la bande 1 vers le fond blanc : **un lot à part, à demander explicitement**.
+
+##### T.9 Responsive (récapitulatif)
+
+| | **1440 × 900** | **1024 × 768** | **390 × 844** |
+|---|---|---|---|
+| Grande sphère | Ø ≈ 818, 26 000 pts | Ø ≈ 690, 15 000 pts | Ø 390 (bord à bord, entière), 5 400 pts |
+| Boule tenue / mains | Ø ≈ 186 ; mains 0,92 × largeur | Ø ≈ 132 ; idem | Ø ≥ 72 ; mains 1,1 × largeur |
+| Titre | 54 px, 2 lignes, `>` suspendu | 54 px, 2 lignes, `>` suspendu | 31 px, ≤ 4 lignes, sans `>` |
+| Étiquette | en flux, centrée, au-dessus | idem | idem |
+| Champ de la page | 22 000 pts, 30 i/s | 13 100 pts, 30 i/s | 5 400 pts, 20 i/s, 1 onde à la fois |
+| Cibles tactiles | inchangées (44 px) ; aucun défilement horizontal ; le texte n'est jamais masqué | | |
+
+##### T.10 Critères d'acceptation vérifiables (s'ajoutent à S.12, numérotés à la suite)
+
+23. **Séquence** : `data-phase` parcourt `sphere`, `to-hand`, `hand`, `to-hands`, `hands` **dans cet ordre**, aux bornes 3 800 / 6 600 / 8 200 / 10 600 ms (± 150) ; `cloud`, `to-sphere`, `to-apple`, `apple` n'apparaissent jamais ; aucune pomme dans `shapes` (test unitaire : plus d'export `buildApple`) ; `hands` atteint à ≥ 10 600 ms.
+24. **Boule immense et entière** : à `sphere` (t ≈ 2,5 s), boîte englobante de ≥ 98 % des points dessinés : diamètre ≥ **768 px à 1440 × 900**, ≥ **640 px à 1024 × 768**, ≥ **350 px à 390 × 844** ; la boîte est **entièrement dans la fenêtre** (aucune coupe, `scrollY = 0`) ; le centre du `h1` et celui de la rangée de boutons sont **dans le disque** (1440, 1024).
+25. **Elle tourne** : deux captures à 1 s d'intervalle (t = 1,5 et 2,5 s) diffèrent d'au moins 2 % des pixels du disque, la boîte englobante varie de moins de 3 % ; pôles plus denses : densité de points dans la calotte de 16° ≥ 1,8 × la densité moyenne (test unitaire sur `buildSphere`).
+26. **Densité** : `data-points` à `sphere` = 26 000 / 15 000 / 5 400 (− 25 % par palier adaptatif, plancher 14 000 / 9 000 / 3 600) à 1440 / 1024 / 390 ; `data-skin` = 0 à partir de 6 600 ms ; `data-points` en `hands` = 14 000 / 9 000 / 3 600 (inchangé, critère 3).
+27. **La main prend la boule** : à `hand` (t ≈ 7,4 s, 1440 × 900) : `data-ball` donne un rayon de **75 à 115 px** et **≥ 85 %** des identités de la moitié droite dans le disque à 115 % ; **aucun point** de la moitié droite de l'écran hors de la boule (à 2 % près) ; ≥ 90 % des identités de la moitié gauche sont à ≤ 12 px de leur cible de main gauche (reculée de `HOLD_SHIFT`) ; capture 1440 / 1024 / 390 **auditée par l'utilisateur** (lecture « une main tient une boule »).
+28. **Raccord et acte 2 intacts** : à 10 600 ms ± 150, `data-tip-gap` = `G0` (± 4 px), centre des mains à **± 8 px** de la capture de référence du 13/10 à 1440 × 900, 1024 × 768, 390 × 844 ; les critères 15 à 22 de S.12 passent **sans modification**.
+29. **Contraste du hero** : pixel le plus sombre sous chaque glyphe, mesuré (captures, texte rendu transparent) à **0,5 / 2,5 / 5,0 / 7,5 / 9,5 / 11,0 s** à 1440, 1024 et 390 : **titre ≥ 7:1**, **sous-titre ≥ 5,41:1**, étiquette et boutons ≥ 7:1 (opaques) ; en plus, **canvas seul** sous les rectangles calmes : pixel le plus sombre ≥ **200 / 255** (`data-quiet` ≥ 2 en acte 1, 0 en `hands`).
+30. **Mouvement réduit** : `data-phase="hands"`, `data-state="reduced"` à t = 0, **aucune image de la grande sphère** (`data-points` ne vaut jamais plus que 14 000 / 9 000 / 3 600), curseur du titre plein et fixe (`getAnimations()` vide), champ de la page immobile (deux captures à 3 s identiques), aucun `requestAnimationFrame`.
+31. **Pause** : clic « pause » → hero en image finale identique au pixel à 1 s d'intervalle (S.12, 19) **et** champ de la page identique au pixel à 1 s d'intervalle (`data-loop-state="paused"`) ; « reprendre » → les deux repartent ; rejeu → `data-phase="sphere"`, `data-sequence-ms ≈ 0`.
+32. **Titre** : `getComputedStyle(h1).fontFamily` commence par `Inconsolata` (ou la pile de secours en échec de chargement), graisse 700, `letter-spacing: normal` ; **nom accessible = `HERO_TITLE` et lu une fois** (copie `sr-only`) ; à 1440, 1024 et 768 : **exactement 2 lignes visuelles** ; à 390 : **≤ 4 lignes** ; `scrollWidth ≤ clientWidth` du `h1` et de la page à 1440, 1024, 768, 390 ; **intersection nulle** entre le rectangle de l'étiquette `hero-tag` et celui du `h1` à ces 4 largeurs (le cas de 1024 signalé) ; « main » reste soulignée en cobalt ; aucune requête à `fonts.googleapis.com` ni `fonts.gstatic.com` à l'exécution ; fichier de police ≤ 30 ko ; décalage de mise en page (CLS) du hero ≤ 0,02.
+33. **Curseur** : `[data-testid="hero-cursor"]` présent, `aria-hidden`, **4 clignotements puis opacité 1** (animation de 4 itérations, 4,2 s) ; **aucune animation** en mouvement réduit ; « Rejouer » le réarme.
+34. **Particules de la page, nombre** : `data-points` de `page-dust` ≥ **20 000** à 1440 × 900 (cible 22 000 ± 10 %), ≥ 12 000 à 1024 × 768, ≥ 5 000 à 390 × 844 ; trois plans de 50 / 35 / 15 % (± 3 points) ; opacités 0,16 / 0,26 / 0,38.
+35. **Pulsations** : ≤ 2 anneaux vivants (`data-rings` ≤ 2) ; un anneau toutes les 6 s (± 0,3) ; vitesse 110 px/s (± 10 %) ; rayon maximal 760 px (480 sous 768) ; dérives 3 / 5 / 8 px/s (± 20 %) ; respiration ± 12 % ; **aucun pixel cobalt** dans le canvas du champ (aucun pixel avec `b − r > 40`) ; aucun point au-dessus de 0,55 d'opacité ni pixel au-delà de **0,60** de couverture d'encre (lecture du canvas : canal minimal ≥ 116).
+36. **Rien n'est dessiné sous le hero** : tant que le bas de `hero-stage` dépasse le bas de la fenêtre, `page-dust` ne dessine pas (`data-loop-state="paused"`, aucune image demandée en 1 s) ; il démarre dès que le bas du hero entre dans la fenêtre.
+37. **Contraste de la page avec le champ** : `landing-contraste.spec.ts`, onde **forcée à son maximum sous chaque texte** (hook de test `data-pulse-force`) : ≥ 4,5:1 pour tout texte courant (≥ 5,2:1 attendu), ≥ 7:1 pour les titres `ink` ; aucune ligne sans voile ni surface opaque.
+38. **Budget** : hero acte 1 : p95 d'intervalle ≤ 17 ms à 1440 et ≤ 34 ms à 390 avec processeur × 4, JavaScript ≤ 4 ms (p75), pendant 11 s de séquence ; champ de la page : JavaScript ≤ 2 ms (p75) à 1440 et ≤ 3 ms à 390 × 4, p95 ≤ 34 ms / 50 ms, **aucune image > 50 ms** pendant un défilement scripté de 10 s ; **hero et champ jamais actifs en même temps** (critère 36) ; **valeurs réelles consignées par `frontend-ux`**, avec le palier de repli employé s'il y en a un.
+39. **Aucune couleur hors tokens** dans le code des deux canvas (couleurs lues sur les variables CSS) ; aucun rouge, aucun orange ; cobalt : seulement le carré de contact et ce que S.6 autorise, **aucun cobalt avant 10,6 s** dans le hero.
+
+**Tests E2E à adapter ou créer.** `e2e/landing-hero-particles.spec.ts` : O1 (ordre des phases, ligne 114), O3 (densités à `sphere`), O9 (rejeu : `data-phase="sphere"` et non `cloud`, ligne 280), O10 (contraste aux nouveaux instants) ; `e2e/landing-hero-vivant.spec.ts` : le critère 14 (« boule et pomme entières », ligne 143) devient critère 24, la capture « la boule et la pomme » à 390 (ligne 271) devient « la grande boule et la boule tenue », les tests de l'acte 2 ne changent pas ;
+`e2e/landing-contraste.spec.ts` : mesures du hero aux instants de 29 et du champ au pire cas (37) ; `e2e/landing-sans-boucle.spec.ts` : `[data-loop]` reste à 3, `page-dust` actif seulement hors du hero ; `e2e/accueil.spec.ts` : la position de `hero-tag` (désormais au-dessus du titre, sans chevauchement). **Nouveaux** : `e2e/landing-hero-sphere.spec.ts` (critères 23 à 33, 38 hero), `e2e/landing-page-dust.spec.ts` (34 à 38 champ).
+**Tests unitaires** : `particles.test.ts` (sphère : pôles, plus de pomme ni de nuage), `timeline` (nouvelles phases et bornes), `HeroParticles.test.tsx` (liste des `data-phase`), nouveaux `quiet-zone.test.ts` (opacité par niveau, feutré), `page-dust` (tuiles, anneaux, plafond de couverture), `LandingHero.test.tsx` / `LandingHeading.test.tsx` (classe `font-prompt`, étiquette hors du titre). **Captures** à auditer par l'utilisateur : 1440, 1024, 390 aux instants 0,5 / 2,5 / 5,0 / 7,5 / 9,5 / 11 s, plus 1440 en mouvement réduit et trois captures de la page sous le hero (pendant une onde).
+
+**À transmettre à `frontend-ux`** (hors code déjà décrit) : (1) l'ordre d'implémentation conseillé : a. police et titre (indépendants du moteur) ; b. étiquette en flux et marge de la zone ; c. grande sphère + rotation + zone calme ; d. boule tenue, main gauche, transitions ; e. champ de la page ; (2) `BALL_AT`, `BALL_RADIUS_SHARE` et `HOLD_SHIFT` sont des valeurs de départ à régler à l'œil sur capture (variante B autorisée) ;
+(3) le contexte de pause doit être remonté au-dessus du hero et du fond ; (4) si 26 000 points ne tiennent pas le budget, passer à 20 000 et le consigner ici ; (5) ne **rien** changer à `hands.baked.json`, aux réglages S.7 ni aux rails.
+
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
 > **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule

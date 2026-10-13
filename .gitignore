@@ -47,3 +47,6 @@ fixtures/.generated-credentials.json
 
 # graphify knowledge graph (local, regenerated)
 graphify-out/
+
+# third-party visual references provided by the user (not redistributable)
+docs/references/hero-2026-10-13/
