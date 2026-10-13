@@ -1,7 +1,7 @@
 # Contexte complet — Ascend Strategy
 
 > À coller au début d’une conversation avec un autre assistant IA (Gemini, Codex, ChatGPT…).
-> Mis à jour le 11 octobre 2026. Ce fichier ne contient aucun secret ni mot de passe, et ne doit jamais en contenir.
+> Mis à jour le 14 octobre 2026. Ce fichier ne contient aucun secret ni mot de passe, et ne doit jamais en contenir.
 > Sources de vérité détaillées dans le dépôt : `CLAUDE.md` (règles), `docs/PRD.md` (produit), `docs/workflows.md` (agents), `docs/architecture.md`, `docs/security.md`, `docs/design-system.md`, `docs/outils-ia.md` (qui fait quoi).
 
 ## 1. Le produit en une minute
@@ -66,18 +66,19 @@ Les tests d’intégration saturent la base locale s’ils tournent tous en para
 Noir, blanc, gris perle ; **cobalt réservé au signal et à l’action**. Sobre, technologique, finition « Apple ». Pas de néon, pas de dégradé violet, pas de cerveau ni de réseau de neurones générique. Ordinateur d’abord, responsive ensuite. WCAG AA, `prefers-reduced-motion` respecté.
 
 - Polices chargées : Bricolage Grotesque (titres), Geist (texte), Geist Mono (chiffres, terminal), Instrument Serif (mot accentué). Ne jamais référencer une police non chargée.
-- Haut de la page d’accueil : illustration humaine en points (« passage de relais »), nanorobots qui échangent par paires, journal façon terminal « humain ⇄ machine », bouton pause.
-- Le porteur du projet juge le reste du site encore « plat, trop de widgets » et la typographie « pas assez tech » (références : niveau de finition de Pulsor Agency, sobriété de Grok/xAI). Une proposition de refonte est en cours : `docs/propositions/2026-10-11-refonte-site-motion.md`.
+- Haut de la page d’accueil : un canvas de particules noires sur fond blanc. Ouverture jouée une fois (grande boule qui remplit le premier écran, main qui tient la boule, puis deux mains dont les index se cherchent sans se toucher), puis mouvement continu. Titre en Inconsolata (façon invite de commandes), journal façon terminal « humain ⇄ machine », champ de particules avec ondes sur toute la page, bouton Pause.
+- Polices chargées en plus : Inconsolata (titre du haut de page). Espace agence : tableau de bord de pilotage (graphiques Bklit UI mis en scène avec Anime.js). Une proposition de refonte du reste du site attend les réponses du porteur du projet : `docs/propositions/2026-10-11-refonte-site-motion.md`.
 
-## 7. État Git (11 octobre 2026)
+## 7. État Git (14 octobre 2026)
 
 Dépôt : `github.com/admklm-cmd/saas-immo`. Dossier de travail : `mon-saas/saas-immo`, plus une copie de travail `mon-saas/saas-immo-nanorobot`.
 
 | Branche | Contenu | État |
 |---|---|---|
 | `main` | commit initial seulement | en attente de la pull request n° 1 |
-| `feat/nanorobot-motion` | tout le prototype, compte de démo du propriétaire, correctifs de sécurité, nouveau haut de page | pull request n° 1 vers `main`, prête |
-| `feat/analytics-charts` | page de pilotage (tableau de bord), entonnoir du pipeline, graphiques Bklit UI, historique fictif de 24 mois (547 contacts pour l’agence principale) | poussée, pull request à ouvrir après la n° 1 |
+| `feat/nanorobot-motion` | tout le prototype, compte de démo du propriétaire, correctifs de sécurité, premier haut de page | pull request n° 1 vers `main`, prête, à fusionner par le porteur du projet |
+| `feat/analytics-charts` | page de pilotage (tableau de bord), entonnoir du pipeline, graphiques Bklit UI, historique fictif de 24 mois (547 contacts pour l’agence principale) | poussée |
+| `feat/hero-particle-morph` | haut de page en particules, titre façon invite de commandes, champ de particules ; contient aussi `feat/analytics-charts` | poussée, retouches en cours |
 | `feat/ai-ready` | Privacy Gateway et connexion IA réelle éteinte | poussée, **ne pas fusionner sans accord** |
 
 Jamais de push direct sur `main`, jamais de `--force`.
@@ -109,3 +110,7 @@ Pilote : 4 semaines, 2 conseillers, 750 € HT, sans engagement. Déploiement pe
 - N’affirme jamais qu’un test passe sans l’avoir exécuté.
 - N’écrase pas le travail existant ; ne modifie pas une migration existante ; n’invente aucun chiffre.
 - Si ta demande touche au schéma de données, à la sécurité, à une dépendance ou à de l’argent réel : propose, n’applique pas.
+
+## 12. Reprendre le projet
+
+L’état du jour et le registre des décisions sont tenus dans le coffre Obsidian du porteur du projet : `D:/Documents/Obsidian Vault/01-Projets/Ascend-Strategy-SaaS-immo/SaaS-immo-Contexte-actuel.md` et `SaaS-immo-Decisions.md`. Si tu y as accès, lis-les en premier : ils sont plus à jour que ce fichier. Les images de référence visuelle fournies par le porteur du projet sont des œuvres de tiers : elles ne sont ni copiées dans le produit ni enregistrées dans Git.

@@ -274,3 +274,14 @@ Rappel : ces règles résument la réglementation connue en septembre 2026 et do
 - Liens obligatoires : `[[Ascend-Strategy-SaaS-immo]]` et `[[SaaS-immo-Journal]]`, et ajout d'une ligne vers la nouvelle note dans `SaaS-immo-Journal.md`.
 - Si la session change le produit, l'architecture, la sécurité ou le design de façon notable, mettre à jour la note de synthèse correspondante (`SaaS-immo-*.md`) et l'« État actuel » de la note principale.
 - Respecter `D:\Documents\Obsidian Vault\CLAUDE.md` (règles du coffre). Ne jamais y copier de secret, de mot de passe ni de donnée personnelle, et ne supprimer aucune note sans confirmation.
+
+## Reprise du projet (« reprends le dossier Ascend connecté au second cerveau »)
+
+Quand l'utilisateur demande de reprendre le projet, quelle que soit l'IA utilisée, lire dans cet ordre avant toute action :
+
+1. `D:/Documents/Obsidian Vault/01-Projets/Ascend-Strategy-SaaS-immo/SaaS-immo-Contexte-actuel.md` : où en est le projet aujourd'hui, branches, travail en cours, prochaines étapes.
+2. `D:/Documents/Obsidian Vault/01-Projets/Ascend-Strategy-SaaS-immo/SaaS-immo-Decisions.md` : registre des décisions, avec leur raison et ce qu'il faudrait refaire pour en changer.
+3. Ce fichier `CLAUDE.md`, puis `docs/CONTEXTE-PROJET.md` (le même contexte, version dépôt, pour une IA sans accès au coffre).
+4. La dernière note de `Sessions/` du même dossier, puis `git status` et `git log --oneline -10` dans la copie de travail active indiquée par la note de contexte.
+
+Ces deux notes sont tenues à jour par l'orchestrateur à la fin de chaque session, en même temps que la note de session : la note de contexte est réécrite pour refléter l'état réel, le registre des décisions reçoit une ligne par décision nouvelle (on n'y réécrit pas l'historique). `docs/CONTEXTE-PROJET.md` est mis à jour dans le même mouvement. Aucun secret, mot de passe ni donnée personnelle dans ces fichiers.

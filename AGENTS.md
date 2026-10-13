@@ -4,6 +4,10 @@ Read `CLAUDE.md` first. It is the product and engineering source of truth. Then 
 documents in `docs/` before changing code. Instructions in this file adapt the existing Claude Code
 harness for Codex and other coding agents.
 
+## Resuming the project
+
+When the user says "reprends le dossier Ascend connecté au second cerveau" (or simply asks to resume), read these first, in order: the Obsidian notes `D:/Documents/Obsidian Vault/01-Projets/Ascend-Strategy-SaaS-immo/SaaS-immo-Contexte-actuel.md` (current state) and `SaaS-immo-Decisions.md` (decision log) in the same folder, then `CLAUDE.md` (section "Reprise du projet") and `docs/CONTEXTE-PROJET.md`. If the vault is not reachable, `docs/CONTEXTE-PROJET.md` carries the same context. Your role among the AI tools is defined in `docs/outils-ia.md`. Never write secrets or personal data in those notes.
+
 ## Working mode
 
 - Continue through implementation, verification, and a reviewable commit when the user has already
