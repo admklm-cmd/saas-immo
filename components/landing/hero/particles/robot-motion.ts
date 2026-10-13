@@ -1,5 +1,7 @@
 import type { Hands } from "./hands-data";
+import type { Tier } from "./hero-config";
 import type { Layout } from "./layout";
+import type { HandsLive } from "./live-motion";
 import { appleYawAt, emptyPose, restingRobot, robotPose, type RobotKind, type RobotPose } from "./robots";
 import type { Shape } from "./shapes";
 import { phaseDuration, type Phase, type PhaseState, type TransitionKind } from "./timeline";
@@ -18,6 +20,9 @@ export type RobotInputs = {
   readonly cloud: Shape;
   /** Per-point curvature of each transition (to-sphere, to-apple, to-hands). */
   readonly kappa: readonly Float32Array[];
+  readonly tier: Tier;
+  /** State of the living act (second animation), read by the robots of the hands. */
+  readonly live: HandsLive;
 };
 
 const KINDS: Record<Phase, RobotKind | null> = { cloud: null, "to-sphere": null, sphere: "sphere", "to-apple": null, apple: "apple", "to-hands": null, hands: "hands" };
@@ -30,9 +35,12 @@ const control = { x: 0, y: 0 };
 
 export function computeRobotPoses(poses: RobotPose[], state: PhaseState, sequenceMs: number, liveSec: number, still: boolean, input: RobotInputs): void {
   const count = poses.length;
-  for (const pose of poses) pose.alpha = 0;
+  for (const pose of poses) {
+    pose.alpha = 0;
+    pose.accent = false;
+  }
   const { layout, hands } = input;
-  const context = { layout, hands, count };
+  const context = { layout, hands, count, tier: input.tier, live: input.live };
   if (still) {
     if (!hands) return;
     for (let i = 0; i < Math.min(count, 4); i++) restingRobot(i, hands, layout.hands, poses[i]!);
@@ -41,7 +49,7 @@ export function computeRobotPoses(poses: RobotPose[], state: PhaseState, sequenc
   if (!state.transition) {
     const kind = KINDS[state.phase];
     if (!kind) return;
-    const seconds = kind === "sphere" ? (sequenceMs - 3400) / 1000 : kind === "apple" ? (sequenceMs - 6800) / 1000 : Math.max(0, liveSec - 10.6);
+    const seconds = kind === "sphere" ? (sequenceMs - 3400) / 1000 : kind === "apple" ? (sequenceMs - 6800) / 1000 : input.live.actSec;
     const yaw = kind === "apple" ? appleYawAt(sequenceMs) : 0;
     for (let i = 0; i < count; i++) robotPose(kind, i, seconds, yaw, context, poses[i]!);
     return;
@@ -73,6 +81,8 @@ export function computeRobotPoses(poses: RobotPose[], state: PhaseState, sequenc
     pose.x = bezier(ax, control.x, to.x, e);
     pose.y = bezier(ay, control.y, to.y, e);
     pose.z = az + (to.z - az) * e;
-    pose.alpha = fromKind ? 1 : e;
+    // Arriving on the hands, a robot takes the opacity of its role at the start of the living act (the orbitals are born later).
+    pose.alpha = toKind === "hands" ? 1 + (to.alpha - 1) * e : fromKind ? 1 : e;
+    pose.accent = false;
   }
 }

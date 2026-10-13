@@ -1,16 +1,16 @@
 {
   "_comment": "Source of the two hands of the hero (docs/design-system.md 2.11.4 ter). All coordinates are pixels of the SOURCE image. To use a new image: change `source`, then `tips`, `keep`, `erase`, `rails`, and run `node scripts/bake-hero-hands.mjs`.",
   "source": "public/images/particle-handoff.jpg",
-  "tips": { "left": [755, 492], "right": [975, 411] },
+  "tips": {"left": [755, 492], "right": [975, 411]},
   "keep": [[0, 150], [1672, 60], [1672, 520], [1000, 575], [600, 655], [0, 690]],
-  "erase": [{ "center": [857, 458], "radius": 40 }],
-  "blur": 2.6,
-  "power": 1.6,
-  "floor": 0.1,
+  "erase": [{"center": [857, 458], "radius": 40}],
+  "blur": 1.8,
+  "power": 1.25,
+  "floor": 0.06,
   "background": 0.95,
-  "points": 16000,
-  "edgeShare": 0.1,
-  "approach": { "shift": 0.04, "from": 0.34, "to": 0.5 },
+  "points": 18000,
+  "edgeShare": 0.16,
+  "approach": {"shift": 0.043, "from": 0.34, "to": 0.5},
   "rails": [
     [[0, 470], [140, 455], [300, 440], [450, 432], [620, 456], [755, 492]],
     [[40, 500], [240, 485], [420, 472], [560, 480], [660, 487], [752, 495]],
@@ -20,5 +20,6 @@
     [[1672, 215], [1520, 268], [1390, 335], [1240, 380], [1100, 385], [985, 418]],
     [[1672, 190], [1580, 205], [1480, 240], [1400, 275]],
     [[1330, 335], [1260, 410], [1215, 465], [1205, 485]]
-  ]
+  ],
+  "priority": {"count": 2400, "radius": 90, "boost": 1.8}
 }

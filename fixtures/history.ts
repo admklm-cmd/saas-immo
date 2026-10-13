@@ -20,7 +20,10 @@ import { FIXTURE_EMAIL_DOMAIN, FIXTURE_USER_IDS, fictionLandline, fictionMobile,
  *  - It only writes what the application itself writes: a contact, its
  *    property, its consents, the inbound lead it came from, Léa / Hugo / Sarah
  *    activities (always `is_simulation = true`), appointments, open follow-up
- *    tasks. It never forges `contact_stage_changed` (reserved to the human RPC)
+ *    tasks, and the journal trace of Emma's follow-up drafts / Louis's
+ *    appointment proposals with the human decision on each (JOURNAL ENTRIES
+ *    ONLY: no `outbound_messages` row is written, so no queue, count or
+ *    "message to validate" list changes). It never forges `contact_stage_changed` (reserved to the human RPC)
  *    and never writes `ai_agent_runs` (their `started_at` is stamped by the
  *    database, so they could not be dated in the past — and they would eat
  *    today's daily AI volume limit).
@@ -91,6 +94,11 @@ export type HistoryPlan = {
   withAppointments: boolean;
   /** Write an open follow-up task on most open dossiers (agency A only). */
   withOpenTasks: boolean;
+  /**
+   * Write the journal trace of Emma's follow-up drafts (with the human decision
+   * on each) and of Louis's appointment proposals (agency A only).
+   */
+  withRelationActivities: boolean;
   /** Inbound leads that are not a contact (spam) / a duplicate of one. */
   extraRejectedLeads: number;
   extraDuplicateLeads: number;
@@ -121,6 +129,7 @@ export const HISTORY_PLAN_A: HistoryPlan = {
   advisorWeights: [46, 30, 24],
   withAppointments: true,
   withOpenTasks: true,
+  withRelationActivities: true,
   extraRejectedLeads: 9,
   extraDuplicateLeads: 7,
   nameOffset: 0,
@@ -146,6 +155,7 @@ export const HISTORY_PLAN_B: HistoryPlan = {
   advisorWeights: [1],
   withAppointments: false,
   withOpenTasks: false,
+  withRelationActivities: false,
   extraRejectedLeads: 0,
   extraDuplicateLeads: 0,
   nameOffset: 70,
@@ -751,6 +761,223 @@ const OPEN_TASKS: Partial<Record<Stage, { chance: number; type: string; title: s
   estimation_faite: { chance: 0.85, type: "follow_up_after_estimation", title: "Relancer le vendeur après l'estimation" },
 };
 
+// -----------------------------------------------------------------------------
+// Emma / Louis: journal trace of their work, with the human decision on each
+// -----------------------------------------------------------------------------
+type Activity = Tables["activities"]["Insert"];
+type MessageChannel = "email" | "sms" | "whatsapp";
+
+/** Channels an outbound message can use (the phone is not a written channel). */
+const MESSAGE_CHANNELS: readonly MessageChannel[] = ["email", "sms", "whatsapp"];
+const CHANNEL_WEIGHTS: Record<MessageChannel, number> = { email: 70, sms: 22, whatsapp: 8 };
+const EMMA_ANGLES = ["relance_sans_reponse", "information_marche", "demande_precision"] as const;
+const EMMA_ANGLE_WEIGHTS = [45, 25, 30] as const;
+/** Same codes and labels as the database trigger that audits a refusal. */
+const REJECTION_REASONS: readonly [string, string][] = [
+  ["inappropriate_tone", "Ton ou formulation inadaptés"],
+  ["bad_timing", "Mauvais moment pour ce contact"],
+  ["already_contacted", "Contact déjà relancé récemment"],
+  ["incorrect_information", "Information inexacte ou absente du dossier"],
+  ["other", "Autre motif"],
+];
+const REJECTION_REASON_WEIGHTS = [34, 26, 20, 14, 6] as const;
+/** At least this long between two drafts for the same contact (and never two on the same day). */
+const MIN_DAYS_BETWEEN_DRAFTS = 4;
+const DRAFTED_DECISION =
+  "Brouillon de relance préparé et mis en attente de validation : rien n'a été envoyé, le consentement du canal a été vérifié avant rédaction.";
+
+type RelationInput = {
+  rng: Rng;
+  agencyId: string;
+  contactId: string;
+  key: string;
+  actorUserId: string;
+  consents: readonly ConsentSeed[];
+  /** Latest instant any entry may take (the dossier's loss date, its last news, or "now"). */
+  ceiling: Date;
+};
+
+/** A channel is usable at `at` when it was granted before and not withdrawn since. */
+function consentValidAt(consents: readonly ConsentSeed[], channel: MessageChannel, at: Date): boolean {
+  let valid = false;
+  const events = consents
+    .filter((consent) => consent.channel === channel && consent.at !== undefined)
+    .sort((first, second) => Date.parse(first.at!) - Date.parse(second.at!));
+  for (const consent of events) {
+    if (Date.parse(consent.at!) > at.getTime()) break;
+    valid = consent.status === "granted";
+  }
+  return valid;
+}
+
+/** First instant a channel's consent is withdrawn (or `null`). */
+function withdrawalOf(consents: readonly ConsentSeed[], channel: MessageChannel): Date | null {
+  const times = consents
+    .filter((consent) => consent.channel === channel && consent.status === "withdrawn" && consent.at !== undefined)
+    .map((consent) => Date.parse(consent.at!));
+  return times.length > 0 ? new Date(Math.min(...times)) : null;
+}
+
+/**
+ * Emma's follow-up drafts on a dossier that was `qualifie` / `chaud` between
+ * `from` and `until`, and what a human of the agency decided about each one.
+ *
+ * Rules (the code's, as in the application):
+ *  - a channel with a consent that is valid when the draft is prepared AND
+ *    until the end of the chain (a withdrawal stops everything before it);
+ *  - at most one draft per contact and per day (here at least four days apart);
+ *  - nothing after the window of the stage, the loss of the dossier or a
+ *    human takeover (none in this cohort: `human_takeover` is always false);
+ *  - the history only holds items already processed: a draft is validated and
+ *    « sent » in simulation, edited then validated, or refused. Nothing pending.
+ */
+export function buildEmmaActivities(input: RelationInput & { from: Date; until: Date }): Activity[] {
+  const { rng, agencyId, contactId, key, actorUserId, consents } = input;
+  const until = new Date(Math.min(input.until.getTime(), input.ceiling.getTime()) - MINUTE_MS);
+  if (until.getTime() - input.from.getTime() < 6 * 60 * MINUTE_MS) return [];
+
+  const countRoll = rng.next();
+  const wanted = countRoll < 0.22 ? 0 : countRoll < 0.62 ? 1 : countRoll < 0.88 ? 2 : 3;
+  const span = until.getTime() - input.from.getTime();
+  const candidates = Array.from({ length: wanted }, () => new Date(input.from.getTime() + rng.next() * span)).sort(
+    (first, second) => first.getTime() - second.getTime(),
+  );
+
+  const activities: Activity[] = [];
+  let lastDraft = -Infinity;
+  for (const candidate of candidates) {
+    // Prepared on a weekday, during the agency's office hours.
+    const draftedAt = previousWeekday(utcDayAt(candidate, 0, rng.int(8 * 60, 17 * 60)));
+    const channelRoll = rng.weighted(MESSAGE_CHANNELS.map((channel) => CHANNEL_WEIGHTS[channel]));
+    const angle = EMMA_ANGLES[rng.weighted(EMMA_ANGLE_WEIGHTS)]!;
+    const confidence = Math.round((0.62 + rng.next() * 0.33) * 100) / 100;
+    const outcomeRoll = rng.next();
+    const delayMinutes = rng.int(20, 900);
+    const reason = REJECTION_REASONS[rng.weighted(REJECTION_REASON_WEIGHTS)]!;
+    const preferred = MESSAGE_CHANNELS[channelRoll]!;
+
+    if (draftedAt.getTime() < input.from.getTime() || draftedAt.getTime() > until.getTime()) continue;
+    if (draftedAt.getTime() - lastDraft < MIN_DAYS_BETWEEN_DRAFTS * DAY_MS) continue;
+    // Preferred channel first, then any other one that is valid.
+    const channel = [preferred, ...MESSAGE_CHANNELS.filter((other) => other !== preferred)].find((option) => {
+      if (!consentValidAt(consents, option, draftedAt)) return false;
+      const withdrawn = withdrawalOf(consents, option);
+      return withdrawn === null || withdrawn.getTime() > draftedAt.getTime();
+    });
+    if (!channel) continue;
+
+    // The whole chain (draft, decision, simulated send) must end while the consent still holds.
+    const chainEnd = Math.min(until.getTime(), (withdrawalOf(consents, channel)?.getTime() ?? Infinity) - MINUTE_MS);
+    const gap = chainEnd - draftedAt.getTime();
+    if (gap < 14 * MINUTE_MS) continue;
+    const total = Math.min(delayMinutes * MINUTE_MS, gap - MINUTE_MS);
+    lastDraft = draftedAt.getTime();
+
+    const label = `emma-${activities.filter((activity) => activity.type === "message_drafted").length + 1}`;
+    const base = { agency_id: agencyId, contact_id: contactId, is_simulation: true as const };
+    activities.push({
+      ...base,
+      id: fixtureUuid(`activity:${key}:${label}:drafted`),
+      type: "message_drafted",
+      summary: `Emma — relance : brouillon préparé (${channel}). ${DRAFTED_DECISION}`,
+      payload: { agent: "emma", channel, angle, confidence, consent_checked: true },
+      actor_type: "ai_agent",
+      actor_agent: "emma",
+      occurred_at: isoOf(draftedAt),
+    });
+
+    const human = (kind: string, at: number, type: string, summary: string, extra: Record<string, unknown> = {}): Activity => ({
+      ...base,
+      id: fixtureUuid(`activity:${key}:${label}:${kind}`),
+      type,
+      summary,
+      payload: { drafted_by_agent: "emma", channel, ...extra },
+      actor_type: "user",
+      actor_user_id: actorUserId,
+      occurred_at: isoOf(new Date(draftedAt.getTime() + at)),
+    });
+    const approved = "Message validé par un membre de l'agence. Rien n'a encore été envoyé.";
+    const sent = "Message envoyé en simulation après validation humaine. Aucun envoi réel : aucun fournisseur n'est branché.";
+    if (outcomeRoll < 0.2) {
+      activities.push(
+        human(
+          "rejected",
+          total,
+          "message_rejected",
+          `Message refusé par un membre de l'agence : il ne partira pas. Motif : ${reason[1]}.`,
+          { rejection_reason: reason[0], rejection_reason_label: reason[1], rejection_note: null },
+        ),
+      );
+    } else {
+      const edited = outcomeRoll < 0.45;
+      if (edited) {
+        activities.push(
+          human("edited", Math.round(total * 0.4), "message_edited", "Message réécrit par un membre de l'agence avant validation."),
+        );
+      }
+      activities.push(human("approved", total - 2 * MINUTE_MS < 0 ? total : total - 2 * MINUTE_MS, "message_approved", approved));
+      activities.push(human("sent", total, "message_sent_simulated", sent));
+    }
+  }
+  return activities;
+}
+
+/**
+ * Louis's appointment proposal that preceded an appointment of the history: the
+ * slot offered is the appointment's own, and the human confirmation is the
+ * `appointment_confirmed` entry already written for it. Skipped when no
+ * written channel had a valid consent at that time (the advisor booked by phone).
+ */
+export function buildLouisActivity(
+  input: RelationInput & {
+    appointmentId: string;
+    startsAt: Date;
+    endsAt: Date;
+    confirmedAt: Date;
+    /** The dossier was qualified / hot from this instant. */
+    floor: Date;
+  },
+): Activity | null {
+  const { rng, consents } = input;
+  const bookedByPhone = rng.chance(0.14);
+  const preferred = MESSAGE_CHANNELS[rng.weighted(MESSAGE_CHANNELS.map((channel) => CHANNEL_WEIGHTS[channel]))]!;
+  const offered = rng.int(3, 5);
+  const confidence = Math.round((0.66 + rng.next() * 0.3) * 100) / 100;
+  const leadMinutes = rng.int(40, 2 * 24 * 60);
+
+  const gap = input.confirmedAt.getTime() - input.floor.getTime();
+  if (bookedByPhone || gap < 12 * MINUTE_MS) return null;
+  const proposedAt = new Date(input.confirmedAt.getTime() - Math.min(leadMinutes * MINUTE_MS, Math.floor(gap * 0.85)));
+  if (proposedAt.getTime() <= input.floor.getTime()) return null;
+  const channel = [preferred, ...MESSAGE_CHANNELS.filter((other) => other !== preferred)].find((option) => {
+    if (!consentValidAt(consents, option, input.confirmedAt)) return false;
+    const withdrawn = withdrawalOf(consents, option);
+    return withdrawn === null || withdrawn.getTime() > input.confirmedAt.getTime();
+  });
+  if (!channel) return null;
+  return {
+    id: fixtureUuid(`activity:${input.key}:louis-proposed`),
+    agency_id: input.agencyId,
+    contact_id: input.contactId,
+    type: "appointment_proposed",
+    summary:
+      "Louis — rendez-vous : créneau proposé. Rendez-vous créé en « proposé » et message mis en attente de validation : rien n'est envoyé.",
+    payload: {
+      agent: "louis",
+      channel,
+      appointment_id: input.appointmentId,
+      starts_at: isoOf(input.startsAt),
+      ends_at: isoOf(input.endsAt),
+      offered_slots: offered,
+      confidence,
+    },
+    actor_type: "ai_agent",
+    actor_agent: "louis",
+    is_simulation: true,
+    occurred_at: isoOf(proposedAt),
+  };
+}
+
 export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCohort {
   const rng = createRng(plan.seed);
   const latest = new Date(now.getTime() - 90_000);
@@ -1130,6 +1357,41 @@ export function buildHistoricalCohort(plan: HistoryPlan, now: Date): HistoryCoho
         due_at: isoOf(utcDayAt(now, -dueOffsetDays, 9 * 60)),
         created_at: isoOf(new Date(Math.min(updatedAt.getTime() + taskDelayMinutes * MINUTE_MS, latest.getTime()))),
       });
+    }
+
+    // --- Emma's follow-up drafts and Louis's proposal (journal trace only) ----------
+    // Own random streams: nothing drawn above (identity, dates, stages) moves.
+    if (plan.withRelationActivities && qualifiedAt) {
+      const relation = createRng(plan.seed * 15485863 + draft.index * 32452843 + 101);
+      const common = { agencyId, contactId, key: draft.key, actorUserId, consents };
+      const ceiling = lossAt ?? updatedAt;
+      // Emma works on `qualifie` / `chaud` dossiers only, never on a signed one
+      // (mandate), and stops when the dossier reaches the appointment stage.
+      const stageEnd = appt ? appt.confirmedAt : furthestRank >= 3 ? null : ceiling;
+      if (!signed && stageEnd) {
+        activities.push(
+          ...buildEmmaActivities({
+            ...common,
+            rng: relation,
+            ceiling,
+            from: new Date(qualifiedAt.getTime() + 3 * 60 * MINUTE_MS),
+            until: stageEnd,
+          }),
+        );
+      }
+      if (appt && propertyId) {
+        const proposal = buildLouisActivity({
+          ...common,
+          rng: relation,
+          ceiling,
+          appointmentId: fixtureUuid(`appointment:${draft.key}`),
+          startsAt: appt.startsAt,
+          endsAt: appt.endsAt,
+          confirmedAt: appt.confirmedAt,
+          floor: hotAt ?? qualifiedAt,
+        });
+        if (proposal) activities.push(proposal);
+      }
     }
 
     seeds.push({

@@ -181,8 +181,13 @@ export type PilotageWithoutNextAction = {
  *     was loaded today only shows today's runs here.
  *   * `recordedActions` — entries the agent wrote in the CRM history
  *     (`activities` with this agent as author) dated in the current period:
- *     qualifications for Hugo, files created for Léa, drafts for Emma… This is
- *     the agent's output over the period, whatever the date of its runs.
+ *     qualifications for Hugo, files created for Léa, follow-up drafts
+ *     (`message_drafted`) for Emma, appointment proposals (`appointment_proposed`)
+ *     for Louis, stage moves after a visit for Sarah. Every type authored by the
+ *     agent counts, none is singled out. The human decision on a draft (validated,
+ *     edited, refused, sent in simulation) is authored by a USER: it is never
+ *     counted as an action of the agent. This is the agent's output over the
+ *     period, whatever the date of its runs.
  *   * `lastActivityAt` — the most recent of its last run and its last history
  *     entry, whatever the period (never « jamais » just because the period is
  *     quiet). `null` only when the agent has never done anything.

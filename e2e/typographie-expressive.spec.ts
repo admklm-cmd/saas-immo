@@ -75,6 +75,8 @@ async function overflowReport(page: Page): Promise<string[]> {
     if (root.scrollWidth > root.clientWidth + 1) problems.push(`document ${root.scrollWidth} > ${root.clientWidth}`);
     for (const heading of Array.from(document.querySelectorAll<HTMLElement>("h1, h2, [data-testid='empty-state-title']"))) {
       if (heading.offsetParent === null) continue;
+      // A visually hidden heading (sr-only, 1 px wide by design) is never painted: it cannot overflow the page.
+      if (heading.classList.contains("sr-only")) continue;
       if (heading.scrollWidth > heading.clientWidth + 1) {
         problems.push(`${heading.tagName} « ${heading.textContent?.slice(0, 40)} » ${heading.scrollWidth} > ${heading.clientWidth}`);
       }

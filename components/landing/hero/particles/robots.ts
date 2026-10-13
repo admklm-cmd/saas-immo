@@ -1,10 +1,10 @@
-import { createPrng } from "@/components/motion/engine/prng";
-
-import { APPLE_SWING, APPLE_SWING_PERIOD_S, FOCAL, ROBOT_FADE_MS, ROBOT_SPEED, SPHERE_SPIN, SPHERE_TILT } from "./hero-config";
+import { APPLE_SWING, APPLE_SWING_PERIOD_S, FOCAL, SPHERE_SPIN, SPHERE_TILT, resolveTier, type Tier } from "./hero-config";
 import type { Hands } from "./hands-data";
+import { handsRobotPose } from "./hands-robots";
 import type { Layout, Placement } from "./layout";
+import { createHandsLive, type HandsLive } from "./live-motion";
+import { pointOnRail, railLength } from "./rails";
 import { appleScale, appleProfile } from "./shapes";
-import { easeInOutSine } from "./trajectory";
 
 /**
  * The nanorobots (docs/design-system.md §2.11.4 ter D, E): small squares that follow a rail proper
@@ -13,9 +13,10 @@ import { easeInOutSine } from "./trajectory";
  */
 export type RobotKind = "sphere" | "apple" | "hands";
 
-export type RobotPose = { x: number; y: number; z: number; alpha: number };
+/** `accent`: the robot carries the cobalt port (the message of the left messenger). */
+export type RobotPose = { x: number; y: number; z: number; alpha: number; accent: boolean };
 
-export const emptyPose = (): RobotPose => ({ x: 0, y: 0, z: 0, alpha: 0 });
+export const emptyPose = (): RobotPose => ({ x: 0, y: 0, z: 0, alpha: 0, accent: false });
 
 /** Yaw of the sphere (rad) at a sequence time: spins in its phase, frozen before and after. */
 export function sphereYawAt(sequenceMs: number): number {
@@ -89,62 +90,8 @@ function appleRobot(index: number, count: number, seconds: number, yaw: number, 
   return out;
 }
 
-/** Length of a polyline (normalised units). */
-export function railLength(rail: readonly (readonly [number, number])[]): number {
-  let length = 0;
-  for (let k = 1; k < rail.length; k++) length += Math.hypot(rail[k]![0] - rail[k - 1]![0], rail[k]![1] - rail[k - 1]![1]);
-  return length;
-}
-
-/** Point at the arc length `s` along a polyline (clamped), written into `out`. */
-export function pointOnRail(rail: readonly (readonly [number, number])[], s: number, out: { x: number; y: number }): { x: number; y: number } {
-  let left = Math.max(0, s);
-  for (let k = 1; k < rail.length; k++) {
-    const dx = rail[k]![0] - rail[k - 1]![0];
-    const dy = rail[k]![1] - rail[k - 1]![1];
-    const length = Math.hypot(dx, dy);
-    if (left <= length || k === rail.length - 1) {
-      const f = length === 0 ? 0 : Math.min(1, left / length);
-      out.x = rail[k - 1]![0] + dx * f;
-      out.y = rail[k - 1]![1] + dy * f;
-      return out;
-    }
-    left -= length;
-  }
-  return out;
-}
-
 const scratch = { x: 0, y: 0 };
-
-/** Seeded speed (px/s) and phase of one robot on the hands. */
-function handsGait(index: number): { speed: number; phase: number } {
-  const random = createPrng(77_000 + index * 31);
-  return { speed: ROBOT_SPEED.min + random() * (ROBOT_SPEED.max - ROBOT_SPEED.min), phase: random() };
-}
-
-/**
- * A robot on the hands, in the living state: it travels its rail from the wrist (or the forearm)
- * to the tip (`inOutSine`), fades out in 300 ms at the end, then reappears at the origin.
- * `trail` (px behind it) is applied by the renderer.
- */
-function handsRobot(index: number, seconds: number, hands: Hands, place: Placement, out: RobotPose, behind = 0): RobotPose {
-  const rail = hands.rails[index % hands.rails.length]!;
-  const length = railLength(rail);
-  const pixels = length * place.sx;
-  const { speed, phase } = handsGait(index);
-  const travel = pixels / speed;
-  const cycle = travel + 0.5;
-  const t = (((seconds + phase * cycle) % cycle) + cycle) % cycle;
-  const u = Math.min(1, t / travel);
-  const fade = ROBOT_FADE_MS / 1000;
-  const s = easeInOutSine(u) * length - behind / place.sx;
-  pointOnRail(rail, s, scratch);
-  out.x = place.cx + scratch.x * place.sx;
-  out.y = place.cy + scratch.y * place.sy;
-  out.z = 0;
-  out.alpha = t <= travel ? Math.min(1, t / fade) : Math.max(0, 1 - (t - travel) / fade);
-  return out;
-}
+const fallbackLive = createHandsLive();
 
 /** Robots resting on the index fingers (reduced motion, pause): near the tip of the main rails. */
 export function restingRobot(index: number, hands: Hands, place: Placement, out: RobotPose): RobotPose {
@@ -163,11 +110,14 @@ export type RobotContext = {
   readonly layout: Layout;
   readonly hands: Hands | null;
   readonly count: number;
+  /** Tier and state of the living act (the hands only; defaults: the desktop tier at the start of the act). */
+  readonly tier?: Tier;
+  readonly live?: HandsLive;
 };
 
 /**
  * Pose of a robot on the rail of `kind`. `seconds` is the time of the steady phase for the
- * sphere and the apple (the rails turn with it), and the living time for the hands.
+ * sphere and the apple (the rails turn with it), and the living time for the hands (taken from `context.live`).
  */
 export function robotPose(kind: RobotKind, index: number, seconds: number, yaw: number, context: RobotContext, out: RobotPose, behind = 0): RobotPose {
   if (kind === "sphere") return sphereRobot(index, context.count, seconds, context.layout.sphere, out);
@@ -176,5 +126,5 @@ export function robotPose(kind: RobotKind, index: number, seconds: number, yaw: 
     out.alpha = 0;
     return out;
   }
-  return handsRobot(index, seconds, context.hands, context.layout.hands, out, behind);
+  return handsRobotPose(index, context.hands, context.layout.hands, context.live ?? fallbackLive, context.tier ?? resolveTier(1440, false), out, behind);
 }

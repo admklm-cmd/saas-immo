@@ -1,9 +1,9 @@
-import { HANDS_MAX_WIDTH, HANDS_WIDTH_SHARE, SHAPE_PX, type Tier } from "./hero-config";
+import { HANDS_MAX_WIDTH, HANDS_WIDTH_SHARE, SHAPE_PX, SHAPE_ZONE_SHARE, type Tier } from "./hero-config";
 
 /**
  * Where each shape sits in the stage, in CSS px (docs/design-system.md §2.11.4 ter F, L). The shape
- * zone is the free space between the buttons and the terminal; every shape is centred on it and
- * overflows it up and down (behind the text veils).
+ * zone is the free space between the buttons and the terminal; every solid is centred on it and fits in it
+ * (the hands, narrower than tall, may overflow it a little).
  */
 export type Rect = { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
 
@@ -30,8 +30,8 @@ export function computeLayout(width: number, height: number, zone: Rect, tier: T
   const cx = zone.x + zone.w / 2;
   const cy = zone.y + zone.h / 2;
   const sizes = SHAPE_PX[tier.name];
-  // On a narrow stage the solids never exceed 85 % of the width.
-  const limit = Math.min(width * 0.85, zone.h * 1.04);
+  // The solids fit in the shape zone (92 % of its height) and never exceed 85 % of the width on a narrow stage.
+  const limit = Math.min(width * 0.85, zone.h * SHAPE_ZONE_SHARE);
   const sphere = Math.min(sizes.sphere, limit);
   const apple = Math.min(sizes.apple, limit);
   const hands = Math.min(width * HANDS_WIDTH_SHARE[tier.name], HANDS_MAX_WIDTH);

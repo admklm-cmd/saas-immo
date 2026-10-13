@@ -416,6 +416,29 @@ describe("agent activity", () => {
     expect(result.reduce((sum, agent) => sum + agent.recordedActions, 0)).toBe(3);
   });
 
+  it("counts Emma's drafts and Louis's proposals like any agent entry, but not the human decision on a draft", () => {
+    const row = (type: string, actorType: string, actorAgent: string | null) =>
+      activity({ contactId: "x", type, actorType, actorAgent, occurredAt: "2026-10-05T10:00:00Z" });
+    const result = buildAgentActivity({
+      runRows: [],
+      activities: [
+        row("message_drafted", "ai_agent", "emma"),
+        row("message_drafted", "ai_agent", "emma"),
+        row("message_approved", "user", null),
+        row("message_edited", "user", null),
+        row("message_rejected", "user", null),
+        row("message_sent_simulated", "user", null),
+        row("appointment_proposed", "ai_agent", "louis"),
+        row("appointment_confirmed", "user", null),
+      ],
+      range,
+      lastActivityAt: {},
+    });
+    expect(result[2]!.recordedActions).toBe(2);
+    expect(result[3]!.recordedActions).toBe(1);
+    expect(result.reduce((sum, agent) => sum + agent.recordedActions, 0)).toBe(3);
+  });
+
   it("latestInstant picks the later of two instants and tolerates missing or invalid ones", () => {
     expect(latestInstant("2026-10-01T10:00:00Z", "2026-10-02T10:00:00Z")).toBe("2026-10-02T10:00:00.000Z");
     expect(latestInstant(null, "2026-10-02T10:00:00Z")).toBe("2026-10-02T10:00:00.000Z");

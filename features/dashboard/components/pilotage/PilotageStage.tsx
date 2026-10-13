@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 
 import { APP_TEXTS } from "@/components/texts";
-import { Overline } from "@/components/ui/Overline";
 import { SimulationBadge } from "@/components/ui/SimulationBadge";
 
 import { formatCount } from "./pilotage-format";
@@ -15,7 +14,8 @@ const TEXTS = APP_TEXTS.dashboard.pilotage;
 const STAGE_TEXTS = TEXTS.stage;
 
 /** Reserved at its final height: the chart arrives later and nothing moves (CLS 0). */
-const CHART_BOX = "h-64 sm:h-72 lg:h-80 xl:h-88";
+/** The chart box: the former 16 / 18 / 20 / 22 rem plus 1.5 rem under the plot, so that the month labels are never cut (§3.5.2 R bis). */
+const CHART_BOX = "h-70 sm:h-78 lg:h-86 xl:h-94";
 const DASHES = "repeating-linear-gradient(90deg, var(--color-stage-line-muted) 0 4px, transparent 4px 7px)";
 
 const StageChart = dynamic(() => import("./StageChart").then((module) => module.StageChart), {
@@ -113,9 +113,10 @@ export function PilotageStage({ view }: PilotageStageProps) {
 
       <div className="relative grid gap-8 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:gap-10">
         <div className="min-w-0">
-          <Overline className="text-ink-inverse-muted" as="p">
+          {/* A data label (monospace, sentence case), not a second overline: the page keeps the one of its header (§3.5.2 R bis). */}
+          <p data-testid="stage-period-label" className="label-mono tracking-normal! text-ink-inverse-muted normal-case!">
             {STAGE_TEXTS.overline(view.eyebrow)}
-          </Overline>
+          </p>
 
           {stage ? (
             <>

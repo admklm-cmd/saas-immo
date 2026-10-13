@@ -2881,6 +2881,201 @@ nanorobots ; `power`, `floor`, `blur` règlent la densité). Le script réécrit
 à 1440 avec processeur × 4, la densité adaptative descend à 5 600 points et le p95 reste à 66,7 ms (hors budget : un
 processeur 4 fois plus lent que le poste de référence n'est pas la cible ordinateur). DPR plafonné à 1,5 (1,25 en
 dessous de 768 px).
+
+##### S. Retours utilisateur du 13/10/2026 : seconde animation « les index qui veulent se toucher », mains plus lisibles, forme remontée
+
+> **Statut : spécifié puis implémenté le 13/10/2026** (voir « S.13 Réalisation et écarts » en fin de sous-section). Retour de l'utilisateur sur le rendu : « C'est parfait. » ;
+> l'ouverture (nuage, boule, pomme, mains) **ne se joue qu'une fois** (déjà vrai) ; elle doit ensuite **transiter vers une
+> seconde animation** qui **garde l'image des deux mains** (« cette image reste toujours ») mais **en mouvement** ; la forme
+> doit **remonter** pour que boule et pomme soient entières à l'écran sans défiler. **Amende** E (état final vivant),
+> F (zone de forme), I (terminal) et M (exception « boucle »). Tout le reste de §2.11.4 ter est inchangé.
+
+**S.1 Décision.** Entre « les doigts qui veulent se toucher » et « la pomme qui traverse » : **les index**. Raison : les points
+de l'image des mains gardent leur identité (un sous-ensemble se déplace, rien à recomposer) ; faire traverser une pomme exigerait
+de la détacher des mains, de la redessiner par-dessus et de la faire passer derrière les doigts (profondeur, ordre de dessin,
+lisibilité du titre) pour un gain d'idée nul : la pomme a déjà eu sa scène. **Combinaison sobre retenue** : les deux index
+s'approchent presque au contact, **sans jamais se toucher** (la promesse de *La Création d'Adam* ; le « contact » reste un
+geste humain, cohérent avec « votre agence garde la main »), une étincelle cobalt marque l'instant, les index reculent, pause.
+Les nanorobots deviennent les **messagers** : ils portent l'information d'une main à l'autre.
+
+**S.2 Vocabulaire et attributs.** Acte 1 = l'ouverture (`data-phase` de `cloud` à `to-hands`, jusqu'à 10,6 s). Acte 2 = la
+**seconde animation** (`data-phase="hands"`, ≥ 10,6 s). Nouveaux attributs sur `data-testid="hero-particles"` :
+`data-act` (`intro` \| `live`, `live` dès 10 600 ms de séquence, jamais l'inverse sauf rejeu), `data-live-step` (`approach` \|
+`contact` \| `retreat` \| `rest`, étape du cycle), `data-tip-gap` (écart **mesuré en px CSS** entre les deux pointes d'index,
+mis à jour 4 fois par seconde), `data-live-cycle` (numéro du cycle, 0 au départ). `data-loop="allowed"` conservé.
+
+**S.3 Le cycle du geste (durée 7,2 s, indéfini, déterministe).** Début du cycle 0 = 10,6 s de séquence. Écart de repos `G0` =
+écart entre les pointes d'index de l'image de repos (pour le moteur actuel 5,2 % de la largeur source ≈ 73 px à 1440 ;
+cible S.7 : ≈ 3,5 % ≈ 50 px). Écart de contact `G1` = **1,0 % de la largeur des mains** (≈ 14 px à 1440, 8 px à 1024,
+4 px à 390) : **jamais** moins de 3 px, jamais de recouvrement. Courbe `s(t)` = proportion de rapprochement, 0 = repos, 1 =
+presque contact ; écart = `G0 − (G0 − G1)·s`.
+
+| t du cycle (s) | `data-live-step` | `s(t)` | Ce que voit le visiteur |
+|---|---|---|---|
+| 0,0 → 2,6 | `approach` | 0 → 1, `easeInOutSine` | les deux index **s'avancent l'un vers l'autre** (chacun parcourt ≈ 30 px à 1440, ≈ 17 px à 1024, ≈ 9 px à 390) ; la main suit un peu, l'avant-bras presque pas (S.4) |
+| 2,6 → 3,4 | `contact` | 1 (maintenu, ± 0,5 px de tremblement sinusoïdal, période 0,8 s) | **presque contact** : le carré cobalt grossit (S.6), un anneau cobalt s'élargit, un bit cobalt traverse l'écart |
+| 3,4 → 5,6 | `retreat` | 1 → 0, `easeInOutSine` (2,2 s : un peu plus lent que l'aller, comme un recul hésitant) | les index **reculent** doucement |
+| 5,6 → 7,2 | `rest` | 0 | **pause** : les mains respirent seulement (S.4) ; les messagers repartent |
+
+Raccord de cycle : `s(7,2) = 0` avec vitesse nulle (le `easeInOutSine` annule la vitesse aux deux bouts) : aucun à-coup d'un
+cycle à l'autre. **Pause du visiteur** (bouton) ou onglet caché : le cycle **gèle** et reprend au même instant (même règle que la
+séquence, H). Le premier cycle commence **par `approach` sans délai** : l'enchaînement avec l'ouverture est décrit en S.5.
+
+**S.4 Comment le geste est obtenu (les points gardent leur identité).** À la fin du chargement des mains, **une seule fois,
+hors boucle**, calculer pour chaque point `i` des mains : son côté `side_i` (−1 main gauche, +1 main droite, selon la moitié de
+l'image), son **poids de doigt** `wF_i = exp(−(d_i / 0,07·L)²)` où `d_i` = distance du point à la pointe de son index et `L` =
+largeur des mains (donc ≈ 1 sur l'index, ≈ 0 à plus de 0,2·L), et son **poids de main** `wH_i = exp(−(e_i / 0,32·L)²)` où `e_i` =
+distance au poignet de son côté (le bord du cadre, `wH_i` ≈ 0 sur l'avant-bras lointain). Stocker `wF`, `wH` en
+`Float32Array`. À chaque image, le déplacement horizontal du point = `side_i · (−1) · A(t) · (wF_i + 0,35·wH_i)`, où `A(t) = s(t) ·
+(G0 − G1)/2` (la moitié de l'écart à combler : chaque index fait la moitié du chemin) ; le déplacement vertical = `−side_i ·
+0,12 · A(t) · wF_i` en **direction de l'autre pointe** (les pointes sont à des hauteurs différentes sur l'image : les index se
+rejoignent en diagonale douce, pas en pivotant). Résultat : l'index translate avec un **pivot au poignet** (le poids décroît
+du doigt vers le poignet) sans qu'aucun point ne change de plan ni d'identité. Coût : une multiplication-addition par point et
+par image (< 0,2 ms). **Interdit** : tout déplacement > `(G0 − G1)/2 + 4 px` pour un point, toute rotation par matrice des mains entières.
+
+Respiration (acte 2 entier, sans interruption) : toute la main se translate verticalement de **± 3 px à 1440** (± 2 px à
+1024, ± 1,5 px à 390), période **7,2 s** (= le cycle, pour rester accordée), main gauche et main droite déphasées de **π/2** ;
+échelle de la main **1 ± 0,3 %** autour du poignet. Le micro-mouvement individuel des points (E) reste, avec une amplitude
+**augmentée à 0,6 px (arrière) → 1,8 px (proche)**.
+
+**S.5 Transition de l'acte 1 à l'acte 2 (sans à-coup).** Il n'y a **pas de nouvelle transition** : à 10,6 s les points sont déjà
+à `G0` et immobiles (A = 0, `s(0) = 0` avec vitesse nulle). L'acte 2 démarre donc au **premier tour de `approach`** : le visiteur
+voit l'image se former puis, sans pause, les index se tendre. Trois enchaînements, tous continus en `opacity` :
+1. le **carré cobalt de contact** apparaît comme aujourd'hui (10,6 → 10,9 s, 300 ms) ;
+2. les **quatre robots en orbite** de S.6 naissent à 10,9 s (`opacity` 0 → 1, 600 ms) ;
+3. les **messagers** (S.6) partent à 10,6 s depuis une position déjà sur leur rail : ils n'apparaissent pas, ils étaient les
+   robots de l'acte 1 (mêmes identités : aucun robot ne disparaît à la fin de la phase `to-hands`).
+La dernière ligne du terminal (10,85 s) tombe pendant le premier `approach` : accord de durées, aucun couplage.
+
+**S.6 Nanorobots : bien plus visibles, deux rôles.**
+
+| Rôle | Nombre (≥ 1280 / 768–1279 / < 768) | Taille | Mouvement |
+|---|---|---|---|
+| **Circulants** (rails des mains, les rails de `hands.baked.json`) | 8 / 6 / 4 | **9 px** (8 sur tablette, 7 sur téléphone), plein `ink` **opacité 1**, port central `canvas` 3 px | vitesse **90 à 140 px/s** (au lieu de 38 à 60), `inOutSine` aux extrémités, retour **en 300 ms d'`opacity`**, jamais plus de 3 sur la même main ; **traîne de 5 fantômes** (écart 10 px ; opacité 0,50 / 0,35 / 0,25 / 0,15 / 0,08), pas de lueur |
+| **Messagers** (un par main, nouveaux rôles des 2 premiers circulants) | 2 / 2 / 2 | 9 px, **port cobalt** (le seul cobalt porté) | quittent le poignet à `t = 0` du cycle et **arrivent exactement à la pointe de leur index à `t = 2,6 s`** (vitesse imposée = longueur du rail / 2,6, ≈ 130 px/s ; le rail est donc parcouru en 2,6 s) ; **le messager gauche s'arrête sur la pointe** pendant `contact` puis **s'estompe** (300 ms) à 3,4 s ; le bit cobalt passe de la pointe gauche à la pointe droite (0,5 s, `inOutSine`, début à 2,7 s) ; le messager droit **s'estompe** à 3,4 s |
+| **Orbitaux** (autour du point de contact) | 4 / 4 / 2 | 7 px (6, 5) | ellipse **24 × 10 px** (18 × 8 à 1024 ; 12 × 5 à 390) centrée sur le point de contact, inclinée de 20°, **période 5 s**, deux sens horaires et deux antihoraires, phases équiréparties ; rayon **modulé** par `s(t)` : 1,0 × au repos, **0,6 × à `contact`** (ils se resserrent) ; visibles dès 10,9 s |
+
+Le total (circulants + messagers + orbitaux) est borné par le nombre de robots du palier (14 / 10 / 6) : les 2 messagers sont pris
+parmi les circulants. **Cobalt visible en même temps : au plus 2** (le carré de contact + soit le port du messager, soit le bit,
+soit l'anneau — l'anneau et le bit se succèdent, jamais ensemble). **Étincelle de contact** (`contact`, 2,6 → 3,4 s) : le carré
+cobalt passe de 4 à **6 px** (`transform: scale` 1 → 1,5 → 1, `easeInOutSine`, 0,8 s) et **un anneau fin** (trait 1 px cobalt) s'élargit
+de 4 à 22 px en 1,2 s (`opacity` 0,7 → 0, début à 2,6 s). L'ancien anneau « toutes les 3,6 s » est **supprimé** (remplacé par le
+cycle).
+
+**S.7 Mains plus lisibles, sans nouvelle image (honnête sur la limite).** La source est toujours `particle-handoff.jpg`
+(déjà pointilliste) : on peut **renforcer** les doigts, pas inventer ce que l'image n'a pas. Valeurs à passer dans
+`scripts/hero-hands.config.json`, puis relancer `node scripts/bake-hero-hands.mjs --debug test-results/hero-morph` :
+
+| Réglage | Actuel | Nouveau | Effet |
+|---|---|---|---|
+| `power` | 1,6 | **1,25** | davantage de tons moyens : les doigts clairs gardent des points |
+| `floor` | 0,1 | **0,06** | seuil de bruit plus bas : les contours fins restent |
+| `blur` | 2,6 | **1,8** | contours moins empâtés |
+| `edgeShare` | 0,10 | **0,16** | plus de points sur les bords des doigts |
+| `approach.shift` | 0,04 | **0,06** | écart de repos entre les index ≈ **3,5 %** de la largeur (au lieu de 5,2 %) ; **à vérifier sur `hands-debug.png`** : si un avant-bras se déforme, redescendre à 0,05 |
+| `points` | 16 000 | **18 000**, dont **2 400** « prioritaires » (disques de rayon 90 px source autour de chaque pointe d'index, tirage × 1,8) **placés en tête** du fichier | le moteur ne garde que les premiers points aux paliers 9 000 et 3 600 : les doigts restent donc nets même sur téléphone |
+| Rendu | `HANDS_EMPHASIS` 0,35 · `HANDS_GROWTH` 0,25 | **0,5 · 0,4** (plafond de taille des points des mains : 2,6 px) | les mains se détachent plus nettement de la boule |
+
+Recadrage : largeur des mains `HANDS_WIDTH_SHARE` **0,98 → 0,92** (≥ 768 px) pour que les index et les doigts soient plus près du
+centre et que les deux mains se lisent en entier (poignets visibles) ; **1,2 → 1,1** sur téléphone. **Limite assumée** : deux
+avant-bras épars restent deux avant-bras épars ; seul le doigt est renforcé. Le vrai gain de lisibilité vient d'une image
+dédiée `adam-hands.png` (prompt en N) : **recommandé ensuite**, sans changer le moteur (commande ci-dessus).
+
+**S.8 Composition remontée : boule et pomme entières dans la fenêtre.** Problème constaté (capture 1440 × 900) : le haut de la
+zone de forme est à y ≈ 547 (bas des boutons) ; boule Ø 400 et pomme 380 ne tiennent plus dans les 353 px restants, le bas
+est coupé, le terminal est sous la ligne de flottaison. Décision : **la forme doit tenir entre le bas des boutons + 16 px et le
+bas de la fenêtre − 24 px**, sans défilement.
+
+| Fenêtre | Titre et boutons | Zone de forme (hauteur) | Boule Ø / pomme (hauteur, tige comprise) | Terminal |
+|---|---|---|---|---|
+| **1440 × 900** | marge haute du hero **réduite de ≈ 48 px** (haut du titre à ≈ y 112 au lieu de 160) ; boutons à y ≈ 451–499 | `calc(100svh − 33rem)` borné `[16rem ; 26rem]` ≈ **372 px** | **Ø 340 / 330 px** (= 0,92 de la zone, bornes S.8-b) | **sous la ligne de flottaison, voulu** (1 à 2 lignes visibles non requises) |
+| **1024 × 768** | idem, marge haute −40 px | `calc(100svh − 31rem)` borné `[15rem ; 22rem]` ≈ **272 px** | **Ø 250 / 240 px** | sous la flottaison, voulu |
+| **390 × 844** | inchangé | `clamp(14rem, 34svh, 20rem)` ≈ 287 px | Ø 260 / 250 (inchangé : la boule est limitée à 85 % de la largeur) ; **tient déjà** | inchangé, juste sous la forme (visible en partie) |
+
+S.8-b : `SHAPE_PX` devient `desktop { sphere: 340, apple: 330 }`, `tablet { 250, 240 }`, `phone` inchangé ; **et** le plafond
+`min(0,85·largeur, 1,04·hauteur de zone)` devient **`0,92·hauteur de zone`** (la forme ne déborde plus de la zone vers le bas ;
+elle ne déborde que de 4 % vers le haut, sous le voile de 48 px). Les **mains** (980 × 420) peuvent rester débordantes en
+hauteur (forme étroite, elles tiennent : ± 150 px autour du centre). Marge haute : la valeur actuelle de remplissage haut du
+`h1` (à repérer dans `Hero.tsx`) perd **48 px à 1440 / 40 px à 1024**, sans toucher à la taille du titre ni aux boutons. Aucun
+changement sous 1024 px de **largeur** (le téléphone n'est pas touché). Si l'espace manque à une hauteur de fenêtre < 760 px, la
+forme est **réduite** (borne basse 16 rem), jamais coupée par le haut : le terminal et la ligne de flottaison s'ajustent.
+
+**S.9 Accessibilité et boucle.** La seconde animation est une **boucle continue lente** (cycle 7,2 s, mouvement ≤ 30 px) :
+**exception à §2.11.1 n° 1 (« aucune boucle »)** accordée par l'utilisateur, étendant celle de M ; `data-loop="allowed"` reste à
+2 éléments. Règles : (1) **bouton pause existant** du terminal : cycle gelé à `s = 0` (image de repos, `G0`), plus de
+circulants ni d'orbitaux (les 4 premiers posés sur les index, comme en mouvement réduit), carré cobalt fixe, `data-state="stopped"` ;
+« reprendre » relance le cycle **à son début** ; (2) **hors écran < 10 %** ou **onglet caché** : boucle arrêtée, reprise au même
+instant du cycle ; (3) **`prefers-reduced-motion: reduce`** : image de repos immobile (`G0`, `s = 0`), robots posés, pas de
+respiration, `data-act="live"` mais `data-live-step="rest"`, aucun `requestAnimationFrame` ; (4) **aucune information ne dépend du
+mouvement** : tout le texte et les boutons restent là ; l'animation n'a aucun contenu propre (`aria-hidden`) ; (5) l'amplitude ≤ 30 px
+et l'absence de clignotement (étincelle : 1 pulsation de 0,8 s, jamais plus de 3 par seconde) respectent WCAG 2.3.1 ; (6) boucle
+**uniquement ornementale** : on ne la présente jamais comme un chargement.
+
+**S.10 Cadence et budget.** Acte 2 : **60 images/s** sur ordinateur et tablette si le travail JavaScript reste **≤ 4 ms au 75ᵉ
+centile** (avec le déplacement des points S.4, ≈ 3,2 ms attendus) ; **sinon retour à 30 images/s** (le geste est lent : 30 px
+en 2,6 s = 12 px/s, lisible à 30 images/s). Téléphone : 30 images/s. Densité adaptative inchangée (D). Le nombre de points n'augmente
+pas ; les 2 400 points prioritaires de S.7 sont **dans** le plafond du palier, pas en plus.
+
+**S.11 Responsive.** 1440 : tout ce qui précède. 1024 : amplitudes ×0,55, robots 8 px, orbite 18 × 8. 390 : amplitudes ×0,3,
+robots 7 px, **2** orbitaux, aucun défilement horizontal, cibles tactiles inchangées (44 px) ; les mains sortent du cadre comme avant.
+
+**S.12 Critères d'acceptation vérifiables (s'ajoutent à O).**
+14. **Boule et pomme entières** : à 1440 × 900 et 1024 × 768, aux phases `sphere` et `apple`, la boîte englobante des points
+    dessinés (≥ 98 % des points) est **dans la fenêtre** : haut ≥ bas des boutons + 8 px, bas ≤ hauteur de la fenêtre − 8 px ;
+    **aucun défilement** n'est nécessaire (`scrollY = 0`) ; capture 1440 × 900 incluse.
+15. **Acte 2 identifiable** : `data-act` passe de `intro` à `live` à `data-sequence-ms ≥ 10 600` (± 150) ; `data-live-step`
+    parcourt `approach`, `contact`, `retreat`, `rest` dans cet ordre, puis `data-live-cycle` s'incrémente.
+16. **Mouvement mesurable des index** : `data-tip-gap` à `rest` = `G0` (± 4 px) ; à `contact` = `G1` (± 3 px, **jamais < 3 px**) ;
+    l'écart varie d'au moins **20 px à 1440** (10 px à 1024, 5 px à 390) entre `rest` et `contact` ; cycle = 7,2 s (± 0,2 s).
+17. **Robots visibles** : à `t > 11 s`, au moins **12 robots dessinés** à ≥ 1280 px (8 à 1024, 6 à 390) ; taille ≥ 9 / 8 / 7 px ;
+    deux captures à 0,5 s d'intervalle montrent au moins 6 robots déplacés d'au moins 20 px.
+18. **Pas de boucle de métamorphose** : après `hands`, `data-phase` ne change plus ; `data-act` ne revient jamais à `intro`.
+19. **Pause et mouvement réduit** : « pause » → deux captures à 1 s d'intervalle identiques au pixel, `data-tip-gap` = `G0` ;
+    mouvement réduit → idem, `data-live-step="rest"`, aucun `requestAnimationFrame`.
+20. **Cobalt** : jamais plus de **2 éléments cobalt** dessinés dans une même image (carré de contact + un de {port du messager,
+    bit, anneau}) ; **aucun** élément n'est rouge ou orange ; aucune lueur.
+21. **Budget** : p95 de l'intervalle entre images ≤ 17 ms à 1440 et JavaScript ≤ 4 ms (p75) pendant 24 s (au moins trois cycles) ;
+    sinon 30 images/s ; DPR ≤ 1,5 ; arrêt confirmé hors écran. **Valeurs réelles consignées par `frontend-ux`.**
+22. **Lisibilité du texte** : contraste ≥ 4,5:1 sous le titre, le sous-titre, les boutons et le terminal à `contact` et `rest`
+    (1440, 1024, 390).
+**S.13 Réalisation (13/10/2026, `frontend-ux`) : où vit le code, valeurs retenues, écarts constatés.**
+
+*Code.* `components/landing/hero/particles/` : `live-motion.ts` (cycle, poids de doigt et de main précalculés une fois à la réception des mains, déplacement des points : S.3 et S.4),
+`hands-robots.ts` (rôles messager, circulant, orbital : S.6), `hero-paint.ts` (dessin des points, robots, point de contact, bit, anneau), `rails.ts` (rails des robots),
+`hero-config.ts` (toutes les constantes : `LIVE_CYCLE`, `BREATH`, `ORBIT`, `RING`, `MESSENGER`, `TIP_CLIMB`…). Cadence : `Tier.liveFrameStep` (1 = 60 images/s ; 2 sur téléphone ou si
+le travail dépasse 4 ms au 75ᵉ centile sur 120 images : `LIVE_WORK_BUDGET_MS`). Attributs lus par les tests : `data-act`, `data-live-step`, `data-live-cycle`, `data-tip-gap` (modèle, 4 fois par
+seconde), `data-tip-gap-rest` (G0), `data-tip-gap-near` (G1), `data-robots` (robots dessinés), `data-cobalt` (marques cobalt dessinées), `data-live-frame-step`.
+
+*Valeurs finalement retenues quand elles diffèrent de la spécification :*
+1. **`approach.shift` 0,043 (et non 0,06)**. L'arithmétique de S.7 était fausse : l'écart d'origine entre les pointes est de 13,2 % de la largeur de la source ; il reste 13,2 − 2 × shift. Avec 0,06 l'écart de repos
+   aurait été de 1,2 % (donc plus petit que G1 = 1 %). Avec **0,043** : G0 = **4,6 %** de la largeur des mains (60 px à 1440, 43 px à 1024, 20 px à 390), G1 = 13 / 9 / 4 px : chaque index parcourt
+   **≈ 23 px à 1440** (≈ 17 à 1024, ≈ 8 à 390). Un G0 de 3,5 % n'aurait laissé que 17 px par index ; l'écart de « ~30 px » de S.3 est la valeur du moteur d'avant (5,2 %).
+2. **`TIP_CLIMB` 0,5 (et non 0,12)** : les pointes sont à des hauteurs différentes (≈ 64 px à 1440) ; avec 0,12 les index se frôlaient à la verticale de 55 px et ne « voulaient » rien toucher. Avec 0,5 chaque index monte
+   ou descend de ≈ 12 px et le déplacement total d'un point (≈ 1,12 × la moitié du rapprochement) reste ≤ « moitié + 4 px » (test).
+3. **Poids de main `wH`** : calculé depuis la **pointe** (σ = 0,32 L) et non depuis le poignet (le texte de S.4 se contredit : « le poids décroît du doigt vers le poignet »), et appliqué comme
+   `wF + 0,35·wH·(1 − wF)` pour que le poids reste ≤ 1 (1 sur la pointe, ≈ 0,35 sur la main, ≈ 0 sur l'avant-bras).
+4. **Échelle de respiration** : pivot **à la pointe de l'index** et non au poignet (un pivot au poignet déplaçait la pointe de ± 2 px et faussait l'écart mesuré).
+5. **Cobalt** : pour tenir « au plus 2 marques cobalt » (critère 20), **seul le messager gauche** porte le port cobalt (le droit a un port blanc), et l'ordre est : port cobalt (0 → 2,6 s) → bit (2,7 → 3,2 s) → anneau
+   (**3,2 → 4,4 s**, au lieu de 2,6 → 3,8 s : il commençait pendant le bit). Le carré de contact gonfle de 1 à 1,5 × entre 2,6 et 3,4 s.
+6. **Messagers** : s'arrêtent **12 px avant la pointe** (le long du rail), pas dessus : avec un écart de 13 px entre les pointes, deux robots de 9 px sur les pointes se recouvraient et recouvraient le carré cobalt.
+   Ils s'estompent à 3,4 s, sont absents jusqu'à 6,9 s, puis réapparaissent au poignet (300 ms).
+7. **Nombre de robots par palier** : 14 / **12** / **8** (au lieu de 14 / 10 / 6) = 2 messagers **en plus** des circulants (8 / 6 / 4) et des orbitaux (4 / 4 / 2). Sans cela, les messagers absents ramenaient le décompte
+   sous 12 / 8 / 6 pendant 3 s par cycle. Plus de 3 circulants simultanés sur la même main restent possibles (4 par main à 1440).
+8. **Réglages des mains** : conformes à S.7 (`blur` 1,8, `power` 1,25, `floor` 0,06, `edgeShare` 0,16, 18 000 points dont 2 400 prioritaires en tête, rendu 0,5 / 0,4 plafonné à 2,6 px, largeur 0,92 / 1,1).
+9. **Zone de forme** : `calc(100svh − 33rem)` borné [16 ; 26] rem à partir de 90 rem, `calc(100svh − 31rem)` borné [15 ; 22] rem de 64 à 90 rem (`HeroStage.module.css`) ; haut du hero : `pt-2` à 1440 (−48 px),
+   `pt-4` à 1024 (−40 px) ; `SHAPE_PX` 340 / 330 et 250 / 240 ; plafond `0,92 × hauteur de zone` (et 85 % de la largeur). **Les valeurs de la spécification ont suffi** : boule et pomme entières à 1440 × 900 et 1024 × 768
+   (critère 14, mesuré sur les pixels dessinés). Le terminal reste visible en partie en bas de la fenêtre à 1440 (une à deux lignes).
+10. **Mouvement réduit et pause** : image de repos (G0), 4 robots posés sur les index, carré cobalt fixe ; `data-act="live"`, `data-live-step="rest"`. « Reprendre » recommence le cycle à son début.
+
+*Mesures réelles (Chromium, Windows, machine de développement, 24 s soit trois cycles).* 1440 : p95 de l'intervalle d'image **16,8 ms**, travail JavaScript **2,2 ms** (75ᵉ centile), **60 images/s** conservées ;
+1024 : 16,7 ms, 1,3 ms, 60 images/s ; 390 (processeur ×4) : 16,8 ms sur les rappels, travail 2,3 ms, 30 images/s (palier téléphone). DPR ≤ 1,5. Robots dessinés (médiane) : 14 / 12 / 8.
+
+*Lisibilité des mains, honnêtement.* Après réglage, les deux mains et les deux index se lisent nettement (les index sont denses, les doigts du dessous se distinguent) ; la main gauche reste plus pleine que la droite et les
+deux avant-bras restent épars, comme annoncé en S.7. Une image dédiée (`adam-hands.png`) reste le vrai gain.
+
+**Tableau de bord, correctifs de R bis (13/10/2026).** Marge basse du graphique de la bande noire : 32 → 56 px et boîte du graphique + 1,5 rem (`h-70 sm:h-78 lg:h-86 xl:h-94`) : la bande ne grandit que de ces 24 px ;
+le sur-titre de la bande est devenu une étiquette de donnée (`data-testid="stage-period-label"`, `label-mono` en casse de phrase, `ink-inverse-muted`) : un seul `overline` par écran.
+
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
 > **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule
@@ -5836,6 +6031,18 @@ revenir en arrière du navigateur » ; un test clavier du sélecteur et d'un gra
 - §3.2 « aucun taux » : levé uniquement pour l'entonnoir (déjà) et les parts de l'anneau.
 - §2.5.4 règle 4 (« aucune animation infinie ») : **respectée** (Atelier joué une fois, rejouable).
   Une boucle lente de la scène serait une exception à valider (question 3).
+
+#### R bis. Deux correctifs demandés le 13/10/2026 (implémentés le 13/10/2026, voir S.13)
+
+1. **Libellés de mois coupés** (bande noire, « nov., déc., … » sous la courbe de `StageChart`) : ajouter **24 px** de marge basse à
+   l'aire du graphique (variable de marge inférieure du `chart-scope-stage`) ou augmenter la hauteur du SVG de 24 px ;
+   critère : les libellés sont **entièrement visibles** à 1440, 1024 et 390 (aucun pixel de glyphe hors de la bande), et la hauteur
+   de la bande ne change que de ces 24 px.
+2. **Sur-titre en double** sur `/dashboard` (« PILOTAGE » de l'en-tête + `Overline` de `PilotageStage`) : **garder** celui de
+   l'en-tête de page (un seul sur-titre par écran, règle typographique) ; **requalifier** celui de la bande noire (`STAGE_TEXTS.overline`)
+   en **étiquette de donnée** : composant `label-mono` (Geist Mono, casse de phrase, sans majuscules espacées), couleur
+   `ink-inverse-muted`, texte décrivant la période (« 12 derniers mois »), jamais un mot de navigation. Critère : un seul élément
+   `text-overline` par écran `/dashboard` (hors cartes de listes déjà conformes).
 
 #### R. Réalisation (12/10/2026, `frontend-ux`) : où vit le code, écarts constatés
 

@@ -1,11 +1,13 @@
 import { createPrng } from "@/components/motion/engine/prng";
 
-import { CLOUD_DRIFT, FOCAL, LIVE_AMPLITUDE, PLANES, PLANE_COUNT, SEEDS, SPHERE_TILT, type Tier } from "./hero-config";
+import { CLOUD_DRIFT, FOCAL, LIVE_AMPLITUDE, LIVE_PLANE_SPEED, PLANES, PLANE_COUNT, SEEDS, SPHERE_TILT, type Tier } from "./hero-config";
 import type { Hands } from "./hands-data";
+import { handsRobotPose } from "./hands-robots";
 import type { Layout, Placement } from "./layout";
+import { applyHandsMotion, buildHandsMotion, createHandsLive, updateLive, type HandsLive, type HandsMotion } from "./live-motion";
 import { pairShapes, rankShare } from "./pairing";
 import { computeRobotPoses } from "./robot-motion";
-import { appleYawAt, emptyPose, robotPose, sphereYawAt, type RobotPose } from "./robots";
+import { appleYawAt, emptyPose, sphereYawAt, type RobotPose } from "./robots";
 import { buildApple, buildCloud, buildSphere, type Shape } from "./shapes";
 import { phaseDuration, type Phase, type PhaseState, type TransitionKind } from "./timeline";
 import { WAVE_SPREAD, bezier, buildCurvature, controlPoint, delayOf, easeInOutCubic, progressOf } from "./trajectory";
@@ -72,12 +74,15 @@ export class HeroScene {
   readonly bucketSize = new Int32Array(PLANE_COUNT);
   /** Poses of the robots, written by `computeRobots`. */
   readonly robots: RobotPose[];
+  /** State of the second animation (the index fingers), written by `updateLive`. */
+  readonly live: HandsLive = createHandsLive();
 
   private readonly cloud: Shape;
   private readonly sphere: Shape;
   private readonly apple: Shape;
   private handsShape: Shape | null = null;
   private hands: Hands | null = null;
+  private motion: HandsMotion | null = null;
   private layout: Layout | null = null;
   private readonly transitions = new Map<TransitionKind, Transition>();
   private readonly curve: { kappa: Float32Array; noise: Float32Array }[];
@@ -88,6 +93,7 @@ export class HeroScene {
   private readonly ampCloud: Float32Array;
   private readonly ampLive: Float32Array;
   private readonly control = { x: 0, y: 0 };
+  private readonly kappa: readonly Float32Array[];
 
   constructor(readonly tier: Tier) {
     const count = tier.points;
@@ -101,6 +107,7 @@ export class HeroScene {
     this.buckets = Array.from({ length: PLANE_COUNT }, () => new Uint32Array(count));
     this.robots = Array.from({ length: tier.robots }, emptyPose);
     this.curve = [0, 1, 2].map((stream) => buildCurvature(count, stream));
+    this.kappa = this.curve.map((entry) => entry.kappa);
 
     const random = createPrng(SEEDS.plane);
     this.plane = new Uint8Array(count);
@@ -121,7 +128,7 @@ export class HeroScene {
       this.p1[i] = micro() * Math.PI * 2;
       this.p2[i] = micro() * Math.PI * 2;
       this.ampCloud[i] = CLOUD_DRIFT * PLANES[plane].speed;
-      this.ampLive[i] = LIVE_AMPLITUDE * PLANES[plane].speed;
+      this.ampLive[i] = LIVE_AMPLITUDE * LIVE_PLANE_SPEED[plane];
     }
     this.robots.forEach((pose) => (pose.alpha = 0));
   }
@@ -142,6 +149,8 @@ export class HeroScene {
   setHands(hands: Hands): void {
     this.hands = hands;
     this.handsShape = pairShapes(this.apple, hands.shape);
+    // Computed once, out of the loop: the weight of each point in the move of the fingers (S.4).
+    this.motion = buildHandsMotion(this.handsShape.x, this.handsShape.y, this.count, hands.tips);
     this.transitions.delete("to-hands");
     this.prepare("to-hands");
   }
@@ -273,7 +282,20 @@ export class HeroScene {
         y[i] = y[i]! + amp[i]! * Math.sin(this.w2[i]! * liveSec + this.p2[i]!);
       }
     }
+    // The second animation: the fingers and the hands move, the points keep their identity (S.4).
+    if (phase === "hands" && !state.transition && this.motion) applyHandsMotion(this.motion, this.live, drawCount, x, y);
     this.sortBuckets(drawCount);
+  }
+
+  /** The state of the living act at `actSec` seconds (`moving` false = the image of rest: pause, reduced motion). */
+  updateLive(actSec: number, moving: boolean): HandsLive {
+    if (!this.hands || !this.layout) return this.live;
+    return updateLive(this.live, actSec, this.hands, this.layout.hands, this.tier.motionScale, moving);
+  }
+
+  /** Back to the start of the act (replay): no residual state of the previous run. */
+  resetLive(): void {
+    Object.assign(this.live, createHandsLive());
   }
 
   private sortBuckets(drawCount: number): void {
@@ -297,17 +319,17 @@ export class HeroScene {
   computeRobots(state: PhaseState, sequenceMs: number, liveSec: number, still: boolean): void {
     for (const pose of this.robots) pose.alpha = 0;
     if (!this.layout) return;
-    computeRobotPoses(this.robots, state, sequenceMs, liveSec, still, { layout: this.layout, hands: this.hands, cloud: this.cloud, kappa: this.curve.map((entry) => entry.kappa) });
+    computeRobotPoses(this.robots, state, sequenceMs, liveSec, still, { layout: this.layout, hands: this.hands, cloud: this.cloud, kappa: this.kappa, tier: this.tier, live: this.live });
   }
 
   /** A trailing ghost of a robot of the hands, `behind` px back along its rail. */
-  ghostPose(index: number, liveSec: number, behind: number, out: RobotPose): RobotPose {
+  ghostPose(index: number, behind: number, out: RobotPose): RobotPose {
     const layout = this.layout;
-    if (!layout) {
+    if (!layout || !this.hands) {
       out.alpha = 0;
       return out;
     }
-    return robotPose("hands", index, Math.max(0, liveSec - 10.6), 0, { layout, hands: this.hands, count: this.robots.length }, out, behind);
+    return handsRobotPose(index, this.hands, layout.hands, this.live, this.tier, out, behind);
   }
 
   /** The shapes, for tests. */

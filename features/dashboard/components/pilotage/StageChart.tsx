@@ -17,7 +17,8 @@ import { StageOverlay } from "./StageOverlay";
 const TEXTS = APP_TEXTS.dashboard.pilotage.stage;
 /** The curve draws in this time (docs §3.5.2.E1: 700 ms at the first load, 600 ms after a change of period). */
 const DRAW_MS = 700;
-const MARGIN = { top: 16, right: 56, bottom: 32, left: 32 };
+/** Bottom 56: the 32 px of the axis labels + 24 px of room, so that no glyph is cut (§3.5.2 R bis). */
+const MARGIN = { top: 16, right: 56, bottom: 56, left: 32 };
 
 export type StageChartProps = {
   points: readonly StagePoint[];

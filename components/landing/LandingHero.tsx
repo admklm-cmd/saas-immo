@@ -32,7 +32,7 @@ export function LandingHero() {
       {/* Band 1, the whole width: the particle canvas behind, the content above (§2.11.4 ter F). */}
       <HeroStage>
         <div
-          className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pt-10 text-center sm:px-8 lg:px-12 lg:pt-14"
+          className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pt-10 text-center sm:px-8 lg:px-12 lg:pt-4 min-[90rem]:pt-2"
           data-testid="hero-band"
         >
           {/* An inline-size container: the poster title is capped by this column (§2.2.3).

@@ -274,7 +274,7 @@ describe("HeroScene (the maths of a frame)", () => {
     }
   });
 
-  it("keeps each point inside 1.4 px of its place in the living end state, and still without motion", () => {
+  it("keeps each point inside 1.8 px of its place in the living end state (micro-movement), and still without motion", () => {
     scene.compute(phaseAt(10_900), 10_900, 0, false, PHONE.points);
     const rest = { x: Float32Array.from(scene.x), y: Float32Array.from(scene.y) };
     let worst = 0;
@@ -282,7 +282,7 @@ describe("HeroScene (the maths of a frame)", () => {
       scene.compute(phaseAt(10_900), 10_900, second, true, PHONE.points);
       for (let i = 0; i < PHONE.points; i++) worst = Math.max(worst, Math.abs(scene.x[i]! - rest.x[i]!), Math.abs(scene.y[i]! - rest.y[i]!));
     }
-    expect(worst).toBeLessThanOrEqual(1.4 + 1e-3);
+    expect(worst).toBeLessThanOrEqual(1.8 + 1e-3);
     scene.compute(phaseAt(10_900), 10_900, 3, false, PHONE.points);
     expect(Array.from(scene.x.slice(0, 40))).toEqual(Array.from(rest.x.slice(0, 40)));
   });

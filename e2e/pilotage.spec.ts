@@ -315,3 +315,67 @@ test("captures : 1440 / 1024 / 390 pour « 1 an » et « 30 jours », mouvement 
   await page.getByTestId("pilotage-atelier").scrollIntoViewIfNeeded();
   await page.getByTestId("pilotage-atelier").screenshot({ path: `${SHOTS}/atelier-1440-normal.png` });
 });
+
+test.describe("bande noire : libellés de l'axe et sur-titre (docs §3.5.2 R bis)", () => {
+  /** Axis labels of the stage chart against the box of the chart: every glyph is inside the band and inside the SVG. */
+  async function axisLabelsInside(page: Page): Promise<{ count: number; clipped: string[] }> {
+    // The chart is a lazy island: wait for its SVG before measuring.
+    await page.getByTestId("stage-chart").locator("svg text").first().waitFor({ timeout: COLD_START });
+    return page.getByTestId("stage-chart").evaluate((chart) => {
+      const svg = chart.querySelector("svg")!;
+      const band = chart.closest("[data-testid='pilotage-stage']")!.getBoundingClientRect();
+      const frame = svg.getBoundingClientRect();
+      const labels = Array.from(chart.querySelectorAll<SVGTextElement>("[data-testid='stage-overlay'] text")).filter((text) => !text.classList.contains("font-mono"));
+      const clipped = labels
+        .filter((text) => {
+          const box = text.getBoundingClientRect();
+          // 4 px of descender room under the baseline box, then the SVG and the band must still contain the label.
+          return box.bottom + 4 > frame.bottom || box.bottom + 4 > band.bottom || box.left < frame.left - 0.5 || box.right > frame.right + 0.5;
+        })
+        .map((text) => text.textContent ?? "");
+      return { count: labels.length, clipped };
+    });
+  }
+
+  for (const period of ["7j", "30j", "3m", "1a"] as const) {
+    test(`1440 px, ${period} : les libellés de l'axe sont entiers, sous la courbe (capture)`, async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await signIn(page, "agentA");
+      await openPilotage(page, `?periode=${period}`);
+      const { count, clipped } = await axisLabelsInside(page);
+      expect(count, "axis labels exist").toBeGreaterThan(0);
+      expect(clipped, "labels cut by the bottom of the band").toEqual([]);
+      await page.getByTestId("pilotage-stage").screenshot({ path: `${SHOTS}/bande-noire-1440-${period}.png` });
+    });
+  }
+
+  for (const { name, width, height } of WIDTHS.slice(1)) {
+    test(`${name} px, 1 an : les libellés de l'axe sont entiers (capture)`, async ({ page }) => {
+      await page.setViewportSize({ width, height });
+      await signIn(page, "agentA");
+      await openPilotage(page, "?periode=1a");
+      const { count, clipped } = await axisLabelsInside(page);
+      expect(count).toBeGreaterThan(0);
+      expect(clipped).toEqual([]);
+      await page.getByTestId("pilotage-stage").screenshot({ path: `${SHOTS}/bande-noire-${name}-1a.png` });
+    });
+  }
+
+  test("un seul sur-titre par écran : « PILOTAGE » en tête ; la bande noire porte une étiquette de donnée, pas un sur-titre", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page, "agentA");
+    await openPilotage(page);
+    await expect(page.getByTestId("overline")).toHaveCount(1);
+    const label = page.getByTestId("stage-period-label");
+    await expect(label).toBeVisible();
+    await expect(label).toHaveText(/^Mandats signés · .+/);
+    // A data label: monospace, sentence case (no capitals added), muted ink on the black band.
+    const style = await label.evaluate((node) => {
+      const css = getComputedStyle(node);
+      return { family: css.fontFamily, transform: css.textTransform };
+    });
+    expect(style.family).toMatch(/mono/i);
+    expect(style.transform).toBe("none");
+    await expect(page.getByTestId("pilotage-stage").getByTestId("overline")).toHaveCount(0);
+  });
+});

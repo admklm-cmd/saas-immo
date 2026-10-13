@@ -447,3 +447,131 @@ describe("seasonality of the year (fixed load date)", () => {
     expect(months.size).toBeGreaterThanOrEqual(9);
   });
 });
+
+describe.each(LOAD_DATES.map((date) => [date.toISOString(), date] as const))(
+  "Emma's follow-ups and Louis's proposals in the history, loaded on %s",
+  (_label, now) => {
+    const { a, b } = buildFixtures(now);
+    const DAY = 86_400_000;
+    const stageOf = new Map(a.contacts.map((contact) => [contact.id!, contact.stage!]));
+    const emma = a.activities.filter((activity) => activity.actor_agent === "emma");
+    const louis = a.activities.filter((activity) => activity.actor_agent === "louis" && activity.type === "appointment_proposed");
+    const humanDecisions = a.activities.filter((activity) =>
+      ["message_approved", "message_rejected", "message_edited", "message_sent_simulated"].includes(activity.type),
+    );
+    const channelOf = (activity: { payload?: unknown }) => (activity.payload as { channel: string }).channel;
+    const at = (activity: { occurred_at?: string }) => Date.parse(activity.occurred_at!);
+    // Only activities of the history cohort (the hand-written contacts keep their own rows).
+    const historical = new Set(a.contacts.slice(FIXTURE_EXPECTED_COUNTS.a.core).map((contact) => contact.id!));
+    const generated = (activity: { contact_id?: string | null }) => historical.has(activity.contact_id!);
+
+    it("writes both agents' work as simulated journal entries authored by the agent, and nothing for agency B", () => {
+      const drafts = emma.filter((activity) => activity.type === "message_drafted" && generated(activity));
+      expect(drafts.length).toBeGreaterThan(100);
+      expect(louis.filter(generated).length).toBeGreaterThan(40);
+      for (const activity of [...drafts, ...louis.filter(generated)]) {
+        expect(activity.actor_type).toBe("ai_agent");
+        expect(activity.is_simulation).toBe(true);
+        expect(activity.actor_user_id ?? null).toBeNull();
+      }
+      for (const activity of humanDecisions.filter(generated)) {
+        expect(activity.actor_type).toBe("user");
+        expect(activity.actor_user_id).toBeTruthy();
+        expect(activity.is_simulation).toBe(true);
+      }
+      expect(b.activities.some((activity) => ["message_drafted", "appointment_proposed"].includes(activity.type))).toBe(false);
+    });
+
+    // The chain of one contact, in time order: draft, then edit?, approval and simulated send, or refusal.
+    const chains = (() => {
+      const rows = [...emma.filter((activity) => activity.type === "message_drafted"), ...humanDecisions]
+        .filter(generated)
+        .sort((first, second) => at(first) - at(second));
+      const byContact = new Map<string, typeof rows>();
+      for (const row of rows) byContact.set(row.contact_id!, [...(byContact.get(row.contact_id!) ?? []), row]);
+      const result: (typeof rows)[] = [];
+      for (const list of byContact.values()) {
+        for (const row of list) {
+          if (row.type === "message_drafted") result.push([row]);
+          else result[result.length - 1]!.push(row);
+        }
+      }
+      return result;
+    })();
+
+    it("never writes a row that would feed a queue: no outbound message, and every draft ends decided by a human", () => {
+      expect(a.outboundMessages.every((message) => !historical.has(message.contact_id))).toBe(true);
+      expect(chains.length).toBeGreaterThan(100);
+      const shapes = new Set(chains.map((chain) => chain.map((row) => row.type).join(">")));
+      expect([...shapes].sort()).toEqual([
+        "message_drafted>message_approved>message_sent_simulated",
+        "message_drafted>message_edited>message_approved>message_sent_simulated",
+        "message_drafted>message_rejected",
+      ]);
+      // The three human decisions are all present, in a believable mix.
+      const count = (shape: string) => chains.filter((chain) => chain.map((row) => row.type).join(">") === shape).length;
+      expect(count("message_drafted>message_rejected")).toBeGreaterThan(chains.length * 0.08);
+      expect(count("message_drafted>message_edited>message_approved>message_sent_simulated")).toBeGreaterThan(chains.length * 0.1);
+      expect(count("message_drafted>message_approved>message_sent_simulated")).toBeGreaterThan(chains.length * 0.4);
+    });
+
+    it("keeps Emma within her rules: never on a signed dossier, one a day, valid consent until the end of the chain", () => {
+      const consents = a.consents.filter((consent) => generated(consent));
+      const lastDraftByContact = new Map<string, number>();
+      for (const chain of chains) {
+        const draft = chain[0]!;
+        const contactId = draft.contact_id!;
+        expect(stageOf.get(contactId), "dossier signé").not.toBe("mandat_signe");
+        const previous = lastDraftByContact.get(contactId);
+        if (previous !== undefined) expect(at(draft) - previous).toBeGreaterThanOrEqual(3.9 * DAY);
+        lastDraftByContact.set(contactId, at(draft));
+
+        const channel = channelOf(draft);
+        for (const step of chain) expect(channelOf(step)).toBe(channel);
+        const mine = consents.filter((consent) => consent.contact_id === contactId && consent.channel === channel);
+        const granted = mine.find((consent) => consent.status === "granted");
+        expect(granted, `consentement ${channel}`).toBeDefined();
+        expect(Date.parse(granted!.recorded_at!)).toBeLessThan(at(draft));
+        const withdrawn = mine.find((consent) => consent.status === "withdrawn");
+        if (withdrawn) {
+          for (const step of chain) expect(at(step), `${step.type} après retrait`).toBeLessThan(Date.parse(withdrawn.recorded_at!));
+        }
+      }
+    });
+
+    it("orders every human decision after its draft, and nothing after the dossier was lost", () => {
+      const lostAt = new Map(a.contacts.filter((contact) => contact.stage === "perdu").map((contact) => [contact.id!, Date.parse(contact.updated_at!)]));
+      for (const chain of chains) {
+        for (let index = 1; index < chain.length; index += 1) expect(at(chain[index]!)).toBeGreaterThan(at(chain[index - 1]!));
+        const lost = lostAt.get(chain[0]!.contact_id!);
+        if (lost !== undefined) expect(at(chain[chain.length - 1]!)).toBeLessThanOrEqual(lost + 60_000);
+      }
+    });
+
+    it("ties each Louis proposal to the dossier's own appointment, before its human confirmation", () => {
+      const appointments = new Map(a.appointments.map((appointment) => [appointment.id!, appointment]));
+      const confirmations = new Map(
+        a.activities.filter((activity) => activity.type === "appointment_confirmed").map((activity) => [activity.contact_id!, at(activity)]),
+      );
+      const seen = new Set<string>();
+      for (const proposal of louis.filter(generated)) {
+        const payload = proposal.payload as { appointment_id: string; starts_at: string };
+        const appointment = appointments.get(payload.appointment_id);
+        expect(appointment, proposal.id).toBeDefined();
+        expect(appointment!.contact_id).toBe(proposal.contact_id);
+        expect(payload.starts_at).toBe(appointment!.starts_at);
+        expect(at(proposal)).toBeLessThan(confirmations.get(proposal.contact_id!)!);
+        expect(seen.has(payload.appointment_id)).toBe(false);
+        seen.add(payload.appointment_id);
+      }
+    });
+
+    it("gives Emma and Louis traces over the last 30 days, three months and a year", () => {
+      for (const days of [30, 90, 365]) {
+        const since = now.getTime() - days * DAY;
+        expect(emma.filter((activity) => at(activity) >= since).length, `Emma ${days} j`).toBeGreaterThan(0);
+        expect(louis.filter((activity) => at(activity) >= since).length, `Louis ${days} j`).toBeGreaterThan(0);
+      }
+    });
+  },
+);

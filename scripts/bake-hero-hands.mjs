@@ -82,26 +82,49 @@ const bounds = config.keep.reduce(
   (b, [x, y]) => ({ x0: Math.min(b.x0, x), x1: Math.max(b.x1, x), y0: Math.min(b.y0, y), y1: Math.max(b.y1, y) }),
   { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9 },
 );
-const picked = [];
-const edgeCount = Math.round(config.points * config.edgeShare);
-function sample(count, weight, max) {
+// The `priority` points (discs around each index tip, drawn with a boost) come FIRST in the file:
+// the engine keeps only the first points at the 9 000 and 3 600 tiers, so the fingers stay sharp there.
+const priority = config.priority ?? { count: 0, radius: 0, boost: 1 };
+const edgeCount = Math.round((config.points - priority.count) * config.edgeShare);
+function sample(into, count, weight, max, region = null) {
   let guard = 0;
   while (count > 0 && guard++ < 80_000_000) {
-    const x = bounds.x0 + random() * (bounds.x1 - bounds.x0);
-    const y = bounds.y0 + random() * (bounds.y1 - bounds.y0);
-    const index = Math.min(H - 1, Math.floor(y)) * W + Math.min(W - 1, Math.floor(x));
+    let x;
+    let y;
+    if (region) {
+      const angle = random() * Math.PI * 2;
+      const radius = Math.sqrt(random()) * region.radius;
+      x = region.center[0] + Math.cos(angle) * radius;
+      y = region.center[1] + Math.sin(angle) * radius;
+    } else {
+      x = bounds.x0 + random() * (bounds.x1 - bounds.x0);
+      y = bounds.y0 + random() * (bounds.y1 - bounds.y0);
+    }
+    if (x < 0 || y < 0 || x >= W || y >= H) continue;
+    const index = Math.floor(y) * W + Math.floor(x);
     if (random() < weight(index) / max) {
-      picked.push({ x, y, t: Math.min(1, tone[index] / toneMax) });
+      into.push({ x, y, t: Math.min(1, tone[index] / toneMax) });
       count--;
     }
   }
 }
-sample(config.points - edgeCount, (i) => Math.pow(tone[i], config.power), Math.pow(toneMax, config.power));
-sample(edgeCount, (i) => edge[i], edgeMax);
-for (let i = picked.length - 1; i > 0; i--) {
-  const j = Math.floor(random() * (i + 1));
-  [picked[i], picked[j]] = [picked[j], picked[i]];
+const shuffle = (list) => {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+};
+const first = [];
+const rest = [];
+for (const tip of [config.tips.left, config.tips.right]) {
+  // Density x boost, capped at 1: the tone is the same as elsewhere, the fingers just get more of it.
+  sample(first, Math.round(priority.count / 2), (i) => Math.min(1, Math.pow(tone[i], config.power) * priority.boost), 1, { center: tip, radius: priority.radius });
 }
+sample(rest, config.points - priority.count - edgeCount, (i) => Math.pow(tone[i], config.power), Math.pow(toneMax, config.power));
+sample(rest, edgeCount, (i) => edge[i], edgeMax);
+shuffle(first);
+shuffle(rest);
+const picked = [...first, ...rest];
 
 // 3. Normalised frame: origin = middle of the two index tips, unit = source width, y down.
 const cx = (config.tips.left[0] + config.tips.right[0]) / 2;

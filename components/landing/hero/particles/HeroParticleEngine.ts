@@ -1,16 +1,16 @@
-import { ADAPTIVE, HANDS_EMPHASIS, HANDS_GROWTH, LIVE_FRAME_STEP, PLANES, PULSE, ROBOT_PORT, ROBOT_TRAIL, resolveTier, type Tier } from "./hero-config";
+import { ADAPTIVE, LIVE_WORK_BUDGET_MS, resolveTier, type Tier } from "./hero-config";
 import { decodeHands, type BakedHands } from "./hands-data";
 import { HeroScene } from "./HeroScene";
+import { handsShareOf, paintContact, paintPoints, paintRobots, type PaintStats, type Palette } from "./hero-paint";
 import { computeLayout, type Rect } from "./layout";
-import { SEQUENCE_CAP_MS, SEQUENCE_END_MS, birthOpacity, contactOpacity, phaseAt, type PhaseState } from "./timeline";
-import { easeInOutSine } from "./trajectory";
-import type { RobotPose } from "./robots";
+import { SEQUENCE_CAP_MS, SEQUENCE_END_MS, birthOpacity, contactOpacity, phaseAt } from "./timeline";
 
 /**
  * Canvas renderer and loop of the hero particles (docs/design-system.md §2.11.4 ter G, H): one 2D
  * canvas, its own `requestAnimationFrame` loop (Anime.js stays reserved to the DOM). The sequence
- * is played once; the living end state (micro-movement, robots, pulse) is the only loop, drawn at
- * 30 frames/s, and the loop really stops off screen, in a hidden tab and on the user's pause.
+ * is played once; then the living act (the second animation: the two index fingers that reach
+ * towards each other, §2.11.4 ter S) is the only loop, drawn at 60 frames/s on a computer, and it
+ * really stops off screen, in a hidden tab and on the user's pause.
  * Colours are read from the CSS tokens of the canvas.
  */
 
@@ -37,9 +37,14 @@ export class HeroParticleEngine {
   private disposed = false;
   private raf = 0;
   private lastTick = 0;
-  private tick = 0;
   private sequenceMs = 0;
   private liveSec = 0;
+  /** Seconds since the living act began (the second animation); frozen with the loop. */
+  private actSec = 0;
+  private liveFrames = 0;
+  private liveStep = 1;
+  private readonly liveWork: number[] = [];
+  private lastGap = -1000;
   private drawCount = 0;
   private drawnPhase = "";
   private lastDataset = -1000;
@@ -48,8 +53,8 @@ export class HeroParticleEngine {
   private readonly costs: number[] = [];
   private readonly work: number[] = [];
   private frames = 0;
-  private colors = { ink: "currentColor", canvas: "Canvas", accent: "currentColor" };
-  private readonly ghost: RobotPose = { x: 0, y: 0, z: 0, alpha: 0 };
+  private colors: Palette = { ink: "currentColor", canvas: "Canvas", accent: "currentColor" };
+  private readonly stats: PaintStats = { robots: 0, cobalt: 0 };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -76,6 +81,7 @@ export class HeroParticleEngine {
     this.canvas.width = Math.max(1, Math.round(geometry.width * this.dpr));
     this.canvas.height = Math.max(1, Math.round(geometry.height * this.dpr));
     if (!this.scene || this.scene.tier.name !== tier.name) this.buildScene(tier);
+    this.liveStep = Math.max(this.liveStep, tier.liveFrameStep);
     this.scene!.setLayout(computeLayout(geometry.width, geometry.height, geometry.zone, tier));
     this.afterChange();
   }
@@ -111,6 +117,8 @@ export class HeroParticleEngine {
     if (stopped) {
       this.state = "stopped";
       this.jumpToEnd();
+      // « Reprendre » restarts the cycle at its beginning (S.9).
+      this.actSec = 0;
     } else if (this.state === "stopped") {
       this.state = "playing";
     }
@@ -121,6 +129,7 @@ export class HeroParticleEngine {
     if (reduced) {
       this.state = "reduced";
       this.jumpToEnd();
+      this.actSec = 0;
     } else if (this.state === "reduced") {
       this.state = "playing";
     }
@@ -133,6 +142,10 @@ export class HeroParticleEngine {
     this.state = "playing";
     this.sequenceMs = 0;
     this.liveSec = 0;
+    this.actSec = 0;
+    this.liveFrames = 0;
+    this.liveWork.length = 0;
+    this.scene?.resetLive();
     this.capPublished = false;
     this.drawnPhase = "cloud";
     this.afterChange();
@@ -185,14 +198,16 @@ export class HeroParticleEngine {
     this.liveSec += dt / 1000;
     const hold = this.scene!.holdMs;
     this.sequenceMs = Math.min(SEQUENCE_CAP_MS, hold, this.sequenceMs + dt);
-    this.tick++;
     const living = this.sequenceMs >= SEQUENCE_END_MS;
-    if (!living || this.tick % LIVE_FRAME_STEP === 0) {
+    if (living) this.actSec += dt / 1000;
+    // The living act is drawn every frame (60/s) on a computer, every other one on a phone or when the work exceeds its budget (S.10).
+    if (!living || ++this.liveFrames % this.liveStep === 0) {
       this.draw(false);
       const cost = performance.now() - started;
       this.work.push(cost);
       if (this.work.length > 120) this.work.shift();
-      this.adapt(cost, living);
+      if (living) this.watchBudget(cost);
+      else this.adapt(cost);
     }
     // The clock stops at the end of the sequence: its last value is published at once.
     const capped = this.sequenceMs >= SEQUENCE_CAP_MS;
@@ -202,8 +217,8 @@ export class HeroParticleEngine {
   };
 
   /** Adaptive density: mean cost over 30 frames above the budget lowers the points by 25 % (floor 40 %). */
-  private adapt(cost: number, living: boolean): void {
-    if (living || !this.scene) return;
+  private adapt(cost: number): void {
+    if (!this.scene) return;
     this.frames++;
     if (this.frames <= 10) return;
     this.costs.push(cost);
@@ -214,6 +229,13 @@ export class HeroParticleEngine {
     if (mean > ADAPTIVE.budgetMs && this.drawCount > floor) this.drawCount = Math.max(floor, Math.round(this.drawCount * ADAPTIVE.step));
   }
 
+  /** Living act: if the work of the last 120 images exceeds its budget at the 75th percentile, fall back to 30 images/s. */
+  private watchBudget(cost: number): void {
+    this.liveWork.push(cost);
+    if (this.liveWork.length > 120) this.liveWork.shift();
+    if (this.liveStep === 1 && this.liveWork.length >= 120 && percentile(this.liveWork, 0.75) > LIVE_WORK_BUDGET_MS) this.liveStep = 2;
+  }
+
   private draw(still: boolean): void {
     const ctx = this.ctx;
     const scene = this.scene;
@@ -222,93 +244,21 @@ export class HeroParticleEngine {
     if (still && !scene.ready) return;
     const sequenceMs = still ? SEQUENCE_CAP_MS : this.sequenceMs;
     const state = phaseAt(sequenceMs);
-    const micro = !still;
-    scene.compute(state, sequenceMs, this.liveSec, micro, this.drawCount);
+    // The second animation runs from the end of the opening; a still image shows the rest position.
+    const moving = !still && sequenceMs >= SEQUENCE_END_MS;
+    scene.updateLive(this.actSec, moving);
+    scene.compute(state, sequenceMs, this.liveSec, !still, this.drawCount);
     scene.computeRobots(state, sequenceMs, this.liveSec, still);
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, geometry.width, geometry.height);
-    // The final image is drawn a little stronger and larger than the ball: the hands carry the message.
-    const handsShare = still ? 1 : state.phase === "hands" ? 1 : state.phase === "to-hands" ? state.progress : 0;
-    const birth = (still ? 1 : birthOpacity(sequenceMs)) * (1 + handsShare * HANDS_EMPHASIS);
-    const grow = 1 + handsShare * HANDS_GROWTH * (scene.tier.name === "phone" ? 0.4 : 1);
-    ctx.fillStyle = this.colors.ink;
-    for (let b = 0; b < PLANES.length; b++) {
-      const plane = PLANES[b]!;
-      const list = scene.buckets[b]!;
-      const size = plane.size * grow;
-      const half = size / 2;
-      ctx.globalAlpha = Math.min(1, plane.alpha * birth);
-      ctx.beginPath();
-      for (let k = 0, n = scene.bucketSize[b]!; k < n; k++) {
-        const i = list[k]!;
-        ctx.rect(scene.x[i]! - half, scene.y[i]! - half, size, size);
-      }
-      ctx.fill();
-    }
-    this.drawRobots(ctx, scene, state, still);
-    this.drawContact(ctx, scene, sequenceMs, still);
+    const share = handsShareOf(state, still);
+    this.stats.cobalt = 0;
+    paintPoints(ctx, scene, this.colors, share, still ? 1 : birthOpacity(sequenceMs));
+    paintRobots(ctx, scene, this.colors, state, share, still, this.stats);
+    paintContact(ctx, scene, this.colors, still ? 1 : contactOpacity(sequenceMs), still, this.stats);
     ctx.globalAlpha = 1;
     this.drawnPhase = state.phase;
-  }
-
-  private drawRobots(ctx: CanvasRenderingContext2D, scene: HeroScene, state: PhaseState, still: boolean): void {
-    const size = scene.tier.robotSize;
-    const port = ROBOT_PORT;
-    const trails = !still && state.phase === "hands";
-    for (let i = 0; i < scene.robots.length; i++) {
-      const pose = scene.robots[i]!;
-      if (pose.alpha <= 0.01) continue;
-      const depth = pose.z < -0.12 ? 0.55 : 1;
-      if (trails) {
-        ctx.fillStyle = this.colors.ink;
-        for (const { gap, alpha } of ROBOT_TRAIL) {
-          scene.ghostPose(i, this.liveSec, gap, this.ghost);
-          ctx.globalAlpha = alpha * this.ghost.alpha;
-          ctx.fillRect(this.ghost.x - 1.5, this.ghost.y - 1.5, 3, 3);
-        }
-      }
-      ctx.globalAlpha = pose.alpha * depth;
-      ctx.fillStyle = this.colors.ink;
-      ctx.fillRect(pose.x - size / 2, pose.y - size / 2, size, size);
-      ctx.fillStyle = this.colors.canvas;
-      ctx.fillRect(pose.x - port / 2, pose.y - port / 2, port, port);
-    }
-  }
-
-  /** The cobalt contact point between the index fingers, then (living only) the ring and the bit. */
-  private drawContact(ctx: CanvasRenderingContext2D, scene: HeroScene, sequenceMs: number, still: boolean): void {
-    const layout = scene.currentLayout;
-    const hands = scene.handsData;
-    if (!layout || !hands) return;
-    const opacity = still ? 1 : contactOpacity(sequenceMs);
-    if (opacity <= 0) return;
-    const size = scene.tier.contactSize;
-    ctx.fillStyle = this.colors.accent;
-    ctx.globalAlpha = opacity;
-    ctx.fillRect(layout.contact.x - size / 2, layout.contact.y - size / 2, size, size);
-    if (still || this.liveSec < SEQUENCE_END_MS / 1000 + 0.4) return;
-    const t = (this.liveSec - (SEQUENCE_END_MS / 1000 + 0.4)) % PULSE.period;
-    if (t < PULSE.ring) {
-      const q = t / PULSE.ring;
-      ctx.globalAlpha = 0.6 * (1 - q);
-      ctx.strokeStyle = this.colors.accent;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(layout.contact.x, layout.contact.y, PULSE.ringFrom + (PULSE.ringTo - PULSE.ringFrom) * q, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    const bit = (t - PULSE.bitDelay) / PULSE.bitDuration;
-    if (bit >= 0 && bit <= 1) {
-      const place = layout.hands;
-      const a = hands.tips.left;
-      const b = hands.tips.right;
-      const e = easeInOutSine(bit);
-      const x = place.cx + (a[0] + (b[0] - a[0]) * e) * place.sx;
-      const y = place.cy + (a[1] + (b[1] - a[1]) * e) * place.sy;
-      ctx.globalAlpha = 1;
-      ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
-    }
   }
 
   private publishState(state: EngineState): void {
@@ -322,6 +272,21 @@ export class HeroParticleEngine {
     if (!force && now - this.lastDataset < 100) return;
     this.lastDataset = now;
     dataset.sequenceMs = String(Math.round(this.sequenceMs));
+    // The second animation (S.2): the act, the step and the number of the cycle, the gap between the tips (4 times a second).
+    const live = this.scene?.live;
+    // A still image (pause, reduced motion) is the image of rest of the living act.
+    dataset.act = this.sequenceMs >= SEQUENCE_END_MS || this.state === "reduced" || this.state === "stopped" ? "live" : "intro";
+    dataset.liveStep = live && dataset.act === "live" ? live.step : "rest";
+    dataset.liveCycle = String(live && dataset.act === "live" ? live.cycle : 0);
+    dataset.robots = String(this.stats.robots);
+    dataset.cobalt = String(this.stats.cobalt);
+    dataset.liveFrameStep = String(this.liveStep);
+    if (live && live.g0 > 0 && (force || now - this.lastGap >= 250)) {
+      this.lastGap = now;
+      dataset.tipGap = live.gap.toFixed(1);
+      dataset.tipGapRest = live.g0.toFixed(1);
+      dataset.tipGapNear = live.g1.toFixed(1);
+    }
     dataset.points = String(this.scene && (this.state === "playing" || this.state === "paused" || this.drawnPhase) ? this.drawCount : 0);
     if (this.intervals.length >= 20) {
       dataset.frameP95 = percentile(this.intervals, 0.95).toFixed(1);

@@ -30,18 +30,28 @@
 }
 
 /*
- * The shape zone: the free space between the buttons and the terminal (§2.11.4 ter F). The shapes
- * overflow it up and down, behind the text veils; a 48 px white fade keeps the points away from the
- * buttons. The fade sits behind the content (z-index -1 in the content stacking context).
+ * The shape zone: the free space between the buttons and the terminal (§2.11.4 ter F). The solids
+ * fit in it (S.8); a 48 px white fade keeps the points away from the buttons. The fade sits behind the content (z-index -1 in the content stacking context).
  */
 .zone {
   position: relative;
   height: clamp(14rem, 34vh, 20rem);
 }
 
+/*
+ * From 1024 px the shape fits between the buttons and the bottom of the window, whatever its height
+ * (§2.11.4 ter S.8): 100svh minus the title, the subtitle, the buttons and the 1.5 rem below the
+ * shape. The terminal is below the fold on purpose.
+ */
 @media (min-width: 64rem) {
   .zone {
-    height: clamp(17rem, 40vh, 28rem);
+    height: clamp(15rem, calc(100svh - 31rem), 22rem);
+  }
+}
+
+@media (min-width: 90rem) {
+  .zone {
+    height: clamp(16rem, calc(100svh - 33rem), 26rem);
   }
 }
 
