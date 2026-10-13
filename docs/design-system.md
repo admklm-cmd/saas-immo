@@ -3319,6 +3319,180 @@ Les trois références sont **blanc sur noir** ; l'utilisateur a validé l'image
 
 Le palier de repli de 26 000 à 20 000 points n'a pas été nécessaire à 1440 (26 000 tiennent le budget de 17 ms ; le JavaScript est à la limite des 4 ms et le repli automatique « peau × 0,5 » s'enclenche sous charge, par exemple pendant que la suite de tests tourne). Le champ de la page lit les positions des titres par `IntersectionObserver` et la couverture du hero par une sentinelle (`data-hero-end`) : aucune lecture de mise en page pendant le défilement.
 
+##### U. Retours utilisateur du 14/10/2026 : transitions continues, boule tenue, points ronds, sous-titre en mono, mobile
+
+> **Statut : spécifié le 14/10/2026 (web-designer), à implémenter par `frontend-ux`.** L'utilisateur est globalement très content (« tout est clean », « les pulsations derrière c'est top »). **Inchangés** : l'acte 2 (les index qui veulent se toucher, S.3 à S.6 sauf U.6), le reste du hero, le champ de particules de la page et ses pulsations (T.6), le terminal (son texte, son rythme), les voiles, la pause et le rejeu, `hands.baked.json`. **Amende** : T.2 (chorégraphie par phases → mouvement continu, U.4), T.3 (sphère sur téléphone, U.7), T.5 (étiquette, `>` et curseur retirés), S.6 (marqueurs sur les rails, U.6), T.9 (U.7). Retours à la lettre : (1) « enlever le petit carré noir et le petit signe au début » ; (2) l'étiquette « 5 agents · contrôle humain » : « tu peux le mettre sur un démo » ; (3) « tu figes l'image et ce n'est pas beau, ne fige pas l'image, essaye de tout adapter d'un coup ou de faire quand même bouger le reste pendant que tu transitionnes, pas image → stop → autre image » ; (4) la main avec un rond est « moche », il voulait « une boule tenue par une main » comme `ref-3.jpg` ; (5) les petits carrés qui avancent le long de la main : « plus petites, rondes, fines, discrètes, en bleu et en blanc, ajoutes-en plus » (on pourrait même les enlever) ; (6) sous-titre « dans la même typographie que le terminal » ; (7) adapter pour mobile.
+
+**U.1 Étiquette « 5 agents · contrôle humain » : elle devient l'en-tête de la démonstration.** *Interprétation retenue* (à confirmer, voir « À transmettre ») : « le mettre sur une démo » = la rattacher à la zone de démonstration, c'est-à-dire **le terminal « exemple fictif, simulation »**. Elle **quitte le dessus du titre** et se pose **juste au-dessus du terminal**, centrée, `mb` 12 px, **même composant et même style** (`data-testid="hero-tag"`, `.label-mono`, bordure 1 px `ink`, fond `surface`, rayon plein, padding 5 × 10 px, texte inchangé « 5 agents · contrôle humain »). Elle n'a aucun lien avec la ligne `# exemple fictif — simulation` du terminal, qui **reste** (garde-fou « simulation »). Conséquences de mise en page : le titre remonte de la hauteur de l'étiquette (≈ 44 px à 1440) ; **la zone de forme reçoit la même marge en plus** pour que le centre des mains reste à **± 8 px** de la capture du 13/10 (T.5 : « l'acte 2 ne change pas de position ») ; le terminal descend d'environ 36 px (il est déjà sous le pli : acceptable). Mobile : même place, au-dessus du terminal, sous le pli.
+
+**U.2 Titre : plus de `>` ni de bloc.** Supprimer : le pseudo-élément `.first::before` (`>` suspendu), l'élément `data-testid="hero-cursor"` et ses classes (`.cursor`, animation de 4 clignotements). **La police Inconsolata 700 reste**, ainsi que tailles, interligne, 2 lignes, mot « main » souligné en cobalt (trait sous 4 lettres). Le titre reste centré : la ligne 2 perd 0,5 em + 0,12 em de largeur, sans autre conséquence. « Rejouer » ne réarme plus aucun curseur.
+
+**U.3 Sous-titre dans la typographie du journal du terminal.**
+
+| Propriété | ≥ 40 rem de colonne (1440, 1024, 768) | < 40 rem (390) |
+|---|---|---|
+| Famille | `var(--font-mono)` (Geist Mono, **comme `.terminal`**), `font-variant-ligatures: none`, `letter-spacing: 0` | idem |
+| Taille / interligne | **14 px / 24 px** (le terminal : 12 / 20 ; le sous-titre est le texte à lire, il est un cran au-dessus, même police, même graisse) | **13 px / 21 px** |
+| Graisse | **400** (comme le contenu des lignes du terminal) | 400 |
+| Couleur | `ink-muted` (#5a5a60) : même couleur que le contenu des lignes ; **6,3:1** sous `.particle-veil` | idem |
+| Alignement et largeur | centré ; **chaque phrase sur sa propre ligne** (bloc) ; `max-width` : 76 ch ; `text-wrap: pretty` | centré ; phrases en blocs, retour à la ligne naturel (≈ 43 car. par ligne : 2 + 2 lignes) |
+| Casse, ponctuation | texte exact **inchangé** : « Cinq agents IA préparent chaque étape jusqu'à une prochaine action claire. » / « Le premier message et le mandat restent validés par votre équipe. » | idem |
+
+`LANDING_TEXTS.hero.subtitleLines` (2 phrases) est ajouté à côté de `subtitle` (test : `subtitle === subtitleLines.join(" ")`, comme les titres). Le nom accessible ne change pas (un seul paragraphe, deux `span` en bloc). Le voile `.particle-veil` (90 %) reste autour. À 1440, la ligne 1 mesure 75 caractères × 8,4 px = **630 px** (tient dans 928 px) ; la ligne 2 : 554 px.
+
+**U.4 Mouvement continu : fin de « image → stop → image ».**
+
+**Constat sur le code (cause, pas opinion).** Quatre points figent l'image : (a) `SphereField.frame` **borne le temps à 3 800 ms** : la sphère s'arrête de tourner à l'instant où elle commence à se transformer ; (b) `ballYawAt` **borne l'angle** à la phase `hand` : la boule est immobile avant et après ; (c) `easeInOutCubic` a une **vitesse nulle** au départ et à l'arrivée, et le retard par point (`WAVE_SPREAD` 0,4) laisse **40 % des points arrêtés** au début de chaque transition (et immobiles une fois arrivés) ; (d) la respiration des mains de l'acte 2 **repart de zéro** à 10,6 s (rampe de 1,2 s).
+
+**Principe retenu : l'image n'a plus de phases, seulement un temps `T`.** Chaque point est une **fonction continue de `T`** : sa position est `bezier(A(T), C(T), B(T), e(T))` où **`A(T)` est la forme de départ évaluée à l'instant courant** (la sphère *continue de tourner* tant que le point est dessus, la boule continue de tourner), **`B(T)` la forme d'arrivée évaluée à l'instant courant** (la main respire déjà), et **`C(T)` le point de contrôle recalculé à chaque image** (`controlPoint(A(T), B(T), κ)`, quelques multiplications). Plus aucun branchement `if (phase === …)` dans `HeroScene.compute` : `data-phase` devient un **libellé dérivé** (voir plus bas).
+
+**Règles de continuité (toutes mesurables).**
+
+| Règle | Valeur |
+|---|---|
+| **Rotation unique et jamais nulle** | un seul angle global `Φ(T)` fait tourner la sphère **et** la boule : `Φ(T) = 0,22·T` jusqu'à 2 s ; de 2 à 5 s la vitesse monte en douceur de 0,22 à **0,45 rad/s** (rampe `smoothstep` : `Φ(T) = 0,22·T + 0,23·3·(u³ − u⁴/2)` avec `u = clamp((T − 2)/3, 0, 1)`, puis `+ 0,23·(T − 5)` après 5 s, `T` en s) ; **0,45 rad/s ensuite**, sans palier (la boule tient à 0,45, plus de 0,7 ni de gel). La rotation différentielle de la sphère (`1 + 0,30·cos(2·lat)`) s'estompe linéairement de 1 à 0 entre 3 s et 6 s (la boule tourne comme un solide) |
+| **Souffle de la surface** | conservé pendant toute la présence de la sphère (3 sinus, T.2) ; son amplitude (3,5 %) décroît à 0 sur l'arrivée à la boule |
+| **Micro-mouvement permanent** | **tous les points, de `T = 0` à la fin et dans l'acte 2** : dérive `drift` d'amplitude par plan **1,2 / 0,8 / 0,4 px** (sphère, boule, transitions) qui **monte sans cassure** à **1,8 / 1,2 / 0,6 px** (valeurs de l'acte 2) entre 6 et 10,6 s ; périodes 4 à 9 s, phases aléatoires (déjà en place). Aucune forme « tenue » n'est jamais immobile ; seuls pause et mouvement réduit figent |
+| **Vitesses non nulles** | `e(q) = 0,3·q + 0,7·easeInOutCubic(q)` : **dérivée 0,3 au départ et à l'arrivée** (au lieu de 0), maximum 2,35 × la vitesse moyenne ; **aucun point n'attend immobile** : tant que le retard n'est pas écoulé, le point est **sur `A(T)` et se déplace avec lui** (il tourne avec la sphère) ; à l'arrivée il **suit `B(T)`** (il tourne avec la boule, il respire avec la main) |
+| **Chevauchement des vagues** | voir le tableau ci-dessous (en ms) |
+| **Raccord avec l'acte 2** | la respiration des mains (`BREATH`, `applyHandsMotion`) est appliquée **dès l'arrivée de chaque main** (rampe 1,2 s à partir de `T = 7 000 ms`, au lieu de 10 600) : à 10 600 ms la valeur de `s(0) = 0` (pas d'approche) et la **phase** de la respiration sont continues ; le cycle d'approche (acte 2) démarre à 10 600 ms **inchangé** |
+
+**Chevauchements (ms de la séquence ; `D` = durée de la vague, `c` = part d'attente : retard max = `c·D`, course d'un point = `D·(1 − c)` au plus ; chaque point arrive à `début + retard + course ≤ début + D`).**
+
+| Mouvement | Début | Fin | `D` | `c` | Ce qui bouge pendant ce temps |
+|---|---|---|---|---|---|
+| Naissance de la sphère | 0 | 800 | : | : | inchangée (T.2) ; la rotation a déjà commencé |
+| **Vague 1 : sphère → main tenant la boule** (« maillée » : si la boule n'est pas encore livrée, voir U.5(c)) | **3 000** | 6 800 | 3 800 | 0,45 | la **sphère tourne toujours** (accélère) ; les premiers points partent à 3,0 s, les derniers à 4,7 s ; la moitié de la sphère qui n'est pas partie **reste une sphère qui tourne** |
+| Boule : arrivée de ses identités | 3 000 | **6 000** | 3 000 (durée propre aux identités de la boule) | 0,45 | la boule se forme **en tournant** ; lisible à plus de 60 % à partir de ≈ 5,2 s |
+| **Vague 2 : boule → main droite** | **6 000** | 10 600 | 4 600 | 0,45 | commence **avant** la fin de la vague 1 (les derniers points de la main gauche arrivent encore jusqu'à 6 800) : **800 ms de chevauchement** ; la boule **tourne toujours** pendant qu'elle se vide |
+| Main gauche : avance vers le centre | 6 800 | 10 000 | 3 200 | : | `easeInOutSine`, vitesse non nulle (la main respire déjà) |
+| Respiration des mains (acte 2) | 7 000 | : | : | : | rampe 1,2 s, sans cassure à 10 600 |
+| Marqueurs sur les rails (U.6) | 8 400 | : | : | : | naissent en 300 ms sur leurs rails |
+| Point cobalt de contact | 10 600 | 10 900 | : | : | inchangé |
+
+**Libellés `data-phase` (informatifs, dérivés de `T`, mêmes noms qu'avant ; les tests lisent aussi `data-phases`, la liste des vagues actives).** `sphere` jusqu'à 3 000 ; `to-hand` de 3 000 à 5 400 ; `hand` de 5 400 à 7 000 (la boule est l'objet principal) ; `to-hands` de 7 000 à 10 600 ; `hands` ensuite (acte 2). **Ordre de première apparition inchangé.** `SCHEDULE` ne sert plus qu'à ces libellés et aux attributs.
+
+**Coût et repli (honnête).** Un point en vol évalue `A(T)` **et** `B(T)` : la sphère à 26 000 points coûte ≈ 1,2 ms, la boule et la main ≈ 0,3 ms de plus ; **estimation** : +0,5 ms par image pendant les vagues ; le budget T.4 (≤ 4 ms JavaScript, p95 ≤ 17 ms) **s'applique toujours**. Repli, dans l'ordre, si le budget est dépassé sur 30 images : (1) le souffle de la surface n'est plus recalculé pour les points en vol (figé à son dernier état), (2) la peau × 0,5 puis 0, (3) l'ancienne règle (identités × 0,75). **Jamais** de retour à un point immobile. Les robots et marqueurs suivent la même règle (positions évaluées en continu, aucun saut).
+
+**Mouvement réduit, sans JavaScript, pause : inchangés** (image finale fixe ; poster ; pause = image finale de repos). Le **rejeu** repart de `T = 0`.
+
+**U.5 « Une boule tenue par une main ».**
+
+**(a) Meilleure composition possible avec nos données actuelles, et sa limite.** `hands.baked.json` ne contient que **deux mains tendues, index pointés** : aucun creux de paume, aucun pouce opposé, aucun doigt qui se referme. Une main en coupe **ne peut pas être fabriquée** à partir de ces points : le rendu actuel (boule posée sur l'index d'une main reculée) se lit comme « un doigt avec un rond », ce que l'utilisateur juge moche, et **aucun réglage de position ne le corrigera** (T.11 a déjà essayé les variantes A et B). La meilleure composition honnête **sans nouvelle image** est donc **de ne pas montrer une main qui tient** : **la sphère se transforme directement en les deux mains** (U.5(c)). Une vraie « boule tenue » demande une **illustration nouvelle** (b).
+
+**(b) Prompt exact à donner à Gemini (illustration ORIGINALE ; ne pas fournir `ref-3.jpg`, ne pas nommer l'œuvre ni l'artiste).** À produire avant l'implémentation (voir `docs/outils-ia.md`). Fichier : `public/images/hero/held-hand.png`.
+
+```
+Draw ONE single human LEFT hand, open and cupped, palm facing up, gently holding a
+smooth sphere, as a clean, original tonal pencil-and-wash drawing in the spirit of an
+anatomical study. The wrist and forearm enter from the bottom-left corner of the image
+and rise toward the centre; the fingers curl upward and slightly inward, wrapping the
+lower and the side parts of the sphere; the thumb rests against the right side of the
+sphere. The sphere is NOT resting on a fingertip: it sits in the hollow of the palm and
+is enclosed by the fingers, as if the hand were offering it. Natural, relaxed, elegant,
+anatomically accurate hand.
+
+The sphere: a perfectly smooth, matte, very light grey ball (luminance about 93 percent,
+close to #EDEDED), NO outline, NO highlight, NO glow, NO texture, NO dots. Only a soft
+contact shadow in the palm beneath it, and the shadows of the fingers falling on it.
+Its diameter is about 22 percent of the image width, its centre at exactly 40 percent of
+the width and 45 percent of the height. The fingers that pass in front of the sphere
+must stay clearly darker than the sphere.
+
+Composition: the hand and the sphere together occupy about 40 percent of the image width
+and 50 percent of its height. The forearm fades gently to pure white toward the bottom
+and the left border (no hard cut).
+
+Technical requirements, all mandatory:
+- Output: 3200 x 1800 pixels, 16:9, PNG, no transparency.
+- Pure white background (#FFFFFF), perfectly uniform.
+- Grayscale only (black to white): soft continuous shading with real tonal values
+  (a luminance map), darker in the folds and under the fingers, light on top of the hand.
+  NO stippling, NO halftone dots, NO hatching lines, NO outlines drawn around shapes,
+  NO color.
+- No second hand, no body, no face, no jewellery, no nail polish, no sleeve, no object
+  other than the sphere.
+- No landscape, no sky, no frame, no border, no vignette, no paper texture, no text,
+  no signature, no watermark, no light rays, no gradient background.
+```
+
+*Pourquoi une sphère gris très clair et non blanche* : elle reste visible pour l'IA (sinon « une main qui tient du vide »), et **tombe sous le seuil du script de cuisson** (`floor` 0,06 : un gris 237/255 donne une teinte de 0,02 : **aucun point ne naît à l'intérieur de la boule**) ; la boule est ensuite **dessinée par le moteur** (sphère de points qui tourne, continuité avec la grande sphère). Les doigts qui passent devant sont sombres : **ils donnent bien des points devant la boule**. Si le résultat n'est pas exploitable (fond non blanc, texte, sphère cerclée, deux mains, doigts qui écrasent la sphère), on le redemande ; **pas de repli sur `ref-3.jpg`**.
+
+**Insertion dans la séquence et cuisson (pour `frontend-ux`).** Nouvelle forme **`held`** entre la grande sphère et les deux mains, avec **ses propres données pré-cuites** `components/landing/hero/particles/held.baked.json` :
+1. `scripts/bake-hero-hands.mjs` reçoit deux options : `--config <fichier>` et `--out <nom>` (par défaut : `hero-hands.config.json` et `hands`). Nouveau `scripts/hero-held.config.json` (squelette ; coordonnées en **pixels de la source 3200 × 1800**) : `source` `public/images/hero/held-hand.png` ; `keep` : tout le cadre ; `erase` : `[]` (la boule est déjà vide) ; `blur` **3,4** (la source est 1,9 × plus grande que celle des mains) ; `power` 1,25 ; `floor` 0,06 ; `background` 0,95 ; `points` **9 000** (désormais le nombre de points de la **main** seule) ; `edgeShare` 0,16 ; `priority` : disque de rayon 170 px autour de chaque bout de doigt visible (3 à 4 disques), `boost` 1,8 ; **`anchor`** (remplace `tips`) : le centre de la boule en pixels ; **`ball`** : `{"center": [1280, 810], "radius": 352}` (à **mesurer sur l'image reçue**, ces valeurs sont celles du prompt) ; `rails` : 2 polylignes le long du bras (pour les marqueurs, U.6).
+2. Le fichier cuit a le **même format** que `hands.baked.json` (version, count, range, aspect, points base64 `u16 x, u16 y, u8 tone`, ordre mélangé donc tout préfixe est un échantillon valable, `rails`) ; `tips` et `gap` sont remplacés par `ball: { cx, cy, r }` en unités normalisées (origine = centre de la boule, unité = largeur de la source, y vers le bas). **Aucun autre champ ne change** (`hands.baked.json` et le poster ne sont **pas** régénérés).
+3. **Échelle** : le moteur **remet la main à l'échelle** pour que `ball.r` vaille `BALL_RADIUS_SHARE × largeur des mains` (0,07 ; la boule de la source mesure 0,11 de la largeur) ; centre de la boule en `BALL_AT` (valeur de départ **x −0,14, y −0,02** : à régler sur capture ; la main en coupe pend sous la boule, le poignet sort en bas à gauche ; **plancher Ø 72 px sur téléphone, voir U.7**).
+4. **Appariement** : les identités se partagent comme aujourd'hui (moitié « boule » = identités tirées sur la sphère de la boule, 65 % surface / 35 % volume ; moitié « main » = les points de `held.baked.json`) ; main tenue → main gauche de l'acte 2 : **appariement par rang de Hilbert** (`pairing.ts`) dans la moitié gauche ; boule → main droite : inchangé (`hold-pairing.ts`). `HOLD_SHIFT` (la main qui recule) et `BALL_*` de la variante B sont **supprimés** quand `held` est actif.
+5. **Séquence** avec `held` : celle de U.4 (vague 1 vers la main en coupe et la boule ; vague 2 : boule → main droite **et** main en coupe → main gauche tendue, qui avance de 6 800 à 10 000 ms). Drapeau `HELD_ENABLED` dans `hero-config.ts` : `true` seulement si `held.baked.json` existe (import dynamique, comme `hands.baked.json`).
+6. **Honnêteté de cadrage** : une main en coupe qui devient une main tendue est un **changement de forme** ; l'appariement par rang le rend lisible (ça coule), pas anatomique.
+
+**(c) Ce qu'on fait par défaut tant que l'image n'existe pas** (`HELD_ENABLED = false`, état livré par ce lot) : **suppression de l'étape « main qui tient la boule »**. La séquence devient : grande sphère qui tourne (0 à 3 s) → **une seule vague** (début 3 000 ms, fin 9 600 ms, `D` 6 600, `c` 0,5) où la sphère, **toujours en rotation**, se vide dans la main gauche **puis** la main droite (retard par point = rang de x : la gauche se dessine en premier, la droite à partir de ≈ 5 s) → respiration des mains dès 7 000 ms → acte 2 à 10 600 ms. Plus aucune boule tenue, plus de `BALL_*`, plus de peau qui converge vers une boule (la peau s'éteint pendant le vol, sur ses 45 % derniers, comme T.3). `data-phase` : `sphere` → `to-hands` (à 3 000) → `hands` (à 10 600) ; **`hand` et `to-hand` n'apparaissent pas** : les critères 23 et 27 sont suspendus tant que `HELD_ENABLED` est faux (U.9).
+
+**U.6 Marqueurs qui avancent le long des mains : plus petits, ronds, fins, plus nombreux.**
+
+**Décision : on les garde** (l'utilisateur dit qu'on pourrait les enlever tant le mouvement est bon ; ils sont **fins et discrets** et se désactivent d'un seul réglage : `RAIL_DOTS = 0`), **en petites perles rondes, bleues et blanches, plus nombreuses**. Ne concerne que les **messagers** (2) et les **circulants** sur les rails des mains (acte 2) ; les robots carrés de l'acte 1 (orbites de la sphère) et les orbitaux autour du point de contact **ne changent pas**.
+
+| Réglage | Ordinateur (1440) | Tablette (1024) | Téléphone (390) |
+|---|---|---|---|
+| Nombre de perles en circulation (messagers compris) | **24** (3 par rail × 8 rails) | **16** | **10** |
+| dont **cobalt** | **8** (1 sur 3) | **5** | **3** |
+| dont **blanches** | 16 | 11 | 7 |
+| Diamètre (px CSS) | **3,0** | 2,6 | 2,4 |
+| Vitesse (px/s, tirée par perle, graine) | **90 à 150**, **constante** (plus d'accélération-décélération) | 80 à 130 | 60 à 100 |
+| Traîne | **5** fantômes ronds, espacés de **8 px**, diamètre 2,4 → 1,2 px, opacité 0,45 → 0,08 | 4 fantômes, 7 px | 3 fantômes, 6 px |
+| Fondu aux deux bouts du rail | 300 ms (inchangé) | idem | idem |
+
+**Lecture de « blanc » sur fond blanc (décision).** Une perle blanche est un **cœur blanc cerclé** : disque `canvas` (#ffffff) opaque, **cerclé d'un trait de 0,8 px `ink` à 45 % d'opacité**. Sur le fond blanc elle se lit comme une **bulle fine** (anneau) ; **sur les points sombres de la main elle se lit comme un éclat clair** (le disque blanc éteint les points sous elle). Pas de gris perle (illisible sur blanc), pas de lueur. Une perle **cobalt** est un disque plein `accent` (#2457ff) à 0,9. Les fantômes sont **de la couleur de leur perle** à opacité décroissante (le fantôme d'une perle blanche est un anneau pâle). **Chaque perle garde sa couleur** pendant tout son trajet.
+
+**Règle cobalt (amendée explicitement pour le hero, acte 2 seulement).** Les perles cobalt sont un **signal** (« une information circule le long de la main », comme les impulsions bleues du champ). **Plafond de marques cobalt simultanées : 12 sur ordinateur, 8 sur tablette, 6 sur téléphone** (perles + point de contact + anneau + « bit »), contre 3 aujourd'hui ; **aucun cobalt avant 8 400 ms** (inchangé pour l'acte 1). `paintRobots` compte `stats.cobalt` et **refuse** de dépasser le plafond (les perles cobalt en excès sont dessinées blanches). Le messager gauche garde son rôle (parti du poignet, arrivé au bout de l'index à la fin de l'approche) et reste **cobalt** ; le messager droit devient **blanc**.
+
+**Dessin** : un lot par couleur (`beginPath` + `arc` + `fill`), 2 remplissages + 1 trait pour les cercles blancs ; < 0,3 ms. Mouvement réduit : **les perles ne sont pas dessinées** (image finale : 4 robots posés comme T.7, inchangé) ; pause : perles figées sur place, sans nouvelles.
+
+**U.7 Mobile : une vraie composition à 390 × 844.**
+
+**Problème** : à 390, la grande sphère (Ø 390) est centrée dans la fenêtre, **derrière** le titre, le sous-titre et les boutons ; la boule tenue (Ø 72) et la main (1,1 × la largeur) sont minuscules et à peine lisibles. **Décision : sur téléphone, la forme a sa propre zone ; elle n'est plus derrière le texte.** Seuil : `< 48 rem` (la tier `phone`, 768 px).
+
+**Ordre et tailles des blocs (390 × 844, valeurs de départ, mesurées sur capture).**
+
+| Bloc | Hauteur | Détail |
+|---|---|---|
+| En-tête du site | 65 px | inchangé |
+| Rembourrage haut | 20 px | |
+| Titre (Inconsolata 700) | ≈ 128 px | **28 px / 1,14** (`min(8,2cqi, 2rem)`), 4 lignes au plus ; `>` et bloc retirés (U.2) |
+| Sous-titre (mono, U.3) | ≈ 84 px | 13 / 21 px, 2 + 2 lignes ; marge haute 16 px |
+| Boutons | ≈ 100 px | **empilés**, pleine largeur : « Demander une estimation » 48 px (action principale, noir), « Espace agence » 44 px ; écart 8 px ; marge haute 20 px |
+| **Zone de forme** | **≈ 396 px** | `height: clamp(20rem, calc(100svh − 28rem), 25rem)` ; **la sphère y vit** |
+| Étiquette puis terminal | sous le pli | étiquette (U.1) puis terminal, comme aujourd'hui |
+
+Total au-dessus de la zone ≈ 433 px : **la zone commence à ≈ y 433 et tient dans les 844 px** (≈ 15 px de marge sous la zone avant le bord). **Aucun élément ne chevauche la sphère.**
+
+**Sphère** : **Ø = 0,97 × min(largeur de la fenêtre, hauteur de la zone) ≈ 378 px**, **centrée dans la zone** (et non plus dans la fenêtre), **entière**, **5 400 points** (inchangé), `computeLayout` reçoit pour le téléphone la **zone** comme rectangle de la sphère. La zone calme (T.3) reste active mais ne trouve plus de texte dessous (elle ne retire rien).
+
+**Mains** (et boule tenue, quand elle existe) : `HANDS_WIDTH_SHARE.phone = 2,0` (au lieu de 1,1) : l'image des mains mesure **2 fois la largeur de la fenêtre** (780 px), **centrée sur l'espace entre les index**, **rognée par les bords** (les avant-bras sortent déjà du cadre : rien d'essentiel n'est perdu). Les deux index sont alors espacés d'**≈ 101 px** (0,13 × 780 ; 56 px avant), la boule tenue mesure **Ø ≈ 109 px** (0,07 × 780 × 2 ; plancher Ø 72 px supprimé), les mains tiennent dans la zone (hauteur utile de l'image ≈ 0,32 × 780 ≈ 250 px). Valeur à régler entre **1,8 et 2,2** sur capture (critère 47). `motionScale.phone` passe de 0,3 à **0,55** (les amplitudes de l'acte 2 suivent la taille des mains). Points : **identités phone 4 200** (au lieu de 3 600), taille des points 2,1 / 1,5 / 1,1 px (au lieu de 1,9 / 1,4 / 1,0) pour que les doigts restent denses sur une main deux fois plus grande ; **si le budget de 30 images/s n'est pas tenu à processeur × 4** : retour à 3 600 et largeur 1,7 ×, et on le consigne ici.
+
+**Bouton Pause / Rejouer** : le dock reste **fixé en bas à gauche**, 44 × 44 px, `bottom` 12 px, **à 12 px du bord** ; il recouvre le coin bas-gauche de la zone de forme (aucune information essentielle n'y est : le bord de la sphère). Le terminal garde son bouton `[ pause ]`.
+
+**1024 et 1440** : inchangés par U.7 (sphère derrière le titre, T.3). **Autre observation à transmettre** (hors périmètre de ce lot, non traitée) : à 390 le lien « Demander une estimation » de l'en-tête du site se brise en **3 lignes** (capture `grande-boule-390.png`) : le masquer sous 40 rem puisque le hero porte la même action.
+
+**U.8 États et accessibilité (récapitulatif).** Le titre reste un vrai texte (copie `sr-only`, nom accessible = `HERO_TITLE`) ; l'étiquette est du texte réel au-dessus du terminal (lu **avant** le terminal, dans l'ordre du DOM) ; le sous-titre garde un seul paragraphe lu ; les perles, la sphère et les mains sont `aria-hidden` ; **aucune information n'est portée par le mouvement** : sous `prefers-reduced-motion`, image finale fixe, aucune perle, aucun mouvement continu, étiquette, titre, sous-titre et terminal identiques. Contraste : le sous-titre en mono `ink-muted` sous le voile 90 % ≥ **6,3:1** (critère 29 inchangé) ; l'étiquette ≥ 17:1 (opaque).
+
+**U.9 Critères d'acceptation vérifiables (à la suite de T.10, numérotés 40 et suivants ; les critères 23 à 39 non cités ici restent valables).**
+
+40. **Étiquette** : `hero-tag` est **après** le dernier bouton du hero et **avant** `hero-terminal` dans l'ordre du DOM, son rectangle est à **moins de 24 px au-dessus** du terminal ; **0 intersection** avec le `h1` à 1440, 1024, 768, 390 ; texte inchangé ; le titre (`h1`) est le **premier** élément visible de la bande sous l'en-tête.
+41. **Titre** : `[data-testid="hero-cursor"]` : **0** ; `getComputedStyle(h1.firstLine, '::before').content` vaut `none` (ou « normal ») ; Inconsolata 700 inchangé ; « main » toujours souligné cobalt.
+42. **Sous-titre** : `font-family` commence par Geist Mono, graisse 400, taille **14 px (≥ 40 rem) / 13 px (< 40 rem)**, interligne 24 / 21 px, couleur = celle du contenu d'une ligne du terminal (`ink-muted`), **2 blocs** (une phrase chacun), largeur ≤ 76 ch ; nom accessible inchangé ; contraste ≥ 5,41:1 (critère 29).
+43. **Pas d'arrêt** (test unitaire de `HeroScene.compute` + test E2E) : pour tout `T` de 800 à 10 600 ms **par pas de 100**, le **déplacement moyen d'une identité** entre `T` et `T + 50 ms` est **≥ 0,25 px** (ordinateur) ; **la sphère tourne jusqu'à ce que son dernier point la quitte** (`Φ(T)` strictement croissant, dérivée ≥ 0,22 rad/s : test sur la fonction pure) ; E2E : captures de la zone de forme toutes les 100 ms de 0,8 à 10,6 s : **aucun intervalle de 250 ms** (3 images consécutives) dont la différence de pixels soit **< 0,1 %** de la zone (`data-state="reduced"` exclu).
+44. **Chevauchement** : `data-phases` contient **deux vagues** pendant au moins **700 ms** entre 6 000 et 6 800 ms avec `HELD_ENABLED` (sans : une seule vague, de 3 000 à 9 600 ms) ; `data-phase` garde l'ordre `sphere` → … → `hands` ; `hands` atteint à 10 600 ± 150 ms (`data-sequence-ms`) ; l'image à 10 600 ms reste **identique à ± 8 px** à la capture de référence (critère 28).
+45. **Continuité** : la vitesse de `e(q)` vaut ≥ 0,3 à `q = 0` et `q = 1` (test unitaire) ; la phase de la respiration à 10 599 et 10 601 ms diffère de moins de 1 px (test unitaire de `applyHandsMotion`) ; micro-mouvement : amplitude mesurée de la dérive **> 0** à `T = 1 s`, `4 s`, `8 s` (test unitaire).
+46. **Perles** : 24 / 16 / 10 perles à 1440 / 1024 / 390 (`data-rail-dots`, nouvel attribut) ; **diamètre 3,0 / 2,6 / 2,4 px (± 0,1)** ; **aucun carré** sur les rails (le test de rendu ne trouve plus de `fillRect` de robot circulant) ; 1/3 cobalt ; **plafond cobalt** : `data-cobalt` ≤ **12 / 8 / 6** à chaque image échantillonnée pendant 12 s ; **aucun cobalt avant 8 400 ms** ; vitesse constante par perle (± 5 %) ; mouvement réduit : **0 perle** ; `RAIL_DOTS = 0` : 0 perle sans erreur.
+47. **Mobile** : à 390 × 844 : le centre du `h1`, du sous-titre et des boutons est **hors du disque** de la sphère (aucun chevauchement entre le disque et ces trois blocs) ; la sphère entière (boîte ≥ **360 px**) dans la fenêtre sans défilement ; la zone commence à ≤ **450 px** du haut et finit à ≤ **844 px** ; le bouton « Demander une estimation » **visible** sans défilement ; **écart entre les deux index ≥ 90 px** à l'état final ; boule tenue (si `held` actif) Ø ≥ **100 px** ; aucun défilement horizontal (`scrollWidth ≤ clientWidth`) ; cibles ≥ 44 px ; capture **auditée par l'utilisateur**.
+48. **`held`** (seulement quand `HELD_ENABLED`) : `held.baked.json` présent, ≥ 9 000 points, `ball.r` renseigné ; aucun point de la **main** dans le disque de la boule à 85 % du rayon (la boule est vide dans les données) ; à `T ≈ 6 000 ms` ≥ 85 % des identités « boule » sont dans le disque à 115 % du rayon (critère 27 adapté) ; capture 1440 / 1024 / 390 auditée par l'utilisateur : lecture « une boule tenue par une main ».
+49. **Garde-fous** : aucun rouge ni orange ; aucun cobalt hors perles, point de contact, trait de « main » et ce que S.6 autorise ; aucun texte masqué ; mouvement réduit complet (critère 30 passe sans modification) ; budgets T.4 / critère 38 inchangés, **valeurs réelles consignées** (avec le palier de repli employé).
+
+**Tests E2E à adapter.** `e2e/accueil.spec.ts` : `hero-tag` (position, lignes 55 et 182) ; `e2e/landing-hero-sphere.spec.ts` : critères 23 (bornes : `data-phases`, 3 000 au lieu de 3 800), 27 (suspendu sans `held`), 32 (**plus de `>`**), 33 (**remplacé par le critère 41**) ; `e2e/landing-hero-particles.spec.ts` : bornes des phases ; nouveau `e2e/landing-hero-fluide.spec.ts` (critères 43 à 47) ; tests unitaires : `timeline.ts` (libellés dérivés), `sphere-field` (`Φ(T)`), `trajectory` (`e(q)`), `hold-transitions` (plus de gel), `hands-robots` / `robots` (perles), `layout` (zone de la sphère sur téléphone), `LandingHero.test.tsx` (ordre du DOM : titre, sous-titre, boutons, zone, étiquette, terminal ; plus de curseur), `landing-texts.test.ts` (`subtitleLines`). **Captures à auditer** (1440, 1024, 390) : à 0,8 / 3,2 / 4,5 / 5,5 / 6,4 / 7,5 / 9,0 / 10,6 s (le but : **aucune image ne ressemble à un arrêt**), plus 390 à l'état final et 1440 en mouvement réduit.
+
+**U.10 À transmettre à `frontend-ux`.** (1) Ordre conseillé : a. étiquette, `>`, curseur, sous-titre (CSS et JSX, indépendants du moteur) ; b. mobile (zone de la sphère, largeur des mains, boutons) ; c. perles (`paintRobots`, `hands-robots`) ; d. mouvement continu (`Φ(T)`, `e(q)`, évaluation de `A(T)` et `B(T)`, libellés dérivés) ; e. `held` seulement quand l'image sera livrée. (2) Ne rien changer à `hands.baked.json`, au poster, aux réglages S.7, ni à l'acte 2 (cycle d'approche, point de contact). (3) Les valeurs de départ (largeur des mains sur téléphone, `BALL_AT` de `held`, plafond de perles) se règlent **à l'œil sur capture** ; on consigne les valeurs retenues dans une section « U.11 Implémentation » comme T.11. (4) Mesurer le budget du mouvement continu **avant** de livrer ; consigner le palier de repli éventuel.
+
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
 > **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule
@@ -4775,6 +4949,110 @@ décimale), aucun DOM. Valeurs attendues aux défauts : W2 900 h, 270 h, 10 800 
 mandates, time, followup}` avec `kicker`, `title`, `caption`, libellés, `note` — **textes
 exacts ci-dessus**, aucun « vous gagnerez », aucun « garanti »). Le test « claims no figure »
 de `landing-texts.test.ts` **exclut la clé `roi`** et un test dédié la contrôle (L4-F).
+
+###### L4-B bis. Section ROI — retours de l'utilisateur du 14/10/2026 : vrais chiffres, hiérarchie, couleur, mouvement, sources
+
+> **Statut : spécifié le 14/10/2026 (web-designer), à implémenter par `frontend-ux`.** **Amende L4-B** (tuiles toutes égales, chiffres en Geist Mono, étiquettes de provenance, légende, comptage de 0 vers la valeur, quatre widgets figés). **Inchangé** : l'en-tête (`LandingHeading`, sur-titre « ROI », titre et mot accentué), `data-living-scene="resultat"`, `data-testid="roi"`, les **pictogrammes** de la section (l'utilisateur les garde), la logique « arrivée à 40 % visible », le rejeu (« Rejouer les animations »), `landing-sans-boucle` (aucune boucle, aucun `requestAnimationFrame` une fois l'arrivée finie).
+> Retours de l'utilisateur, à la lettre : « les zéros sont mal faits », « la typo des chiffres est très, très IA, change la typographie, une vraie typo » ; « ne mets pas tout à la même taille, “chaque minute qui compte” est trop gros pour ce que c'est » ; rouge puis vert demandés, puis « non, pas en rouge mais en bleu… le rouge tue la personnalité du site, là c'est que du bleu, noir, blanc » ; « plus dynamique » ; « uniquement des faits vérifiés, présentés simplement, avec un bloc Sources en bas ».
+
+**V.1 Idée unique et lecture en cinq secondes.** *Un seul chiffre pèse, les autres l'accompagnent, et chaque chiffre dit d'où il vient.* En cinq secondes : « un gros chiffre noir sur fond noir : ce que les délais coûtent » ; dessous, deux ou trois chiffres plus petits ; en bas, une liste de sources numérotées. **Texte restant** : un titre par bloc, une phrase par chiffre, l'avertissement.
+
+**V.2 Règle d'honnêteté (prime sur tout le reste de V).** (1) **Un chiffre affiché = un fait publié avec une source** présente dans le bloc « Sources ». Pas de source, pas d'affichage (**le bloc disparaît, il n'est jamais rempli par une estimation**). (2) Les étiquettes « Source », « Hypothèse », « Potentiel estimé », « Étude américaine » **disparaissent des cartes** (composant `RoiTag`, légende `legend` et clés `tags` supprimés ; test `lot4-guards` mis à jour). (3) **Mais la portée fait partie du fait** : un chiffre qui ne vaut pas pour l'immobilier en France le dit **dans sa phrase**, en clair (« …, tous secteurs, aux États-Unis, 2007 »), pas dans une pastille. Si la phrase devient trop longue ou trompeuse pour un lecteur pressé, **le fait n'est pas affiché**. (4) Aucun chiffre d'exemple dans la page, sauf **dans le calcul** (V.8), clairement présenté comme « vos chiffres ». (5) Les valeurs de ce document ne sont **pas** des faits : la recherche de sources est menée par un autre agent ; ce lot définit la **forme**, `frontend-ux` branche les faits vérifiés quand ils sont livrés (`components/landing/roi/roi-facts.ts`).
+
+**V.3 Modèle de données (pour `frontend-ux` ; aucune donnée en base).**
+
+| Objet | Champs | Règles |
+|---|---|---|
+| `RoiSource` | `id`, `publisher`, `title`, `year`, `url` (https), `accessed` (AAAA-MM-JJ) | tous obligatoires ; `url` en `https` ; test unitaire : aucun champ vide |
+| `RoiFact` | `id`, `block` (`mandates` \| `time` \| `speed` \| `followup`), `figure` (texte : « 23 % », « ×21 »…), `prefix?`, `suffix?`, `label` (une phrase, **portée comprise**), `sourceId`, `sr` (phrase lue) | `sourceId` doit exister dans `SOURCES` (test) ; un fait sans source est **ignoré au rendu** ; `label` ≤ 120 caractères |
+| `RoiBlock` | `key`, `kicker`, `title`, `tone` (`loss` \| `gain` \| `neutral`), `priority` | `mandates` = `loss`, priorité 1 ; `time` = `loss`, 2 ; `followup` = `gain`, 3 ; `speed` = `neutral`, 4 ; titres inchangés (« Les mandats qui partent ailleurs », « Le temps qui vous échappe », « La relance qui fait la différence », « Chaque minute compte ») |
+
+**Rang et taille.** Les blocs **qui ont au moins un fait vérifié** sont triés par `priority` ; le **rang** décide de la taille, **pas l'identité** : rang 1 = niveau **T1** (principal), rangs 2 et 3 = **T2**, rang 4 = **T3**. Si le bloc « mandats » n'a aucun fait, « temps » devient principal, etc. (aucun trou, aucune carte vide). Chaque bloc montre son **premier fait** en grand et **au plus deux autres** en lignes secondaires (T3 de l'échelle ci-dessous) ; au-delà, les faits en trop ne sont pas affichés.
+
+**V.4 Typographie des chiffres : fin de Geist Mono.**
+
+**Décision : Bricolage Grotesque 700 pour tous les grands chiffres** (déjà chargée : `--font-bricolage`, axes `opsz` et `wdth` ; **aucun fichier de police ajouté**, aucune requête, la CSP ne change pas). **Argument visuel** : les chiffres parlent avec **la voix des titres** (même famille, même énergie : « le chiffre est un titre »), au lieu d'un monospace de terminal qui donnait des 0 étroits et coupés, des « 1 » à pied et l'air « IA » ; à grande taille, la taille optique automatique (`opsz` jusqu'à 96) dessine un **0 ovale ouvert, sans barre ni point, aux pleins généreux**, un « 1 » à drapeau net et un « 7 » franc : de vrais chiffres de titrage. **Écartées** : Geist (même grotesque neutre que le texte : « très IA » aussi) ; Instrument Serif (romain non chargé : +30 ko, graisse unique 400, chiffres proportionnels qui sautent pendant les changements de curseur) ; une police à chiffres « humanistes » à ajouter (nouvelle famille hors périmètre : question de l'utilisateur seulement si Bricolage ne le convainc pas).
+
+| Token (`@theme`) | Valeur | Rôle |
+|---|---|---|
+| `--font-figure` | `var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif` | famille des chiffres de la section |
+| `--text-roi-t1` | `clamp(4rem, 2.2rem + 6.2vw, 8rem)` → **≈ 125 px à 1440, 99 px à 1024, 64 px à 390** ; graisse **700**, interligne **0,95**, crénage **−0,03 em** | chiffre principal |
+| `--text-roi-t2` | `clamp(2.75rem, 1.6rem + 2.4vw, 3.75rem)` → **60 px / 50 px / 44 px** ; 700 ; interligne 1 ; −0,025 em | chiffres des blocs secondaires |
+| `--text-roi-t3` | `clamp(1.75rem, 1.4rem + 0.5vw, 2rem)` → **32 / 28 / 28 px** ; 600 ; interligne 1,05 ; −0,02 em | faits en ligne, chiffre du bloc de rang 4 |
+| unités et préfixes (« % », « € HT », « h », « ≈ », « × ») | Geist 600, **0,34 em** du chiffre, `ink-muted` (`ink-inverse-muted` sur fond noir), alignés sur la ligne de base | ne concurrencent jamais le chiffre |
+
+Réglages OpenType communs (classe `.roiFigure`) : `font-variant-numeric: lining-nums tabular-nums` (**`frontend-ux` vérifie que Bricolage les supporte** : rendre « 1111 » et « 0000 » à 60 px, largeurs égales à ± 0,5 px ; sinon retirer `tabular-nums` et appliquer la réserve de largeur ci-dessous), `font-optical-sizing: auto`, `font-feature-settings: "kern" 1`, `font-variation-settings: normal`. **Zéro : jamais barré ni pointé** (aucun `zero` OpenType). **Réserve de largeur (indépendante de la police)** : le chiffre visible est posé dans une cellule de grille dont **le texte final invisible** (`visibility: hidden`, `aria-hidden`) définit la largeur ; le chiffre animé est aligné à gauche dans la même cellule : **ni saut de ligne ni décalage de l'unité** quand les chiffres changent (arrivée, curseurs). Remplace `numberVisual` de `RoiNumber`.
+
+**V.5 Hiérarchie : composition et tailles.**
+
+| Largeur | Disposition |
+|---|---|
+| **≥ 1280 (1440)** | **Rangée 1 : bloc principal** pleine largeur de colonne (≈ 1 152 px), **panneau noir** (V.6). Dedans, 12 colonnes : gauche (cols. 1–7) = sur-titre, titre `h3` (Geist 22/600), **chiffre T1**, phrase du fait ; droite (cols. 8–12) = la scène du bloc (barre de proportion, V.7), alignée en bas. **Rangée 2 : un seul panneau blanc opaque** (`surface`, bord `line`, rayon 24, `shadow-subtle`) coupé en **2 ou 3 colonnes égales** par des filets verticaux 1 px `line` (**pas de cartes séparées** : un ensemble) ; chaque colonne = sur-titre, titre `h3` (Geist 17/600), chiffre **T2**, phrase du fait, faits en ligne. **Rangée 3** (seulement s'il y a un bloc de rang 4) : une **ligne** (T3) dans un filet haut/bas 1 px `line`, chiffre et phrase côte à côte, **sans panneau**. **Rangée 4 : le calcul** (V.8), pleine largeur. **Rangée 5 : Sources** (V.9) |
+| **1024** | idem, T1 ≈ 99 px ; le panneau noir passe en **une colonne** (scène sous le chiffre) ; la rangée 2 garde 2 ou 3 colonnes (3 colonnes serrées → 2 + 1 pleine largeur si un chiffre T2 dépasse sa colonne) |
+| **640–1023** | une colonne, `max-w-[45rem]` centrée ; panneau noir, puis colonnes de la rangée 2 **empilées** séparées par un filet horizontal |
+| **390** | une colonne pleine largeur ; panneau noir (rembourrage 24 px, T1 **64 px**) ; blocs T2 empilés dans le panneau blanc (rembourrage 20 px, 44 px) ; **aucun défilement horizontal**, aucun chiffre ne dépasse (`scrollWidth ≤ clientWidth`) |
+
+**« Chaque minute compte » (rang 4) devient une ligne**, plus une tuile : la scène à deux barres du lot 4 est **supprimée** (trop grosse pour ce que c'est ; si le fait est publié, le chiffre T3 suffit). Espaces : 56 px (≥ 1024) / 40 px (< 1024) entre rangées.
+
+**V.6 Couleur : décision, sans sortir de la palette (noir, blanc, gris, cobalt).** Aucun rouge, aucun vert, **aucun orange** dans la landing (l'orange reste réservé à l'espace connecté : « le rouge tue la personnalité du site », « c'est que du bleu, noir, blanc »). **Le négatif s'exprime par le poids, le gain par le cobalt.**
+
+| Ton | Traitement | Contraste mesuré |
+|---|---|---|
+| **`loss` de rang 1** (le principal) | **panneau noir** `--color-inverse` (#0a0a0b), chiffre T1 `ink-inverse` (#fafafa), phrase `ink-inverse-muted` (#a8a8b0), filet 1 px `rgb(250 250 250 / 0.16)`. **Le seul bloc noir de la section** : il « pèse » : c'est la perte | chiffre ≥ 19:1 ; phrase ≥ 8:1 |
+| **`loss` de rang ≥ 2** | pas de second panneau noir : chiffre `ink`, graisse **800** (`font-variation-settings: "wght" 800`), **trait plein 4 px `ink`** sous le chiffre (largeur = largeur du chiffre, `border-bottom` du bloc de chiffre, rayon 0) | ≥ 17:1 |
+| **`gain`** (la relance) | chiffre en **cobalt** `--color-accent-strong` (#1b45d6) sur blanc, trait 2 px cobalt dessous (même géométrie, plus fin) : le gain est le **signal**, il porte la couleur | **7,3:1** (AA large et courant) |
+| **`neutral`** | `ink`, graisse 700, sans trait | ≥ 17:1 |
+
+**Cobalt : règle amendée pour cette section** (« réservé au signal » reste vrai : ici le signal est « le gain ») : **au plus un chiffre cobalt visible à la fois** (bloc `gain`), plus le focus des curseurs, plus le remplissage des curseurs ; **jamais** de cobalt sur le panneau noir (3,7:1 seulement : insuffisant pour du texte). L'état n'est **jamais** porté par la couleur seule : poids du trait, libellé du bloc (« perdu », « regagné » ne sont pas écrits : le titre du bloc et la phrase du fait le disent). **Question fermée pour l'utilisateur** : voir « À transmettre ».
+
+**V.7 Scènes (une par bloc de rang 1 et 2 si le fait s'y prête, sinon aucune).** Une scène = **une barre de proportion** quand le fait est un pourcentage vérifié (« 23 % » → barre de 100 % dont 23 % sont pleins) ; **aucune scène inventée** pour un fait qui n'est pas une proportion. Barre : hauteur 10 px, rayon 999, piste `surface-sunken` (sur noir : `rgb(250 250 250 / 0.14)`), partie pleine `ink` (sur noir : `ink-inverse` ; bloc `gain` : cobalt), libellés Geist Mono 12 px (c'est de la donnée, pas un chiffre de titrage). Les pictogrammes de la section sont **conservés tels quels** (même taille, mêmes emplacements dans les en-têtes de bloc).
+
+**V.8 Le calcul : « Calculez avec vos chiffres » (remplace les deux widgets à curseurs).**
+
+- **Un seul calcul** (mandats). **Le calcul « temps » est retiré** : tous ses paramètres (30 % d'automatisable, 40 € de coût horaire) étaient des hypothèses sans source. Fichiers retirés du rendu : `TimeWidget`, `SpeedWidget`, `FollowupWidget`, `MandatesWidget` actuels (remplacés par `RoiBlock`, `RoiFactLine`, `RoiCalculator`), `computeTime` et ses tests.
+- **Présentation** : panneau `surface-muted` pleine largeur, rayon 24, rembourrage 32 px (24 sous 640), **sans chiffre en T1** : le résultat est une **phrase**, jamais un chiffre-héros. Titre `h3` « Calculez avec vos chiffres » (Geist 20/600) ; ligne d'introduction (14 px `ink-muted`) : « Rien n'est enregistré. Les valeurs de départ sont des exemples : remplacez-les par celles de votre agence. »
+- **Quatre curseurs** (`RoiSlider` conservé, 2 × 2 à partir de 1024, empilés en dessous ; cibles 44 px) : « Demandes vendeurs par mois » (10 à 100, pas 5, départ 40) ; « Part traitée trop tard ou sans suivi » (5 à 30 %, pas 1, départ 15) ; « Demandes qui deviennent un mandat » (2 à 15 %, pas 1, départ 8) ; « Mandats qui aboutissent à une vente » (30 à 90 %, pas 5, départ 60). **Les valeurs de départ ne sont ni sourcées ni présentées comme des faits** : aucune étiquette, aucun soulignement pointillé ; l'introduction le dit. Les deux paramètres sourcés du lot 4 (prix médian, honoraires) ne restent **que si la recherche les confirme** (alors affichés comme faits en lignes avec leur renvoi `[n]`, valeurs fixes) ; sinon ils deviennent deux curseurs de plus (« Prix de vente moyen de vos biens », « Honoraires moyens de votre agence »).
+- **Résultat** (une phrase, Geist 18/600 `ink`, la valeur en Bricolage 700 28 px) : « Avec ces chiffres : **≈ {euros} € HT** d'honoraires par an ne se concrétisent pas. » ; sous elle, **la formule en clair** (Geist Mono 12 px `ink-subtle`) : « demandes par an × part traitée trop tard × demandes qui deviennent un mandat × mandats qui aboutissent × prix × honoraires ». Arrondi au millier ; aucun « garanti », aucun « vous gagnerez ». `aria-live="polite"` 500 ms après le dernier changement (inchangé). Sans JavaScript : curseurs `disabled` + note « Réglages disponibles avec JavaScript. » (inchangé), le résultat des valeurs de départ reste lisible.
+- **Mouvement du calcul** (le vrai « dynamique », déclenché par l'utilisateur) : voir V.10, `R3`.
+
+**V.9 Bloc « Sources » (obligatoire dès qu'un fait ou un paramètre sourcé est affiché).**
+
+- **Place** : **dernier élément de la section**, après le calcul, avant l'avertissement. Panneau opaque `surface-muted`, rayon 16, rembourrage 24 px (20 sous 640), `data-network-cover`, `id="roi-sources"`, `aria-labelledby` vers son titre.
+- **Titre** : « Sources » (`label` : Geist 11 px 600, majuscules, 0,06 em, `ink-subtle`).
+- **Liste** : `<ol>` numérotée **dans l'ordre de première apparition dans la page** (le numéro d'un fait suit cet ordre). Une ligne par source : numéro (Geist Mono 11 px `ink-subtle`, colonne 28 px) puis « **{éditeur}**, « {titre} », {année}. » (Geist 13 px/1,5, `ink-muted`, éditeur 600 `ink`) puis le **domaine** en lien (`ink`, souligné, décalage 3 px, `target="_blank" rel="noopener noreferrer"`, texte masqué `sr-only` « (s'ouvre dans un nouvel onglet) ») et « consulté le JJ/MM/AAAA » (12 px `ink-subtle`). **Deux colonnes à partir de 1024** (`column-count: 2`, `break-inside: avoid`), une colonne en dessous. Texte long : retour à la ligne, `overflow-wrap: anywhere` sur le domaine.
+- **Renvoi depuis un chiffre** : après la phrase du fait, une puce discrète **« [n] »** (Geist Mono 11 px, `ink-subtle` ; `ink-inverse-muted` sur noir), lien `href="#roi-source-n"`, **zone cliquable ≥ 24 × 24 px** (WCAG 2.5.8), nom accessible « Source n : {éditeur}, {année} », survol/focus : soulignement + `ink`. La ligne cible reçoit `:target` : **trait gauche 2 px `ink`** et fond `surface-sunken` (aucune animation ; le défilement doux du site s'applique ; `scroll-margin-top: 96px`).
+- **Seules les sources réellement citées sont listées** (aucune source orpheline) ; un test le vérifie dans les deux sens (chaque `[n]` a sa ligne, chaque ligne a au moins un renvoi ou une valeur de calcul).
+- **Vide** : aucune source citée → **le bloc n'est pas rendu** (pas de titre « Sources » vide).
+
+**Textes exacts.** `LANDING_TEXTS.roi.body` : « Des faits publiés, avec leur source. Et un calcul que vous faites avec vos propres chiffres. » ; avertissement (une ligne, 13 px `ink-muted`, `.particle-veil-tight`, **sous** le bloc Sources) : « Les chiffres cités sont publiés ; leur source est indiquée ci-dessus. Le calcul utilise vos chiffres. Aucun résultat n'est garanti. » ; `legend`, `tags`, `widgets.*.value.kind`, `note` (mentions par tuile) supprimés (les mentions de source deviennent des lignes du bloc Sources). Le test « claims no figure » de `landing-texts.test.ts` continue d'exclure la clé `roi` ; un test dédié exige : aucun chiffre dans un texte de `roi` hors `roi-facts.ts` et hors valeurs de départ du calcul.
+
+**V.10 Mouvement signature : « le chiffre se pose » (aucun compteur, aucune boucle).**
+
+| Id | Élément | État initial → final | Propriété, durée, easing | Déclencheur |
+|---|---|---|---|---|
+| **R1** | Chaque chiffre T1/T2/T3 | chaque glyphe, rogné par un masque (`overflow: clip`, marge 0,1 em), part de **0,55 em plus bas** et d'opacité 0 → posé | `transform: translateY` + `opacity`, **520 ms**, `--ease-draw`, **décalage 45 ms par glyphe** (gauche → droite, 8 glyphes au plus) ; **la valeur finale est dans le DOM dès le départ : aucun chiffre intermédiaire n'est jamais affiché, aucun comptage de 0 vers la valeur** | bloc visible à ≥ 40 % (observateur existant), une fois |
+| **R2** | Trait sous le chiffre (perte rang ≥ 2, gain) et barre de proportion | `scaleX(0)` → `scaleX(1)` (origine gauche) ; barre : jusqu'à sa part | **640 ms**, `--ease-emphasis`, **200 ms après la fin de R1 de son bloc** | idem |
+| **R3** | Résultat du calcul | **seuls les glyphes qui changent** se reposent : ils glissent de **0,35 em** (vers le haut si la valeur monte, vers le bas si elle baisse) et se fondent | **240 ms**, `--ease-standard` ; un nouveau changement annule et repart de l'état affiché ; aucune valeur intermédiaire | changement d'un curseur (réel, déclenché par l'utilisateur) |
+| **R4** | Rangée 2 | filets verticaux : `scaleY(0)` → 1 | 480 ms, `--ease-draw`, décalage 120 ms par colonne | idem |
+| **R5** | Bloc Sources | opacité 0 → 1 seulement (aucun déplacement) | 360 ms, `--ease-standard` | visible à ≥ 40 % |
+
+Ordre d'arrivée : rang 1 (0 ms) → rangée 2 (+160 ms, colonnes décalées de 120 ms) → rang 4 (+160) → calcul (opacité seule, 360 ms) → Sources (R5). **Fin ≤ 1 700 ms** après le passage à 40 %. Tout est en **CSS** (`@keyframes` + `animation-delay` posés par variable `--i`) ; l'observateur ne fait que poser `data-roi-state="playing" | "done"` ; **le comptage anime.js disparaît** (`roi-motion.ts` ne garde que R3 si nécessaire ; sinon supprimé), donc **aucun `requestAnimationFrame`** pendant ou après l'arrivée. **Mouvement réduit et sans JavaScript** : état final immédiat, aucun masque, aucun glissement ; R3 devient un changement instantané. **Interruption** : défilement ou redimensionnement n'interrompent rien (CSS pur, ≤ 1,7 s). **Clavier / tactile** : aucun effet lié au survol ; la puce `[n]` est atteignable au clavier (ordre du DOM : fait puis renvoi).
+
+**V.11 États.** Repos, focus visible (anneau cobalt 2 px à 2 px sur curseurs et renvois `[n]`), survol (renvois seulement), désactivé (curseurs sans JavaScript), vide (voir V.2 et V.9 : le bloc disparaît ; **aucun message « pas de données »**), chargement et erreur : sans objet (aucune donnée distante).
+
+**V.12 Accessibilité.** Titre `h3` par bloc ; chaque chiffre visible `aria-hidden` **avec** `span.sr-only` = `sr` du fait (« vingt-trois pour cent… » : phrase complète avec portée) ; panneau noir : contrastes de V.6 ; liens de la liste de sources identifiables sans la couleur (soulignés) ; ordre de lecture : bloc 1, bloc 2, bloc 3, ligne rang 4, calcul, Sources, avertissement ; aucun contenu au survol seul ; cibles tactiles ≥ 44 px (curseurs), ≥ 24 px (renvois).
+
+**V.13 Critères d'acceptation (numérotés, à la suite de L4-B1 à B6 ; L4-B2, B3 et B4 sont réécrits ci-dessous).**
+
+- **L4-B7. Typographie.** `getComputedStyle` des chiffres : `font-family` commence par Bricolage (puis Geist), `font-weight` ≥ 700 (800 pour la perte de rang ≥ 2), **aucune** occurrence de `Geist Mono` dans les chiffres de titrage ; taille calculée T1 = 125 / 99 / 64 px (± 2) à 1440 / 1024 / 390, T2 = 60 / 50 / 44, T3 = 32 / 28 / 28 ; aucun fichier de police ajouté (liste des requêtes de polices identique à avant).
+- **L4-B8. Hiérarchie.** Le chiffre T1 est **≥ 1,9 ×** le chiffre T2 en hauteur de boîte à 1440 ; le bloc « Chaque minute compte » (s'il a un fait) est la plus petite taille et **n'a plus de scène** ; un seul panneau noir (`data-tone="loss"` de rang 1) ; la rangée 2 est **un seul** élément opaque (pas de 3 cartes) ; aucun débordement à 1440, 1024, 768, 390, 360.
+- **L4-B9. Couleur.** Aucun pixel rouge, vert ni orange dans la section (balayage de capture : aucun pixel avec `r−g > 60` et `r−b > 60`, aucun avec `g−r > 40` et `g−b > 40`) ; cobalt : au plus **un** chiffre cobalt à la fois, **aucun** cobalt sur le panneau noir ; contrastes mesurés ≥ 7:1 (chiffres), ≥ 4,5:1 (phrases), ≥ 4,5:1 (renvois, liste) ; tout état se lit **sans** la couleur (trait 4 px vs 2 px, titre du bloc).
+- **L4-B10. Faits et sources.** Chaque `[data-roi-fact]` a un `data-source-id` présent dans `#roi-sources` ; **aucun chiffre** de section (hors calcul) sans fait ; un fait sans source (donnée de test) **n'est pas rendu** ; un bloc sans fait **n'est pas rendu** et les rangs se recalculent (test unitaire du tri) ; aucune pastille « Source », « Hypothèse », « Potentiel estimé », « Étude américaine » (`data-roi-tag` : 0) ; `#roi-sources` est le **dernier** bloc avant l'avertissement ; chaque `[n]` a une cible ≥ 24 × 24 px et mène à sa ligne (`:target`) ; liens externes `rel="noopener noreferrer"` ; la liste est en deux colonnes à 1440 et 1024, une à 390.
+- **L4-B11. Calcul.** Quatre curseurs avec nom accessible et `aria-valuetext` à l'unité ; aucun curseur ne porte d'étiquette de provenance ; le texte « Les valeurs de départ sont des exemples » est présent ; la formule est affichée ; le résultat est une phrase (aucun glyphe de T1 dans le panneau) ; valeur au départ = calcul exact du modèle (test unitaire `roi-model` mis à jour, aucun chiffre figé en dur dans le composant) ; rien n'est envoyé (aucun appel réseau quand un curseur bouge : test existant conservé) ; sans JavaScript : curseurs `disabled` + note.
+- **L4-B12. Mouvement.** `data-roi-state` : `armed` → `playing` → `done` ≤ **1 900 ms** après 40 % visible ; **le texte d'un chiffre ne change jamais pendant l'arrivée** (échantillonné toutes les 50 ms : constant) ; **0 `requestAnimationFrame`** pendant et après ; aucune animation infinie ; mouvement réduit : `done` à l'instant 0, aucune animation (`getAnimations()` vide) ; au changement de curseur, seuls les glyphes modifiés s'animent (≤ 240 ms) ; `landing-sans-boucle.spec.ts` vert sans modification.
+- **Tests à adapter ou créer** : `e2e/landing-roi.spec.ts` (réécrit : structure V.5, couleurs V.6, faits et sources V.9, calcul V.8, mouvement V.10 ; les cas « clavier 4 → 5 » et « valeurs jamais envoyées » sont remplacés par le curseur « Demandes vendeurs par mois » 40 → 45), `e2e/landing-rejeu.spec.ts` (les chiffres se reposent au rejeu, aucune étiquette), `e2e/accueil.spec.ts` (clé `roi`), `components/landing/lot4-guards.test.ts` (plus de `RoiTag`, plus d'étiquettes), `components/landing/roi/roi-model.test.ts` (calcul à quatre entrées, `computeTime` retiré), **nouveau** `components/landing/roi/roi-facts.test.ts` (source obligatoire, `block` valide, tri par priorité et rangs, aucune source orpheline), `components/landing-texts.test.ts`. **Captures à auditer** : 1440, 1024, 390, avec et sans mouvement réduit, avec **un bloc vide** (donnée de test) pour voir la recomposition.
+
+**V.14 À transmettre à `frontend-ux`.** (1) Branche les faits **seulement** depuis `roi-facts.ts` ; tant que la recherche n'est pas livrée, le rendu est testé avec des **faits de test marqués `data-test-fact`** exclus de la production (le build de production ne doit contenir aucun faux chiffre). (2) Les pictogrammes de la section sont repris des widgets actuels sans changement de dessin. (3) `RoiNumber` est réécrit (cellule de largeur réservée, glyphes masqués, R1). (4) Ne change pas le comportement de `Reveal` ni de la scène de fond.
 
 ###### L4-C. Titres : mot accentué dans la police du titre, rejeu au survol ou au toucher
 
