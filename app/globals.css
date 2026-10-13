@@ -24,6 +24,8 @@
      has no bundled file: that would silently fall back to Arial. */
   --font-display: var(--font-bricolage), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-accent: var(--font-instrument-serif), ui-serif, Georgia, serif;
+  /* Hero title only: the command prompt of Windows (Consolas first on Windows, system font as fallback). */
+  --font-prompt: var(--font-inconsolata), Consolas, "Cascadia Mono", "Lucida Console", ui-monospace, monospace;
   --font-mono:
     var(--font-geist-mono), ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, monospace;
 

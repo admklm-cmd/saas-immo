@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icons/Icon";
 import { LANDING_TEXTS } from "@/components/landing-texts";
 
+import { PauseMotionButton } from "./PauseMotionButton";
 import { onReplay, requestReplay } from "./replay-bus";
 import styles from "./replay.module.css";
 
@@ -50,6 +51,13 @@ export function ReplayAnimationsButton() {
   useEffect(
     () =>
       onReplay(() => {
+        // The prompt cursor of the hero title blinks four times then stays solid: its CSS animation is over (no fill),
+        // so it is restarted by a reflow rather than found in getAnimations().
+        for (const cursor of document.querySelectorAll<HTMLElement>("[data-landing] [data-hero-cursor]")) {
+          cursor.style.animation = "none";
+          void cursor.offsetWidth;
+          cursor.style.animation = "";
+        }
         for (const badge of document.querySelectorAll("[data-landing] :is(.simulation-badge, .simulation-dot)")) {
           for (const animation of badge.getAnimations()) {
             animation.cancel();
@@ -85,16 +93,19 @@ export function ReplayAnimationsButton() {
 
   return (
     <>
-      <button
-        type="button"
-        className={styles.button}
-        onClick={onClick}
-        aria-disabled={locked ? "true" : undefined}
-        data-testid="landing-replay"
-      >
-        <Icon name="replay" px={14} className={styles.icon} />
-        <span className={styles.label}>{TEXTS.label}</span>
-      </button>
+      <div className={styles.dock}>
+        <button
+          type="button"
+          className={styles.button}
+          onClick={onClick}
+          aria-disabled={locked ? "true" : undefined}
+          data-testid="landing-replay"
+        >
+          <Icon name="replay" px={14} className={styles.icon} />
+          <span className={styles.label}>{TEXTS.label}</span>
+        </button>
+        <PauseMotionButton />
+      </div>
       <p className="sr-only" aria-live="polite" data-testid="landing-replay-status">
         {announcement}
       </p>

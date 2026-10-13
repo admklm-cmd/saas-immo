@@ -39,7 +39,8 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
       const button = page.getByRole("button", { name: TEXTS.label });
       await expect(button).toBeVisible();
       await expect(button).toHaveAttribute("data-testid", "landing-replay");
-      await expect(button).toHaveCSS("position", "fixed");
+      // The dock that holds the two buttons (replay, pause) is the fixed element.
+      await expect(button.locator("xpath=..")).toHaveCSS("position", "fixed");
       const box = (await button.boundingBox())!;
       expect(Math.round(box.x)).toBe(viewport.offset);
       expect(Math.round(viewport.height - (box.y + box.height))).toBe(viewport.offset);
@@ -111,7 +112,7 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     expect(clock).not.toBe("0");
     await expect(particles).toHaveAttribute("data-state", "paused");
     expect(await particles.getAttribute("data-sequence-ms")).toBe("0");
-    await expect(particles).toHaveAttribute("data-phase", "cloud");
+    await expect(particles).toHaveAttribute("data-phase", "sphere");
     // Block A (off screen) starts over at t = 0 when it comes back.
     await expect(page.getByTestId("hero-ecosystem")).toHaveAttribute("data-step", "final");
     // Below the fold at 1440 × 900 since the terminal of the hero (§2.11.4 bis E): brought to the middle.

@@ -4,6 +4,7 @@ import { cn } from "./cn";
 import { TechAccent } from "./tech-accent/TechAccent";
 import { accentOverhangEm, findAccent, isAnimatable, splitAccent, tokensOf } from "./editorial-title";
 import styles from "./EditorialTitle.module.css";
+import promptStyles from "./EditorialTitlePrompt.module.css";
 import replayStyles from "./EditorialTitleReplay.module.css";
 
 export type EditorialTitleProps = {
@@ -17,8 +18,8 @@ export type EditorialTitleProps = {
   accent?: string;
   /** Lines of index < n are set in the subtle ink (problem section: 2). */
   subtleBefore?: number;
-  /** `poster` must sit in a `container-type: inline-size` column. */
-  size: "poster" | "statement" | "page";
+  /** `poster` and `prompt` must sit in a `container-type: inline-size` column. `prompt`: command-prompt face (Inconsolata 700), landing hero only (docs/design-system.md T.5): a hanging `>` and a block cursor. */
+  size: "poster" | "prompt" | "statement" | "page";
   /**
    * `load`: CSS animation on load (100 ms delay); `in-view`: plays under the
    * enclosing `Reveal` (`[data-reveal="entering"]`); `none`: static.
@@ -75,6 +76,7 @@ const DESCENDING_PUNCTUATION = /^[,;]/;
 
 const SIZE_CLASS = {
   poster: styles.poster,
+  prompt: promptStyles.prompt,
   statement: "text-statement",
   page: "text-title sm:text-hero lg:text-page",
 } as const;
@@ -111,6 +113,7 @@ export function EditorialTitle({
   className,
 }: EditorialTitleProps) {
   const plainAccent = accentFace === "title";
+  const prompt = size === "prompt";
   const mode = isAnimatable(lines) ? reveal : "none";
   const animated = mode !== "none";
   const target = findAccent(lines, accent);
@@ -174,7 +177,7 @@ export function EditorialTitle({
     <Tag
       id={id}
       className={cn(
-        "font-display font-semibold",
+        size === "prompt" ? "font-prompt font-bold" : "font-display font-semibold",
         tone === "inverse" ? styles.inverse : "text-ink",
         styles.title,
         SIZE_CLASS[size],
@@ -190,6 +193,7 @@ export function EditorialTitle({
       data-title-color={tone === "inverse" ? "inverse" : undefined}
       data-title-align={align === "center" ? "center" : undefined}
       data-accent-face={plainAccent ? "title" : undefined}
+      data-title-face={prompt ? "prompt" : undefined}
     >
       <span className="sr-only">{lines.join(" ")}</span>
       <span aria-hidden="true" data-testid="editorial-title-visual">
@@ -198,16 +202,20 @@ export function EditorialTitle({
           return (
             <Fragment key={`${lineIndex}-${line}`}>
               <span
-                className={cn(styles.line, lineIndex < subtleBefore && styles.subtle)}
+                className={cn(styles.line, lineIndex < subtleBefore && styles.subtle, prompt && lineIndex === 0 && promptStyles.first)}
                 data-title-line={lineIndex}
                 data-title-tone={lineIndex < subtleBefore ? "subtle" : undefined}
               >
-                {tokens.map((token, index) => (
-                  <span key={`${index}-${token}`}>
-                    {renderToken(token, lineIndex, index)}
-                    {index < tokens.length - 1 ? " " : null}
-                  </span>
-                ))}
+                {tokens.map((token, index) => {
+                  const last = prompt && lineIndex === lines.length - 1 && index === tokens.length - 1;
+                  return (
+                    <span key={`${index}-${token}`} className={last ? styles.nowrap : undefined}>
+                      {renderToken(token, lineIndex, index)}
+                      {last ? <span className={promptStyles.cursor} data-testid="hero-cursor" data-hero-cursor="" aria-hidden="true" /> : null}
+                      {index < tokens.length - 1 ? " " : null}
+                    </span>
+                  );
+                })}
               </span>
               {/* Collapsed between two blocks; keeps the copied text a sentence. */}
               {lineIndex < lines.length - 1 ? " " : null}

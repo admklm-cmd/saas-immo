@@ -18,6 +18,11 @@ export const LANDING_TEXTS = {
   replay: {
     label: "Rejouer les animations",
     done: "Animations relancées.",
+    /** Fixed pause of the whole landing motion (T.7), next to the replay button. */
+    pause: "Pause",
+    resume: "Reprendre",
+    pauseName: "Mettre en pause les animations de la page",
+    resumeName: "Reprendre les animations de la page",
   },
 
   hero: {

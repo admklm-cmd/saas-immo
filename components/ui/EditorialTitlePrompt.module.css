@@ -1,0 +1,67 @@
+/*
+ * Hero title in the command-prompt face (docs/design-system.md T.5): Inconsolata 700, a fixed advance
+ * of 0.5 em, so no tracking and no `wdth`. 54 px from 40rem of column, 31 px below. Landing hero only.
+ * The prompt sign hangs in the left margin (from 64rem), the block cursor blinks four times, then stays.
+ */
+
+.prompt {
+  font-size: min(9cqi, 2.4rem);
+  line-height: 1.15;
+  letter-spacing: normal;
+  font-variation-settings: normal;
+}
+
+@container (width >= 40rem) {
+  .prompt {
+    font-size: min(5.8cqi, 3.4rem);
+    line-height: 1.12;
+  }
+}
+
+.first {
+  position: relative;
+}
+
+/* The prompt sign: in the left margin of the first line, decorative (a pseudo-element, never read). */
+@media (width >= 64rem) {
+  .first::before {
+    content: ">";
+    position: absolute;
+    right: 100%;
+    margin-right: 0.5ch;
+    color: var(--color-ink-muted);
+    pointer-events: none;
+  }
+}
+
+/* The block cursor: solid by default, blinks four times (4.2 s) once the title has landed, then stays solid. */
+.cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 0.72em;
+  margin-left: 0.12em;
+  background-color: var(--color-ink);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cursor {
+    animation: prompt-cursor-blink 1060ms steps(1) 900ms 4 backwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor {
+    animation: none;
+  }
+}
+
+@keyframes prompt-cursor-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}

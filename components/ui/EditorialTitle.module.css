@@ -439,3 +439,10 @@
 [data-accent-face="title"] .markBeforeDescender {
   right: 0.02em;
 }
+
+/* Inconsolata (hero prompt title): the ornaments are re-measured on this face; after the title face on purpose. */
+[data-title-face="prompt"] .accentHost {
+  --accent-baseline: 0.86em;
+  --accent-ink-top: 0.2em;
+  --accent-ink-bottom: 0.88em;
+}

@@ -232,10 +232,23 @@ test.describe("site public", () => {
           .filter((node) => node.closest("[data-testid='editorial-title-visual']") === null)
           .map((node) => {
             const style = getComputedStyle(node);
-            return { text: node.textContent?.slice(0, 40), family: style.fontFamily, weight: Number(style.fontWeight), size: parseFloat(style.fontSize) };
+            return {
+              text: node.textContent?.slice(0, 40),
+              family: style.fontFamily,
+              weight: Number(style.fontWeight),
+              size: parseFloat(style.fontSize),
+              prompt: node.getAttribute("data-title-face") === "prompt",
+            };
           }),
       );
       for (const heading of headings) {
+        if (heading.prompt) {
+          // The hero title alone is set in the command-prompt face (docs/design-system.md T.5).
+          expect(path).toBe("/");
+          expect(heading.family.split(",")[0], `${path}: hero title`).toMatch(/Inconsolata/);
+          expect(heading.weight).toBe(700);
+          continue;
+        }
         expect(heading.weight, `${path}: « ${heading.text} » weight`).toBeLessThan(700);
         if (heading.size > 18) expect(heading.family.split(",")[0], `${path}: « ${heading.text} »`).toMatch(/Bricolage/);
         else expect(heading.family.split(",")[0], `${path}: small « ${heading.text} »`).not.toMatch(/Bricolage/);
@@ -243,10 +256,11 @@ test.describe("site public", () => {
 
       for (const accent of await accents(page)) {
         if (path === "/") {
-          // L4-C1: the face of the title — Bricolage Grotesque, upright, 600, the size of the title.
-          expect(accent.family.split(",")[0], `${path}: « ${accent.text} »`).toMatch(/Bricolage/);
+          // L4-C1: the face of the title — Bricolage Grotesque, upright, 600, the size of the title; the hero's own word follows its prompt face (Inconsolata 700, T.5).
+          const heroWord = accent.text === LANDING_TEXTS.hero.titleAccent;
+          expect(accent.family.split(",")[0], `${path}: « ${accent.text} »`).toMatch(heroWord ? /Inconsolata/ : /Bricolage/);
           expect(accent.fontStyle).toBe("normal");
-          expect(accent.weight).toBe(600);
+          expect(accent.weight).toBe(heroWord ? 700 : 600);
           expect(accent.ratio, `${path}: « ${accent.text} » size ratio`).toBeGreaterThanOrEqual(0.995);
           expect(accent.ratio).toBeLessThanOrEqual(1.005);
         } else {

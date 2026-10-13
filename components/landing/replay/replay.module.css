@@ -5,11 +5,18 @@
  * (6.9:1), ink on hover; cobalt focus ring of the product. Fades in once.
  */
 
-.button {
+/* The dock holds the two buttons side by side: replay, then pause (T.7). */
+.dock {
   position: fixed;
   bottom: 24px;
   left: 24px;
   z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -43,9 +50,12 @@
 }
 
 @media (width < 40rem) {
-  .button {
+  .dock {
     bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
     left: 16px;
+  }
+
+  .button {
     width: 44px;
     height: 44px;
     justify-content: center;
@@ -55,6 +65,12 @@
   .icon {
     width: 18px;
     height: 18px;
+  }
+
+  /* The pause keeps its word (« Pause » / « Reprendre »): a 44 px high pill, not a round button. */
+  .pause {
+    width: auto;
+    padding: 0 16px;
   }
 
   /* The name stays for assistive technology. */

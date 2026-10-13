@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { Bricolage_Grotesque, Geist, Geist_Mono, Inconsolata, Instrument_Serif } from "next/font/google";
 
 import { BRAND } from "@/components/brand";
 
@@ -28,6 +28,11 @@ const instrumentSerif = Instrument_Serif({
   display: "swap",
   variable: "--font-instrument-serif",
 });
+/**
+ * Title of the landing hero only (docs/design-system.md T.5): the free cousin of the Windows
+ * command prompt font. One static file, self-hosted at build time like the others.
+ */
+const inconsolata = Inconsolata({ subsets: ["latin"], weight: "700", display: "swap", variable: "--font-inconsolata" });
 const geist = Geist({ subsets: ["latin"], display: "swap", variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], display: "swap", variable: "--font-geist-mono" });
 
@@ -44,7 +49,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="fr"
-      className={`${bricolage.variable} ${instrumentSerif.variable} ${geist.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bricolage.variable} ${instrumentSerif.variable} ${geist.variable} ${geistMono.variable} ${inconsolata.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
     >
       <body className="flex min-h-full flex-col">{children}</body>

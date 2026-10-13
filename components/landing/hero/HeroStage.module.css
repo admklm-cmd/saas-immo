@@ -36,6 +36,8 @@
 .zone {
   position: relative;
   height: clamp(14rem, 34vh, 20rem);
+  /* Lift of the zone: the two-line prompt title is shorter than the old poster, the zone keeps the position of the hands (T.5). */
+  margin-top: 0.3rem;
 }
 
 /*
@@ -46,21 +48,13 @@
 @media (min-width: 64rem) {
   .zone {
     height: clamp(15rem, calc(100svh - 31rem), 22rem);
+    margin-top: -0.6rem;
   }
 }
 
 @media (min-width: 90rem) {
   .zone {
     height: clamp(16rem, calc(100svh - 33rem), 26rem);
+    margin-top: 4.7rem;
   }
-}
-
-.zone::before {
-  content: "";
-  position: absolute;
-  inset: auto 0 100% 0;
-  height: 3rem;
-  z-index: -1;
-  pointer-events: none;
-  background: linear-gradient(to bottom, var(--color-canvas), transparent);
 }

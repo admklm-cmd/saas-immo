@@ -19,7 +19,7 @@ export function easeInOutSine(q: number): number {
 }
 
 /** Share of the duration spent waiting, by transition (the spec's `c`). */
-export const WAVE_SPREAD = { "to-sphere": 0.35, "to-apple": 0.35, "to-hands": 0.4 } as const;
+export const WAVE_SPREAD = { "to-hand": 0.4, "to-hands": 0.4 } as const;
 /** Noise on the delay, as a share of the duration. */
 export const WAVE_NOISE = 0.04;
 

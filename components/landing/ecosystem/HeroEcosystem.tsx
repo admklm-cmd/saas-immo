@@ -214,7 +214,7 @@ export function HeroEcosystem() {
       </span>
 
       <div className={styles.legend}>
-        <span className="particle-veil particle-veil-tight flex w-fit items-center gap-2" data-network-quiet="" data-testid="hero-ecosystem-label">
+        <span className="particle-veil particle-veil-tight flex w-fit items-center gap-2" data-network-quiet="" data-pulse-origin="" data-testid="hero-ecosystem-label">
           <SimulationBadge />
           <span className="text-xs font-medium text-ink-muted">{TEXTS.badge}</span>
         </span>

@@ -25,7 +25,7 @@ export function ProblemHeading() {
       <div className="particle-veil particle-veil-tight" data-network-quiet="">
         <Overline>{TEXTS.kicker}</Overline>
       </div>
-      <div className="network-veil-title network-veil-title-subtle max-w-full" data-network-quiet="">
+      <div className="network-veil-title network-veil-title-subtle max-w-full" data-network-quiet="" data-pulse-origin="">
         <EditorialTitle
           as="h2"
           id="problem-title"

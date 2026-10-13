@@ -1,14 +1,14 @@
 import { ADAPTIVE, LIVE_WORK_BUDGET_MS, resolveTier, type Tier } from "./hero-config";
 import { decodeHands, type BakedHands } from "./hands-data";
 import { HeroScene } from "./HeroScene";
-import { handsShareOf, paintContact, paintPoints, paintRobots, type PaintStats, type Palette } from "./hero-paint";
+import { handsShareOf, lookShareOf, paintContact, paintPoints, paintRobots, type PaintStats, type Palette } from "./hero-paint";
 import { computeLayout, type Rect } from "./layout";
 import { SEQUENCE_CAP_MS, SEQUENCE_END_MS, birthOpacity, contactOpacity, phaseAt } from "./timeline";
 
 /**
- * Canvas renderer and loop of the hero particles (docs/design-system.md §2.11.4 ter G, H): one 2D
- * canvas, its own `requestAnimationFrame` loop (Anime.js stays reserved to the DOM). The sequence
- * is played once; then the living act (the second animation: the two index fingers that reach
+ * Canvas renderer and loop of the hero particles (docs/design-system.md §2.11.4 ter G, H; T): one 2D
+ * canvas, its own `requestAnimationFrame` loop (Anime.js stays reserved to the DOM). The opening
+ * (the big sphere, the hand that takes the ball) is played once; then the living act (the second animation: the two index fingers that reach
  * towards each other, §2.11.4 ter S) is the only loop, drawn at 60 frames/s on a computer, and it
  * really stops off screen, in a hidden tab and on the user's pause.
  * Colours are read from the CSS tokens of the canvas.
@@ -16,7 +16,19 @@ import { SEQUENCE_CAP_MS, SEQUENCE_END_MS, birthOpacity, contactOpacity, phaseAt
 
 export type EngineState = "playing" | "paused" | "stopped" | "reduced";
 
-export type StageGeometry = { readonly width: number; readonly height: number; readonly zone: Rect; readonly coarsePointer: boolean };
+export type StageGeometry = {
+  readonly width: number;
+  readonly height: number;
+  readonly zone: Rect;
+  readonly coarsePointer: boolean;
+  /** Height of the window below the top of the stage: the big sphere fits in it. */
+  readonly visibleHeight: number;
+  /** Rectangles (stage coordinates) of the texts the opening keeps calm. */
+  readonly quiet: readonly Rect[];
+};
+
+/** Adaptive density of the opening (docs T.4): mean cost above this (ms, over 30 frames) drops the skin points. */
+const SKIN_BUDGET_MS = 4;
 
 /** Percentile of a ring of numbers (copy sorted): small, called once per second. */
 export function percentile(values: readonly number[], share: number): number {
@@ -46,6 +58,8 @@ export class HeroParticleEngine {
   private readonly liveWork: number[] = [];
   private lastGap = -1000;
   private drawCount = 0;
+  /** Share of the skin points drawn: 1, then 0.5, then 0 (docs T.4). */
+  private skinShare = 1;
   private drawnPhase = "";
   private lastDataset = -1000;
   private capPublished = false;
@@ -82,13 +96,15 @@ export class HeroParticleEngine {
     this.canvas.height = Math.max(1, Math.round(geometry.height * this.dpr));
     if (!this.scene || this.scene.tier.name !== tier.name) this.buildScene(tier);
     this.liveStep = Math.max(this.liveStep, tier.liveFrameStep);
-    this.scene!.setLayout(computeLayout(geometry.width, geometry.height, geometry.zone, tier));
+    this.scene!.setQuiet(geometry.quiet);
+    this.scene!.setLayout(computeLayout(geometry.width, geometry.height, geometry.zone, tier, geometry.visibleHeight));
     this.afterChange();
   }
 
   private buildScene(tier: Tier): void {
     this.scene = new HeroScene(tier);
     this.drawCount = tier.points;
+    this.skinShare = 1;
     this.costs.length = 0;
     if (this.baked) this.scene.setHands(decodeHands(this.baked, tier.points));
   }
@@ -136,7 +152,7 @@ export class HeroParticleEngine {
     this.afterChange();
   }
 
-  /** « Rejouer les animations »: back to the cloud, the sequence starts again. */
+  /** « Rejouer les animations »: back to the big sphere, the sequence starts again. */
   replay(): void {
     if (this.state === "reduced") return;
     this.state = "playing";
@@ -147,7 +163,9 @@ export class HeroParticleEngine {
     this.liveWork.length = 0;
     this.scene?.resetLive();
     this.capPublished = false;
-    this.drawnPhase = "cloud";
+    this.drawnPhase = "sphere";
+    this.skinShare = 1;
+    this.costs.length = 0;
     this.afterChange();
   }
 
@@ -216,7 +234,10 @@ export class HeroParticleEngine {
     if (this.running) this.raf = requestAnimationFrame(this.frame);
   };
 
-  /** Adaptive density: mean cost over 30 frames above the budget lowers the points by 25 % (floor 40 %). */
+  /**
+   * Adaptive density: mean cost over 30 frames above the budget drops the skin points of the opening
+   * (× 0.5, then none: the 14 000 identities of the hands stay), then lowers the identities by 25 % (floor 40 %).
+   */
   private adapt(cost: number): void {
     if (!this.scene) return;
     this.frames++;
@@ -225,6 +246,11 @@ export class HeroParticleEngine {
     if (this.costs.length < ADAPTIVE.window) return;
     const mean = this.costs.reduce((sum, value) => sum + value, 0) / this.costs.length;
     this.costs.length = 0;
+    if (this.skinShare > 0 && mean > SKIN_BUDGET_MS) {
+      this.skinShare = this.skinShare > 0.5 ? 0.5 : 0;
+      return;
+    }
+    if (this.skinShare > 0) return;
     const floor = Math.round(this.scene.count * ADAPTIVE.floor);
     if (mean > ADAPTIVE.budgetMs && this.drawCount > floor) this.drawCount = Math.max(floor, Math.round(this.drawCount * ADAPTIVE.step));
   }
@@ -247,14 +273,17 @@ export class HeroParticleEngine {
     // The second animation runs from the end of the opening; a still image shows the rest position.
     const moving = !still && sequenceMs >= SEQUENCE_END_MS;
     scene.updateLive(this.actSec, moving);
-    scene.compute(state, sequenceMs, this.liveSec, !still, this.drawCount);
-    scene.computeRobots(state, sequenceMs, this.liveSec, still);
+    const skin = still ? 0 : Math.round(scene.skin * this.skinShare);
+    scene.compute(state, sequenceMs, this.liveSec, !still, this.drawCount, skin);
+    scene.computeRobots(state, sequenceMs, still);
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, geometry.width, geometry.height);
     const share = handsShareOf(state, still);
     this.stats.cobalt = 0;
-    paintPoints(ctx, scene, this.colors, share, still ? 1 : birthOpacity(sequenceMs));
+    // The sphere is large (points × 1.25) until the hand takes the ball: the weight fades with the transition.
+    const sphereWeight = still ? 0 : state.phase === "sphere" ? 1 : state.phase === "to-hand" ? 1 - state.progress : 0;
+    paintPoints(ctx, scene, this.colors, lookShareOf(state, still), sphereWeight, still ? 1 : birthOpacity(sequenceMs));
     paintRobots(ctx, scene, this.colors, state, share, still, this.stats);
     paintContact(ctx, scene, this.colors, still ? 1 : contactOpacity(sequenceMs), still, this.stats);
     ctx.globalAlpha = 1;
@@ -287,7 +316,15 @@ export class HeroParticleEngine {
       dataset.tipGapRest = live.g0.toFixed(1);
       dataset.tipGapNear = live.g1.toFixed(1);
     }
-    dataset.points = String(this.scene && (this.state === "playing" || this.state === "paused" || this.drawnPhase) ? this.drawCount : 0);
+    const skinDrawn = this.scene?.skinDrawn ?? 0;
+    dataset.points = String(this.scene && (this.state === "playing" || this.state === "paused" || this.drawnPhase) ? this.drawCount + skinDrawn : 0);
+    // Points of the skin drawn (0 as soon as the ball is formed), quiet rectangles in use (0 on the hands), the held ball.
+    dataset.skin = String(skinDrawn);
+    dataset.quiet = String(this.drawnPhase && this.drawnPhase !== "hands" && this.state !== "reduced" && this.state !== "stopped" ? (this.scene?.quietCount ?? 0) : 0);
+    if (this.scene && (this.drawnPhase === "hand" || this.drawnPhase === "to-hands")) {
+      const ball = this.scene.ballStats();
+      if (ball) dataset.ball = `${Math.round(ball.x)},${Math.round(ball.y)},${Math.round(ball.r)},${ball.part.toFixed(2)}`;
+    }
     if (this.intervals.length >= 20) {
       dataset.frameP95 = percentile(this.intervals, 0.95).toFixed(1);
       dataset.frameMs = percentile(this.work, 0.75).toFixed(2);

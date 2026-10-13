@@ -6,7 +6,7 @@ import { contrastFailures, instrumentPage, measureContrast, rafCalls } from "./h
 
 /**
  * Hero, second animation « les index qui veulent se toucher » and the raised composition
- * (docs/design-system.md §2.11.4 ter S, criteria 14 to 22). The opening (cloud, ball, apple, hands) is
+ * (docs/design-system.md §2.11.4 ter S, criteria 15 to 22, and T criterion 24). The opening (big sphere, held ball, hands) is
  * played once; then the two index fingers reach towards each other, almost touch, withdraw and rest,
  * in a cycle of 7.2 s that never stops. An illustration: nothing is sent, nothing is read from the
  * database. No form on this journey: no consent checkbox to check.
@@ -136,25 +136,32 @@ function cobaltMarks(page: Page) {
   });
 }
 
-test.describe("composition remontée (critère 14)", () => {
+test.describe("grande boule et boule tenue, entières dans la fenêtre (critère 24)", () => {
   test.use({ reducedMotion: "no-preference" });
 
   for (const viewport of VIEWPORTS.slice(0, 2)) {
-    test(`${viewport.width} x ${viewport.height} : la boule et la pomme sont entières dans la fenêtre, sans toucher les boutons, sans défiler`, async ({ page }) => {
+    test(`${viewport.width} x ${viewport.height} : la grande boule est entière dans la fenêtre, la boule tenue sous les boutons, sans défiler`, async ({ page }) => {
       test.setTimeout(60_000);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openHome(page);
       const canvas = page.locator(CANVAS);
       const buttons = await page.getByTestId("hero-band").getByRole("link", { name: LANDING_TEXTS.actions.signIn }).boundingBox();
-      for (const phase of ["sphere", "apple"] as const) {
+      for (const phase of ["sphere", "hand"] as const) {
         await expect(canvas).toHaveAttribute("data-phase", phase, { timeout: 30_000 });
-        // Late in the steady phase, when the solid has reached its place.
+        // In the steady phase, once the solid has reached its place.
         await page.waitForTimeout(700);
         const box = await inkBox(page);
         expect(await page.evaluate(() => window.scrollY), "no scrolling is needed").toBe(0);
-        expect(box.top, `${phase}: top of the drawing under the buttons (${buttons!.y + buttons!.height})`).toBeGreaterThanOrEqual(buttons!.y + buttons!.height + 8);
-        expect(box.bottom, `${phase}: bottom of the drawing inside the window`).toBeLessThanOrEqual(viewport.height - 8);
-        await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "boule" : "pomme"}-${viewport.name}.png` });
+        expect(box.left, `${phase}: nothing cut on the left`).toBeGreaterThanOrEqual(0);
+        expect(box.right, `${phase}: nothing cut on the right`).toBeLessThanOrEqual(viewport.width);
+        if (phase === "sphere") {
+          // The big sphere goes behind the title and the buttons: only the window limits it.
+          expect(box.bottom, "sphere: bottom of the drawing inside the window").toBeLessThanOrEqual(viewport.height + 2);
+        } else {
+          expect(box.top, `hand: top of the drawing under the buttons (${buttons!.y + buttons!.height})`).toBeGreaterThanOrEqual(buttons!.y + buttons!.height + 4);
+          expect(box.bottom, "hand: bottom of the drawing inside the window").toBeLessThanOrEqual(viewport.height - 8);
+        }
+        await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "grande-boule" : "main-boule"}-${viewport.name}.png` });
       }
     });
   }
@@ -268,21 +275,21 @@ test.describe("seconde animation (mouvement autorisé)", () => {
     }
   });
 
-  test("390 px : la boule et la pomme, entières, en image", async ({ page }) => {
+  test("390 px : la grande boule et la boule tenue, entières, en image (critère 24)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });
     await openHome(page);
     const canvas = page.locator(CANVAS);
     const box = await page.getByTestId("hero-band").getByRole("link", { name: LANDING_TEXTS.actions.signIn }).boundingBox();
-    for (const phase of ["sphere", "apple"] as const) {
+    for (const phase of ["sphere", "hand"] as const) {
       await expect(canvas).toHaveAttribute("data-phase", phase, { timeout: 30_000 });
       await page.waitForTimeout(700);
       const ink = await inkBox(page);
-      expect(ink.top, "under the buttons").toBeGreaterThanOrEqual(box!.y + box!.height + 8);
-      expect(ink.bottom, "inside the window").toBeLessThanOrEqual(844 - 8);
+      if (phase === "hand") expect(ink.top, "under the buttons").toBeGreaterThanOrEqual(box!.y + box!.height + 4);
+      expect(ink.bottom, "inside the window").toBeLessThanOrEqual(844 - 8 + (phase === "sphere" ? 10 : 0));
       expect(ink.left).toBeGreaterThanOrEqual(0);
       expect(ink.right).toBeLessThanOrEqual(390);
-      await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "boule" : "pomme"}-390.png` });
+      await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "grande-boule" : "main-boule"}-390.png` });
     }
   });
 

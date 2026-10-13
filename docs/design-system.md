@@ -303,6 +303,7 @@ Règles :
 | **Chiffre** | Geist Mono, chiffres tabulaires (`.figure`) | 600 | `letter-spacing: -0.03em` (inchangé). Tailles inchangées (`text-title`, `text-hero`, `text-section`). Jamais en Bricolage, jamais en italique. `font-bold` → `font-semibold` sur les chiffres. |
 | **Label** | Geist (`.label` / `text-overline`) | 500 (600 toléré là où il existe déjà) | 11 px, capitales, `0.1em`, `text-ink-subtle` : `dt`, en-têtes de tableau, sur-titres internes aux cartes. |
 | **Label mono** (nouveau) | Geist Mono (`.label-mono`) | 500 | 11 px, capitales (`text-transform`, le texte est stocké en casse normale), `0.08em`, interlignage 1,2, `text-ink-subtle`. Sur-titre de page (CRM), sur-titre de section (site public), index (« 04 / 07 »). |
+| **Titre du hero (invite)** | Inconsolata (`font-prompt`) | 700 | `h1` du hero de la landing uniquement (T.5) : chasse fixe de 0,5 em, sans crénage, sans `wdth`, curseur bloc, `>` suspendu. Pile de secours : Consolas, Cascadia Mono. Tous les autres titres restent en Bricolage. |
 
 **Bricolage jamais sous 18 px.** Un titre composé en `text-xs`, `text-sm`, `text-base`, `text-lg`
 ou `text-overline` (ex. `h3` « L’agent au travail » des cartes, `h2` des colonnes du pipeline,
@@ -3078,7 +3079,7 @@ le sur-titre de la bande est devenu une étiquette de donnée (`data-testid="sta
 
 ##### T. Retours utilisateur du 13/10/2026 (2) : nouvelle ouverture, titre « invite de commandes », page en particules
 
-> **Statut : spécifié le 13/10/2026 (web-designer), pas encore implémenté.** Quatre retours de l'utilisateur, à la lettre :
+> **Statut : spécifié le 13/10/2026 (web-designer), implémenté le 13/10/2026 (frontend-ux : voir T.11 pour les valeurs retenues et les écarts).** Quatre retours de l'utilisateur, à la lettre :
 > (1) « la dernière image est parfaite » : **l'acte 2 ne change pas** (S.3 à S.6, S.9 à S.11, critères 15 à 22) ;
 > (2) l'ouverture « petite boule puis pomme » ne convient pas : « une **boule complète, beaucoup plus grande, qui fait vraiment toute la
 > première page** ; au lieu de prendre que le milieu, **elle prend aussi le titre** », puis « d'abord la boule, ensuite **la main qui
@@ -3290,6 +3291,33 @@ Les trois références sont **blanc sur noir** ; l'utilisateur a validé l'image
 
 **À transmettre à `frontend-ux`** (hors code déjà décrit) : (1) l'ordre d'implémentation conseillé : a. police et titre (indépendants du moteur) ; b. étiquette en flux et marge de la zone ; c. grande sphère + rotation + zone calme ; d. boule tenue, main gauche, transitions ; e. champ de la page ; (2) `BALL_AT`, `BALL_RADIUS_SHARE` et `HOLD_SHIFT` sont des valeurs de départ à régler à l'œil sur capture (variante B autorisée) ;
 (3) le contexte de pause doit être remonté au-dessus du hero et du fond ; (4) si 26 000 points ne tiennent pas le budget, passer à 20 000 et le consigner ici ; (5) ne **rien** changer à `hands.baked.json`, aux réglages S.7 ni aux rails.
+
+##### T.11 Implémentation (frontend-ux, 13/10/2026) : valeurs retenues et écarts à la spécification
+
+> Statut : **implémenté** (étapes 1 à 5). Ce qui diffère de T.2 à T.7, et pourquoi. Les valeurs de départ « à régler à l'œil » sont arrêtées ici.
+
+- **Boule tenue** : variante B retenue, **plus haute que prévu** : centre `(−0,14 ; −0,05)·W` (et non `(−0,163 ; +0,074)·W`), rayon `0,07·W` (Ø ≈ 186 px à 1440), `HOLD_SHIFT = 0,06·W`. Sur capture, à `+0,074` la boule recouvrait les doigts qui pendent et la main se lisait comme une traînée ; posée sur l'index (qui dépasse de la main reculée), « une main tient une boule » se lit tout de suite. Constantes : `BALL_AT`, `BALL_RADIUS_SHARE`, `HOLD_SHIFT` dans `hero-config.ts`.
+- **Apparence** : la grande sphère est dessinée **1,6 fois plus opaque** que l'acte 2 (`SPHERE_OPACITY`) : à l'opacité de l'acte 2, 26 000 points sur 818 px lisaient comme un disque pâle, pas comme une boule. L'accentuation des mains (opacité +0,5, taille +40 %) s'applique dès que la main prend la boule (`lookShareOf` : progression pendant `to-hand`, 1 ensuite) : à 0,5 la main reculée disparaissait.
+- **Face arrière** : plan plus pâle (mécanisme `BACK_Z`) ; la **taille × 0,8 de la face arrière n'est pas faite** (un lot de dessin de plus par plan pour un effet à peine visible).
+- **Robots de l'acte 1** : 6 / 4 / 3 sur trois orbites à 0,5 rad/s pendant la sphère ; **3 autour de la boule** (ellipse 1,25 R × 0,5 R) pendant `hand` ; les autres sont retenus sur place et s'éteignent pendant `to-hand`, les robots restants naissent sur leurs rails en 300 ms à partir de 1,9 s de `to-hands`. Aucun cobalt avant 10,6 s (testé).
+- **Retards des vagues** : un seul `c = 0,40` pour `to-hand` (la spec donnait 0,35 pour la boule) ; la main gauche glisse sans retard de 0,4 s à 2,4 s (`easeInOutSine`), comme prévu.
+- **Peau** : `skin` = 12 000 / 6 000 / 1 800 points, mélangés par tirage à la sphère (une identité sur deux environ) ; s'éteignent sur les 45 % derniers % de leur trajet (`SKIN_FADE_SHARE`), par 3 niveaux d'opacité (1 ; 0,55 ; 0,2) triés dans les lots de dessin. Repli : > 4 ms de moyenne sur 30 images → peau × 0,5, puis 0, puis l'ancienne règle (identités × 0,75, plancher 40 %).
+- **Zone calme** : tous les `[data-network-quiet]` du hero (5 rectangles à 1440), agrandis de 32 × 20 px, anneau de 24 px (distance au rectangle : l'anneau est arrondi, l'intérieur reste rectangulaire). La zone calme est coupée en `hands` ; le `::before` blanc de 48 px au-dessus de la zone des mains (`HeroStage.module.css`) est **supprimé** : il dessinait une bande blanche en travers de la grande sphère.
+- **Titre** : `EditorialTitle` reçoit `size="prompt"` (Inconsolata 700, `font-prompt`), avec son module `EditorialTitlePrompt.module.css` (taille, `>` suspendu en `::before` à partir de 64 rem, curseur bloc `data-testid="hero-cursor"`, 4 clignotements puis plein). Le `>` est un pseudo-élément (jamais dans le texte lu ni dans le texte copié). Ornements de « main » re-mesurés sur Inconsolata (`--accent-baseline: 0,86 em`).
+- **Hauteur de bande** : le titre à 2 lignes et l'étiquette en flux changent la hauteur de la bande différemment selon la largeur (+75 px à 1440, −10 px à 1024, ≈ 0 à 390 pour la marge de la zone). Marge haute de `.zone` : `4,7 rem` (≥ 90 rem), `−0,6 rem` (≥ 64 rem), `0,3 rem` en dessous ; les espacements hauts de la bande ont été resserrés (`pt-5/6/3/2`, étiquette `mt-3/2/8`) pour que les marges restent faibles. Position de la zone mesurée : 499 / 392 / 545 px (référence 499 / 392 / 540), **± 8 px tenu**.
+- **Champ de la page** : technique des tuiles de la spec, remplie par un **motif** (`createPattern` + `fillRect`, trois remplissages par image ; DPR 1 partout) plutôt que par des `drawImage` répétés ; DPR 1 sur ordinateur et tablette, 1,5 au plus sur téléphone ; ondes dessinées par-dessus pour les seuls points proches de l'anneau (quatre niveaux d'intensité). Crochet de test `data-pulse-force="x,y,rayon"` sur le canvas du champ. Repli N1 à N3 de T.6 implémenté (`PageField.ts`). `data-pulse-origin` posé sur les titres des sections (problème, solution, agents, contrôle, résultat, final) et le bloc A.
+- **Pause** : `HeroMotionProvider` (au-dessus du hero et du fond) ; bouton fixe « Pause / Reprendre » dans le même dock que « Rejouer les animations » (texte seul : pas de nouvelle icône ; 44 px de haut sous 640 px).
+- **Plafond d'encre du champ** : la valeur de 0,55 par point est tenue ; le recouvrement de **deux ou trois points de plans différents sur le même pixel**, sous une onde, atteint **≈ 0,70** (mesuré sur le canvas : quelques pixels), pas 0,60. Sous un voile à 90 %, cela donne encore un fond de luminance 0,86 environ : le contraste de tout le texte reste au-dessus des seuils (garde `landing-page-dust.spec.ts`, onde forcée sous la fenêtre entière).
+- **Structure du code** : `HeroScene.ts` (images et tri), `sphere-field.ts` (la grande sphère), `hold-pairing.ts` (appariement des identités), `hold-transitions.ts` (les deux transitions), `quiet-zone.ts`, `robot-motion.ts` ; côté page : `PageField.ts` (moteur) et `page-dust.ts` (maths pures).
+
+**Mesures réelles (Chromium 1440 × 900 sans ralentissement ; 390 × 844 processeur × 4 ; machine de développement ; rendu logiciel de Chromium sans GPU : pessimiste par rapport à un vrai poste ou téléphone).**
+
+| | Ouverture 0–10,6 s | Acte 2 | Champ de la page (défilement scripté de 10 s) |
+|---|---|---|---|
+| **1440, 26 000 points (pas de repli)** | intervalle p95 **16,8 ms** ; JavaScript p75 **3,7 ms** (sphère 3,6 ; `to-hand` 4,0 ; `hand` 2,8 ; `to-hands` 3,8) | p95 16,7 ms ; JavaScript p75 2,9 ms | JavaScript p75 **1,5 ms**, p95 1,9 ms ; intervalle p95 33,3 ms ; **1 image sur 575 au-delà de 50 ms** (1 sans champ) |
+| **390 × 4, 5 400 points** | intervalle p95 **33,4 ms** ; JavaScript p75 **4,3 ms** (au-delà des 4 ms : le repli « peau × 0,5 puis 0 » se déclenche, comme prévu) | p95 16,7 ms ; JavaScript p75 3,1 ms | JavaScript p75 **2,5 à 2,9 ms**, p95 3,1 ; intervalle p95 50 ms ; **7 à 13 images sur ≈ 450 au-delà de 50 ms** (1 sur 597 sans champ) : le critère « aucune image > 50 ms » n'est **pas tenu** sur téléphone × 4, à confirmer sur un vrai téléphone |
+
+Le palier de repli de 26 000 à 20 000 points n'a pas été nécessaire à 1440 (26 000 tiennent le budget de 17 ms ; le JavaScript est à la limite des 4 ms et le repli automatique « peau × 0,5 » s'enclenche sous charge, par exemple pendant que la suite de tests tourne). Le champ de la page lit les positions des titres par `IntersectionObserver` et la couverture du hero par une sentinelle (`data-hero-end`) : aucune lecture de mise en page pendant le défilement.
 
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 

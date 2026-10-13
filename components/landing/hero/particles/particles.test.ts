@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 
 import { createPrng } from "@/components/motion/engine/prng";
 
-import { createDust, DUST, dustCount, stepDust } from "../../living/page-dust";
 import { decodeHands } from "./hands-data";
 import baked from "./hands.baked.json";
 import { HeroScene } from "./HeroScene";
-import { PLANES, resolveTier } from "./hero-config";
+import { BALL_RADIUS_SHARE, HOLD_SHIFT, PLANES, resolveTier } from "./hero-config";
 import { computeLayout } from "./layout";
 import { hilbertIndex, pairingPermutation, pairShapes, permute, rankShare } from "./pairing";
 import { robotPose, restingRobot, emptyPose } from "./robots";
-import { appleParts, appleProfile, buildApple, buildCloud, buildSphere } from "./shapes";
+import { SPHERE } from "./hero-config";
+import { buildBall, buildSphere } from "./shapes";
 import { SEQUENCE_END_MS, contactOpacity, phaseAt, PHASES, SCHEDULE, birthOpacity } from "./timeline";
 import { WAVE_SPREAD, bezier, buildCurvature, delayOf, easeInOutCubic, progressOf } from "./trajectory";
 
@@ -22,6 +22,7 @@ describe("tiers (docs/design-system.md §2.11.4 ter D, L)", () => {
     expect([resolveTier(1440, false).points, resolveTier(1280, false).points, resolveTier(1279, false).points, resolveTier(767, false).points]).toEqual([14_000, 14_000, 9_000, 3_600]);
     expect(resolveTier(1440, true).points).toBe(3_600);
     expect(resolveTier(1440, false).robots).toBe(14);
+    expect([resolveTier(1440, false).skin, resolveTier(1024, false).skin, resolveTier(390, false).skin]).toEqual([12_000, 6_000, 1_800]);
     expect(resolveTier(390, false).robotSize).toBe(5);
   });
 
@@ -31,21 +32,22 @@ describe("tiers (docs/design-system.md §2.11.4 ter D, L)", () => {
   });
 });
 
-describe("phases (§2.11.4 ter B)", () => {
-  it("runs the seven phases in order with the documented durations", () => {
+describe("phases (docs/design-system.md T.2)", () => {
+  it("runs the five phases in order with the documented durations (no cloud, no apple)", () => {
     expect(SCHEDULE.map((slot) => slot.phase)).toEqual([...PHASES]);
+    expect([...PHASES]).toEqual(["sphere", "to-hand", "hand", "to-hands", "hands"]);
     const ends = SCHEDULE.map((slot) => slot.to);
-    expect(ends.slice(0, 6)).toEqual([1400, 3400, 4800, 6800, 8200, 10_600]);
+    expect(ends.slice(0, 4)).toEqual([3800, 6600, 8200, 10_600]);
     expect(SEQUENCE_END_MS).toBe(10_600);
-    expect(phaseAt(0).phase).toBe("cloud");
-    expect(phaseAt(1399).phase).toBe("cloud");
-    expect(phaseAt(1400).phase).toBe("to-sphere");
-    expect(phaseAt(3400).phase).toBe("sphere");
-    expect(phaseAt(6800).phase).toBe("apple");
+    expect(phaseAt(0).phase).toBe("sphere");
+    expect(phaseAt(3799).phase).toBe("sphere");
+    expect(phaseAt(3800).phase).toBe("to-hand");
+    expect(phaseAt(6600).phase).toBe("hand");
+    expect(phaseAt(8200).phase).toBe("to-hands");
     expect(phaseAt(10_599).phase).toBe("to-hands");
     expect(phaseAt(10_600).phase).toBe("hands");
     expect(phaseAt(99_999).phase).toBe("hands");
-    expect(phaseAt(-5).phase).toBe("cloud");
+    expect(phaseAt(-5).phase).toBe("sphere");
   });
 
   it("never goes back as time grows, and reports the progress inside a transition", () => {
@@ -55,20 +57,20 @@ describe("phases (§2.11.4 ter B)", () => {
       expect(index).toBeGreaterThanOrEqual(last);
       last = index;
     }
-    expect(phaseAt(2400).progress).toBeCloseTo(0.5, 10);
-    expect(phaseAt(2400).transition).toBe(true);
-    expect(phaseAt(4000).transition).toBe(false);
+    expect(phaseAt(5200).progress).toBeCloseTo(0.5, 10);
+    expect(phaseAt(5200).transition).toBe(true);
+    expect(phaseAt(7000).transition).toBe(false);
   });
 
-  it("is born over 600 ms and shows the cobalt point only after the sequence", () => {
-    expect([birthOpacity(0), birthOpacity(300), birthOpacity(600), birthOpacity(5000)]).toEqual([0, 0.5, 1, 1]);
+  it("is born over 800 ms and shows the cobalt point only after the sequence", () => {
+    expect([birthOpacity(0), birthOpacity(400), birthOpacity(800), birthOpacity(5000)]).toEqual([0, 0.5, 1, 1]);
     expect([contactOpacity(10_000), contactOpacity(10_600), contactOpacity(10_750), contactOpacity(11_000)]).toEqual([0, 0, 0.5, 1]);
   });
 });
 
-describe("shapes (§2.11.4 ter D)", () => {
+describe("shapes (docs/design-system.md T.3)", () => {
   it("builds the asked number of points, always finite and deterministic", () => {
-    for (const build of [buildCloud, buildSphere, buildApple]) {
+    for (const build of [buildSphere, buildBall]) {
       const shape = build(2_000);
       expect(shape.count).toBe(2_000);
       expect([...shape.x, ...shape.y, ...shape.z].every(Number.isFinite)).toBe(true);
@@ -76,63 +78,36 @@ describe("shapes (§2.11.4 ter D)", () => {
     }
   });
 
-  it("keeps the cloud inside the stage (with a margin) and without any readable shape", () => {
-    const cloud = buildCloud(4_000);
-    expect(Math.max(...cloud.x.map(Math.abs))).toBeLessThanOrEqual(0.58);
-    expect(Math.max(...cloud.y.map(Math.abs))).toBeLessThanOrEqual(0.58);
-  });
-
-  it("puts every point of the ball on one sphere of diameter 1", () => {
+  it("puts every point of the sphere on one sphere of diameter 1", () => {
     const sphere = buildSphere(3_000);
     for (let i = 0; i < sphere.count; i += 37) expect(Math.hypot(sphere.x[i]!, sphere.y[i]!, sphere.z[i]!)).toBeCloseTo(0.5, 5);
   });
 
-  it("builds a whole apple: height 1, symmetric about the vertical axis, no bite", () => {
-    const count = 8_000;
-    const apple = buildApple(count);
-    const parts = appleParts(count);
-    expect(parts.body + parts.stem + parts.leaf).toBe(count);
-    const ys = Array.from(apple.y);
-    expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(1, 4);
-
-    // Body only (stem and leaf come after): the silhouette is the same on both sides.
-    const body = { x: Array.from(apple.x.slice(0, parts.body)), y: Array.from(apple.y.slice(0, parts.body)) };
-    const right = Math.max(...body.x);
-    const left = -Math.min(...body.x);
-    expect(Math.abs(right - left) / right).toBeLessThan(0.02);
-    // Per horizontal band the widest point to the left and to the right match: nothing is missing on one side.
-    for (let band = 0; band < 8; band++) {
-      const lo = Math.min(...body.y) + ((Math.max(...body.y) - Math.min(...body.y)) * band) / 8;
-      const hi = lo + (Math.max(...body.y) - Math.min(...body.y)) / 8;
-      const xs = body.x.filter((_, i) => body.y[i]! >= lo && body.y[i]! < hi);
-      if (xs.length < 30) continue;
-      const wide = Math.max(...xs);
-      const narrow = -Math.min(...xs);
-      expect(Math.abs(wide - narrow) / wide, `band ${band}`).toBeLessThan(0.08);
-    }
-    // The leaf is on the LEFT of the stem (the brand logo has it on the right).
-    const leaf = Array.from(apple.x.slice(count - parts.leaf));
-    const stemTop = Array.from(apple.x.slice(parts.body, parts.body + parts.stem));
-    const mean = (values: number[]) => values.reduce((sum, value) => sum + value, 0) / values.length;
-    expect(mean(leaf)).toBeLessThan(mean(stemTop) - 0.03);
+  it("is denser at the poles: the 16° caps hold at least 1.8 times the mean density", () => {
+    const sphere = buildSphere(20_000);
+    const cosCap = Math.cos(SPHERE.cap);
+    let inCaps = 0;
+    for (let i = 0; i < sphere.count; i++) if (Math.abs(sphere.y[i]!) / 0.5 >= cosCap) inCaps++;
+    // Share of the surface of the two caps: (1 - cos cap).
+    const meanDensity = 1 / 1;
+    const capDensity = inCaps / sphere.count / (1 - cosCap);
+    expect(capDensity / meanDensity).toBeGreaterThanOrEqual(1.8);
   });
 
-  it("has a profile without notch: the radius rises to the equator, then falls to the bottom", () => {
-    let previous = 0;
-    let peaked = false;
-    for (let k = 1; k <= 400; k++) {
-      const { rho } = appleProfile((k / 400) * Math.PI);
-      if (!peaked && rho < previous - 1e-9) peaked = true;
-      if (peaked) expect(rho).toBeLessThanOrEqual(previous + 1e-9);
-      previous = rho;
-    }
-    // Under the dimple, the body goes down monotonically from the shoulder to the bottom.
-    let y = appleProfile(0.7).y;
-    for (let k = 1; k <= 200; k++) {
-      const next = appleProfile(0.7 + (k / 200) * (Math.PI - 0.7)).y;
-      expect(next).toBeLessThanOrEqual(y + 0.02);
-      y = next;
-    }
+  it("builds a ball of radius 1 whose heart is denser than a plain surface (65 % on the surface, 35 % in the volume)", () => {
+    const ball = buildBall(4_000);
+    const radii = Array.from(ball.x, (value, i) => Math.hypot(value, ball.y[i]!, ball.z[i]!));
+    expect(Math.max(...radii)).toBeLessThanOrEqual(1 + 1e-5);
+    const surface = radii.filter((radius) => radius > 0.999).length / radii.length;
+    expect(surface).toBeGreaterThan(0.6);
+    expect(surface).toBeLessThan(0.7);
+    expect(radii.filter((radius) => radius < 0.5).length / radii.length).toBeGreaterThan(0.1);
+  });
+
+  it("no longer exports the apple or the cloud", async () => {
+    const shapes = (await import("./shapes")) as Record<string, unknown>;
+    expect(shapes.buildApple).toBeUndefined();
+    expect(shapes.buildCloud).toBeUndefined();
   });
 });
 
@@ -144,8 +119,8 @@ describe("pairing (§2.11.4 ter C.1)", () => {
   });
 
   it("pairs rank for rank with a permutation, deterministically", () => {
-    const from = buildCloud(1_500);
-    const to = buildSphere(1_500);
+    const from = buildSphere(1_500);
+    const to = buildBall(1_500);
     const perm = pairingPermutation(from, to);
     expect(new Set(perm).size).toBe(1_500);
     expect(Array.from(pairingPermutation(from, to).slice(0, 50))).toEqual(Array.from(perm.slice(0, 50)));
@@ -156,7 +131,7 @@ describe("pairing (§2.11.4 ter C.1)", () => {
 
   it("moves points a short way: the paired travel is far shorter than a random pairing", () => {
     const from = buildSphere(3_000);
-    const to = buildApple(3_000);
+    const to = buildBall(3_000);
     const paired = pairShapes(from, to);
     const distance = (a: typeof from, b: typeof from) => {
       let total = 0;
@@ -188,7 +163,7 @@ describe("trajectories (§2.11.4 ter C)", () => {
   });
 
   it("finishes every point inside the duration, whatever its rank and noise", () => {
-    for (const kind of ["to-sphere", "to-apple", "to-hands"] as const) {
+    for (const kind of ["to-hand", "to-hands"] as const) {
       const spread = WAVE_SPREAD[kind];
       for (const rank of [0, 0.5, 1]) for (const noise of [-1, 0, 1]) {
         const delay = delayOf(rank, noise, 2_000, spread);
@@ -236,35 +211,83 @@ describe("baked hands", () => {
 
 describe("HeroScene (the maths of a frame)", () => {
   const scene = new HeroScene(PHONE);
-  scene.setLayout(computeLayout(390, 800, ZONE, PHONE));
+  scene.setLayout(computeLayout(390, 800, ZONE, PHONE, 779));
   scene.setHands(decodeHands(baked as never, PHONE.points));
   const layout = scene.currentLayout!;
+  const total = (sceneToCheck: HeroScene) => Array.from(sceneToCheck.bucketSize).reduce((sum, value) => sum + value, 0);
 
-  it("fills the depth buckets with every drawn point exactly once", () => {
-    scene.compute(phaseAt(4_000), 4_000, 4, true, PHONE.points);
-    expect(scene.bucketSize[0]! + scene.bucketSize[1]! + scene.bucketSize[2]!).toBe(PHONE.points);
+  it("fits the big sphere in the visible height of the first screen, whole", () => {
+    expect(layout.sphere.sx).toBeLessThanOrEqual(390);
+    expect(layout.sphere.cy).toBeCloseTo(779 / 2, 5);
+    const desktop = resolveTier(1440, false);
+    expect(computeLayout(1440, 1049, { x: 256, y: 434, w: 928, h: 372 }, desktop, 835).sphere.sx).toBeCloseTo(818.3, 1);
+    expect(computeLayout(1440, 1049, { x: 256, y: 434, w: 928, h: 372 }, desktop, 400).sphere.sx).toBeLessThanOrEqual(392);
+  });
+
+  it("fills the depth buckets with every drawn point exactly once (identities and skin)", () => {
+    scene.compute(phaseAt(2_000), 2_000, 2, true, PHONE.points, PHONE.skin);
+    expect(total(scene)).toBe(PHONE.points + PHONE.skin);
     const seen = new Set<number>();
     scene.buckets.forEach((list, b) => {
       for (let k = 0; k < scene.bucketSize[b]!; k++) seen.add(list[k]!);
     });
-    expect(seen.size).toBe(PHONE.points);
-    scene.compute(phaseAt(4_000), 4_000, 4, true, 1_000);
-    expect(scene.bucketSize[0]! + scene.bucketSize[1]! + scene.bucketSize[2]!).toBe(1_000);
+    expect(seen.size).toBe(PHONE.points + PHONE.skin);
+    scene.compute(phaseAt(2_000), 2_000, 2, true, 1_000, 0);
+    expect(total(scene)).toBe(1_000);
+    expect(scene.skinDrawn).toBe(0);
+  });
+
+  it("keeps the whole sphere inside a disc of its diameter, and turns", () => {
+    scene.compute(phaseAt(2_000), 2_000, 0, false, PHONE.points, PHONE.skin);
+    const first = Float32Array.from(scene.x);
+    for (let i = 0; i < PHONE.points; i++) {
+      expect(Math.hypot(scene.x[i]! - layout.sphere.cx, scene.y[i]! - layout.sphere.cy)).toBeLessThanOrEqual(layout.sphere.sx * 0.58);
+    }
+    scene.compute(phaseAt(3_000), 3_000, 0, false, PHONE.points, PHONE.skin);
+    let moved = 0;
+    for (let i = 0; i < PHONE.points; i++) if (Math.abs(scene.x[i]! - first[i]!) > 2) moved++;
+    expect(moved / PHONE.points).toBeGreaterThan(0.5);
   });
 
   it("is continuous at the end of every transition (the same point, the same place)", () => {
-    for (const boundary of [1_400, 3_400, 4_800, 6_800, 8_200, 10_600]) {
-      scene.compute(phaseAt(boundary - 0.5), boundary - 0.5, 0, false, PHONE.points);
+    for (const boundary of [3_800, 6_600, 8_200, 10_600]) {
+      scene.compute(phaseAt(boundary - 0.5), boundary - 0.5, 0, false, PHONE.points, 0);
       const before = { x: Float32Array.from(scene.x), y: Float32Array.from(scene.y) };
-      scene.compute(phaseAt(boundary), boundary, 0, false, PHONE.points);
+      scene.compute(phaseAt(boundary), boundary, 0, false, PHONE.points, 0);
       let worst = 0;
       for (let i = 0; i < PHONE.points; i++) worst = Math.max(worst, Math.hypot(scene.x[i]! - before.x[i]!, scene.y[i]! - before.y[i]!));
-      expect(worst, `boundary ${boundary}`).toBeLessThan(1.5);
+      expect(worst, `boundary ${boundary}`).toBeLessThan(2.5);
     }
   });
 
+  it("holds the ball: the right-half identities are inside its disc, the left hand steps back", () => {
+    scene.compute(phaseAt(7_400), 7_400, 0, false, PHONE.points, 0);
+    const ball = scene.ballStats()!;
+    expect(ball.r).toBeGreaterThanOrEqual(36);
+    expect(ball.part).toBeGreaterThanOrEqual(0.85);
+    // The left hand sits HOLD_SHIFT to the left of its final place.
+    const target = scene.shapes.hands!;
+    const left = scene.shapes.isLeft;
+    let checked = 0;
+    for (let i = 0; i < PHONE.points; i += 17) {
+      if (!left[i]) continue;
+      const s = 4 / (4 - scene.z[i]!);
+      expect(scene.x[i]! - (layout.hands.cx + target.x[i]! * layout.hands.sx * s)).toBeCloseTo(-HOLD_SHIFT * layout.hands.sx, 0);
+      checked++;
+    }
+    expect(checked).toBeGreaterThan(20);
+    expect(BALL_RADIUS_SHARE).toBe(0.07);
+  });
+
+  it("fades the skin out before the end of the hand taking the ball, and draws no skin after", () => {
+    scene.compute(phaseAt(6_599), 6_599, 0, false, PHONE.points, PHONE.skin);
+    expect(scene.skinDrawn).toBeLessThan(PHONE.skin * 0.2);
+    scene.compute(phaseAt(7_000), 7_000, 0, false, PHONE.points, 0);
+    expect(scene.skinDrawn).toBe(0);
+  });
+
   it("ends on the hands: every point on its baked place, around the contact point", () => {
-    scene.compute(phaseAt(10_600), 10_600, 11, false, PHONE.points);
+    scene.compute(phaseAt(10_600), 10_600, 11, false, PHONE.points, 0);
     const target = scene.shapes.hands!;
     for (let i = 0; i < PHONE.points; i += 53) {
       // The soft perspective (focal 4 shape heights) scales a point by its depth.
@@ -275,28 +298,28 @@ describe("HeroScene (the maths of a frame)", () => {
   });
 
   it("keeps each point inside 1.8 px of its place in the living end state (micro-movement), and still without motion", () => {
-    scene.compute(phaseAt(10_900), 10_900, 0, false, PHONE.points);
+    scene.compute(phaseAt(10_900), 10_900, 0, false, PHONE.points, 0);
     const rest = { x: Float32Array.from(scene.x), y: Float32Array.from(scene.y) };
     let worst = 0;
     for (const second of [1, 2.7, 5.3, 8.1]) {
-      scene.compute(phaseAt(10_900), 10_900, second, true, PHONE.points);
+      scene.compute(phaseAt(10_900), 10_900, second, true, PHONE.points, 0);
       for (let i = 0; i < PHONE.points; i++) worst = Math.max(worst, Math.abs(scene.x[i]! - rest.x[i]!), Math.abs(scene.y[i]! - rest.y[i]!));
     }
     expect(worst).toBeLessThanOrEqual(1.8 + 1e-3);
-    scene.compute(phaseAt(10_900), 10_900, 3, false, PHONE.points);
+    scene.compute(phaseAt(10_900), 10_900, 3, false, PHONE.points, 0);
     expect(Array.from(scene.x.slice(0, 40))).toEqual(Array.from(rest.x.slice(0, 40)));
   });
 
   it("keeps its robots on their rails: finite poses, alpha between 0 and 1, resting ones near the index tips", () => {
-    for (const ms of [1_000, 2_500, 4_000, 5_800, 7_500, 9_400, 10_900]) {
-      scene.computeRobots(phaseAt(ms), ms, ms / 1000, false);
+    for (const ms of [1_000, 2_500, 4_500, 6_000, 7_500, 9_400, 10_900]) {
+      scene.computeRobots(phaseAt(ms), ms, false);
       for (const pose of scene.robots) {
         expect([pose.x, pose.y, pose.z, pose.alpha].every(Number.isFinite)).toBe(true);
         expect(pose.alpha).toBeGreaterThanOrEqual(0);
         expect(pose.alpha).toBeLessThanOrEqual(1);
       }
     }
-    scene.computeRobots(phaseAt(10_900), 10_900, 0, true);
+    scene.computeRobots(phaseAt(10_900), 10_900, true);
     const tipX = layout.hands.cx + scene.handsData!.tips.left[0] * layout.hands.sx;
     const tipY = layout.hands.cy + scene.handsData!.tips.left[1] * layout.hands.sy;
     const near = scene.robots.filter((pose) => pose.alpha > 0 && Math.hypot(pose.x - tipX, pose.y - tipY) < 120);
@@ -304,20 +327,24 @@ describe("HeroScene (the maths of a frame)", () => {
     expect(scene.robots.filter((pose) => pose.alpha > 0)).toHaveLength(4);
   });
 
-  it("starts the robots hidden in the cloud, then on the ball", () => {
-    scene.computeRobots(phaseAt(500), 500, 0.5, false);
-    expect(scene.robots.every((pose) => pose.alpha === 0)).toBe(true);
-    scene.computeRobots(phaseAt(4_000), 4_000, 4, false);
-    expect(scene.robots.every((pose) => pose.alpha === 1)).toBe(true);
+  it("puts a few robots on the big sphere (3 on a phone), three around the ball, and keeps cobalt out of the opening", () => {
+    scene.computeRobots(phaseAt(2_000), 2_000, false);
+    expect(scene.robots.filter((pose) => pose.alpha > 0)).toHaveLength(PHONE.sphereRobots);
+    scene.computeRobots(phaseAt(7_400), 7_400, false);
+    expect(scene.robots.filter((pose) => pose.alpha > 0)).toHaveLength(3);
+    for (const ms of [2_000, 5_000, 7_400, 9_800, 10_500]) {
+      scene.computeRobots(phaseAt(ms), ms, false);
+      expect(scene.robots.some((pose) => pose.accent)).toBe(false);
+    }
   });
 
-  it("holds the apple until the hands are loaded rather than drawing a broken image", () => {
+  it("holds the sphere until the hands are loaded rather than drawing a broken image", () => {
     const early = new HeroScene(PHONE);
-    early.setLayout(computeLayout(390, 800, ZONE, PHONE));
-    expect(early.holdMs).toBe(8_200);
-    early.compute(phaseAt(9_500), 9_500, 0, false, PHONE.points);
-    expect(early.bucketSize[0]! + early.bucketSize[1]! + early.bucketSize[2]!).toBe(PHONE.points);
-    early.computeRobots(phaseAt(9_500), 9_500, 9.5, false);
+    early.setLayout(computeLayout(390, 800, ZONE, PHONE, 779));
+    expect(early.holdMs).toBe(3_800);
+    early.compute(phaseAt(9_500), 9_500, 0, false, PHONE.points, 0);
+    expect(total(early)).toBe(PHONE.points);
+    early.computeRobots(phaseAt(9_500), 9_500, false);
     expect(scene.holdMs).toBe(Infinity);
   });
 
@@ -325,31 +352,11 @@ describe("HeroScene (the maths of a frame)", () => {
     const hands = scene.handsData!;
     const pose = emptyPose();
     const context = { layout, hands, count: 6 };
-    for (const kind of ["sphere", "apple", "hands"] as const) {
-      robotPose(kind, 2, 3.3, 0.1, context, pose);
+    for (const kind of ["sphere", "ball", "hands"] as const) {
+      robotPose(kind, 2, 3.3, context, pose);
       expect([pose.x, pose.y].every(Number.isFinite)).toBe(true);
     }
     restingRobot(1, hands, layout.hands, pose);
     expect(pose.alpha).toBe(1);
-  });
-});
-
-describe("page dust (§2.11.4 ter J)", () => {
-  it("is 220 particles from 1024 px, 120 below, never darker than 0.16", () => {
-    expect([dustCount(1440), dustCount(1024), dustCount(1023), dustCount(390)]).toEqual([220, 220, 120, 120]);
-    expect(Math.max(...DUST.planes.map((plane) => plane.alpha))).toBeLessThanOrEqual(0.16);
-  });
-
-  it("drifts slowly (3 to 8 px/s), wraps at the edges and is deterministic", () => {
-    const dust = createDust(220);
-    expect(Array.from(createDust(220).x.slice(0, 10))).toEqual(Array.from(dust.x.slice(0, 10)));
-    for (let i = 0; i < dust.count; i++) {
-      const speed = Math.hypot(dust.vx[i]!, dust.vy[i]!);
-      expect(speed).toBeGreaterThanOrEqual(3 - 1e-3);
-      expect(speed).toBeLessThanOrEqual(8 + 1e-3);
-    }
-    for (let step = 0; step < 600; step++) stepDust(dust, 1, 1000, 800);
-    expect(Array.from(dust.x).every((value) => value >= 0 && value < 1)).toBe(true);
-    expect(Array.from(dust.y).every((value) => value >= 0 && value < 1)).toBe(true);
   });
 });

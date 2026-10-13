@@ -32,30 +32,31 @@ export function LandingHero() {
       {/* Band 1, the whole width: the particle canvas behind, the content above (§2.11.4 ter F). */}
       <HeroStage>
         <div
-          className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pt-10 text-center sm:px-8 lg:px-12 lg:pt-4 min-[90rem]:pt-2"
+          className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pt-5 text-center sm:px-8 sm:pt-6 lg:px-12 lg:pt-3 min-[90rem]:pt-2"
           data-testid="hero-band"
         >
           {/* An inline-size container: the poster title is capped by this column (§2.2.3).
               One veil per role of text, sized to the words (§2.11.4). */}
           <div className="@container flex w-full min-w-0 flex-col items-center">
-            <div className="network-veil-title relative mx-auto mt-8 w-fit max-w-full" data-network-quiet="">
+            {/* The tag sits in the flow, above the title: it can never overlap a line (T.5). */}
+            <p
+              data-testid="hero-tag"
+              className="label-mono mt-3 inline-block lg:mt-2 min-[90rem]:mt-8 rounded-full border border-ink bg-surface px-2.5 py-1.25 leading-none whitespace-nowrap text-ink"
+            >
+              {TEXTS.tag}
+            </p>
+            <div className="network-veil-title relative mx-auto mt-4 w-fit max-w-full" data-network-quiet="">
               <EditorialTitle
                 as="h1"
                 id="hero-title"
                 lines={TEXTS.titleLines}
                 accent={TEXTS.titleAccent}
-                size="poster"
+                size="prompt"
                 reveal="load"
                 accentEffect="underline"
                 accentReplay
                 accentFace="title"
               />
-              <p
-                data-testid="hero-tag"
-                className="absolute -top-8 right-0 z-10 inline-block rotate-3 rounded-full border border-ink bg-surface px-2.5 py-1 text-[0.6rem] leading-none font-semibold tracking-[0.08em] whitespace-nowrap text-ink uppercase shadow-subtle sm:-right-8 sm:top-[0.45em] lg:-right-12"
-              >
-                {TEXTS.tag}
-              </p>
             </div>
           </div>
 

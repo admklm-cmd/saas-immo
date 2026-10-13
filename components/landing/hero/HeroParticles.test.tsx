@@ -70,14 +70,14 @@ afterEach(() => {
 });
 
 describe("HeroParticles, server HTML", () => {
-  it("is an inert, hidden canvas that starts at the cloud and carries the test attributes", () => {
+  it("is an inert, hidden canvas that starts at the big sphere and carries the test attributes", () => {
     const container = document.createElement("div");
     container.innerHTML = renderToStaticMarkup(<HeroParticles />);
     const element = container.querySelector("canvas")!;
     expect(element.getAttribute("aria-hidden")).toBe("true");
     expect(element.getAttribute("data-testid")).toBe("hero-particles");
     expect(element.getAttribute("data-loop")).toBe("allowed");
-    expect(element.getAttribute("data-phase")).toBe("cloud");
+    expect(element.getAttribute("data-phase")).toBe("sphere");
     expect(element.getAttribute("tabindex")).toBeNull();
   });
 
@@ -119,7 +119,7 @@ describe("HeroParticles with motion (§2.11.4 ter B, H)", () => {
       const phase = canvas().getAttribute("data-phase")!;
       if (seen.at(-1) !== phase) seen.push(phase);
     }
-    expect(seen).toEqual(["cloud", "to-sphere", "sphere", "to-apple", "apple", "to-hands", "hands"]);
+    expect(seen).toEqual(["sphere", "to-hand", "hand", "to-hands", "hands"]);
     const end = Number(canvas().getAttribute("data-sequence-ms"));
     expect(end).toBeGreaterThanOrEqual(10_600);
     run(5_000);
@@ -136,7 +136,7 @@ describe("HeroParticles with motion (§2.11.4 ter B, H)", () => {
     );
     await settle();
     run(1_500);
-    expect(canvas().getAttribute("data-phase")).toBe("to-sphere");
+    expect(canvas().getAttribute("data-phase")).toBe("sphere");
     view.rerender(
       <HeroMotionContext value={{ stopped: true, setStopped: () => {} }}>
         <HeroParticles />
@@ -178,7 +178,7 @@ describe("HeroParticles with motion (§2.11.4 ter B, H)", () => {
     expect(Number(canvas().getAttribute("data-sequence-ms"))).toBeGreaterThan(Number(at));
   });
 
-  it("goes back to the cloud on « Rejouer les animations »", async () => {
+  it("goes back to the big sphere on « Rejouer les animations »", async () => {
     mockMotion(false);
     document.body.innerHTML = "";
     render(<HeroParticles />, { container: document.body.appendChild(document.createElement("div")) });
@@ -189,7 +189,7 @@ describe("HeroParticles with motion (§2.11.4 ter B, H)", () => {
       requestReplay();
     });
     run(100);
-    expect(canvas().getAttribute("data-phase")).toBe("cloud");
+    expect(canvas().getAttribute("data-phase")).toBe("sphere");
     expect(Number(canvas().getAttribute("data-sequence-ms"))).toBeLessThan(400);
   });
 

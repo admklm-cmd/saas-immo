@@ -111,7 +111,7 @@ test.describe("composition et périmètre (mouvement réduit)", () => {
 test.describe("métamorphose (mouvement autorisé)", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("1440 px : nuage, boule, pomme, mains dans l'ordre, une seule fois, puis l'image reste (O1, O6)", async ({ page }) => {
+  test("1440 px : grande boule, main qui prend la boule, mains, dans l'ordre, une seule fois, puis l'image reste (O1, O6, 23)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     // Records every change of phase, with the time since the first observed state.
@@ -135,10 +135,10 @@ test.describe("métamorphose (mouvement autorisé)", () => {
     await expect(canvas).toHaveAttribute("data-state", "playing");
     await expect(canvas).toHaveAttribute("data-phase", "hands", { timeout: 20_000 });
     const log = await page.evaluate(() => (window as unknown as { __phases: { phase: string; at: number }[] }).__phases);
-    expect(log.map((entry) => entry.phase)).toEqual(["cloud", "to-sphere", "sphere", "to-apple", "apple", "to-hands", "hands"]);
-    // The durations of the schedule between phases (the first entry is the first observed state, not the first frame).
-    const expected = [0, 1_400, 3_400, 4_800, 6_800, 8_200, 10_600];
-    for (let index = 1; index < log.length; index++) {
+    expect(log.map((entry) => entry.phase)).toEqual(["sphere", "to-hand", "hand", "to-hands", "hands"]);
+    // The durations of the schedule between phases (the first entry is the first observed state, before the first frame: the clock is read from the first transition).
+    const expected = [0, 3_800, 6_600, 8_200, 10_600];
+    for (let index = 2; index < log.length; index++) {
       const measured = log[index]!.at - log[1]!.at;
       const wanted = expected[index]! - expected[1]!;
       expect(Math.abs(measured - wanted), `${log[index]!.phase} at ${Math.round(measured)} ms, expected ${wanted}`).toBeLessThanOrEqual(450);
@@ -202,7 +202,7 @@ test.describe("métamorphose (mouvement autorisé)", () => {
     const link = page.getByTestId("hero-band").getByRole("link", { name: LANDING_TEXTS.actions.estimation });
     await expect(link).toBeVisible({ timeout: COLD_START });
     await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible();
-    await expect(page.locator(CANVAS)).toHaveAttribute("data-phase", "to-sphere", { timeout: 10_000 });
+    await expect(page.locator(CANVAS)).toHaveAttribute("data-phase", "sphere", { timeout: 10_000 });
     await link.click();
     await expect(page).toHaveURL(/\/estimation$/);
   });
@@ -213,7 +213,7 @@ test.describe("métamorphose (mouvement autorisé)", () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openHome(page);
       const canvas = page.locator(CANVAS);
-      for (const phase of ["cloud", "sphere", "apple", "hands"]) {
+      for (const phase of ["sphere", "hand", "hands"]) {
         await expect(canvas).toHaveAttribute("data-phase", phase, { timeout: 30_000 });
         expect(contrastFailures(await measureContrast(page)), `${viewport.width} ${phase}`).toEqual([]);
       }
@@ -277,7 +277,7 @@ test.describe("métamorphose (mouvement autorisé)", () => {
     await expect(canvas).toHaveAttribute("data-state", "playing");
   });
 
-  test("« Rejouer les animations » : le canvas repart du nuage avec le terminal, qui recommence à la ligne 1 (O9, C19)", async ({ page }) => {
+  test("« Rejouer les animations » : le canvas repart de la grande boule avec le terminal, qui recommence à la ligne 1 (O9, C19)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
@@ -286,7 +286,7 @@ test.describe("métamorphose (mouvement autorisé)", () => {
     await expect(canvas).toHaveAttribute("data-phase", "hands", { timeout: 20_000 });
     await expect(terminal).toHaveAttribute("data-terminal-state", "done", { timeout: 15_000 });
     await page.getByTestId("landing-replay").click();
-    await expect(canvas).toHaveAttribute("data-phase", /^(cloud|to-sphere)$/, { timeout: 2_000 });
+    await expect(canvas).toHaveAttribute("data-phase", "sphere", { timeout: 2_000 });
     expect(Number(await canvas.getAttribute("data-sequence-ms"))).toBeLessThan(1_500);
     await expect(terminal).toHaveAttribute("data-terminal-state", "typing");
     const firstChar = terminal.locator("[data-line-kind] > span:last-child > span:not([data-cursor])").first();
@@ -390,7 +390,8 @@ test.describe("fond du reste de la page", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
     const dust = page.getByTestId("page-dust");
-    await expect(dust).toHaveAttribute("data-loop-state", "playing");
+    // The opaque hero covers the whole window: nothing is drawn behind it (docs T.6); the field starts once the hero is gone.
+    await expect(dust).toHaveAttribute("data-loop-state", "paused");
     await expect(dust).toHaveCSS("position", "fixed");
     await expect(dust).toHaveCSS("pointer-events", "none");
     const stageAbove = await page.evaluate(() => {
@@ -403,6 +404,7 @@ test.describe("fond du reste de la page", () => {
     // The dust moves on a timer, not on animation frames: once the hero is off screen, the page requests none.
     await centerSection(page, "probleme");
     await expect(page.locator(CANVAS)).toHaveAttribute("data-state", "paused", { timeout: 1_000 });
+    await expect(dust).toHaveAttribute("data-loop-state", "playing");
     await page.waitForTimeout(500);
     const calls = await rafCalls(page);
     await page.waitForTimeout(1_500);

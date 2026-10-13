@@ -8,11 +8,17 @@ export const ADAPTIVE = { budgetMs: 5, window: 30, step: 0.75, floor: 0.4 } as c
 
 export type Tier = {
   readonly name: "desktop" | "tablet" | "phone";
-  /** Points of the sequence (never exceeded). */
+  /** Identities of the sequence: the points of the hands, never exceeded (the hands are made of them). */
   readonly points: number;
+  /** « Skin » points of the opening only (docs/design-system.md T.3): they make the big sphere full, then fade out. */
+  readonly skin: number;
+  /** Robots on the big sphere, then (3 at most) around the held ball. */
+  readonly sphereRobots: number;
+  /** Size multiplier of the points of the opening (the sphere is large: 1.25 on a computer, 1 on a phone). */
+  readonly sphereGrowth: number;
   /** Robots of the whole scene: circulants + the 2 messengers + orbitals on the hands. */
   readonly robots: number;
-  /** Robot square on the ball and the apple, CSS px. */
+  /** Robot square on the sphere and the ball, CSS px. */
   readonly robotSize: number;
   /** Robot square on the hands (circulating and messenger robots), CSS px. */
   readonly handsRobotSize: number;
@@ -32,9 +38,9 @@ export type Tier = {
 };
 
 const TIERS: Record<Tier["name"], Tier> = {
-  desktop: { name: "desktop", points: 14_000, robots: 14, robotSize: 6, handsRobotSize: 9, orbitSize: 7, circulants: 8, orbitals: 4, contactSize: 4, dprCap: 1.5, motionScale: 1, liveFrameStep: 1 },
-  tablet: { name: "tablet", points: 9_000, robots: 12, robotSize: 6, handsRobotSize: 8, orbitSize: 6, circulants: 6, orbitals: 4, contactSize: 3, dprCap: 1.5, motionScale: 0.55, liveFrameStep: 1 },
-  phone: { name: "phone", points: 3_600, robots: 8, robotSize: 5, handsRobotSize: 7, orbitSize: 5, circulants: 4, orbitals: 2, contactSize: 3, dprCap: 1.25, motionScale: 0.3, liveFrameStep: 2 },
+  desktop: { name: "desktop", points: 14_000, skin: 12_000, sphereRobots: 6, sphereGrowth: 1.25, robots: 14, robotSize: 6, handsRobotSize: 9, orbitSize: 7, circulants: 8, orbitals: 4, contactSize: 4, dprCap: 1.5, motionScale: 1, liveFrameStep: 1 },
+  tablet: { name: "tablet", points: 9_000, skin: 6_000, sphereRobots: 4, sphereGrowth: 1.25, robots: 12, robotSize: 6, handsRobotSize: 8, orbitSize: 6, circulants: 6, orbitals: 4, contactSize: 3, dprCap: 1.5, motionScale: 0.55, liveFrameStep: 1 },
+  phone: { name: "phone", points: 3_600, skin: 1_800, sphereRobots: 3, sphereGrowth: 1, robots: 8, robotSize: 5, handsRobotSize: 7, orbitSize: 5, circulants: 4, orbitals: 2, contactSize: 3, dprCap: 1.25, motionScale: 0.3, liveFrameStep: 2 },
 };
 
 /** Tier from the width of the stage (CSS px) and the pointer: a phone, or a coarse pointer, gets the light one. */
@@ -61,27 +67,53 @@ export const HANDS_POINT_MAX = 2.6;
 export const LIVE_AMPLITUDE = 1.8;
 /** Share of `LIVE_AMPLITUDE` by plane: 1.8 px for the near plane, 0.6 px for the far one (§2.11.4 ter S.4). */
 export const LIVE_PLANE_SPEED = [1, 0.67, 0.33] as const;
-/** Drift of the cloud (CSS px, period 7 s). */
-export const CLOUD_DRIFT = 14;
-export const CLOUD_DRIFT_PERIOD_S = 7;
-
-/** Rotation of the sphere (rad/s) and its fixed tilt (rad); yaw swing of the apple (rad, period s). */
-export const SPHERE_SPIN = 0.3;
-export const SPHERE_TILT = (12 * Math.PI) / 180;
-export const APPLE_SWING = (14 * Math.PI) / 180;
-export const APPLE_SWING_PERIOD_S = 6;
-/** Focal length of the soft perspective, in shape heights. */
-export const FOCAL = 4;
-
-/** Reference sizes of each shape in CSS px, by tier (docs/design-system.md §2.11.4 ter F, L, S.8). */
-export const SHAPE_PX = {
-  desktop: { sphere: 340, apple: 330 },
-  tablet: { sphere: 250, apple: 240 },
-  phone: { sphere: 260, apple: 250 },
+/**
+ * The big sphere of the opening (docs/design-system.md T.2, T.3): it turns slowly around the vertical
+ * axis (the equator a little faster than the poles, like a smoke), leans by 16°, and its surface breathes.
+ * `pole`: share of the points in the two polar caps (denser poles), `cap`: half-angle of a cap.
+ */
+export const SPHERE = {
+  spin: 0.22,
+  tilt: (16 * Math.PI) / 180,
+  differential: 0.3,
+  breath: 0.035,
+  pole: 0.08,
+  cap: (16 * Math.PI) / 180,
+  /** Birth: the sphere swells from 60 % of its radius over this many ms, each point late by up to `birthSpread` ms. */
+  birthMs: 800,
+  birthSpread: 400,
+  birthFrom: 0.6,
+  /** Share of the visible height of the first screen the sphere fills (≈ 818 px at 1440 × 900). */
+  fit: 0.98,
 } as const;
 
-/** A solid never exceeds this share of the height of the shape zone: it fits in it, whatever the window (§2.11.4 ter S.8). */
-export const SHAPE_ZONE_SHARE = 0.92;
+/** Opacity multiplier of the points of the big sphere (it reads as a full ball). */
+export const SPHERE_OPACITY = 1.6;
+
+/**
+ * The ball the left hand holds (docs/design-system.md T.2): units of the hands (width of the source picture),
+ * origin = the middle between the two index tips, y down. Starting values, tuned by eye on captures.
+ */
+export const BALL_AT = { x: -0.14, y: -0.05 } as const;
+export const BALL_RADIUS_SHARE = 0.07;
+/** The left hand steps back by this share of the width of the hands while it holds the ball. */
+export const HOLD_SHIFT = 0.06;
+/** Ball: spin (rad/s), share of the points on its surface (the others fill its volume), spread of the volume (share of the radius). */
+export const BALL_SPIN = 0.7;
+export const BALL_SURFACE_SHARE = 0.65;
+export const BALL_VOLUME_SPREAD = 0.38;
+/** Smallest diameter of the ball on a phone (CSS px). */
+export const BALL_MIN_PX = 72;
+/** The skin points leave the picture over the last share of their trip to the ball. */
+export const SKIN_FADE_SHARE = 0.45;
+
+/** Quiet zone in front of the texts (docs/design-system.md T.3): grow (sides, top and bottom), ring, opacity by level. */
+export const QUIET = { growX: 32, growY: 20, ring: 24, inside: 0.25, around: 0.6 } as const;
+
+/** Robots around the held ball: ellipse (shares of the ball radius), turn speed (rad/s). */
+export const BALL_ORBIT = { a: 1.25, b: 0.5, omega: 0.9, robots: 3 } as const;
+/** Focal length of the soft perspective, in shape heights. */
+export const FOCAL = 4;
 
 /** Hands: width of the baked frame (the source picture width) as a share of the stage width, per tier. */
 export const HANDS_WIDTH_SHARE = { desktop: 0.92, tablet: 0.92, phone: 1.1 } as const;
@@ -133,4 +165,4 @@ export const CONTACT_SWELL = 1.5;
 export const LIVE_WORK_BUDGET_MS = 4;
 
 /** Seeds: one per stream, so a change in one shape never moves the others. */
-export const SEEDS = { cloud: 20261012, plane: 20261013, apple: 20261014, curve: 20261015, micro: 20261016, wave: 20261017 } as const;
+export const SEEDS = { sphere: 20261012, plane: 20261013, ball: 20261014, curve: 20261015, micro: 20261016, wave: 20261017, skin: 20261018 } as const;

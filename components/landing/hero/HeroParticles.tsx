@@ -13,13 +13,15 @@ const COARSE_POINTER = "(pointer: coarse)";
 const RESIZE_DEBOUNCE_MS = 150;
 /** Share of the stage on screen below which the loop stops. */
 const VISIBLE_SHARE = 0.1;
-/** Selector of the free space (between the buttons and the terminal) the shapes are centred on. */
+/** Selector of the free space (between the buttons and the terminal) the hands are centred on. */
 const ZONE = "[data-nano-stage]";
+/** Text blocks of the hero in front of which the opening keeps a quiet zone (docs/design-system.md T.3). */
+const QUIET = "[data-network-quiet]";
 
 /**
- * The background of band 1 of the hero (docs/design-system.md §2.11.4 ter): ONE canvas of
- * nanoparticles that organise themselves — cloud, ball, apple, the two hands of « La Création
- * d'Adam » — once, then stay on the final image, alive. Decorative: hidden from assistive
+ * The background of band 1 of the hero (docs/design-system.md §2.11.4 ter, T): ONE canvas of
+ * nanoparticles that organise themselves — a big sphere behind the title, the hand that takes
+ * the ball, the two hands of « La Création d'Adam » — once, then stay on the final image, alive. Decorative: hidden from assistive
  * technology, inert. The loop belongs to `HeroParticleEngine`; this component only connects it to
  * the page: size, visibility, pause (terminal button), replay, reduced motion.
  */
@@ -40,7 +42,13 @@ export function HeroParticles() {
     const geometry = (): StageGeometry => {
       const box = stage.getBoundingClientRect();
       const zone = stage.querySelector<HTMLElement>(ZONE)?.getBoundingClientRect();
+      const quiet = Array.from(stage.querySelectorAll<HTMLElement>(QUIET), (element) => element.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0)
+        .map((rect) => ({ x: rect.left - box.left, y: rect.top - box.top, w: rect.width, h: rect.height }));
       return {
+        // The big sphere fits, whole, in what the window shows below the top of the stage.
+        visibleHeight: Math.max(1, window.innerHeight - (box.top + window.scrollY)),
+        quiet,
         width: Math.max(1, Math.round(box.width)),
         height: Math.max(1, Math.round(box.height)),
         zone: zone ? { x: zone.left - box.left, y: zone.top - box.top, w: zone.width, h: zone.height } : { x: 0, y: box.height / 2 - 100, w: box.width, h: 200 },
@@ -51,7 +59,7 @@ export function HeroParticles() {
     engine.setPageVisible(document.visibilityState !== "hidden");
 
     let disposed = false;
-    // If the hands cannot be loaded the sequence holds on the apple: the page stays complete and usable.
+    // If the hands cannot be loaded the sequence holds on the big sphere: the page stays complete and usable.
     void loadBakedHands()
       .then((baked) => {
         if (!disposed) engine.setHands(baked);
@@ -111,7 +119,7 @@ export function HeroParticles() {
       aria-hidden="true"
       data-testid="hero-particles"
       data-loop="allowed"
-      data-phase="cloud"
+      data-phase="sphere"
       data-state="paused"
       data-points="0"
       data-sequence-ms="0"

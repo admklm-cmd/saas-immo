@@ -1,90 +1,78 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useContext, useEffect, useRef } from "react";
 
-import { DUST, createDust, dustCount, stepDust } from "./page-dust";
+import { HeroMotionContext } from "../hero/hero-motion-context";
+import { onReplay } from "../replay/replay-bus";
+import { PageField } from "./PageField";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+const RESIZE_DEBOUNCE_MS = 150;
+/** One pixel at the bottom of the opaque hero stage: while it is below the window, the hero covers it and the field is hidden behind. */
+const HERO_END = "[data-hero-end]";
 
 /**
- * Fixed background of the landing below the hero (docs/design-system.md §2.11.4 ter J): small
- * pale particles drifting very slowly on white, behind every content. The opaque stage of the
- * hero covers them, so they only show from the end of the hero down. `aria-hidden`, inert. The
- * image of the hands is gone from here (it is the end of the hero animation). 30 frames/s on a timer
- * (no requestAnimationFrame), stopped in a hidden tab; one still frame under reduced motion.
+ * Fixed background of the landing below the hero (docs/design-system.md T.6): about 22 000 small
+ * particles in three planes that breathe, with a wave sent from the title near the middle of the
+ * window, behind every content. The opaque stage of the hero covers them, so they only show from the
+ * end of the hero down — and nothing is drawn before. `aria-hidden`, inert. The loop belongs to
+ * `PageField`; this component connects it to the page: size, scroll, visibility, pause (shared with the
+ * hero through `HeroMotionContext`), replay, reduced motion (one still image).
  */
 export function LivingBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fieldRef = useRef<PageField | null>(null);
+  const { stopped } = useContext(HeroMotionContext);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    if (!canvas || !canvas.getContext("2d")) return;
     const reduced = window.matchMedia?.(REDUCED_MOTION);
-    const ink = getComputedStyle(canvas).getPropertyValue("--color-ink").trim() || getComputedStyle(canvas).color;
-    let width = 1;
-    let height = 1;
-    let dust = createDust(dustCount(window.innerWidth));
-    let timer: number | null = null;
-    let last = 0;
+    const field = new PageField(canvas, Boolean(reduced?.matches));
+    fieldRef.current = field;
 
-    const draw = () => {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = ink;
-      for (let plane = 0; plane < DUST.planes.length; plane++) {
-        ctx.globalAlpha = DUST.planes[plane]!.alpha;
-        ctx.beginPath();
-        for (let i = 0; i < dust.count; i++) {
-          if (dust.plane[i] !== plane) continue;
-          const size = dust.size[i]!;
-          ctx.rect(dust.x[i]! * width - size / 2, dust.y[i]! * height - size / 2, size, size);
-        }
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
+    // The hero covers the window while the end of its stage is below the window. Observed, never measured: no layout read while scrolling.
+    const sentinel = document.querySelector(HERO_END);
+    const coverage =
+      sentinel && typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver((entries) => {
+            const entry = entries[entries.length - 1];
+            if (entry) field.setHeroCovers(!entry.isIntersecting && entry.boundingClientRect.top >= (entry.rootBounds?.height ?? window.innerHeight));
+          })
+        : null;
+    coverage?.observe(sentinel!);
+    field.resize(window.innerWidth, window.innerHeight);
+    field.setPageVisible(document.visibilityState !== "hidden");
+
+    let resizeTimer: number | null = null;
+    const onResize = () => {
+      if (resizeTimer !== null) window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        resizeTimer = null;
+        field.resize(window.innerWidth, window.innerHeight);
+      }, RESIZE_DEBOUNCE_MS);
     };
-    const resize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
-      const wanted = dustCount(width);
-      if (wanted !== dust.count) dust = createDust(wanted);
-      draw();
-    };
-    // A slow 30 frames/s timer, not requestAnimationFrame: nothing here is worth a display-synchronised frame,
-    // and the page keeps requesting none of its own while nothing else moves.
-    const step = () => {
-      const now = performance.now();
-      const seconds = Math.min(now - last, 100) / 1000;
-      last = now;
-      stepDust(dust, seconds, width, height);
-      draw();
-    };
-    const run = () => {
-      const moving = !reduced?.matches && document.visibilityState !== "hidden";
-      canvas.dataset.loopState = moving ? "playing" : "paused";
-      if (moving && timer === null) {
-        last = performance.now();
-        timer = window.setInterval(step, DUST.frameMs);
-      } else if (!moving && timer !== null) {
-        window.clearInterval(timer);
-        timer = null;
-      }
-    };
-    resize();
-    run();
-    window.addEventListener("resize", resize);
-    document.addEventListener("visibilitychange", run);
-    reduced?.addEventListener?.("change", run);
+    const onVisibility = () => field.setPageVisible(document.visibilityState !== "hidden");
+    const onReduced = () => field.setReduced(Boolean(reduced?.matches));
+    window.addEventListener("resize", onResize);
+    document.addEventListener("visibilitychange", onVisibility);
+    reduced?.addEventListener?.("change", onReduced);
+    const offReplay = onReplay(() => field.replay());
     return () => {
-      if (timer !== null) window.clearInterval(timer);
-      window.removeEventListener("resize", resize);
-      document.removeEventListener("visibilitychange", run);
-      reduced?.removeEventListener?.("change", run);
+      if (resizeTimer !== null) window.clearTimeout(resizeTimer);
+      coverage?.disconnect();
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibility);
+      reduced?.removeEventListener?.("change", onReduced);
+      offReplay();
+      field.dispose();
+      fieldRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    fieldRef.current?.setStopped(stopped);
+  }, [stopped]);
 
   return (
     <canvas
@@ -93,6 +81,7 @@ export function LivingBackground() {
       data-testid="page-dust"
       data-loop="allowed"
       data-loop-state="paused"
+      data-points="0"
       className="pointer-events-none fixed inset-0 z-0 h-full w-full"
     />
   );

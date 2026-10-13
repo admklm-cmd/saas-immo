@@ -1,20 +1,19 @@
 /**
- * Ordering of the phases of the hero metamorphosis (docs/design-system.md §2.11.4 ter B).
- * Pure: the sequence time in, the phase and its progress out. Durations in ms.
+ * Ordering of the phases of the hero opening (docs/design-system.md T.2): the big sphere, the left
+ * hand that takes the ball, the ball that becomes the right hand. Pure: the sequence time in, the
+ * phase and its progress out. Durations in ms.
  */
 
-export const PHASES = ["cloud", "to-sphere", "sphere", "to-apple", "apple", "to-hands", "hands"] as const;
+export const PHASES = ["sphere", "to-hand", "hand", "to-hands", "hands"] as const;
 export type Phase = (typeof PHASES)[number];
 
 type Slot = { readonly phase: Phase; readonly from: number; readonly to: number };
 
 /** Start and end (ms of the sequence) of each phase; `hands` has no end. */
 export const SCHEDULE: readonly Slot[] = [
-  { phase: "cloud", from: 0, to: 1400 },
-  { phase: "to-sphere", from: 1400, to: 3400 },
-  { phase: "sphere", from: 3400, to: 4800 },
-  { phase: "to-apple", from: 4800, to: 6800 },
-  { phase: "apple", from: 6800, to: 8200 },
+  { phase: "sphere", from: 0, to: 3800 },
+  { phase: "to-hand", from: 3800, to: 6600 },
+  { phase: "hand", from: 6600, to: 8200 },
   { phase: "to-hands", from: 8200, to: 10_600 },
   { phase: "hands", from: 10_600, to: Infinity },
 ];
@@ -23,12 +22,12 @@ export const SCHEDULE: readonly Slot[] = [
 export const SEQUENCE_END_MS = 10_600;
 /** The cobalt contact point fades in over the 300 ms after the end of the sequence. */
 export const CONTACT_FADE_MS = 300;
-/** The cloud is born over its first 600 ms (opacity 0 to 1). */
-export const BIRTH_MS = 600;
+/** The sphere is born over its first 800 ms (opacity 0 to 1). */
+export const BIRTH_MS = 800;
 /** The sequence time stops growing here (data-sequence-ms plateau). */
 export const SEQUENCE_CAP_MS = SEQUENCE_END_MS + CONTACT_FADE_MS;
 
-export type TransitionKind = "to-sphere" | "to-apple" | "to-hands";
+export type TransitionKind = "to-hand" | "to-hands";
 
 export type PhaseState = {
   readonly phase: Phase;
@@ -66,7 +65,7 @@ export function phaseStart(phase: Phase): number {
   return SCHEDULE.find((entry) => entry.phase === phase)!.from;
 }
 
-/** Opacity of the cloud at its birth, 0..1. */
+/** Opacity of the sphere at its birth, 0..1. */
 export function birthOpacity(ms: number): number {
   return Math.min(1, Math.max(0, ms / BIRTH_MS));
 }

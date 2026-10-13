@@ -61,7 +61,7 @@ export function LandingHeading({
           <Overline>{kicker}</Overline>
         </div>
       ) : null}
-      <div className={cn(veil && "network-veil-title", "w-fit max-w-full", centered && "mx-auto", kicker && "mt-5")} data-network-quiet={quiet}>
+      <div className={cn(veil && "network-veil-title", "w-fit max-w-full", centered && "mx-auto", kicker && "mt-5")} data-network-quiet={quiet} data-pulse-origin="">
         <EditorialTitle
           as="h2"
           id={id}

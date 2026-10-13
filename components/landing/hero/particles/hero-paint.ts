@@ -1,5 +1,5 @@
-import { CONTACT_SWELL, HANDS_EMPHASIS, HANDS_GROWTH, HANDS_POINT_MAX, LIVE_CYCLE, MESSENGER, ORBIT_PORT, PLANES, RING, ROBOT_PORT, ROBOT_TRAIL } from "./hero-config";
-import type { HeroScene } from "./HeroScene";
+import { SPHERE_OPACITY, CONTACT_SWELL, HANDS_EMPHASIS, HANDS_GROWTH, HANDS_POINT_MAX, LIVE_CYCLE, MESSENGER, ORBIT_PORT, PLANES, RING, ROBOT_PORT, ROBOT_TRAIL } from "./hero-config";
+import { CLASS_COUNT, HeroScene } from "./HeroScene";
 import { roleOf } from "./hands-robots";
 import type { RobotPose } from "./robots";
 import type { PhaseState } from "./timeline";
@@ -23,23 +23,41 @@ export function handsShareOf(state: PhaseState, still: boolean): number {
   return still ? 1 : state.phase === "hands" ? 1 : state.phase === "to-hands" ? state.progress : 0;
 }
 
-/** The points: three planes, one fill each. The hands are drawn a little stronger and larger than the ball. */
-export function paintPoints(ctx: CanvasRenderingContext2D, scene: HeroScene, palette: Palette, share: number, birth: number): void {
-  const opacity = birth * (1 + share * HANDS_EMPHASIS);
-  const grow = 1 + share * HANDS_GROWTH * (scene.tier.name === "phone" ? 0.4 : 1);
+/**
+ * Share of the « hands look » (stronger, larger points) of the image: 0 on the big sphere, rising while the hand
+ * takes the ball (the ball keeps its emphasis), 1 from the held ball on. Points only; the robots use `handsShareOf`.
+ */
+export function lookShareOf(state: PhaseState, still: boolean): number {
+  if (still || state.phase === "hands" || state.phase === "hand" || state.phase === "to-hands") return 1;
+  return state.phase === "to-hand" ? state.progress : 0;
+}
+
+/**
+ * The points: planes by classes (quiet zone, skin fade), one fill each. `look` is the share of the hands
+ * look; the points of the big sphere are larger (`sphereGrowth`), the more so the sphere is still alone.
+ */
+export function paintPoints(ctx: CanvasRenderingContext2D, scene: HeroScene, palette: Palette, look: number, sphereWeight: number, birth: number): void {
+  // The big sphere is drawn stronger too (SPHERE_OPACITY): it has to read as a full ball behind the texts.
+  const opacity = birth * (1 + look * HANDS_EMPHASIS) * (1 + (SPHERE_OPACITY - 1) * sphereWeight);
+  const grow = (1 + look * HANDS_GROWTH * (scene.tier.name === "phone" ? 0.4 : 1)) * (1 + (scene.tier.sphereGrowth - 1) * sphereWeight);
   ctx.fillStyle = palette.ink;
   for (let b = 0; b < PLANES.length; b++) {
     const plane = PLANES[b]!;
-    const list = scene.buckets[b]!;
     const size = Math.min(plane.size * grow, HANDS_POINT_MAX);
     const half = size / 2;
-    ctx.globalAlpha = Math.min(1, plane.alpha * opacity);
-    ctx.beginPath();
-    for (let k = 0, n = scene.bucketSize[b]!; k < n; k++) {
-      const i = list[k]!;
-      ctx.rect(scene.x[i]! - half, scene.y[i]! - half, size, size);
+    for (let c = 0; c < CLASS_COUNT; c++) {
+      const bucket = b * CLASS_COUNT + c;
+      const count = scene.bucketSize[bucket]!;
+      if (count === 0) continue;
+      const list = scene.buckets[bucket]!;
+      ctx.globalAlpha = Math.min(1, plane.alpha * opacity * HeroScene.classAlpha(c));
+      ctx.beginPath();
+      for (let k = 0; k < count; k++) {
+        const i = list[k]!;
+        ctx.rect(scene.x[i]! - half, scene.y[i]! - half, size, size);
+      }
+      ctx.fill();
     }
-    ctx.fill();
   }
 }
 

@@ -1,46 +1,37 @@
 import { createPrng } from "@/components/motion/engine/prng";
 
-import { CLOUD_DRIFT, FOCAL, LIVE_AMPLITUDE, LIVE_PLANE_SPEED, PLANES, PLANE_COUNT, SEEDS, SPHERE_TILT, type Tier } from "./hero-config";
+import { FOCAL, LIVE_AMPLITUDE, LIVE_PLANE_SPEED, PLANES, PLANE_COUNT, SEEDS, SKIN_FADE_SHARE, type Tier } from "./hero-config";
 import type { Hands } from "./hands-data";
 import { handsRobotPose } from "./hands-robots";
-import type { Layout, Placement } from "./layout";
+import { buildHoldPlan, ballFrame, ballYawAt, type HoldPlan } from "./hold-transitions";
+import { pairHold, type HoldPairing } from "./hold-pairing";
+import type { Layout, Placement, Rect } from "./layout";
 import { applyHandsMotion, buildHandsMotion, createHandsLive, updateLive, type HandsLive, type HandsMotion } from "./live-motion";
-import { pairShapes, rankShare } from "./pairing";
+import { QUIET_MULT, growQuiet, quietLevel, type QuietBox } from "./quiet-zone";
 import { computeRobotPoses } from "./robot-motion";
-import { appleYawAt, emptyPose, sphereYawAt, type RobotPose } from "./robots";
-import { buildApple, buildCloud, buildSphere, type Shape } from "./shapes";
-import { phaseDuration, type Phase, type PhaseState, type TransitionKind } from "./timeline";
-import { WAVE_SPREAD, bezier, buildCurvature, controlPoint, delayOf, easeInOutCubic, progressOf } from "./trajectory";
+import { emptyPose, type RobotPose } from "./robots";
+import { SPHERE_END_MS, SphereField } from "./sphere-field";
+import type { Shape } from "./shapes";
+import { phaseDuration, type PhaseState } from "./timeline";
+import { bezier, buildCurvature, easeInOutCubic, easeInOutSine, progressOf } from "./trajectory";
 
 /**
- * The data and the per-frame maths of the hero metamorphosis (docs/design-system.md §2.11.4 ter
- * C, D). No canvas here: the scene turns a sequence time into point positions and depth buckets
- * in preallocated typed arrays (no allocation per frame), and robot poses. Each point keeps its
- * identity (its slot) through every shape.
+ * The data and the per-frame maths of the hero opening (docs/design-system.md T.2, T.3; §2.11.4 ter
+ * C, D). No canvas here: the scene turns a sequence time into point positions and depth buckets in
+ * preallocated typed arrays (no allocation per frame), and robot poses. Each identity keeps its slot
+ * through every image (big sphere, held ball, hands); the « skin » points exist only in the opening.
+ * The sphere is `SphereField`, the pairing `pairHold`, the two transitions `buildHoldPlan`.
  */
 
 /** Points below this depth (normalised) of a solid are drawn one plane paler: the back reads as the back. */
 const BACK_Z = -0.12;
-
-type Transition = {
-  readonly kind: TransitionKind;
-  readonly duration: number;
-  readonly spread: number;
-  readonly ax: Float32Array;
-  readonly ay: Float32Array;
-  readonly az: Float32Array;
-  readonly bx: Float32Array;
-  readonly by: Float32Array;
-  readonly bz: Float32Array;
-  readonly cx: Float32Array;
-  readonly cy: Float32Array;
-  readonly delay: Float32Array;
-  readonly ampA: Float32Array;
-  readonly ampB: Float32Array;
-};
-
-const PREV: Record<TransitionKind, Phase> = { "to-sphere": "cloud", "to-apple": "sphere", "to-hands": "apple" };
-const NEXT: Record<TransitionKind, Phase> = { "to-sphere": "sphere", "to-apple": "apple", "to-hands": "hands" };
+/** Levels of the quiet zone (3) times levels of the skin fade (3): the classes of a bucket. */
+export const CLASS_COUNT = 9;
+/** Opacity multiplier of the three skin fade levels. */
+export const FADE_MULT = [1, 0.55, 0.2] as const;
+/** Window (ms) in which the left hand steps back to its place during the last transition. */
+const SLIDE_FROM_MS = 400;
+const SLIDE_SPAN_MS = 2000;
 
 /** Normalised shape → px, with a yaw (around the vertical axis), a tilt (around x) and a soft perspective. */
 export function placeShape(shape: Shape, place: Placement, yaw: number, tilt: number, count: number, x: Float32Array, y: Float32Array, z: Float32Array): void {
@@ -64,61 +55,71 @@ export function placeShape(shape: Shape, place: Placement, yaw: number, tilt: nu
 }
 
 export class HeroScene {
+  /** Identities: the points of the hands. */
   readonly count: number;
+  /** Skin points of the opening, stored after the identities. */
+  readonly skin: number;
   readonly plane: Uint8Array;
   /** Current positions (CSS px) and their depth bucket lists, written by `compute`. */
   readonly x: Float32Array;
   readonly y: Float32Array;
   readonly z: Float32Array;
+  /** Buckets by plane then class: `plane * CLASS_COUNT + class`. */
   readonly buckets: readonly Uint32Array[];
-  readonly bucketSize = new Int32Array(PLANE_COUNT);
+  readonly bucketSize: Int32Array;
   /** Poses of the robots, written by `computeRobots`. */
   readonly robots: RobotPose[];
   /** State of the second animation (the index fingers), written by `updateLive`. */
   readonly live: HandsLive = createHandsLive();
+  /** Skin points drawn in the last frame (published as `data-skin`). */
+  skinDrawn = 0;
 
-  private readonly cloud: Shape;
-  private readonly sphere: Shape;
-  private readonly apple: Shape;
-  private handsShape: Shape | null = null;
+  private readonly total: number;
+  private readonly sphere: SphereField;
+  private readonly fade: Float32Array;
+  private readonly tmp: { x: Float32Array; y: Float32Array; z: Float32Array };
+  private pairing: HoldPairing | null = null;
+  private plan: HoldPlan | null = null;
   private hands: Hands | null = null;
   private motion: HandsMotion | null = null;
   private layout: Layout | null = null;
-  private readonly transitions = new Map<TransitionKind, Transition>();
+  private quiet: QuietBox[] = [];
   private readonly curve: { kappa: Float32Array; noise: Float32Array }[];
   private readonly w1: Float32Array;
   private readonly w2: Float32Array;
   private readonly p1: Float32Array;
   private readonly p2: Float32Array;
-  private readonly ampCloud: Float32Array;
   private readonly ampLive: Float32Array;
-  private readonly control = { x: 0, y: 0 };
   private readonly kappa: readonly Float32Array[];
+  private fading = false;
 
   constructor(readonly tier: Tier) {
     const count = tier.points;
+    const total = count + tier.skin;
     this.count = count;
-    this.cloud = buildCloud(count);
-    this.sphere = pairShapes(this.cloud, buildSphere(count));
-    this.apple = pairShapes(this.sphere, buildApple(count));
-    this.x = new Float32Array(count);
-    this.y = new Float32Array(count);
-    this.z = new Float32Array(count);
-    this.buckets = Array.from({ length: PLANE_COUNT }, () => new Uint32Array(count));
+    this.skin = tier.skin;
+    this.total = total;
+    this.x = new Float32Array(total);
+    this.y = new Float32Array(total);
+    this.z = new Float32Array(total);
+    this.tmp = { x: new Float32Array(total), y: new Float32Array(total), z: new Float32Array(total) };
+    this.fade = new Float32Array(total).fill(1);
+    this.bucketSize = new Int32Array(PLANE_COUNT * CLASS_COUNT);
+    this.buckets = Array.from({ length: PLANE_COUNT * CLASS_COUNT }, () => new Uint32Array(total));
     this.robots = Array.from({ length: tier.robots }, emptyPose);
-    this.curve = [0, 1, 2].map((stream) => buildCurvature(count, stream));
+    this.curve = [0, 1].map((stream) => buildCurvature(total, stream));
     this.kappa = this.curve.map((entry) => entry.kappa);
+    this.sphere = new SphereField(total);
 
     const random = createPrng(SEEDS.plane);
-    this.plane = new Uint8Array(count);
+    this.plane = new Uint8Array(total);
     const micro = createPrng(SEEDS.micro);
-    this.w1 = new Float32Array(count);
-    this.w2 = new Float32Array(count);
-    this.p1 = new Float32Array(count);
-    this.p2 = new Float32Array(count);
-    this.ampCloud = new Float32Array(count);
-    this.ampLive = new Float32Array(count);
-    for (let i = 0; i < count; i++) {
+    this.w1 = new Float32Array(total);
+    this.w2 = new Float32Array(total);
+    this.p1 = new Float32Array(total);
+    this.p2 = new Float32Array(total);
+    this.ampLive = new Float32Array(total);
+    for (let i = 0; i < total; i++) {
       const r = random();
       const plane = r < PLANES[0].share ? 0 : r < PLANES[0].share + PLANES[1].share ? 1 : 2;
       this.plane[i] = plane;
@@ -127,7 +128,6 @@ export class HeroScene {
       this.w2[i] = (2 * Math.PI) / (4 + micro() * 5);
       this.p1[i] = micro() * Math.PI * 2;
       this.p2[i] = micro() * Math.PI * 2;
-      this.ampCloud[i] = CLOUD_DRIFT * PLANES[plane].speed;
       this.ampLive[i] = LIVE_AMPLITUDE * LIVE_PLANE_SPEED[plane];
     }
     this.robots.forEach((pose) => (pose.alpha = 0));
@@ -145,146 +145,152 @@ export class HeroScene {
     return this.hands;
   }
 
-  /** The baked hands, paired to the apple. Rebuilds the last transition. */
+  /** Number of quiet rectangles in use (published as `data-quiet`). */
+  get quietCount(): number {
+    return this.quiet.length;
+  }
+
+  /** The text rectangles (stage coordinates) the opening keeps calm. */
+  setQuiet(rects: readonly Rect[]): void {
+    this.quiet = growQuiet(rects);
+  }
+
+  /** The baked hands: pairs the identities with them (T.2) and prepares the transitions. */
   setHands(hands: Hands): void {
     this.hands = hands;
-    this.handsShape = pairShapes(this.apple, hands.shape);
+    const n = this.count;
+    // Where the identities are at the end of the sphere, in sphere units: the left and the right half.
+    this.sphere.frame(SPHERE_END_MS, { cx: 0, cy: 0, sx: 1, sy: 1 }, this.tmp.x, this.tmp.y, this.tmp.z, 0, this.total, false);
+    this.pairing = pairHold(hands, n, this.skin, this.tmp);
     // Computed once, out of the loop: the weight of each point in the move of the fingers (S.4).
-    this.motion = buildHandsMotion(this.handsShape.x, this.handsShape.y, this.count, hands.tips);
-    this.transitions.delete("to-hands");
-    this.prepare("to-hands");
+    this.motion = buildHandsMotion(this.pairing.handsShape.x, this.pairing.handsShape.y, n, hands.tips);
+    this.plan = null;
+    this.prepare();
   }
 
-  /** New geometry (first layout, resize): every transition is rebuilt, the sequence time is kept. */
+  /** New geometry (first layout, resize): the transitions are rebuilt, the sequence time is kept. */
   setLayout(layout: Layout): void {
     this.layout = layout;
-    this.transitions.clear();
-    this.prepare("to-sphere");
-    this.prepare("to-apple");
-    this.prepare("to-hands");
+    this.plan = null;
+    this.prepare();
   }
 
-  private shapeOf(phase: Phase): Shape | null {
-    if (phase === "cloud") return this.cloud;
-    if (phase === "sphere") return this.sphere;
-    if (phase === "apple") return this.apple;
-    return this.handsShape;
-  }
-
-  private placementOf(phase: Phase, layout: Layout): Placement {
-    return phase === "cloud" ? layout.cloud : phase === "sphere" ? layout.sphere : phase === "apple" ? layout.apple : layout.hands;
-  }
-
-  /** Frozen pose (yaw, tilt) of the shape at the boundary of a transition. */
-  private poseOf(phase: Phase, boundary: "start" | "end"): { yaw: number; tilt: number } {
-    if (phase === "sphere") return { yaw: sphereYawAt(boundary === "end" ? 4800 : 3400), tilt: SPHERE_TILT };
-    if (phase === "apple") return { yaw: appleYawAt(boundary === "end" ? 8200 : 6800), tilt: 0 };
-    return { yaw: 0, tilt: 0 };
-  }
-
-  private prepare(kind: TransitionKind): void {
-    const layout = this.layout;
-    if (!layout || this.transitions.has(kind)) return;
-    const from = this.shapeOf(PREV[kind]);
-    const to = this.shapeOf(NEXT[kind]);
-    if (!from || !to) return;
+  private prepare(): void {
+    const { layout, pairing } = this;
+    if (!layout || !pairing) return;
     const n = this.count;
-    const make = () => new Float32Array(n);
-    const t: Transition = {
-      kind,
-      duration: phaseDuration(kind),
-      spread: WAVE_SPREAD[kind],
-      ax: make(), ay: make(), az: make(), bx: make(), by: make(), bz: make(), cx: make(), cy: make(), delay: make(), ampA: make(), ampB: make(),
-    };
-    const a = this.poseOf(PREV[kind], "end");
-    const b = this.poseOf(NEXT[kind], "start");
-    placeShape(from, this.placementOf(PREV[kind], layout), a.yaw, a.tilt, n, t.ax, t.ay, t.az);
-    placeShape(to, this.placementOf(NEXT[kind], layout), b.yaw, b.tilt, n, t.bx, t.by, t.bz);
-
-    // The wave: who leaves first (docs/design-system.md §2.11.4 ter C.3).
-    let rank: Float32Array;
-    if (kind === "to-sphere") {
-      rank = rankShare(t.ax);
-    } else if (kind === "to-apple") {
-      const cx = layout.apple.cx;
-      const cy = layout.apple.cy;
-      rank = rankShare(Array.from(t.bx, (value, i) => Math.atan2(t.by[i]! - cy, value - cx)));
-    } else {
-      const { x: cx, y: cy } = layout.contact;
-      const near = rankShare(Array.from(t.bx, (value, i) => Math.hypot(value - cx, t.by[i]! - cy)));
-      rank = near.map((share) => 1 - share);
-    }
-    const { kappa, noise } = this.curve[kind === "to-sphere" ? 0 : kind === "to-apple" ? 1 : 2]!;
-    for (let i = 0; i < n; i++) {
-      controlPoint(t.ax[i]!, t.ay[i]!, t.bx[i]!, t.by[i]!, kappa[i]!, this.control);
-      t.cx[i] = this.control.x;
-      t.cy[i] = this.control.y;
-      t.delay[i] = delayOf(rank[i]!, noise[i]!, t.duration, t.spread);
-      t.ampA[i] = kind === "to-sphere" ? this.ampCloud[i]! : this.ampLive[i]!;
-      t.ampB[i] = this.ampLive[i]!;
-    }
-    this.transitions.set(kind, t);
+    // Where each identity is in the final image.
+    const hand = { x: new Float32Array(n), y: new Float32Array(n), z: new Float32Array(n) };
+    placeShape(pairing.handsShape, layout.hands, 0, 0, n, hand.x, hand.y, hand.z);
+    this.plan = buildHoldPlan({ layout, pairing, sphere: this.sphere, count: n, skin: this.skin, hand, curve: this.curve, ampLive: this.ampLive });
   }
 
-  /** Sequence time at which the hands are needed: the scene holds the apple until they are loaded. */
+  /** Sequence time at which the hands are needed: the scene holds the sphere until they are loaded. */
   get holdMs(): number {
-    return this.hands ? Infinity : 8200;
+    return this.hands ? Infinity : SPHERE_END_MS;
+  }
+
+  /** The micro-movement (S.4) of identity `i`: a small slow drift, `amp` px at most. */
+  private drift(i: number, amp: number, liveSec: number): void {
+    this.x[i] = this.x[i]! + amp * Math.sin(this.w1[i]! * liveSec + this.p1[i]!);
+    this.y[i] = this.y[i]! + amp * Math.sin(this.w2[i]! * liveSec + this.p2[i]!);
   }
 
   /**
-   * Writes the positions of the first `drawCount` points at the sequence time `sequenceMs` into
-   * `x`, `y`, `z`, then sorts them in depth buckets. `liveSec` drives the micro-movement
-   * (`micro` false = still points, for the pause and reduced motion).
+   * Writes the positions of the first `drawCount` identities (and the first `skinDraw` skin points) at
+   * the sequence time `sequenceMs` into `x`, `y`, `z`, then sorts them in depth buckets. `liveSec`
+   * drives the micro-movement (`micro` false = still points, for the pause and reduced motion).
    */
-  compute(state: PhaseState, sequenceMs: number, liveSec: number, micro: boolean, drawCount: number): void {
-    const layout = this.layout;
+  compute(state: PhaseState, sequenceMs: number, liveSec: number, micro: boolean, drawCount: number, skinDraw = 0): void {
+    const { layout, pairing, plan } = this;
+    this.skinDrawn = 0;
     if (!layout) {
       this.bucketSize.fill(0);
       return;
     }
     const { x, y, z } = this;
-    let ampFrom: Float32Array | null = null;
-    if (state.transition) {
-      const kind = state.phase as TransitionKind;
-      const t = this.transitions.get(kind);
-      if (t) {
-        const tau = state.local;
-        for (let i = 0; i < drawCount; i++) {
-          const e = easeInOutCubic(progressOf(tau, t.delay[i]!, t.duration, t.spread));
-          x[i] = bezier(t.ax[i]!, t.cx[i]!, t.bx[i]!, e);
-          y[i] = bezier(t.ay[i]!, t.cy[i]!, t.by[i]!, e);
-          z[i] = t.az[i]! + (t.bz[i]! - t.az[i]!) * e;
-          if (micro) {
-            const amp = t.ampA[i]! + (t.ampB[i]! - t.ampA[i]!) * e;
-            x[i] = x[i]! + amp * Math.sin(this.w1[i]! * liveSec + this.p1[i]!);
-            y[i] = y[i]! + amp * Math.sin(this.w2[i]! * liveSec + this.p2[i]!);
-          }
-        }
-        this.sortBuckets(drawCount);
-        return;
-      }
-      // No transition ready (hands still loading): hold the previous shape.
-      ampFrom = this.ampLive;
+    const n = this.count;
+    const skinEnd = n + Math.min(skinDraw, this.skin);
+    const phase = state.phase;
+    this.fading = false;
+
+    if (phase === "sphere" || (!plan && phase !== "hands")) {
+      const ms = Math.min(sequenceMs, SPHERE_END_MS);
+      this.sphere.frame(ms, layout.sphere, x, y, z, 0, drawCount);
+      this.sphere.frame(ms, layout.sphere, x, y, z, n, skinEnd);
+      this.sortBuckets(drawCount, skinEnd, true);
+      return;
     }
-    const phase: Phase = state.transition ? PREV[state.phase as TransitionKind] : state.phase;
-    const shape = this.shapeOf(phase);
-    if (!shape) {
+    if (!plan || !pairing) {
       this.bucketSize.fill(0);
       return;
     }
-    const pose = this.poseOf(phase, "start");
-    const yaw = phase === "sphere" ? sphereYawAt(sequenceMs) : phase === "apple" ? appleYawAt(sequenceMs) : 0;
-    placeShape(shape, this.placementOf(phase, layout), yaw, pose.tilt, drawCount, x, y, z);
-    if (micro) {
-      const amp = ampFrom ?? (phase === "cloud" ? this.ampCloud : this.ampLive);
-      for (let i = 0; i < drawCount; i++) {
-        x[i] = x[i]! + amp[i]! * Math.sin(this.w1[i]! * liveSec + this.p1[i]!);
-        y[i] = y[i]! + amp[i]! * Math.sin(this.w2[i]! * liveSec + this.p2[i]!);
+    const isLeft = pairing.isLeft;
+
+    if (phase === "to-hand") {
+      const t = plan.toHand;
+      const duration = phaseDuration("to-hand");
+      for (let i = 0; i < skinEnd; i++) {
+        if (i === drawCount && drawCount < n) i = n;
+        if (i >= skinEnd) break;
+        const q = progressOf(state.local, t.delay[i]!, duration, 0.4);
+        const e = easeInOutCubic(q);
+        x[i] = bezier(t.ax[i]!, t.cx[i]!, t.bx[i]!, e);
+        y[i] = bezier(t.ay[i]!, t.cy[i]!, t.by[i]!, e);
+        z[i] = t.az[i]! + (t.bz[i]! - t.az[i]!) * e;
+        if (i < n) {
+          if (micro) this.drift(i, t.ampB[i]! * e, liveSec);
+        } else {
+          // Skin: it leaves the picture over the last 45 % of its trip (smoothstep).
+          const k = Math.min(1, Math.max(0, (q - (1 - SKIN_FADE_SHARE)) / SKIN_FADE_SHARE));
+          this.fade[i] = 1 - k * k * (3 - 2 * k);
+        }
       }
+      this.fading = skinEnd > n;
+      this.sortBuckets(drawCount, skinEnd, true);
+      return;
     }
-    // The second animation: the fingers and the hands move, the points keep their identity (S.4).
-    if (phase === "hands" && !state.transition && this.motion) applyHandsMotion(this.motion, this.live, drawCount, x, y);
-    this.sortBuckets(drawCount);
+
+    if (phase === "hand") {
+      ballFrame(ballYawAt(sequenceMs), layout.ball, pairing.ball, 0, 0, drawCount, x, y, z, isLeft);
+      for (let i = 0; i < drawCount; i++) {
+        if (!isLeft[i]) continue;
+        x[i] = plan.held.x[i]!;
+        y[i] = plan.held.y[i]!;
+        z[i] = plan.held.z[i]!;
+        if (micro) this.drift(i, this.ampLive[i]!, liveSec);
+      }
+      this.sortBuckets(drawCount, n, true);
+      return;
+    }
+
+    if (phase === "to-hands") {
+      const t = plan.toHands;
+      const duration = phaseDuration("to-hands");
+      const slide = easeInOutSine((state.local - SLIDE_FROM_MS) / SLIDE_SPAN_MS);
+      for (let i = 0; i < drawCount; i++) {
+        if (isLeft[i]) {
+          x[i] = plan.hand.x[i]! - layout.holdShift * (1 - slide);
+          y[i] = plan.hand.y[i]!;
+          z[i] = plan.hand.z[i]!;
+          if (micro) this.drift(i, this.ampLive[i]!, liveSec);
+          continue;
+        }
+        const e = easeInOutCubic(progressOf(state.local, t.delay[i]!, duration, 0.4));
+        x[i] = bezier(t.ax[i]!, t.cx[i]!, t.bx[i]!, e);
+        y[i] = bezier(t.ay[i]!, t.cy[i]!, t.by[i]!, e);
+        z[i] = t.az[i]! + (t.bz[i]! - t.az[i]!) * e;
+        if (micro) this.drift(i, t.ampB[i]! * e, liveSec);
+      }
+      this.sortBuckets(drawCount, n, true);
+      return;
+    }
+
+    // The hands, the second animation (acte 2, unchanged): the points keep their identity (S.4).
+    placeShape(pairing.handsShape, layout.hands, 0, 0, drawCount, x, y, z);
+    if (micro) for (let i = 0; i < drawCount; i++) this.drift(i, this.ampLive[i]!, liveSec);
+    if (this.motion) applyHandsMotion(this.motion, this.live, drawCount, x, y);
+    this.sortBuckets(drawCount, n, false);
   }
 
   /** The state of the living act at `actSec` seconds (`moving` false = the image of rest: pause, reduced motion). */
@@ -298,28 +304,45 @@ export class HeroScene {
     Object.assign(this.live, createHandsLive());
   }
 
-  private sortBuckets(drawCount: number): void {
-    const [b0, b1, b2] = this.buckets as [Uint32Array, Uint32Array, Uint32Array];
-    let n0 = 0;
-    let n1 = 0;
-    let n2 = 0;
-    const { plane, z } = this;
-    for (let i = 0; i < drawCount; i++) {
-      const p = plane[i]! + (z[i]! < BACK_Z ? 1 : 0);
-      if (p <= 0) b0[n0++] = i;
-      else if (p === 1) b1[n1++] = i;
-      else b2[n2++] = i;
+  /**
+   * Sorts the points `0..drawCount-1` and `count..skinEnd-1` into depth buckets: plane (the back of a
+   * solid is one plane paler), then class (quiet level × skin fade level). `quiet` false = acte 2, untouched.
+   */
+  private sortBuckets(drawCount: number, skinEnd: number, quiet: boolean): void {
+    this.bucketSize.fill(0);
+    const { plane, z, x, y, fade, buckets, bucketSize } = this;
+    const boxes = quiet ? this.quiet : [];
+    const fading = this.fading;
+    const n = this.count;
+    let skin = 0;
+    for (let i = 0; i < skinEnd; i++) {
+      if (i === drawCount && drawCount < n) i = n;
+      if (i >= skinEnd) break;
+      let f = 0;
+      if (i >= n && fading) {
+        const a = fade[i]!;
+        if (a < 0.06) continue;
+        f = a >= 0.78 ? 0 : a >= 0.38 ? 1 : 2;
+      }
+      const p = Math.min(2, plane[i]! + (z[i]! < BACK_Z ? 1 : 0));
+      const q = boxes.length === 0 ? 0 : quietLevel(boxes, x[i]!, y[i]!);
+      const bucket = p * CLASS_COUNT + q * 3 + f;
+      buckets[bucket]![bucketSize[bucket]!++] = i;
+      if (i >= n) skin++;
     }
-    this.bucketSize[0] = n0;
-    this.bucketSize[1] = n1;
-    this.bucketSize[2] = n2;
+    this.skinDrawn = skin;
+  }
+
+  /** Opacity multiplier of a class (quiet level × skin fade level). */
+  static classAlpha(cls: number): number {
+    return QUIET_MULT[Math.floor(cls / 3)]! * FADE_MULT[cls % 3]!;
   }
 
   /** Poses of the robots at a sequence time (`still`: resting on the index fingers). */
-  computeRobots(state: PhaseState, sequenceMs: number, liveSec: number, still: boolean): void {
+  computeRobots(state: PhaseState, sequenceMs: number, still: boolean): void {
     for (const pose of this.robots) pose.alpha = 0;
     if (!this.layout) return;
-    computeRobotPoses(this.robots, state, sequenceMs, liveSec, still, { layout: this.layout, hands: this.hands, cloud: this.cloud, kappa: this.kappa, tier: this.tier, live: this.live });
+    computeRobotPoses(this.robots, state, sequenceMs, still, { layout: this.layout, hands: this.hands, kappa: this.kappa, tier: this.tier, live: this.live });
   }
 
   /** A trailing ghost of a robot of the hands, `behind` px back along its rail. */
@@ -332,8 +355,24 @@ export class HeroScene {
     return handsRobotPose(index, this.hands, layout.hands, this.live, this.tier, out, behind);
   }
 
-  /** The shapes, for tests. */
-  get shapes(): { cloud: Shape; sphere: Shape; apple: Shape; hands: Shape | null } {
-    return { cloud: this.cloud, sphere: this.sphere, apple: this.apple, hands: this.handsShape };
+  /** Where the held ball is and which share of the right-half identities sits in its disc (115 % of the radius), for tests. */
+  ballStats(): { x: number; y: number; r: number; part: number } | null {
+    const layout = this.layout;
+    const isLeft = this.pairing?.isLeft;
+    if (!layout || !isLeft) return null;
+    const { cx, cy, r } = layout.ball;
+    let inside = 0;
+    let right = 0;
+    for (let i = 0; i < this.count; i++) {
+      if (isLeft[i]) continue;
+      right++;
+      if (Math.hypot(this.x[i]! - cx, this.y[i]! - cy) <= r * 1.15) inside++;
+    }
+    return { x: cx, y: cy, r, part: right ? inside / right : 0 };
+  }
+
+  /** The shapes, for tests: the final hands (paired to the identities) and the ball. */
+  get shapes(): { hands: Shape | null; ball: Shape | null; isLeft: Uint8Array } {
+    return { hands: this.pairing?.handsShape ?? null, ball: this.pairing?.ball ?? null, isLeft: this.pairing?.isLeft ?? new Uint8Array(0) };
   }
 }
