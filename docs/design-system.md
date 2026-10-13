@@ -2834,6 +2834,53 @@ image, les contours sont déduits de la première par seuil.
 tabulation du hero ne change pas. **Captures** : 1440, 1024, 390 aux phases `cloud`, `sphere`,
 `apple`, `hands` + 1440 en mouvement réduit, **auditées par l'utilisateur**.
 
+##### R. Réalisation (13/10/2026, `frontend-ux`)
+
+**Fichiers.** Moteur : `components/landing/hero/particles/` (`hero-config.ts` constantes · `timeline.ts` phases ·
+`shapes.ts` nuage, boule, pomme · `pairing.ts` Hilbert · `trajectory.ts` Bézier, retards, easing · `layout.ts` ·
+`robots.ts` + `robot-motion.ts` rails des nanorobots · `hands-data.ts` décodage · `HeroScene.ts` calcul d'une image ·
+`HeroParticleEngine.ts` canvas + boucle `requestAnimationFrame`). Rendu : `hero/HeroParticles.tsx` (client, relie le
+moteur à la page), `hero/HeroStage.tsx` (pause partagée, rejeu, `<noscript>`), `hero/HeroStage.module.css` (scène
+blanche opaque, zone de forme, voile de 48 px). Reste de la page : `living/LivingBackground.tsx` + `living/page-dust.ts`
+(`page-dust`). Supprimés : `HeroNanoField*`, `nano-exchange*`, `nano-population`, `nano-scheduler`,
+`nano-field-controller` ; `LivingBackground.module.css` ; `particle-handoff.jpg` n'est plus référencée en fond.
+Aucune dépendance ajoutée (Anime.js reste réservé au DOM : la garde `lot4-guards.test.ts` ne tolère plus aucun
+import dans `components/landing/hero/`).
+
+**Écarts à la spec (assumés).**
+
+| Spec | Réalisé | Pourquoi |
+|---|---|---|
+| Données mains : `hands.points.bin` + `rails.json` | **un seul fichier** `particles/hands.baked.json` (points en base64, 5 octets chacun : x, y 16 bits, ton 8 bits ; rails ; pointes ; 16 000 points, 78 ko bruts) chargé par `import()` dynamique (son propre chunk) | un fichier de plus à versionner n'apportait rien ; le moteur ne lit **jamais** d'image |
+| Source des mains : `adam-hands.png` | **repli documenté** : `public/images/particle-handoff.jpg`, via `scripts/bake-hero-hands.mjs` | aucune nouvelle illustration disponible |
+| Espace entre les index ≈ 3 % de la largeur | **5,2 %** de la largeur de l'image source (rapprochement de 4 % par moitié, estompé vers les bords) | sur le JPG, les index sont écartés de 13 % et en diagonale ; au-delà de 4 % les avant-bras se déforment |
+| Dernier point : points ≥ 14 000 / 9 000 / 3 600 | tenus ; la densité adaptative ne se déclenche pas en conditions normales (JS ≈ 3 ms/image à 1440) | — |
+| Anneau et bit cobalt | réalisés ; le bit part de la pointe de l'index gauche vers la droite sans la toucher | — |
+| Mains plus fortes que la boule | opacité +35 % et taille +25 % (+10 % sur téléphone) pendant `to-hands` et `hands` (`HANDS_EMPHASIS`, `HANDS_GROWTH`) | l'image source est claire : sans renfort les doigts se perdent |
+| Largeur des mains | 98 % de la scène (120 % sur téléphone : les avant-bras sortent du cadre) | lisibilité à 390 px |
+| Zone de forme ≥ 1024 px | `clamp(17rem, 40vh, 28rem)` (au lieu de `clamp(15rem, 32vh, 24rem)`) ; les solides sont bornés à 1,04 × la hauteur de la zone | à 1440 × 900 la boule et la pomme tiennent entre les boutons et la ligne de flottaison ; le terminal passe sous la flottaison (voulu, §I) |
+| `PageDust` en `requestAnimationFrame` | **minuteur 30 images/s** (`setInterval`), arrêté onglet caché, une image fixe en mouvement réduit | les gardes « aucun `requestAnimationFrame` hors du hero » des specs bloc A, ROI, contrôle et « sans boucle » restent vraies |
+| Données (`data-*`) | + `data-frame-ms` (p75 du travail JS par image, ms) | mesure du budget |
+| Rejeu hors écran | le canvas revient à `t = 0` (nuage) en restant en pause ; il joue quand le visiteur remonte | comme le terminal |
+
+**Commande pour changer la source des mains** (aucun changement du moteur) :
+
+```
+node scripts/bake-hero-hands.mjs --source public/images/hero/adam-hands.png --debug test-results/hero-morph
+```
+
+Avant de lancer : adapter dans `scripts/hero-hands.config.json` les coordonnées **en pixels de la nouvelle image**
+(`tips` = pointes des deux index, `keep` = polygone à garder, `erase` = disques à effacer, `rails` = polylignes des
+nanorobots ; `power`, `floor`, `blur` règlent la densité). Le script réécrit
+`components/landing/hero/particles/hands.baked.json` et `public/images/hero/hands-poster.webp` ; l'aperçu
+`hands-debug.png` (points + rails en cobalt) sert à vérifier. Dépendance : `sharp` (livré avec Next, absent de
+`package.json`).
+
+**Mesures réelles** (Chromium, serveur de développement, 12 s de séquence) : p95 de l'intervalle d'image **16,7 ms** à
+1440 (14 000 points, JS p75 2,7 à 3,2 ms) ; **33,4 ms** à 390 avec processeur × 4 (3 600 points, JS p75 3,5 à 4,1 ms) ;
+à 1440 avec processeur × 4, la densité adaptative descend à 5 600 points et le p95 reste à 66,7 ms (hors budget : un
+processeur 4 fois plus lent que le poste de référence n'est pas la cible ordinateur). DPR plafonné à 1,5 (1,25 en
+dessous de 768 px).
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
 > **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule

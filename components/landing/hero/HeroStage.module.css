@@ -1,0 +1,56 @@
+/*
+ * Band 1 of the hero: an opaque white stage (it covers the fixed dust of the page, which only
+ * shows from the end of the hero down — docs/design-system.md §2.11.4 ter F, J) holding the
+ * particle canvas under the content.
+ */
+.stage {
+  isolation: isolate;
+  background-color: var(--color-canvas);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The final image without JavaScript. */
+.poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/*
+ * The shape zone: the free space between the buttons and the terminal (§2.11.4 ter F). The shapes
+ * overflow it up and down, behind the text veils; a 48 px white fade keeps the points away from the
+ * buttons. The fade sits behind the content (z-index -1 in the content stacking context).
+ */
+.zone {
+  position: relative;
+  height: clamp(14rem, 34vh, 20rem);
+}
+
+@media (min-width: 64rem) {
+  .zone {
+    height: clamp(17rem, 40vh, 28rem);
+  }
+}
+
+.zone::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 100% 0;
+  height: 3rem;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--color-canvas), transparent);
+}

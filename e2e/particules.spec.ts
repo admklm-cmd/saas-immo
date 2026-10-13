@@ -176,9 +176,9 @@ test("aucun canvas de particules sur le site public", async ({ page }) => {
     await expect(page.locator("body")).toBeVisible();
     await expect(page.locator("h1").first()).toBeVisible({ timeout: COLD_START });
     await expect(page.locator(BACKGROUND), `${href}: no particle canvas`).toHaveCount(0);
-    // No public page has a canvas at rest: the home page draws its still hand-off as an image
-    // and its nanorobots in the DOM (docs/design-system.md §2.11.4 bis; the former network canvas is gone).
-    await expect(page.locator("canvas"), `${href}: canvas count`).toHaveCount(0);
+    // No public page has a canvas but the home page, which has two: the particles of its hero and the
+    // small dust of the page (docs/design-system.md §2.11.4 ter).
+    await expect(page.locator("canvas"), `${href}: canvas count`).toHaveCount(href === "/" ? 2 : 0);
   }
 });
 

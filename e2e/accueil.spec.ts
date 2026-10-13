@@ -8,17 +8,17 @@ import { signIn } from "./helpers/sign-in";
 /**
  * Public home page: the hero (title revealed line then word, tilted tag, black
  * then light action), block A « Vous » in the ecosystem of the agents labelled
- * as a simulation (docs/design-system.md §2.11.8.3), the still hand-off
- * behind the page and, in band 1 of the hero only, the nanorobots and the
- * terminal « humain ⇄ machine » (§2.11.4 bis).
+ * as a simulation (docs/design-system.md §2.11.8.3), the particle metamorphosis
+ * behind band 1 of the hero (§2.11.4 ter), white with small dust below it, and
+ * the terminal « humain ⇄ machine » (§2.11.4 bis).
  *
  * The suite runs in reduced motion (playwright.config.ts): everything is in its
  * final state at once. One group opts back into real motion to check that the
- * nanorobots play on screen and pause off screen, that block A plays its loop
+ * particles of the hero play on screen and pause off screen, that block A plays its loop
  * on screen, and that the Simulation badge plays one cycle on / only (§2.11.5).
  * Block A is covered in depth by e2e/landing-ecosysteme.spec.ts, the
- * nanorobots and the terminal by e2e/landing-hero-nanorobots.spec.ts, the
- * whole page « no loop » (block A and the nanorobots excepted) by
+ * particles and the terminal by e2e/landing-hero-particles.spec.ts, the
+ * whole page « no loop » (block A, the particles and the dust excepted) by
  * e2e/landing-sans-boucle.spec.ts.
  */
 
@@ -76,8 +76,9 @@ test("accueil : titre, étiquette, deux actions et bloc « Vous » étiqueté si
   await expect(ecosystem).toHaveAttribute("data-loop-state", "reduced");
   expectFinalBoxes(await ecosystemBoxes(page));
   await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);
-  // The nanorobots of the hero: the still composition; the terminal complete, no pause button (§2.11.4 bis F).
-  await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "reduced");
+  // The particles of the hero: the final image at once, still; the terminal complete, no pause button (§2.11.4 ter H).
+  await expect(page.getByTestId("hero-particles")).toHaveAttribute("data-state", "reduced");
+  await expect(page.getByTestId("hero-particles")).toHaveAttribute("data-phase", "hands");
   await expect(page.getByTestId("hero-terminal")).toHaveAttribute("data-terminal-state", "reduced");
   await expect(page.getByTestId("hero-motion-pause")).toHaveCount(0);
   await expect(page.getByTestId("living-background")).toHaveCount(0);
@@ -233,23 +234,25 @@ test("cas d'erreur : une adresse inconnue du site public répond 404, sans fond 
   const response = await page.goto("/cette-page-n-existe-pas");
   expect(response?.status()).toBe(404);
   await expect(page.getByTestId("particle-handoff-background")).toHaveCount(0);
-  await expect(page.getByTestId("hero-nanorobots")).toHaveCount(0);
+  await expect(page.getByTestId("hero-particles")).toHaveCount(0);
+  await expect(page.getByTestId("page-dust")).toHaveCount(0);
 });
 
 test.describe("avec animations", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("les nanorobots du hero jouent à l'écran, puis se mettent en pause hors écran", async ({ page }) => {
+  test("les particules du hero jouent à l'écran, puis se mettent en pause hors écran", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
-    const field = page.getByTestId("hero-nanorobots");
-    await expect(field).toHaveAttribute("data-loop-state", "playing", { timeout: 10_000 });
+    const field = page.getByTestId("hero-particles");
+    await expect(field).toHaveAttribute("data-state", "playing", { timeout: 10_000 });
     await expect(page.getByTestId("hero-motion-pause")).toBeVisible();
-    // No canvas behind the page any more (§2.11.4 bis B).
-    await expect(page.locator("canvas[data-testid='living-background']")).toHaveCount(0);
+    // The background canvases: the hero particles and the dust of the page (§2.11.4 ter), once each.
+    await expect(page.getByTestId("page-dust")).toHaveCount(1);
+    await expect(page.getByTestId("hero-particles")).toHaveCount(1);
 
     await page.locator("section[data-living-scene='controle']").scrollIntoViewIfNeeded();
-    await expect(field).toHaveAttribute("data-loop-state", "paused", { timeout: 2_000 });
+    await expect(field).toHaveAttribute("data-state", "paused", { timeout: 2_000 });
 
     // The page-wide pause is gone (docs/design-system.md §2.11.6): only the pause of the hero motion exists.
     await expect(page.getByTestId("landing-motion-toggle")).toHaveCount(0);

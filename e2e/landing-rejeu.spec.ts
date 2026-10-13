@@ -60,7 +60,7 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     }
   });
 
-  test("L4-D2 : section ROI à l'écran — widgets réarmés puis rejoués, valeurs saisies gardées, génération + 1, défilement inchangé, nanorobots non concernés", async ({ page }) => {
+  test("L4-D2 : section ROI à l'écran — widgets réarmés puis rejoués, valeurs saisies gardées, génération + 1, défilement inchangé, particules du hero hors écran non concernées", async ({ page }) => {
     test.setTimeout(90_000);
     await instrumentPage(page);
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -77,8 +77,8 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     await expect(negotiators).toHaveValue("5");
     // Let the network settle (it follows the visible section), then record.
     await page.waitForTimeout(4_000);
-    const nanorobots = page.getByTestId("hero-nanorobots");
-    const exchanges = await nanorobots.getAttribute("data-exchanges");
+    const particles = page.getByTestId("hero-particles");
+    const clock = await particles.getAttribute("data-sequence-ms");
     const scrollY = await page.evaluate(() => window.scrollY);
     const cycles = Number(await page.getByTestId("hero-ecosystem").getAttribute("data-loop-cycles"));
     await page.evaluate(() => {
@@ -106,9 +106,12 @@ test.describe("bouton « Rejouer les animations » (mouvement autorisé)", () =>
     await expect(negotiators).toHaveValue("5");
     await expect(page.locator("[data-widget='time'] [data-roi-value] > [aria-hidden='true']").first()).toHaveText(/≈\s*340\s*h/);
     expect(Math.abs((await page.evaluate(() => window.scrollY)) - scrollY)).toBeLessThanOrEqual(1);
-    // The background is not concerned: the nanorobots (off screen) neither restart nor count anew (§2.11.4 bis I).
-    await expect(nanorobots).toHaveAttribute("data-loop-state", "paused");
-    expect(await nanorobots.getAttribute("data-exchanges")).toBe(exchanges);
+    // The hero particles are off screen: still paused (no frame), re-armed at t = 0 like the terminal;
+    // they play again when the visitor comes back to the top (§2.11.4 ter H).
+    expect(clock).not.toBe("0");
+    await expect(particles).toHaveAttribute("data-state", "paused");
+    expect(await particles.getAttribute("data-sequence-ms")).toBe("0");
+    await expect(particles).toHaveAttribute("data-phase", "cloud");
     // Block A (off screen) starts over at t = 0 when it comes back.
     await expect(page.getByTestId("hero-ecosystem")).toHaveAttribute("data-step", "final");
     // Below the fold at 1440 × 900 since the terminal of the hero (§2.11.4 bis E): brought to the middle.

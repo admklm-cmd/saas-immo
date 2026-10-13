@@ -29,7 +29,7 @@ async function openHome(page: Page): Promise<void> {
 /**
  * Block A in the middle of the window. Since the terminal of the hero
  * (docs/design-system.md §2.11.4 bis E), block A starts below the fold at
- * 1440 × 900; centred, band 1 (and its nanorobots) is off screen.
+ * 1440 × 900; centred, band 1 (and its particles) is off screen.
  */
 async function showBlockA(page: Page): Promise<void> {
   await page.locator(FIGURE).evaluate((figure) => figure.scrollIntoView({ block: "center", behavior: "instant" }));

@@ -12,20 +12,22 @@ import { centerSection, instrumentPage, rafCalls } from "./helpers/landing-netwo
  * infinite animation running on the page and, once the hero is off screen, no
  * requestAnimationFrame call for 2 s.
  *
- * Two exceptions (docs/design-system.md §2.11.8.1 n° 3, §2.11.4 bis I), the
+ * Three exceptions (docs/design-system.md §2.11.8.1 n° 3, §2.11.4 ter M), the
  * only elements carrying `data-loop="allowed"`, masked in the captures:
+ * - the dust of the page (`page-dust`): a slow 30 frames/s timer, never
+ *   requestAnimationFrame;
+ * - the particles of band 1 (`hero-particles`, own requestAnimationFrame loop):
+ *   frames allowed while band 1 is on screen; off screen they pause, and the
+ *   page requests no frame at all;
  * - block A of the hero (`hero-ecosystem`): CSS transitions and one timer,
- *   never requestAnimationFrame;
- * - the nanorobots of band 1 (`hero-nanorobots`, Anime.js): their frames are
- *   allowed while band 1 is on screen; off screen they pause, and the page
- *   requests no frame at all.
+ *   never requestAnimationFrame.
  * The terminal of the hero is not a loop: typed once, then still (C20: still
  * to the pixel between 16 s and 18 s).
  */
 
 const COLD_START = 60_000;
 const SECTIONS = ["probleme", "solution", "agents", "controle", "resultat", "final"] as const;
-const HIDE_NANOROBOTS = "[data-testid='hero-nanorobots'] { visibility: hidden !important; }";
+const HIDE_PARTICLES = "[data-testid='hero-particles'], [data-testid='page-dust'] { visibility: hidden !important; }";
 
 async function expectNothingMoves(page: Page, label: string, options: { heroOnScreen: boolean }): Promise<void> {
   const calls = await rafCalls(page);
@@ -35,8 +37,8 @@ async function expectNothingMoves(page: Page, label: string, options: { heroOnSc
   const second = await page.screenshot({ animations: "allow", mask });
   await page.waitForTimeout(1_000);
   if (!options.heroOnScreen) {
-    // Off screen, the nanorobots are paused: not a single frame requested by the page.
-    await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "paused");
+    // Off screen, the hero particles are paused: not a single frame requested by the page.
+    await expect(page.getByTestId("hero-particles")).toHaveAttribute("data-state", "paused");
     expect(await rafCalls(page), `${label}: requestAnimationFrame calls in 2 s`).toBe(calls);
   }
   expect(first.equals(second), `${label}: two captures 1 s apart identical`).toBe(true);
@@ -64,19 +66,20 @@ test.describe("aucune boucle sur la page d'accueil", () => {
       expect(response?.status()).toBe(200);
       await expect(page.getByRole("heading", { level: 1, name: HERO_TITLE })).toBeVisible({ timeout: COLD_START });
 
-      // Two elements only may loop: the nanorobots and block A of the hero.
-      await expect(page.locator("[data-loop]")).toHaveCount(2);
+      // Three elements only may loop: the dust, the particles and block A of the hero.
+      await expect(page.locator("[data-loop]")).toHaveCount(3);
       expect(await page.locator("[data-loop='allowed']").evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-testid")))).toEqual([
-        "hero-nanorobots",
+        "page-dust",
+        "hero-particles",
         "hero-ecosystem",
       ]);
 
       // The terminal is typed once (≈ 12.2 s), its cursor blinks three times (≈ 15.4 s), then nothing moves:
-      // still to the pixel between 16 s and 18 s (C20), the nanorobots hidden for the two captures.
+      // still to the pixel between 16 s and 18 s (C20), the particles hidden for the two captures.
       const terminal = page.getByTestId("hero-terminal");
       await page.waitForTimeout(16_000);
       await expect(terminal).toHaveAttribute("data-terminal-state", "done");
-      const hide = await page.addStyleTag({ content: HIDE_NANOROBOTS });
+      const hide = await page.addStyleTag({ content: HIDE_PARTICLES });
       const at16 = await terminal.screenshot({ animations: "allow" });
       await page.waitForTimeout(2_000);
       const at18 = await terminal.screenshot({ animations: "allow" });
@@ -88,9 +91,9 @@ test.describe("aucune boucle sur la page d'accueil", () => {
       for (const scene of SECTIONS) {
         await centerSection(page, scene);
         if (scene === "probleme") {
-          // Block A and the nanorobots off screen: paused within a second.
+          // Block A and the hero particles off screen: paused within a second.
           await expect(page.getByTestId("hero-ecosystem")).toHaveAttribute("data-loop-state", "paused", { timeout: 1_000 });
-          await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "paused", { timeout: 1_000 });
+          await expect(page.getByTestId("hero-particles")).toHaveAttribute("data-state", "paused", { timeout: 1_000 });
         }
         await page.waitForTimeout(5_000);
         await expectNothingMoves(page, `${scene} + 5 s`, { heroOnScreen: false });

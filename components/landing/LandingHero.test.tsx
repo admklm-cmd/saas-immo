@@ -8,6 +8,9 @@ import { HERO_TITLE, LANDING_TEXTS } from "@/components/landing-texts";
 import { CYCLE_MS } from "./ecosystem/ecosystem-timeline";
 import { LandingHero } from "./LandingHero";
 
+// The particle canvas has its own loop (tested in hero/HeroParticles.test.tsx): block A is tested alone here.
+vi.mock("./hero/HeroParticles", () => ({ HeroParticles: () => null }));
+
 const JOURNEY = LANDING_TEXTS.journey;
 
 function mockMotion(reduced: boolean) {

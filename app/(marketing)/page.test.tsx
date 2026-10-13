@@ -7,6 +7,9 @@ import { LIVING_SCENES } from "@/components/landing/living/scenes";
 
 import HomePage from "./page";
 
+// jsdom has no canvas: the two canvases of the page (dust, hero) draw nothing here.
+HTMLCanvasElement.prototype.getContext = (() => null) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+
 afterEach(() => {
   cleanup();
 });
@@ -28,16 +31,19 @@ it("presents the hero, the five agents and the human safeguards", () => {
   expect(screen.getAllByText(LANDING_TEXTS.journey.badge).length).toBeGreaterThanOrEqual(2);
 });
 
-it("names every section, and the still background is decorative", () => {
+it("names every section, and the backgrounds are decorative", () => {
   const { container } = render(<HomePage />);
   const scenes = Array.from(container.querySelectorAll("[data-living-scene]")).map((section) =>
     section.getAttribute("data-living-scene"),
   );
   expect(scenes).toEqual([...LIVING_SCENES]);
-  expect(screen.getByTestId("particle-handoff-background").getAttribute("aria-hidden")).toBe("true");
-  // The former network canvas is gone: no canvas behind the page (§2.11.4 bis B).
-  expect(screen.queryByTestId("living-background")).toBeNull();
-  expect(screen.queryByTestId("nano-particle-field")).toBeNull();
+  expect(screen.getByTestId("page-dust").getAttribute("aria-hidden")).toBe("true");
+  expect(screen.getByTestId("hero-particles").getAttribute("aria-hidden")).toBe("true");
+  // The image of the hands and the nanorobot chips of the former hero are gone (§2.11.4 ter K).
+  expect(screen.queryByTestId("particle-handoff-background")).toBeNull();
+  expect(screen.queryByTestId("network-atmosphere")).toBeNull();
+  expect(screen.queryByTestId("hero-nanorobots")).toBeNull();
+  expect(container.querySelectorAll("[data-nano-robot]")).toHaveLength(0);
 });
 
 it("offers both public estimation and agency access, and no floating contact button", () => {
@@ -62,9 +68,10 @@ it("gives three titles one effect each, never repeated, replayable on hover; the
     expect(title.hasAttribute("data-accent-effect"), id).toBe(false);
     expect(title.querySelectorAll("[data-accent-frame], [data-accent-mark], canvas, [data-letter]"), id).toHaveLength(0);
   }
-  // Two elements of the page may loop: the nanorobots and block A of the hero (§2.11.8.1 n° 3, §2.11.4 bis I).
+  // Three elements of the page may loop: the dust of the page, the particles of the hero and block A (§2.11.4 ter M).
   expect(Array.from(container.querySelectorAll("[data-loop]")).map((element) => element.getAttribute("data-testid"))).toEqual([
-    "hero-nanorobots",
+    "page-dust",
+    "hero-particles",
     "hero-ecosystem",
   ]);
   // The final panel ends on its note, no canvas inside it (§2.11.3 bis).

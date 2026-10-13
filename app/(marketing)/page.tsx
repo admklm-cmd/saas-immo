@@ -12,9 +12,9 @@ import { ReplayAnimationsButton } from "@/components/landing/replay/ReplayAnimat
 /**
  * Public home page of the agency website.
  *
- * The background is a fixed, still, `aria-hidden` point-field hand-off
- * (illustration; docs/design-system.md §2.11.4); the only background motion,
- * the nanorobots, lives in band 1 of the hero (§2.11.4 bis). Every section
+ * The hero background is its own particle metamorphosis (§2.11.4 ter, band 1); the page
+ * behind the rest is white with small drifting particles (`LivingBackground`, fixed, `aria-hidden`).
+ * Every section
  * carries `data-living-scene` (its name). The content is painted above it and
  * is complete without JavaScript. Three titles carry an accent effect, each a different
  * one (§2.11.8.2), replayed when a mouse enters them (§2.11.2 D). No figure, client, testimonial or

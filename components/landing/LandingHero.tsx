@@ -4,6 +4,7 @@ import { EditorialTitle } from "@/components/ui/EditorialTitle";
 
 import { HeroEcosystem } from "./ecosystem/HeroEcosystem";
 import { HeroStage } from "./hero/HeroStage";
+import stageStyles from "./hero/HeroStage.module.css";
 import { HeroTerminal } from "./hero/HeroTerminal";
 
 const TEXTS = LANDING_TEXTS.hero;
@@ -18,16 +19,17 @@ const ACTIONS = LANDING_TEXTS.actions;
  * the two human decisions, labelled as a fictitious simulation. No figure,
  * client, testimonial or price.
  *
- * Two bands in one section: band 1 is a centred statement over the point-field
- * hand-off, with the nanorobots exchanging behind it and the terminal
- * « humain ⇄ machine » under the hands (docs/design-system.md §2.11.4 bis);
+ * Two bands in one section: band 1 is a centred statement over the particle
+ * metamorphosis (cloud, ball, apple, the two hands of « La Création d'Adam »;
+ * docs/design-system.md §2.11.4 ter) with the terminal « humain ⇄ machine »
+ * under the shapes (§2.11.4 bis E);
  * band 2 leaves the `max-w-7xl` column so the row of cards can use the full
  * window.
  */
 export function LandingHero() {
   return (
     <section id="hero" aria-labelledby="hero-title" data-living-scene="hero" className="w-full pb-16 lg:pb-24">
-      {/* Band 1, the whole width: the nanorobot layer behind, the content above (§2.11.4 bis B). */}
+      {/* Band 1, the whole width: the particle canvas behind, the content above (§2.11.4 ter F). */}
       <HeroStage>
         <div
           className="mx-auto flex w-full max-w-5xl flex-col items-center px-6 pt-10 text-center sm:px-8 lg:px-12 lg:pt-14"
@@ -71,8 +73,8 @@ export function LandingHero() {
               </ButtonLink>
             </div>
 
-            {/* Free space: the hands breathe here and, on a phone, the nanorobots exchange in it (§2.11.4 bis E). */}
-            <div aria-hidden="true" data-nano-stage="" className="h-28 w-full md:h-[clamp(3.5rem,8vh,6rem)]" />
+            {/* The shape zone: the ball, the apple and the two hands are centred here, behind the text (§2.11.4 ter F). */}
+            <div aria-hidden="true" data-nano-stage="" className={`${stageStyles.zone} w-full`} />
 
             <HeroTerminal />
 

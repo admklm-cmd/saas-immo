@@ -314,8 +314,8 @@ test.describe("section contrôle en mouvement (L3-D3, L3-D4)", () => {
 
     // First the control section with the timeline still below the fold, then the timeline comes on screen.
     await page.locator(SECTION).evaluate((node) => window.scrollTo({ top: node.getBoundingClientRect().top + window.scrollY - 400, behavior: "instant" }));
-    // The nanorobots of the hero are off screen: paused, no frame of theirs.
-    await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "paused", { timeout: 2_000 });
+    // The particles of the hero are off screen: paused, no frame of theirs.
+    await expect(page.getByTestId("hero-particles")).toHaveAttribute("data-state", "paused", { timeout: 2_000 });
     await expect(timeline).toHaveAttribute("data-visual-state", "idle");
     // The frame already requested by the engine when it paused is the last one.
     await page.waitForTimeout(500);

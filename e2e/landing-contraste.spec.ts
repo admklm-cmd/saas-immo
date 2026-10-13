@@ -10,7 +10,7 @@ import { centerSection, contrastFailures, measureContrast, type LineContrast } f
  * invisible network canvas was removed — §2.11.4 bis B): small text ≥ 4.5:1 at
  * its darkest pixel, ink titles ≥ 7:1, subtle title lines ≥ 3:1 (darkest) and
  * ≥ 4.5:1 (median). Measured over the still hand-off, the veils and, in the
- * hero, the nanorobots and the terminal (§2.11.4 bis, C15).
+ * hero, the particles and the terminal (§2.11.4 bis, §2.11.4 ter).
  */
 
 const COLD_START = 60_000;
@@ -83,7 +83,7 @@ test("(i) mouvement réduit : contraste du titre « problème » amené en haut 
   ]) {
     await page.setViewportSize(viewport);
     await openHome(page);
-    await expect(page.getByTestId("hero-nanorobots")).toHaveAttribute("data-loop-state", "reduced");
+    await expect(page.getByTestId("hero-particles")).toHaveAttribute("data-state", "reduced");
     await topSection(page, "probleme");
     await page.waitForTimeout(600);
     const results = await measureContrast(page);
