@@ -38,14 +38,7 @@ export function LandingHero() {
           {/* An inline-size container: the poster title is capped by this column (§2.2.3).
               One veil per role of text, sized to the words (§2.11.4). */}
           <div className="@container flex w-full min-w-0 flex-col items-center">
-            {/* The tag sits in the flow, above the title: it can never overlap a line (T.5). */}
-            <p
-              data-testid="hero-tag"
-              className="label-mono mt-3 inline-block lg:mt-2 min-[90rem]:mt-8 rounded-full border border-ink bg-surface px-2.5 py-1.25 leading-none whitespace-nowrap text-ink"
-            >
-              {TEXTS.tag}
-            </p>
-            <div className="network-veil-title relative mx-auto mt-4 w-fit max-w-full" data-network-quiet="">
+            <div className="network-veil-title relative mx-auto mt-0 w-fit max-w-full sm:mt-4" data-network-quiet="">
               <EditorialTitle
                 as="h1"
                 id="hero-title"
@@ -61,21 +54,34 @@ export function LandingHero() {
           </div>
 
           <div className="mt-6 flex w-full min-w-0 flex-col items-center">
-            <p className="particle-veil mx-auto w-fit max-w-[52ch] text-lede text-pretty text-ink-muted" data-network-quiet="">
-              {TEXTS.subtitle}
+            {/* Same face as the terminal journal (U.3): Geist Mono 400, ink-muted, one sentence per line. */}
+            <p className={`particle-veil ${stageStyles.subtitle} mx-auto w-fit text-pretty text-ink-muted`} data-network-quiet="">
+              {TEXTS.subtitleLines.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
             </p>
 
-            <div className="mt-7 flex w-fit max-w-full flex-wrap justify-center gap-3" data-network-quiet="">
-              <ButtonLink href="/estimation" size="lg" arrow="forward">
+            <div className="mt-5 flex w-full max-w-full flex-col items-stretch justify-center gap-2 sm:mt-7 sm:w-fit sm:flex-row sm:flex-wrap sm:gap-3" data-network-quiet="">
+              <ButtonLink href="/estimation" size="lg" arrow="forward" className="max-sm:w-full max-sm:justify-center">
                 {ACTIONS.estimation}
               </ButtonLink>
-              <ButtonLink href="/connexion" variant="secondary" size="lg">
+              <ButtonLink href="/connexion" variant="secondary" size="lg" className="max-sm:w-full max-sm:justify-center">
                 {ACTIONS.signIn}
               </ButtonLink>
             </div>
 
             {/* The shape zone: the ball, the apple and the two hands are centred here, behind the text (§2.11.4 ter F). */}
             <div aria-hidden="true" data-nano-stage="" className={`${stageStyles.zone} w-full`} />
+
+            {/* The tag heads the demonstration: just above the terminal (U.1). */}
+            <p
+              data-testid="hero-tag"
+              className="label-mono mt-6 mb-3 inline-block rounded-full border border-ink bg-surface px-2.5 py-1.25 leading-none whitespace-nowrap text-ink"
+            >
+              {TEXTS.tag}
+            </p>
 
             <HeroTerminal />
 

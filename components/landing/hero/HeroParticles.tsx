@@ -120,6 +120,7 @@ export function HeroParticles() {
       data-testid="hero-particles"
       data-loop="allowed"
       data-phase="sphere"
+      data-phases="sphere"
       data-state="paused"
       data-points="0"
       data-sequence-ms="0"

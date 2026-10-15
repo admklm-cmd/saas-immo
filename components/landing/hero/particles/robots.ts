@@ -1,4 +1,4 @@
-import { BALL_ORBIT, FOCAL, SPHERE, resolveTier, type Tier } from "./hero-config";
+import { FOCAL, SPHERE, resolveTier, type Tier } from "./hero-config";
 import type { Hands } from "./hands-data";
 import { handsRobotPose } from "./hands-robots";
 import type { Layout, Placement } from "./layout";
@@ -7,15 +7,15 @@ import { pointOnRail, railLength } from "./rails";
 
 /**
  * The nanorobots (docs/design-system.md §2.11.4 ter D, E; T.2): small squares that follow a rail
- * proper to each phase — three inclined orbits around the big sphere, an ellipse around the held
- * ball, rails taken from the baked hands. Pure: a pose from the robot, the phase and the time.
+ * proper to its place — three inclined orbits around the big sphere,
+ * rails taken from the baked hands. Pure: a pose from the robot and the time.
  */
-export type RobotKind = "sphere" | "ball" | "hands";
+export type RobotKind = "sphere" | "hands";
 
 /** `accent`: the robot carries the cobalt port (the message of the left messenger). */
-export type RobotPose = { x: number; y: number; z: number; alpha: number; accent: boolean };
+export type RobotPose = { x: number; y: number; z: number; alpha: number; accent: boolean; /** Drawn as a round bead travelling a rail (messenger or circulant), not as a square (U.6). */ bead: boolean };
 
-export const emptyPose = (): RobotPose => ({ x: 0, y: 0, z: 0, alpha: 0, accent: false });
+export const emptyPose = (): RobotPose => ({ x: 0, y: 0, z: 0, alpha: 0, accent: false, bead: false });
 
 const perspective = (z: number) => FOCAL / (FOCAL - z);
 
@@ -51,19 +51,6 @@ function sphereRobot(index: number, count: number, seconds: number, place: Place
   return out;
 }
 
-/** A robot on the ellipse around the held ball (1.25 R × 0.5 R, tilted), `seconds` into the phase. */
-function ballRobot(index: number, seconds: number, ball: Layout["ball"], out: RobotPose): RobotPose {
-  const u = BALL_ORBIT.omega * seconds + (index / BALL_ORBIT.robots) * Math.PI * 2;
-  const tilt = (-18 * Math.PI) / 180;
-  const ex = Math.cos(u) * BALL_ORBIT.a * ball.r;
-  const ey = Math.sin(u) * BALL_ORBIT.b * ball.r;
-  out.x = ball.cx + ex * Math.cos(tilt) - ey * Math.sin(tilt);
-  out.y = ball.cy + ex * Math.sin(tilt) + ey * Math.cos(tilt);
-  out.z = Math.sin(u) * 0.3;
-  out.alpha = 1;
-  return out;
-}
-
 const scratch = { x: 0, y: 0 };
 const fallbackLive = createHandsLive();
 
@@ -88,6 +75,8 @@ export type RobotContext = {
   /** Tier and state of the living act (the hands only; defaults: the desktop tier at the start of the act). */
   readonly tier?: Tier;
   readonly live?: HandsLive;
+  /** Clock of the beads on the rails (s): runs from the birth of the beads and on through the act; defaults to the act clock. */
+  readonly railSec?: number;
 };
 
 /**
@@ -96,10 +85,9 @@ export type RobotContext = {
  */
 export function robotPose(kind: RobotKind, index: number, seconds: number, context: RobotContext, out: RobotPose, behind = 0): RobotPose {
   if (kind === "sphere") return sphereRobot(index, context.count, seconds, context.layout.sphere, out);
-  if (kind === "ball") return ballRobot(index, seconds, context.layout.ball, out);
   if (!context.hands) {
     out.alpha = 0;
     return out;
   }
-  return handsRobotPose(index, context.hands, context.layout.hands, context.live ?? fallbackLive, context.tier ?? resolveTier(1440, false), out, behind);
+  return handsRobotPose(index, context.hands, context.layout.hands, context.live ?? fallbackLive, context.tier ?? resolveTier(1440, false), out, behind, context.railSec);
 }

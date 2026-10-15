@@ -1,12 +1,11 @@
 import { createPrng } from "@/components/motion/engine/prng";
 
-import { LIVE_CYCLE, MESSENGER, ORBIT, ROBOT_FADE_MS, ROBOT_SPEED, type Tier } from "./hero-config";
+import { LIVE_CYCLE, MESSENGER, ORBIT, RAIL_DOTS, ROBOT_FADE_MS, type Tier } from "./hero-config";
 import type { Hands } from "./hands-data";
 import type { Placement } from "./layout";
 import { moveOnHands, type HandsLive } from "./live-motion";
 import { pointOnRail, railLength } from "./rails";
 import type { RobotPose } from "./robots";
-import { easeInOutSine } from "./trajectory";
 
 /**
  * The nanorobots of the second animation (docs/design-system.md §2.11.4 ter S.6). Three roles, told
@@ -31,10 +30,15 @@ export function roleOf(index: number, tier: Tier): { role: HandsRobotRole; order
   return { role: "none", order: 0 };
 }
 
-/** Seeded speed (px/s) and phase of one circulating robot. */
-function gait(index: number): { speed: number; phase: number } {
+/** One circulating bead in three is cobalt (the first of each triple), up to the tier quota (the left messenger takes the first). */
+export function isCobaltBead(order: number, tier: Tier): boolean {
+  return order % 3 === 0 && order / 3 < tier.railCobalt - 1;
+}
+
+/** Seeded constant speed (px/s) and phase of one circulating robot. */
+function gait(index: number, tier: Tier): { speed: number; phase: number } {
   const random = createPrng(77_000 + index * 31);
-  return { speed: ROBOT_SPEED.min + random() * (ROBOT_SPEED.max - ROBOT_SPEED.min), phase: random() };
+  return { speed: tier.railSpeed.min + random() * (tier.railSpeed.max - tier.railSpeed.min), phase: random() };
 }
 
 const rail = { x: 0, y: 0 };
@@ -56,23 +60,24 @@ function messenger(order: number, hands: Hands, place: Placement, live: HandsLiv
   const t = live.t;
   const stop = (MESSENGER_STOP_PX * tier.motionScale) / place.sx;
   const target = Math.max(0, length - stop);
-  const u = t < LIVE_CYCLE.approach ? easeInOutSine(t / LIVE_CYCLE.approach) : t < MESSENGER.fadeIn ? 1 : 0;
+  // Constant speed along the rail (a bead, not a robot that accelerates and brakes).
+  const u = t < LIVE_CYCLE.approach ? t / LIVE_CYCLE.approach : t < MESSENGER.fadeIn ? 1 : 0;
   placeOnRail(hands, place, live, MESSENGER_RAILS[order]!, Math.max(0, u * target - behind / place.sx), out);
   const fade = ROBOT_FADE_MS / 1000;
   out.alpha = t < MESSENGER.fadeOut ? 1 : t < MESSENGER.fadeOut + fade ? 1 - (t - MESSENGER.fadeOut) / fade : t < MESSENGER.fadeIn ? 0 : (t - MESSENGER.fadeIn) / fade;
   return out;
 }
 
-function circulant(order: number, index: number, hands: Hands, place: Placement, live: HandsLive, out: RobotPose, behind: number): RobotPose {
+function circulant(order: number, index: number, hands: Hands, place: Placement, live: HandsLive, tier: Tier, out: RobotPose, behind: number, railSec: number): RobotPose {
   const railIndex = CIRCULANT_RAILS[order % CIRCULANT_RAILS.length]!;
   const path = hands.rails[railIndex % hands.rails.length]!;
   const length = railLength(path);
-  const { speed, phase } = gait(index);
+  const { speed, phase } = gait(index, tier);
   const travel = (length * place.sx) / speed;
   const fade = ROBOT_FADE_MS / 1000;
   const cycle = travel + fade;
-  const t = (((live.actSec + phase * cycle) % cycle) + cycle) % cycle;
-  placeOnRail(hands, place, live, railIndex, Math.max(0, easeInOutSine(Math.min(1, t / travel)) * length - behind / place.sx), out);
+  const t = (((railSec + phase * cycle) % cycle) + cycle) % cycle;
+  placeOnRail(hands, place, live, railIndex, Math.max(0, Math.min(1, t / travel) * length - behind / place.sx), out);
   out.alpha = t < fade ? t / fade : t <= travel ? 1 : Math.max(0, 1 - (t - travel) / fade);
   return out;
 }
@@ -99,15 +104,26 @@ function orbital(order: number, place: Placement, live: HandsLive, tier: Tier, o
 }
 
 /** Pose of the robot `index` of the hands at the current state of the living act; `behind` px back along its rail (trail ghosts). */
-export function handsRobotPose(index: number, hands: Hands, place: Placement, live: HandsLive, tier: Tier, out: RobotPose, behind = 0): RobotPose {
+export function handsRobotPose(index: number, hands: Hands, place: Placement, live: HandsLive, tier: Tier, out: RobotPose, behind = 0, railSec = live.actSec): RobotPose {
   out.accent = false;
+  out.bead = false;
   const { role, order } = roleOf(index, tier);
-  if (role === "messenger") {
-    messenger(order, hands, place, live, tier, out, behind);
-    out.accent = order === 0 && (live.t < LIVE_CYCLE.approach || live.t >= MESSENGER.fadeIn);
+  if ((role === "messenger" || role === "circulant") && RAIL_DOTS <= 0) {
+    out.alpha = 0;
     return out;
   }
-  if (role === "circulant") return circulant(order, index, hands, place, live, out, behind);
+  if (role === "messenger") {
+    out.bead = true;
+    messenger(order, hands, place, live, tier, out, behind);
+    // The left messenger is cobalt; the right one is white (U.6).
+    out.accent = order === 0;
+    return out;
+  }
+  if (role === "circulant") {
+    out.bead = true;
+    out.accent = isCobaltBead(order, tier);
+    return circulant(order, index, hands, place, live, tier, out, behind, railSec);
+  }
   if (role === "orbital") return orbital(order, place, live, tier, out);
   out.alpha = 0;
   return out;

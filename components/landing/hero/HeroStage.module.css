@@ -36,8 +36,8 @@
 .zone {
   position: relative;
   height: clamp(14rem, 34vh, 20rem);
-  /* Lift of the zone: the two-line prompt title is shorter than the old poster, the zone keeps the position of the hands (T.5). */
-  margin-top: 0.3rem;
+  /* Lift of the zone: the two-line prompt title is shorter than the old poster, the zone keeps the position of the hands (T.5). The tag left the top of the title (U.1): its height + margin (2.32 / 2.07 / 3.58 rem) is added here so the hands do not move. */
+  margin-top: 2.62rem;
 }
 
 /*
@@ -48,13 +48,45 @@
 @media (min-width: 64rem) {
   .zone {
     height: clamp(15rem, calc(100svh - 31rem), 22rem);
-    margin-top: -0.6rem;
+    margin-top: 1.47rem;
   }
 }
 
 @media (min-width: 90rem) {
   .zone {
     height: clamp(16rem, calc(100svh - 33rem), 26rem);
-    margin-top: 4.7rem;
+    margin-top: 8.28rem;
+  }
+}
+
+/*
+ * The subtitle in the face of the terminal journal (docs/design-system.md U.3): Geist Mono 400,
+ * 14 / 24 px (13 / 21 px below 40 rem of column), ink-muted, one sentence per block.
+ */
+.subtitle {
+  max-width: 76ch;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.3125rem;
+  font-weight: 400;
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+}
+
+@media (min-width: 40rem) {
+  .subtitle {
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+}
+
+/*
+ * Phone (U.7, below 48 rem): the sphere has its own zone under the buttons, 20 to 25 rem high, and the
+ * tag and the terminal follow it (below the fold). Nothing overlaps the sphere.
+ */
+@media (max-width: 47.99rem) {
+  .zone {
+    height: clamp(20rem, calc(100svh - 28rem), 25rem);
+    margin-top: 0.25rem;
   }
 }

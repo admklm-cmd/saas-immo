@@ -106,3 +106,150 @@ Valeurs par défaut prudentes, toutes modifiables par l'utilisateur (curseurs). 
 - Les études A1 à A5, B3, C1 sont **américaines et non immobilières** (sauf A6) : le dire.
 - Taux d'honoraires de 2016 : à actualiser avec une source récente avant commercialisation.
 - Vérifier chaque chiffre à la source primaire avant mise en ligne, et faire valider le texte (publicité trompeuse, pratiques commerciales) avant commercialisation.
+
+---
+
+# Section du 14/10/2026 : vérification des faits (France d'abord)
+
+> Statut : TERMINÉ le 14/10/2026 (recherche limitée, voir « Limites »). Aucun code touché.
+> Niveaux : **A** vérifié, France, source primaire. **B** vérifié, contexte différent. **C** non vérifié / introuvable / contredit.
+
+## Plan
+1. Volumes de transactions dans l'ancien (Notaires de France, INSEE, Banque de France).
+2. Part des ventes via professionnel, mandats exclusifs/simples, délais de vente, honoraires.
+3. Comportement vendeur (nb d'agences contactées), réactivité (HBR 2011, MIT 2007 : vérifier à la source).
+4. Temps administratif.
+5. Synthèse, tableaux A/B/C, propositions de contenu, sources, limites.
+
+## Affirmations actuellement affichées (components/landing-texts.ts, clé `roi`)
+- « de chances de qualifier un lead rappelé en 5 minutes plutôt qu'en 30 minutes » (x21, étude US MIT/InsideSales 2007)
+- « en tentant le contact dans l'heure plutôt qu'une heure plus tard » (x7, HBR 2011)
+- « audit américain : 23 % sans réponse » (HBR 2011)
+- « 367 000 € — prix médian d'un appartement à La Ciotat (DVF 2025) » ; « 4 % HT — honoraires moyens (FNAIM 2016) »
+- « étude : 4 à 6 h » d'administratif (La Boîte Immo 2017)
+- « 93 % des leads convertis avaient été joints au plus tard au 6e appel » (Velocify)
+- Hypothèses affichées comme telles : 8 %, 60 %, 45 semaines, 30 %, 40 €.
+
+## Faits vérifiés (entrées ajoutées au fil de l'eau)
+
+### F1 (niveau A) Volume de ventes dans l'ancien en France
+- Affirmation prête à afficher : « En France, 949 000 ventes de logements anciens enregistrées à fin mai 2026 (+5,7 % sur un an), selon les Notaires de France. »
+- Source : Conseil supérieur du notariat (CSN), communiqué « Marché immobilier : le CSN publie la note de conjoncture immobilière de juillet 2026 », jeudi 23/07/2026 (note n°72) — https://presse.notaires.fr/marche-immobilier-le-csn-publie-la-note-de-conjoncture-immobiliere-de-juillet-2026/ (lien relevé via https://www.csn.notaires.fr/fr/les-communiques-de-presse).
+- Passage exact vu : « Le nombre de ventes dans l'ancien en France a encore crû sur un an – avec 949 000 ventes enregistrées à fin mai 2026 ».
+- Consulté le 14/10/2026 : la page liste des communiqués (passage ci-dessus, via extraction). Le communiqué lui-même et le PDF de la note (n°72, acte3.notaires.fr) n'ont pas pu être lus en intégral (PDF illisible par l'outil) : la période « cumul 12 mois » et le +5,7 % / +11,4 % (fin février) viennent de recoupements (Batiweb 24/07/2026 qui cite le CSN, actu-juridique non ouvert, 403). Pour afficher « +5,7 % » ou « sur 12 mois », rouvrir le PDF https://www.notaires.fr/fr/media/1770. Niveau A pour « 949 000 ventes à fin mai 2026 » ; le reste, à confirmer.
+- Contradiction mineure : date de publication 23/07 (CSN, Batiweb) vs 25/07 (page notaires.fr, d'après un résumé de recherche). Citer 23/07/2026.
+- Note : la page notaires.fr « Nombre de transactions de logements anciens en cumul sur 12 mois » (mise à jour 25/09/2026) donne le graphique en image uniquement ; chiffre national non lisible par moi.
+- Prix : +0,2 % sur un an au 1er trimestre 2026 pour les logements anciens en France métropolitaine, projection -0,6 % à fin juillet 2026 (résumés de recherche seulement, passage non consulté : niveau C tant que non revu).
+
+### B1' (niveau B) MIT / InsideSales.com 2007 : x21 et x100 CONFIRMÉS à la source, mais contexte non transposable
+- Source : « Lead Response Management, MIT Lead Response Management Study / InsideSales.com-MIT study summary », présenté par D. Elkington (CEO InsideSales.com) et J. Oldroyd (MIT Sloan) au MarketingSherpas Demand Generation Summit, 16/10/2007 ; PDF https://www.mortech.com/hs-fs/hub/25649/file-13535879-pdf/docs/mit_study.pdf (copie hébergée par un tiers, imprimée le 17/07/2008 depuis leadresponsemanagement.com). Consulté le 14/10/2026 (texte extrait du PDF).
+- Passage exact : « The odds of contacting a lead if called in 5 minutes versus 30 minutes drop 100 times. The odds of qualifying a lead if called in 5 minutes versus 30 minutes drop 21 times. » Et : « The odds of calling to contact a lead decrease by over 10 times in the 1st hour. The odds of calling to qualify a lead decrease by over 6 times in the 1st hour. »
+- Méthode (passage exact) : « We examined 3 years of data across six companies that generate and response to web leads, from over fifteen thousand leads and over one hundred thousand call attempts. » Les données viennent du système d'InsideSales.com (éditeur, partie intéressée). « This study did not address close ratios. » (l'étude ne porte PAS sur les signatures/ventes).
+- Contexte obligatoire si affiché : étude de 2007, 6 entreprises (non nommées, hors immobilier d'après ce que j'ai vu : secteur non précisé dans le document), appels sortants, résumé commercial d'un éditeur, non publié en revue, rapport de cotes (odds), pas un taux de conversion. Ne mesure pas les ventes.
+- Verdict : confirme que les chiffres x21 / x100 existent bien dans la source, MAIS non transposable à l'immobilier français. Affichage actuel (« de chances de qualifier un lead rappelé en 5 min plutôt qu'en 30 min ») : le mot « chances » est une simplification de « odds » ; niveau B, avec contexte complet, ou à retirer.
+- Précision : la page actuelle attribue « MIT/InsideSales 2007 » : l'intitulé exact est une présentation commerciale d'InsideSales.com avec un professeur du MIT, pas une publication du MIT.
+
+### B2' (niveau B/C) Harvard Business Review 2011 (x7, 23 %, 37 %, 42 h)
+- Confirmé : « The Short Life of Online Sales Leads », J. B. Oldroyd, K. McElheran, D. Elkington, HBR mars 2011, vol. 89 n°3, p. 28 (notice BYU https://scholarsarchive.byu.edu/facpub/9711, consultée le 14/10/2026). Seul extrait lisible : « Our research shows that most companies are not responding nearly fast enough. »
+- Non confirmé à la source : hbr.org est derrière paywall (page consultée le 14/10/2026 : seule l'introduction est lisible). Les chiffres 7x, 23 %, 37 %, 42 h, 2 241 entreprises, 1,25 million de leads viennent de la recherche précédente (04/10) via relais ; je ne les ai pas revus dans le texte de l'article. => Niveau C (non vérifié à la source) pour ces chiffres tant que le texte intégral n'est pas consulté.
+
+### F2 (niveau A) Taux de commission moyen en France (2022)
+- Affirmation prête à afficher : « En France, le taux moyen de commission des agences immobilières était de 5,78 % TTC en 2022, selon l'Autorité de la concurrence (moyenne de l'UE : environ 4 % TTC). »
+- Source : Autorité de la concurrence, communiqué « The Autorité de la concurrence issues its opinion on the competitive situation in the property brokerage market » (avis 23-A-07 du 02/06/2023), publié le 07/06/2023 — https://www.autoritedelaconcurrence.fr/en/press-release/autorite-de-la-concurrence-issues-its-opinion-competitive-situation-property
+- Passage exact : « which averaged 5.78% incl. VAT in 2022, well above the European Union average of around 4% incl. VAT. » ; « could generate an annual saving of nearly €3 billion for households ».
+- Consulté le 14/10/2026 (version anglaise du communiqué ; version française à relire pour la formulation FR).
+- Contestation : la FNAIM juge ce chiffre en décalage avec ses propres données (4,80 % TTC en 2016, voir F3) : montrer les deux si les deux sont affichés. (Contestation connue par un résumé de recherche, article mysweetimmo non ouvert.)
+- CORRIGE/CONFIRME l'existant : D2 (5,78 % « source primaire non retrouvée ») est désormais retrouvé : niveau A, année 2022 (et non « date non précisée »).
+
+### F3 (niveau A, ancien) Honoraires moyens des adhérents FNAIM (données 2016)
+- Affirmation : « Honoraires moyens des adhérents FNAIM : 4,80 % TTC (4 % HT) en 2016, pour une transaction type de 195 800 € (5 814 adhérents). »
+- Source : FNAIM, communiqué de presse « Mise au point de la FNAIM sur les honoraires d'agences », 06/09/2018 — https://www.fnaim.fr/communiquepresse/1686/10-mise-au-point-de-la-fnaim-sur-les-honoraires-d-agences-la-verite-des-chiffres-est-toute-autre.htm
+- Passages exacts : « Les honoraires moyens des adhérents de la FNAIM sont de 4,80% TTC. » ; « soit 4% hors taxe pour une transaction type s'établissant à 195 800 euros » ; « par nos 5814 adhérents » ; « les honoraires en 2016 ont représenté 4,80% TTC ». Consulté le 14/10/2026.
+- CONFIRME D1 (04/10). Limite : source d'un syndicat professionnel, données de 2016 (10 ans), prix type de 195 800 € très inférieur au prix local de La Ciotat ; afficher « 4 % HT » comme honoraires moyens actuels = trompeur. La FNAIM précise elle-même, d'après un résumé non ouvert, que les honoraires sont plus élevés sur le pourtour méditerranéen : introuvable à la source, ne pas affirmer.
+- Recommandation : si un taux est nécessaire dans le calcul, le laisser à saisir par l'agence (son propre taux). Valeur par défaut justifiable uniquement avec contexte : « 4,80 % TTC FNAIM 2016 » ou « 5,78 % TTC Autorité 2022 » (deux sources, écart de 1 point).
+
+### B3' (niveau B) Velocify, « The Ultimate Contact Strategy » : 93 % CONFIRMÉ à la source
+- Source : Velocify (éditeur de logiciel), présentation SlideShare https://www.slideshare.net/Velocify/the-ultimate-contact-strategy ; consulté le 14/10/2026.
+- Passages exacts : « Figure 2 shows that 93% of all converted leads are reached by the sixth call attempt. » ; « aggregated across almost 3.5 million leads from more than 400 companies » ; « The leads included were all generated in the first half of 2012. » ; secteurs : « span a variety of industries ».
+- CORRIGE l'existant : la page 04/10 dit « vers 2014 » ; les leads datent du premier semestre 2012. Le libellé affiché (« des leads convertis avaient été joints au plus tard au 6e appel ») est fidèle, mais l'étude (a) est américaine, (b) date de 2012, (c) vient d'un éditeur de logiciel, (d) décrit le moment de la prise de contact de leads déjà convertis, ce qui ne prouve pas qu'appeler six fois fait convertir, (e) ne porte pas sur l'immobilier. En France, les appels sont limités par la loi (consentement, 4 par mois par contact) : l'affichage « 6e appel » est en tension avec le socle légal du produit. Recommandation : retirer.
+
+### B4' (niveau B/C) Temps administratif La Boîte Immo (2017)
+- Source : monimmeuble.com (article du 19/09/2017, mis à jour le 13/07/2022), https://monimmeuble.com/?p=33144, relayant un sondage de La Boîte Immo (éditeur de webmarketing immobilier). Consulté le 14/10/2026.
+- Passages exacts : « menée auprès de 629 agents immobiliers » ; « Sondage réalisé par La Boîte Immo auprès de 629 répondants » ; « 69% entre 4 et 6 heures sur l'aspect administratif ».
+- CORRIGE l'existant : (1) l'unité de temps n'apparaît pas dans le passage lu (le 04/10 on écrivait « hebdomadaires selon l'article » : non établi) ; (2) c'est 69 % des répondants, pas une moyenne ; (3) l'enquête primaire n'a pas été consultée, seulement la reprise de presse. Niveau B avec contexte « sondage déclaratif d'un éditeur, 629 répondants, 2017 », ou C si l'unité (par semaine) ne peut pas être confirmée. Le repère « étude : 4 à 6 h » du curseur « par semaine » repose sur une unité non confirmée : à retirer ou qualifier.
+
+### C1 Introuvables ou non étayés (France)
+- Part des ventes réalisées par un professionnel : introuvable en source primaire. Trouvés seulement : « 70% sont réalisées par une agence immobilière » (blog Laforêt, mis à jour 02/12/2019, aucune étude citée, consulté 14/10/2026) ; ~68 % (Observatoire de la franchise, date non précisée, non ouvert) ; ~31 % de ventes entre particuliers vers 2015 (résumé de recherche, non ouvert). Chiffres divergents, aucun primaire : NIVEAU C, ne pas afficher. La réponse ministérielle (Assemblée nationale, question écrite n°753, 16e législature) que j'ai lue ne donne aucune part de marché.
+- Part mandats exclusifs / simples : introuvable (affirmations d'agences sans étude : « près de 70 % » simple chez Orpi, « 30 % » exclusif ailleurs). C.
+- Délai moyen de vente en France : introuvable en source primaire (98 jours pour une maison selon RealAdvisor ; 105 jours maison et 99 jours appartement selon Toute la Franchise, juillet 2026, sans source ; pages non ouvertes). C.
+- Nombre d'agences et d'agents en France : introuvable en primaire (30 000 à 32 000 agences selon des sites commerciaux ; Altares : 887 défaillances d'agences en 2023, relayé, non ouvert). Panorama OPCOEP 2025 trouvé mais PDF non exploitable par mes outils. C.
+- Nombre d'agences contactées par un vendeur avant mandat, importance de la rapidité de réponse en France : introuvable. Seule donnée : NAR (États-Unis) 81 % des vendeurs contactent un seul agent, source primaire payante non consultée. C.
+- « 44 % abandonnent après une relance », « 80 % des ventes nécessitent 5 relances » : aucune source primaire (déjà non affichable le 04/10). C, confirmé.
+- Taux estimation → mandat, lead → mandat, mandat → vente : aucune source. Les curseurs 8 % et 60 % de la page sont des hypothèses.
+- Prix médian « 367 000 € appartement à La Ciotat (DVF 2025) » : NON CONFIRMÉ. Le 367 567 € (RealAdvisor) ne précise pas la période. immovrai (affirme exploiter la base DVF de la DGFiP, consulté 14/10/2026) donne des prix au m² (appartements 5 185 €/m², maisons 5 874 €/m² ; 555 appartements et 185 maisons vendus sur un an) et pas de prix médian en euros ; ses propres chiffres 2025 divergent (5 333 €/m², 553 ventes). Habity (cite DVF+ Cerema 2025) : 5 303 €/m². Plusieurs valeurs au m² pour la même commune : pas de chiffre « DVF 2025 » unique. Ne pas afficher l'étiquette « DVF 2025 » telle quelle. C.
+- Salaire d'un négociateur, coût horaire de 40 € : hypothèse, aucune source primaire retrouvée. C.
+
+## Synthèse en langage simple (état au 14/10/2026, recherche limitée, voir plus bas)
+- Affirmable avec source primaire : 949 000 ventes de logements anciens en France à fin mai 2026 (Notaires de France) ; taux moyen de commission des agences en France de 5,78 % TTC en 2022 (Autorité de la concurrence), contre environ 4 % TTC en moyenne dans l'UE ; honoraires moyens FNAIM de 4,80 % TTC en 2016.
+- Non affirmable comme fait sur la page : « x21 / x7 / x100 » (études américaines anciennes, d'éditeurs, tous secteurs, rapports de cotes et non taux de conversion) ; « 93 % au 6e appel » (États-Unis, 2012, éditeur, en tension avec la loi française sur les appels) ; « 23 % sans réponse » (HBR 2011, texte intégral non consulté) ; le prix médian de 367 000 € « DVF 2025 » ; « 4 à 6 h d'administratif » (sondage d'éditeur de 2017, unité non confirmée).
+- Introuvables en source primaire : part des ventes via un professionnel, mandats exclusifs/simples, délai moyen de vente, nombre d'agences/agents, nombre d'agences consultées par un vendeur, taux de transformation.
+- Conséquence : une simulation de perte en euros ne peut reposer que sur les chiffres de l'agence elle-même, saisis par l'utilisateur ; aucune valeur par défaut ne peut être présentée comme un fait.
+
+## Tableau des faits de niveau A
+| # | Affirmation prête à afficher | Valeur | Année | Source | Passage exact | Consulté |
+|---|---|---|---|---|---|---|
+| F1 | « En France, 949 000 ventes de logements anciens étaient enregistrées à fin mai 2026 (Notaires de France). » | 949 000 | 2026 | CSN, communiqué « Marché immobilier : le CSN publie la note de conjoncture immobilière de juillet 2026 », 23/07/2026, https://presse.notaires.fr/marche-immobilier-le-csn-publie-la-note-de-conjoncture-immobiliere-de-juillet-2026/ | « avec 949 000 ventes enregistrées à fin mai 2026 » | 14/10/2026 |
+| F2 | « Taux moyen de commission des agences en France : 5,78 % TTC en 2022, contre environ 4 % TTC en moyenne dans l'Union européenne (Autorité de la concurrence). » | 5,78 % TTC | 2022 | Autorité de la concurrence, avis 23-A-07 (02/06/2023), communiqué du 07/06/2023, https://www.autoritedelaconcurrence.fr/en/press-release/autorite-de-la-concurrence-issues-its-opinion-competitive-situation-property | « averaged 5.78% incl. VAT in 2022, well above the European Union average of around 4% incl. VAT » | 14/10/2026 |
+| F3 | « Honoraires moyens des adhérents FNAIM en 2016 : 4,80 % TTC (4 % HT), pour une transaction type de 195 800 € (source : FNAIM, syndicat professionnel). » | 4,80 % TTC | 2016 | FNAIM, communiqué du 06/09/2018, https://www.fnaim.fr/communiquepresse/1686/10-mise-au-point-de-la-fnaim-sur-les-honoraires-d-agences-la-verite-des-chiffres-est-toute-autre.htm | « Les honoraires moyens des adhérents de la FNAIM sont de 4,80% TTC. » | 14/10/2026 |
+
+Total niveau A : 3 (F1 : le passage a été lu sur la page liste des communiqués du CSN ; « +5,7 % » et « cumul 12 mois » à confirmer dans le PDF avant affichage. F3 : ancien et émis par une partie intéressée.)
+
+## Tableau des faits de niveau B (contexte obligatoire à afficher)
+| # | Fait | Contexte obligatoire | Source consultée |
+|---|---|---|---|
+| B1' | Les chances de joindre un lead sont 100 fois moindres à 30 min qu'à 5 min ; de le qualifier, 21 fois | 2007, 6 entreprises non nommées, 15 000 leads, appels sortants, données de l'éditeur InsideSales.com, rapport de cotes, hors immobilier, ne mesure pas les ventes | PDF de la présentation InsideSales.com / MIT, 16/10/2007 (consulté 14/10/2026) |
+| B3' | 93 % des leads convertis ont été joints au plus tard au 6e appel | États-Unis, leads du 1er semestre 2012, ~3,5 millions de leads, 400+ entreprises tous secteurs, éditeur Velocify | SlideShare Velocify (consulté 14/10/2026) |
+| B4' | 69 % des répondants consacrent « entre 4 et 6 heures » à l'administratif | France, sondage La Boîte Immo (éditeur), 629 répondants, 2017, déclaratif, unité de temps non confirmée | monimmeuble.com, 19/09/2017 (consulté 14/10/2026) |
+
+Total niveau B : 3.
+
+## Affirmations de niveau C actuellement affichées (components/landing-texts.ts) et décision
+| Texte actuel | Problème | Décision |
+|---|---|---|
+| `speed.value` « ×{value} » et caption « de chances de qualifier un lead rappelé en 5 minutes plutôt qu'en 30 minutes. » ; `bars` « ×21 / ×1 » | Source confirmée (odds, 2007, éditeur), mais « chances » n'est pas « odds », hors immobilier, ne mesure pas les ventes | Retirer ; ou B avec contexte complet |
+| `speed.secondary` « en tentant le contact dans l'heure plutôt qu'une heure plus tard » (×7) | Texte HBR non consulté (paywall) : non vérifié à la source | Retirer |
+| `speed.note` « Études américaines tous secteurs : MIT/InsideSales 2007 ; Harvard Business Review 2011 » | « MIT/InsideSales » est la présentation d'un éditeur avec un professeur, pas une étude du MIT | Reformuler ou retirer avec le bloc |
+| `mandates.sliders.lateShare.benchmark` « audit américain : 23 % sans réponse » | HBR 2011 non vérifié à la source ; États-Unis, tous secteurs | Retirer |
+| `mandates.fixed` « 8 % des demandes deviennent un mandat » et « 60 % des mandats aboutissent à une vente » | Aucune source | Saisie par l'agence, sans valeur par défaut |
+| `mandates.fixed` « 367 000 € — prix médian d'un appartement à La Ciotat (DVF 2025) » | Période et calcul non traçables ; sources divergentes | Remplacer par une saisie « prix de vente moyen de vos biens » |
+| `mandates.fixed` « 4 % HT — honoraires moyens (FNAIM 2016) » | Chiffre réel mais ancien et d'un syndicat ; l'afficher comme moyenne actuelle est trompeur | Saisie du taux de l'agence ; repères F2/F3 avec année |
+| `mandates.sliders` « Demandes vendeurs par mois », « Part traitée trop tard ou sans suivi » | Aucune donnée française | Saisie par l'agence, sans valeur par défaut présentée comme un fait |
+| `time.sliders.hours.benchmark` « étude : 4 à 6 h » | Unité de temps non confirmée, sondage d'éditeur 2017 | Retirer, ou B qualifié |
+| `time.fixed` « 45 semaines », « 30 % automatisable », « 40 € de coût horaire chargé » | Hypothèses sans source | Saisie par l'agence |
+| `followup.value` « 93 % … au plus tard au 6ᵉ appel » et `timelineLabel` « Six contacts successifs, canaux alternés » | Étude américaine de 2012 d'éditeur ; suggère 6 contacts, en tension avec la limite de 4 appels par mois | Retirer |
+| `title`/`body` « Ce que vos délais coûtent… calculés à partir d'études publiques » | La plupart des sources ne sont pas primaires ni françaises | Reformuler après retrait |
+
+## Proposition de contenu pour la section
+- Bloc Réactivité (« Chaque minute compte ») : à retirer (aucun fait A français pour le remplacer).
+- Bloc Mandats : calcul entièrement sur les chiffres de l'agence (demandes par mois, part sans suite, taux demande → mandat, prix de vente moyen, taux d'honoraires), tous saisis par l'utilisateur ; résultat étiqueté « calcul sur vos chiffres, pas une prévision ». Aucune valeur par défaut justifiable. Repère d'honoraires affichable : « 5,78 % TTC en moyenne en France en 2022 (Autorité de la concurrence) ».
+- Bloc Temps : calcul sur les heures saisies par l'agence ; aucune valeur par défaut justifiable.
+- Bloc Relance : à retirer.
+- Bloc contexte marché (nouveau, fait A) : « 949 000 ventes de logements anciens en France à fin mai 2026 (Notaires de France) ».
+- Bloc Sources (liste numérotée, prête à afficher) :
+  1. Conseil supérieur du notariat, « Marché immobilier : le CSN publie la note de conjoncture immobilière de juillet 2026 », 23 juillet 2026 (presse.notaires.fr).
+  2. Autorité de la concurrence, avis 23-A-07 du 2 juin 2023 sur la situation concurrentielle du courtage immobilier, communiqué du 7 juin 2023 (autoritedelaconcurrence.fr).
+  3. FNAIM, « Mise au point de la FNAIM sur les honoraires d'agences », 6 septembre 2018, données 2016 (fnaim.fr).
+
+## Risques juridiques de publicité (à faire valider par un juriste)
+- Code de la consommation, pratiques commerciales trompeuses : toute affirmation chiffrée doit pouvoir être prouvée par l'annonceur ; une étude américaine de 2007 ou 2012 d'un éditeur, hors immobilier, est difficile à défendre pour une promesse de gain en France. Articles exacts à vérifier par le juriste (non relus sur Légifrance dans cette recherche).
+- Les calculs de « mandats perdus » basés sur des hypothèses peuvent être lus comme une promesse de résultat : les présenter comme calcul sur les chiffres de l'utilisateur, avec la mention « ne constitue pas une promesse ».
+- L'idée de « 6 contacts » heurte la limite d'appels du socle légal du produit.
+
+## Limites de la recherche
+- Article HBR 2011 : paywall, texte intégral non consulté ; les chiffres 7x, 23 %, 37 %, 42 h ne sont connus que par des reprises (résumés de recherche).
+- PDF de la note de conjoncture n°72 : illisible par mes outils ; seul le passage du communiqué du CSN a fourni 949 000. « +5,7 % » et « cumul 12 mois » viennent de Batiweb (24/07/2026) et de résumés de recherche.
+- actu-juridique.fr et economie.gouv.fr : erreur 403. Panorama OPCOEP 2025 : PDF non exploitable. DVF officiel (Explore DVF, data.gouv.fr) non interrogé : aucun prix médian vérifié pour La Ciotat.
+- Non traités faute de source : délais de vente, mandats exclusifs, comportement des vendeurs en France, nombre d'agences/agents, sources Banque de France, INSEE et IGEDD.
+- Légifrance non consulté.
+
+STATUT : recherche terminée au 14/10/2026 dans ces limites. Décompte : A = 3, B = 3, C = 16 environ.

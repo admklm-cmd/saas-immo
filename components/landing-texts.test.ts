@@ -248,6 +248,13 @@ const EDITORIAL = {
   final: LANDING_TEXTS.final,
 };
 
+describe("hero subtitle (U.3)", () => {
+  it("is the two sentences, one per line", () => {
+    expect(LANDING_TEXTS.hero.subtitleLines).toHaveLength(2);
+    expect(LANDING_TEXTS.hero.subtitle).toBe(LANDING_TEXTS.hero.subtitleLines.join(" "));
+  });
+});
+
 describe("landing editorial titles", () => {
   it.each(Object.entries(EDITORIAL))("%s: title = its author lines, at most four", (_key, texts) => {
     expect(texts.title).toBe(texts.titleLines.join(" "));

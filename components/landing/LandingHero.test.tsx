@@ -51,6 +51,17 @@ describe("LandingHero without JavaScript (server HTML)", () => {
     expect(visual?.textContent?.replace(/\s+/g, " ").trim()).toBe(HERO_TITLE);
   });
 
+  it("orders the title, the subtitle, the actions, the shape zone, the tag then the terminal; no prompt sign, no cursor (U.1, U.2)", () => {
+    const order = ["#hero-title", "[data-nano-stage]", "[data-testid='hero-tag']", "[data-testid='hero-terminal']"].map((selector) => container.querySelector(selector));
+    expect(order.every(Boolean)).toBe(true);
+    for (let i = 0; i < order.length - 1; i += 1) {
+      expect(order[i]!.compareDocumentPosition(order[i + 1]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    const subtitle = container.querySelector("p.particle-veil");
+    expect(subtitle?.querySelectorAll("span.block")).toHaveLength(2);
+    expect(container.querySelector("[data-testid='hero-cursor']")).toBeNull();
+  });
+
   it("shows the tilted tag, the actions and the simulation labels (A5)", () => {
     expect(container.textContent).toContain(LANDING_TEXTS.hero.tag);
     expect(container.textContent).toContain(JOURNEY.badge);

@@ -12,10 +12,27 @@ import { buildSphere, shuffledIndices } from "./shapes";
  * cosine and sine per latitude band.
  */
 
-/** The sphere phase ends here (ms of the sequence): its last image is the start of the transition to the hand. */
-export const SPHERE_END_MS = 3800;
+/** The sphere is read at this time (ms of the sequence) to pair its points with the hands (a one-time assignment). */
+export const SPHERE_PAIRING_MS = 3800;
 /** Latitude bands of the differential rotation: one cosine and one sine per band and per frame, not per point. */
 const BANDS = 48;
+const COS_TILT = Math.cos(SPHERE.tilt);
+const SIN_TILT = Math.sin(SPHERE.tilt);
+
+/**
+ * The one angle that turns the sphere (rad, T in s; docs/design-system.md U.4): 0.22 rad/s up to 2 s, the speed rises
+ * smoothly to 0.45 rad/s by 5 s, then stays there. Strictly increasing: the sphere never stops turning.
+ */
+export function sphereAngle(t: number): number {
+  const { spin, spinTo } = SPHERE;
+  const u = Math.min(1, Math.max(0, (t - 2) / 3));
+  return spin * t + (spinTo - spin) * (3 * (u ** 3 - u ** 4 / 2) + Math.max(0, t - 5));
+}
+
+/** Share of the differential rotation (the equator turning faster than the poles) left at `t` s: 1 until 3 s, 0 from 6 s. */
+export function differentialShare(t: number): number {
+  return 1 - Math.min(1, Math.max(0, (t - 3) / 3));
+}
 
 const easeOutCubic = (q: number) => 1 - (1 - Math.min(1, Math.max(0, q))) ** 3;
 
@@ -79,44 +96,68 @@ export class SphereField {
     for (let b = 0; b < BANDS; b++) this.bandLat[b] = (b / (BANDS - 1)) * Math.PI - Math.PI / 2;
   }
 
+  private place: Placement = { cx: 0, cy: 0, sx: 1, sy: 1 };
+  private ms = 0;
+  private swelling = false;
+  private breath: number = SPHERE.breath;
+  private C1 = 1;
+  private S1 = 0;
+  private C2 = 1;
+  private S2 = 0;
+  private C3 = 1;
+  private S3 = 0;
+
   /**
-   * The sphere at a sequence time: points `from` to `to` (exclusive) are written into `x`, `y`, `z` (CSS px, z in
-   * sphere units). `swell` false disables the birth (the pairing reads the sphere at its end, whole).
+   * Sets the time of the next `at` calls: the trigonometry shared by all the points (a handful of sines of the
+   * time and one cosine and sine per latitude band). `swell` false disables the birth (the pairing reads the sphere whole).
+   * The time is not bounded: the sphere turns for as long as it holds a point.
    */
-  frame(ms: number, place: Placement, x: Float32Array, y: Float32Array, z: Float32Array, from: number, to: number, swell = true): void {
-    const t = Math.min(Math.max(ms, 0), SPHERE_END_MS) / 1000;
+  prepare(ms: number, place: Placement, swell = true): void {
+    const t = Math.max(ms, 0) / 1000;
+    this.place = place;
+    this.ms = ms;
+    const angle = sphereAngle(t);
+    const differential = SPHERE.differential * differentialShare(t);
     for (let b = 0; b < BANDS; b++) {
-      const yaw = SPHERE.spin * t * (1 + SPHERE.differential * Math.cos(2 * this.bandLat[b]!));
+      const yaw = angle * (1 + differential * Math.cos(2 * this.bandLat[b]!));
       this.bandCos[b] = Math.cos(yaw);
       this.bandSin[b] = Math.sin(yaw);
     }
-    const C1 = Math.cos(0.55 * t);
-    const S1 = Math.sin(0.55 * t);
-    const C2 = Math.cos(0.4 * t);
-    const S2 = Math.sin(0.4 * t);
-    const C3 = Math.cos(0.3 * t);
-    const S3 = Math.sin(0.3 * t);
-    const cosT = Math.cos(SPHERE.tilt);
-    const sinT = Math.sin(SPHERE.tilt);
-    const swelling = swell && ms < SPHERE.birthMs + SPHERE.birthSpread;
-    for (let i = from; i < to; i++) {
-      const n = (this.s3[i]! * C1 + this.c3[i]! * S1 + this.s2[i]! * C2 - this.c2[i]! * S2 + this.s5[i]! * C3 + this.c5[i]! * S3) / 3;
-      let radius = 0.5 * (1 + SPHERE.breath * n);
-      if (swelling) radius *= SPHERE.birthFrom + (1 - SPHERE.birthFrom) * easeOutCubic((ms - this.birth[i]!) / SPHERE.birthMs);
-      const b = this.band[i]!;
-      const cy = this.bandCos[b]!;
-      const sy = this.bandSin[b]!;
-      const cosLonY = this.cosLon[i]! * cy - this.sinLon[i]! * sy;
-      const sinLonY = this.sinLon[i]! * cy + this.cosLon[i]! * sy;
-      const px = radius * this.cosLat[i]! * cosLonY;
-      const pz = radius * this.cosLat[i]! * sinLonY;
-      const py = -radius * this.sinLat[i]!;
-      const y2 = py * cosT - pz * sinT;
-      const z2 = py * sinT + pz * cosT;
-      const s = FOCAL / (FOCAL - z2);
-      x[i] = place.cx + px * place.sx * s;
-      y[i] = place.cy + y2 * place.sy * s;
-      z[i] = z2;
-    }
+    this.C1 = Math.cos(0.55 * t);
+    this.S1 = Math.sin(0.55 * t);
+    this.C2 = Math.cos(0.4 * t);
+    this.S2 = Math.sin(0.4 * t);
+    this.C3 = Math.cos(0.3 * t);
+    this.S3 = Math.sin(0.3 * t);
+    this.swelling = swell && ms < SPHERE.birthMs + SPHERE.birthSpread;
+    // The surface breathes while the sphere is whole; its amplitude fades to 0 as the sphere empties (U.4).
+    this.breath = SPHERE.breath * Math.max(0, 1 - Math.max(0, ms - SPHERE.breathFadeFromMs) / (SPHERE.breathFadeToMs - SPHERE.breathFadeFromMs));
+  }
+
+  /** Point `i` on the sphere at the time of `prepare`: written into `x[i]`, `y[i]`, `z[i]` (CSS px, z in sphere units). */
+  at(i: number, x: Float32Array, y: Float32Array, z: Float32Array): void {
+    const n = (this.s3[i]! * this.C1 + this.c3[i]! * this.S1 + this.s2[i]! * this.C2 - this.c2[i]! * this.S2 + this.s5[i]! * this.C3 + this.c5[i]! * this.S3) / 3;
+    let radius = 0.5 * (1 + this.breath * n);
+    if (this.swelling) radius *= SPHERE.birthFrom + (1 - SPHERE.birthFrom) * easeOutCubic((this.ms - this.birth[i]!) / SPHERE.birthMs);
+    const b = this.band[i]!;
+    const cy = this.bandCos[b]!;
+    const sy = this.bandSin[b]!;
+    const cosLonY = this.cosLon[i]! * cy - this.sinLon[i]! * sy;
+    const sinLonY = this.sinLon[i]! * cy + this.cosLon[i]! * sy;
+    const px = radius * this.cosLat[i]! * cosLonY;
+    const pz = radius * this.cosLat[i]! * sinLonY;
+    const py = -radius * this.sinLat[i]!;
+    const y2 = py * COS_TILT - pz * SIN_TILT;
+    const z2 = py * SIN_TILT + pz * COS_TILT;
+    const s = FOCAL / (FOCAL - z2);
+    x[i] = this.place.cx + px * this.place.sx * s;
+    y[i] = this.place.cy + y2 * this.place.sy * s;
+    z[i] = z2;
+  }
+
+  /** The sphere at a sequence time: points `from` to `to` (exclusive) are written into `x`, `y`, `z`. */
+  frame(ms: number, place: Placement, x: Float32Array, y: Float32Array, z: Float32Array, from: number, to: number, swell = true): void {
+    this.prepare(ms, place, swell);
+    for (let i = from; i < to; i++) this.at(i, x, y, z);
   }
 }

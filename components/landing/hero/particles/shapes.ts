@@ -1,6 +1,6 @@
 import { createPrng } from "@/components/motion/engine/prng";
 
-import { BALL_SURFACE_SHARE, BALL_VOLUME_SPREAD, SEEDS, SPHERE } from "./hero-config";
+import { SEEDS, SPHERE } from "./hero-config";
 
 /**
  * Point sets of the hero shapes (docs/design-system.md T.3, T.2). Pure and deterministic (fixed
@@ -47,40 +47,6 @@ export function buildSphere(count: number): Shape {
   for (let k = 0; k < perPole; k++) put(1 - ((1 - cosCap) * (k + 0.5)) / perPole, k * GOLDEN_ANGLE);
   for (let k = 0; k < perPole; k++) put(-(1 - ((1 - cosCap) * (k + 0.5)) / perPole), k * GOLDEN_ANGLE);
   for (let k = 0; k < band; k++) put(cosCap - (2 * cosCap * (k + 0.5)) / band, k * GOLDEN_ANGLE);
-  return shape;
-}
-
-/**
- * The ball the left hand holds, radius 1 (the layout scales it): `BALL_SURFACE_SHARE` of the points on
- * its surface (Fibonacci), the others in its volume (gaussian, σ = `BALL_VOLUME_SPREAD`): the ball is
- * the densest zone of the picture, with a darker heart. `stream` shifts the seed (skin points vs identities).
- */
-export function buildBall(count: number, stream = 0): Shape {
-  const random = createPrng(SEEDS.ball + stream * 977);
-  const shape = emptyShape(count);
-  const surface = Math.round(count * BALL_SURFACE_SHARE);
-  for (let i = 0; i < count; i++) {
-    let x: number;
-    let y: number;
-    let z: number;
-    if (i < surface) {
-      const cos = 1 - (2 * (i + 0.5)) / surface;
-      const sin = Math.sqrt(1 - cos * cos);
-      const phi = i * GOLDEN_ANGLE;
-      x = sin * Math.cos(phi);
-      y = -cos;
-      z = sin * Math.sin(phi);
-    } else {
-      do {
-        x = gaussian(random) * BALL_VOLUME_SPREAD;
-        y = gaussian(random) * BALL_VOLUME_SPREAD;
-        z = gaussian(random) * BALL_VOLUME_SPREAD;
-      } while (x * x + y * y + z * z > 0.9);
-    }
-    shape.x[i] = x;
-    shape.y[i] = y;
-    shape.z[i] = z;
-  }
   return shape;
 }
 

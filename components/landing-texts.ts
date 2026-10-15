@@ -37,6 +37,11 @@ export const LANDING_TEXTS = {
     titleAccent: "main",
     subtitle:
       "Cinq agents IA préparent chaque étape jusqu'à une prochaine action claire. Le premier message et le mandat restent validés par votre équipe.",
+    /** The subtitle, one sentence per line (`subtitle === subtitleLines.join(" ")`, tested). */
+    subtitleLines: [
+      "Cinq agents IA préparent chaque étape jusqu'à une prochaine action claire.",
+      "Le premier message et le mandat restent validés par votre équipe.",
+    ],
     proofLabel: "Ce que le prototype fait réellement",
     proofs: [
       "Cinq agents spécialisés, chacun borné",

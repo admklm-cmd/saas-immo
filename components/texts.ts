@@ -1335,6 +1335,8 @@ export const APP_TEXTS = {
     heroNote: "Prototype de démonstration. Aucune donnée réelle, aucun envoi réel.",
     signIn: LANDING_TEXTS.actions.signIn,
     estimation: LANDING_TEXTS.actions.estimation,
+    /** Short label of the header link below 40 rem: the long one broke into three lines at 390 px. */
+    estimationShort: "Estimation",
   },
 
   emmaFollowUps: {

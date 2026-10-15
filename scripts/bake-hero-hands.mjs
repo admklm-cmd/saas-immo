@@ -2,6 +2,9 @@
 //
 //   node scripts/bake-hero-hands.mjs                 uses scripts/hero-hands.config.json
 //   node scripts/bake-hero-hands.mjs --source path   same config, another source image
+//   node scripts/bake-hero-hands.mjs --config file --out name
+//                                                    another config (same fields), writes `<name>.baked.json`;
+//                                                    the poster is only written for the default `hands` (docs U.5 `held`)
 //   node scripts/bake-hero-hands.mjs --debug dir     also writes a debug preview in `dir`
 //
 // Reads a picture of the hands (dark on light), samples points by tonal density (+ a share on the
@@ -19,7 +22,9 @@ import sharp from "sharp";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const args = process.argv.slice(2);
 const arg = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : null);
-const config = JSON.parse(await readFile(path.join(root, "scripts/hero-hands.config.json"), "utf8"));
+const outName = arg("--out") ?? "hands";
+if (!/^[a-z][a-z0-9-]*$/.test(outName)) throw new Error("--out must be a lowercase name (letters, digits, dashes)");
+const config = JSON.parse(await readFile(path.resolve(root, arg("--config") ?? "scripts/hero-hands.config.json"), "utf8"));
 const source = path.resolve(root, arg("--source") ?? config.source);
 
 function prng(seed) {
@@ -176,7 +181,7 @@ const baked = {
 };
 const outDir = path.join(root, "components/landing/hero/particles");
 await mkdir(outDir, { recursive: true });
-await writeFile(path.join(outDir, "hands.baked.json"), JSON.stringify(baked));
+await writeFile(path.join(outDir, `${outName}.baked.json`), JSON.stringify(baked));
 
 // 5. Poster (no JavaScript) and optional debug preview.
 const PW = 1600;
@@ -189,8 +194,10 @@ const dots = picked
   })
   .join("");
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${PW}" height="${PH}"><rect width="100%" height="100%" fill="#ffffff"/>${dots}</svg>`;
-await mkdir(path.join(root, "public/images/hero"), { recursive: true });
-await sharp(Buffer.from(svg)).webp({ quality: 70 }).toFile(path.join(root, "public/images/hero/hands-poster.webp"));
+if (outName === "hands") {
+  await mkdir(path.join(root, "public/images/hero"), { recursive: true });
+  await sharp(Buffer.from(svg)).webp({ quality: 70 }).toFile(path.join(root, "public/images/hero/hands-poster.webp"));
+}
 const debugDir = arg("--debug");
 if (debugDir) {
   const lines = baked.rails

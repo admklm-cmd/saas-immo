@@ -1,14 +1,14 @@
-import { ADAPTIVE, LIVE_WORK_BUDGET_MS, resolveTier, type Tier } from "./hero-config";
+import { ADAPTIVE, LIVE_WORK_BUDGET_MS, RAIL_DOTS, resolveTier, type Tier } from "./hero-config";
 import { decodeHands, type BakedHands } from "./hands-data";
 import { HeroScene } from "./HeroScene";
 import { handsShareOf, lookShareOf, paintContact, paintPoints, paintRobots, type PaintStats, type Palette } from "./hero-paint";
 import { computeLayout, type Rect } from "./layout";
-import { SEQUENCE_CAP_MS, SEQUENCE_END_MS, birthOpacity, contactOpacity, phaseAt } from "./timeline";
+import { BREATH_START_MS, SEQUENCE_CAP_MS, SEQUENCE_END_MS, activeWaves, birthOpacity, contactOpacity, phaseAt } from "./timeline";
 
 /**
  * Canvas renderer and loop of the hero particles (docs/design-system.md §2.11.4 ter G, H; T): one 2D
  * canvas, its own `requestAnimationFrame` loop (Anime.js stays reserved to the DOM). The opening
- * (the big sphere, the hand that takes the ball) is played once; then the living act (the second animation: the two index fingers that reach
+ * (the big sphere, always turning, that empties into the two hands) is played once; then the living act (the second animation: the two index fingers that reach
  * towards each other, §2.11.4 ter S) is the only loop, drawn at 60 frames/s on a computer, and it
  * really stops off screen, in a hidden tab and on the user's pause.
  * Colours are read from the CSS tokens of the canvas.
@@ -61,6 +61,7 @@ export class HeroParticleEngine {
   /** Share of the skin points drawn: 1, then 0.5, then 0 (docs T.4). */
   private skinShare = 1;
   private drawnPhase = "";
+  private drawnWaves = "";
   private lastDataset = -1000;
   private capPublished = false;
   private readonly intervals: number[] = [];
@@ -68,7 +69,7 @@ export class HeroParticleEngine {
   private readonly work: number[] = [];
   private frames = 0;
   private colors: Palette = { ink: "currentColor", canvas: "Canvas", accent: "currentColor" };
-  private readonly stats: PaintStats = { robots: 0, cobalt: 0 };
+  private readonly stats: PaintStats = { robots: 0, cobalt: 0, beads: 0 };
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -270,24 +271,26 @@ export class HeroParticleEngine {
     if (still && !scene.ready) return;
     const sequenceMs = still ? SEQUENCE_CAP_MS : this.sequenceMs;
     const state = phaseAt(sequenceMs);
-    // The second animation runs from the end of the opening; a still image shows the rest position.
-    const moving = !still && sequenceMs >= SEQUENCE_END_MS;
-    scene.updateLive(this.actSec, moving);
+    // The hands breathe from `BREATH_START_MS`, the index fingers reach from the end of the opening (the breath keeps its own clock: no restart); a still image shows the rest position.
+    const moving = !still && sequenceMs >= BREATH_START_MS;
+    const breathSec = sequenceMs < SEQUENCE_END_MS ? (sequenceMs - BREATH_START_MS) / 1000 : this.actSec + (SEQUENCE_END_MS - BREATH_START_MS) / 1000;
+    scene.updateLive(this.actSec, moving, breathSec);
     const skin = still ? 0 : Math.round(scene.skin * this.skinShare);
-    scene.compute(state, sequenceMs, this.liveSec, !still, this.drawCount, skin);
-    scene.computeRobots(state, sequenceMs, still);
+    scene.compute(sequenceMs, this.liveSec, !still, this.drawCount, skin);
+    scene.computeRobots(sequenceMs, still);
 
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     ctx.clearRect(0, 0, geometry.width, geometry.height);
-    const share = handsShareOf(state, still);
+    const share = handsShareOf(sequenceMs, still);
     this.stats.cobalt = 0;
-    // The sphere is large (points × 1.25) until the hand takes the ball: the weight fades with the transition.
-    const sphereWeight = still ? 0 : state.phase === "sphere" ? 1 : state.phase === "to-hand" ? 1 - state.progress : 0;
-    paintPoints(ctx, scene, this.colors, lookShareOf(state, still), sphereWeight, still ? 1 : birthOpacity(sequenceMs));
-    paintRobots(ctx, scene, this.colors, state, share, still, this.stats);
+    // The sphere is large (points × 1.25) until the hands take over: the weight fades with the wave.
+    const sphereWeight = still ? 0 : 1 - share;
+    paintPoints(ctx, scene, this.colors, lookShareOf(sequenceMs, still), sphereWeight, still ? 1 : birthOpacity(sequenceMs));
+    paintRobots(ctx, scene, this.colors, share, still, this.stats);
     paintContact(ctx, scene, this.colors, still ? 1 : contactOpacity(sequenceMs), still, this.stats);
     ctx.globalAlpha = 1;
     this.drawnPhase = state.phase;
+    this.drawnWaves = activeWaves(sequenceMs).join(" ");
   }
 
   private publishState(state: EngineState): void {
@@ -297,7 +300,9 @@ export class HeroParticleEngine {
   /** Mirrors the engine on the canvas attributes the tests read. */
   private publish(force: boolean, now: number): void {
     const dataset = this.canvas.dataset;
+    // `data-phase` is an informative label derived from the clock; `data-phases` lists the motions running (U.4).
     if (this.drawnPhase && dataset.phase !== this.drawnPhase) dataset.phase = this.drawnPhase;
+    if (this.drawnWaves && dataset.phases !== this.drawnWaves) dataset.phases = this.drawnWaves;
     if (!force && now - this.lastDataset < 100) return;
     this.lastDataset = now;
     dataset.sequenceMs = String(Math.round(this.sequenceMs));
@@ -309,6 +314,12 @@ export class HeroParticleEngine {
     dataset.liveCycle = String(live && dataset.act === "live" ? live.cycle : 0);
     dataset.robots = String(this.stats.robots);
     dataset.cobalt = String(this.stats.cobalt);
+    // Beads on the rails: how many circulate (the messenger fades between two cycles, hence `railDotsDrawn`), and their diameter (CSS px).
+    dataset.railDotsDrawn = String(this.stats.beads);
+    if (this.scene) {
+      dataset.railDots = String(Math.round(this.scene.tier.railDots * RAIL_DOTS));
+      dataset.railDotSize = String(this.scene.tier.beadSize);
+    }
     dataset.liveFrameStep = String(this.liveStep);
     if (live && live.g0 > 0 && (force || now - this.lastGap >= 250)) {
       this.lastGap = now;
@@ -318,13 +329,9 @@ export class HeroParticleEngine {
     }
     const skinDrawn = this.scene?.skinDrawn ?? 0;
     dataset.points = String(this.scene && (this.state === "playing" || this.state === "paused" || this.drawnPhase) ? this.drawCount + skinDrawn : 0);
-    // Points of the skin drawn (0 as soon as the ball is formed), quiet rectangles in use (0 on the hands), the held ball.
+    // Points of the skin drawn (0 once it has dissolved), quiet rectangles in use (0 on the hands).
     dataset.skin = String(skinDrawn);
     dataset.quiet = String(this.drawnPhase && this.drawnPhase !== "hands" && this.state !== "reduced" && this.state !== "stopped" ? (this.scene?.quietCount ?? 0) : 0);
-    if (this.scene && (this.drawnPhase === "hand" || this.drawnPhase === "to-hands")) {
-      const ball = this.scene.ballStats();
-      if (ball) dataset.ball = `${Math.round(ball.x)},${Math.round(ball.y)},${Math.round(ball.r)},${ball.part.toFixed(2)}`;
-    }
     if (this.intervals.length >= 20) {
       dataset.frameP95 = percentile(this.intervals, 0.95).toFixed(1);
       dataset.frameMs = percentile(this.work, 0.75).toFixed(2);

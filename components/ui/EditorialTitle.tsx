@@ -18,7 +18,7 @@ export type EditorialTitleProps = {
   accent?: string;
   /** Lines of index < n are set in the subtle ink (problem section: 2). */
   subtleBefore?: number;
-  /** `poster` and `prompt` must sit in a `container-type: inline-size` column. `prompt`: command-prompt face (Inconsolata 700), landing hero only (docs/design-system.md T.5): a hanging `>` and a block cursor. */
+  /** `poster` and `prompt` must sit in a `container-type: inline-size` column. `prompt`: command-prompt face (Inconsolata 700), landing hero only (docs/design-system.md T.5): no prompt sign and no cursor (U.2). */
   size: "poster" | "prompt" | "statement" | "page";
   /**
    * `load`: CSS animation on load (100 ms delay); `in-view`: plays under the
@@ -202,20 +202,16 @@ export function EditorialTitle({
           return (
             <Fragment key={`${lineIndex}-${line}`}>
               <span
-                className={cn(styles.line, lineIndex < subtleBefore && styles.subtle, prompt && lineIndex === 0 && promptStyles.first)}
+                className={cn(styles.line, lineIndex < subtleBefore && styles.subtle)}
                 data-title-line={lineIndex}
                 data-title-tone={lineIndex < subtleBefore ? "subtle" : undefined}
               >
-                {tokens.map((token, index) => {
-                  const last = prompt && lineIndex === lines.length - 1 && index === tokens.length - 1;
-                  return (
-                    <span key={`${index}-${token}`} className={last ? styles.nowrap : undefined}>
-                      {renderToken(token, lineIndex, index)}
-                      {last ? <span className={promptStyles.cursor} data-testid="hero-cursor" data-hero-cursor="" aria-hidden="true" /> : null}
-                      {index < tokens.length - 1 ? " " : null}
-                    </span>
-                  );
-                })}
+                {tokens.map((token, index) => (
+                  <span key={`${index}-${token}`}>
+                    {renderToken(token, lineIndex, index)}
+                    {index < tokens.length - 1 ? " " : null}
+                  </span>
+                ))}
               </span>
               {/* Collapsed between two blocks; keeps the copied text a sentence. */}
               {lineIndex < lines.length - 1 ? " " : null}

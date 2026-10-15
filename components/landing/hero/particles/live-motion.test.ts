@@ -8,7 +8,6 @@ import { LIVE_CYCLE, MIN_TIP_GAP_PX, resolveTier } from "./hero-config";
 import { computeLayout } from "./layout";
 import { cycleAt } from "./live-motion";
 import { emptyPose } from "./robots";
-import { phaseAt } from "./timeline";
 
 /**
  * The second animation of the hero (docs/design-system.md §2.11.4 ter S): the cycle, the move of the
@@ -72,12 +71,11 @@ describe("the index fingers (S.3, S.4)", () => {
 
   it("moves a point by at most half of the closing + 4 px, the finger fully and the forearm hardly (no change of plane or of identity)", () => {
     const { scene } = sceneFor(1440, 900);
-    const state = phaseAt(10_900);
     scene.updateLive(0, false);
-    scene.compute(state, 10_900, 0, false, 14_000);
+    scene.compute(10_900, 0, false, 14_000);
     const rest = { x: Float32Array.from(scene.x), y: Float32Array.from(scene.y) };
     const live = scene.updateLive(2.6, true);
-    scene.compute(state, 10_900, 0, false, 14_000);
+    scene.compute(10_900, 0, false, 14_000);
     const bound = (live.g0 - live.g1) / 2 + 4;
     let worst = 0;
     let finger = 0;
@@ -107,17 +105,16 @@ describe("the index fingers (S.3, S.4)", () => {
 
   it("starts without a jump: the first frames of the act are the image of the opening", () => {
     const { scene } = sceneFor(1440, 900);
-    const state = phaseAt(10_900);
     scene.updateLive(0, false);
-    scene.compute(state, 10_900, 0, false, 14_000);
+    scene.compute(10_900, 0, false, 14_000);
     const still = { x: Float32Array.from(scene.x), y: Float32Array.from(scene.y) };
     scene.updateLive(0, true);
-    scene.compute(state, 10_900, 0, false, 14_000);
+    scene.compute(10_900, 0, false, 14_000);
     let worst = 0;
     for (let i = 0; i < 14_000; i++) worst = Math.max(worst, Math.hypot(scene.x[i]! - still.x[i]!, scene.y[i]! - still.y[i]!));
     expect(worst).toBeLessThan(0.01);
     scene.updateLive(0.05, true);
-    scene.compute(state, 10_900, 0, false, 14_000);
+    scene.compute(10_900, 0, false, 14_000);
     worst = 0;
     for (let i = 0; i < 14_000; i++) worst = Math.max(worst, Math.hypot(scene.x[i]! - still.x[i]!, scene.y[i]! - still.y[i]!));
     expect(worst, "less than 0.2 px after 50 ms").toBeLessThan(0.2);
@@ -125,12 +122,11 @@ describe("the index fingers (S.3, S.4)", () => {
 
   it("a still image (pause, reduced motion) shows the rest position: no move at all", () => {
     const { scene } = sceneFor(390, 844);
-    const state = phaseAt(10_900);
     scene.updateLive(0, false);
-    scene.compute(state, 10_900, 0, false, 3_600);
+    scene.compute(10_900, 0, false, 3_600);
     const first = Array.from(scene.x.slice(0, 200));
     scene.updateLive(3.1, false);
-    scene.compute(state, 10_900, 5, false, 3_600);
+    scene.compute(10_900, 5, false, 3_600);
     expect(Array.from(scene.x.slice(0, 200))).toEqual(first);
     expect(scene.live.step).toBe("rest");
   });
@@ -138,7 +134,7 @@ describe("the index fingers (S.3, S.4)", () => {
 
 describe("the robots of the hands (S.6)", () => {
   it("gives each tier its roles: 2 messengers, then the circulants, then the orbitals", () => {
-    for (const [width, circulants, orbitals] of [[1440, 8, 4], [1024, 6, 4], [390, 4, 2]] as const) {
+    for (const [width, circulants, orbitals] of [[1440, 22, 4], [1024, 14, 4], [390, 8, 2]] as const) {
       const tier = resolveTier(width, false);
       const roles = Array.from({ length: tier.robots }, (_, i) => roleOf(i, tier).role);
       expect(roles.filter((role) => role === "messenger")).toHaveLength(2);
@@ -148,18 +144,18 @@ describe("the robots of the hands (S.6)", () => {
     }
   });
 
-  it("the left messenger reaches the neighbourhood of its tip at the end of the approach and carries the cobalt port on the way", () => {
+  it("the left messenger reaches the neighbourhood of its tip at the end of the approach and is cobalt, the right one white", () => {
     const { scene, hands, place, tier } = sceneFor(1440, 900);
     const pose = emptyPose();
     const live = scene.updateLive(2.6, true);
     handsRobotPose(0, hands, place, live, tier, pose);
     expect(Math.hypot(pose.x - live.tip.lx, pose.y - live.tip.ly), "within 12 px behind the tip").toBeLessThan(16);
     expect(pose.alpha).toBe(1);
-    expect(pose.accent).toBe(false);
-    handsRobotPose(0, hands, place, scene.updateLive(1.3, true), tier, pose);
-    expect(pose.accent).toBe(true);
+    expect(pose.bead).toBe(true);
+    expect(pose.accent, "the left messenger is cobalt").toBe(true);
     handsRobotPose(1, hands, place, scene.updateLive(1.3, true), tier, pose);
-    expect(pose.accent, "only one cobalt port").toBe(false);
+    expect(pose.accent, "the right messenger is white").toBe(false);
+    expect(pose.bead).toBe(true);
   });
 
   it("the messengers leave the wrist (the frame edge) at the start of the cycle and fade at 3.4 s, back at 6.9 s", () => {
@@ -173,8 +169,8 @@ describe("the robots of the hands (S.6)", () => {
     }
   });
 
-  it("draws at least 12 robots at 1440 (8 at 1024, 6 at 390) at every moment of the act, and they really travel", () => {
-    for (const [width, wanted] of [[1440, 12], [1024, 8], [390, 6]] as const) {
+  it("draws at least 24 robots at 1440 (16 at 1024, 10 at 390) at every moment of the act, and they really travel", () => {
+    for (const [width, wanted] of [[1440, 24], [1024, 16], [390, 10]] as const) {
       const { scene, hands, place, tier } = sceneFor(width, 900);
       const pose = emptyPose();
       let fewest = Infinity;

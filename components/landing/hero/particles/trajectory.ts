@@ -13,13 +13,20 @@ export function easeInOutCubic(q: number): number {
   return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
 }
 
+/**
+ * Easing of a point in flight (docs/design-system.md U.4): 30 % linear + 70 % ease-in-out, so the speed is never nil, neither at the
+ * start nor at the arrival (derivative 0.3 at both ends, 2.35 × the mean speed at most).
+ */
+export function flowEase(q: number): number {
+  const x = q < 0 ? 0 : q > 1 ? 1 : q;
+  return 0.3 * x + 0.7 * easeInOutCubic(x);
+}
+
 export function easeInOutSine(q: number): number {
   const x = q < 0 ? 0 : q > 1 ? 1 : q;
   return -(Math.cos(Math.PI * x) - 1) / 2;
 }
 
-/** Share of the duration spent waiting, by transition (the spec's `c`). */
-export const WAVE_SPREAD = { "to-hand": 0.4, "to-hands": 0.4 } as const;
 /** Noise on the delay, as a share of the duration. */
 export const WAVE_NOISE = 0.04;
 

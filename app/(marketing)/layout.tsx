@@ -17,8 +17,12 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
             <span className="hidden text-xs text-ink-subtle sm:inline">{APP_TEXTS.brand.prototype}</span>
           </Link>
           <div className="flex items-center gap-2">
-            <ButtonLink href="/estimation" variant="ghost" size="sm">
-              {APP_TEXTS.marketing.estimation}
+            {/* One line at any width: the short label below 40 rem, the full one (still the accessible name) above. */}
+            <ButtonLink href="/estimation" variant="ghost" size="sm" aria-label={APP_TEXTS.marketing.estimation} className="whitespace-nowrap">
+              <span className="max-sm:hidden">{APP_TEXTS.marketing.estimation}</span>
+              <span aria-hidden="true" className="sm:hidden">
+                {APP_TEXTS.marketing.estimationShort}
+              </span>
             </ButtonLink>
             <ButtonLink href="/connexion" size="sm">
               {APP_TEXTS.marketing.signIn}
