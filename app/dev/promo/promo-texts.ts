@@ -1,0 +1,30 @@
+/** Every French string of the promo video (centralised, no wording in the scene code). */
+export const PROMO_TEXTS = {
+  title1: "Chaque demande compte.",
+  title2: "Ascend les rassemble.",
+  main4: "Le premier message et le mandat restent les vôtres.",
+  title5: "Vous gardez la vue.",
+  signatureName: "Ascend Strategy",
+  signatureLine: "chaque demande vendeur avance.",
+  simulationNote: "exemple fictif — simulation",
+  humanLabel: "Validation humaine",
+  mandateNote: "confirmé par vous",
+  prototypeNote: "Prototype — exemple fictif",
+  fictionalNote: "exemple fictif",
+  stations: { lea: "Léa", hugo: "Hugo", emma: "Emma", human: "Validation humaine", louis: "Louis", sarah: "Sarah", mandate: "Mandat" },
+  terminal: {
+    lea: "lea → hugo   source vérifiée, fiche créée",
+    hugo: "hugo → emma   bien et délai qualifiés",
+    emma: "emma → vous   premier message prêt, à valider",
+    human: "vous → emma   j'ai relu, j'envoie.",
+    log: "envoi simulé — aucun message réel",
+    louis: "louis → sarah   créneau proposé",
+    sarah: "sarah   suivi jusqu'au mandat",
+  },
+  figures: {
+    open: "Dossiers en cours",
+    appointments: "Rendez-vous",
+    mandates: "Mandats confirmés",
+  },
+  chartLabel: "Demandes reçues, 30 derniers jours",
+} as const;
