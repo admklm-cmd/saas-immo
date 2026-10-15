@@ -14,7 +14,7 @@ export type Phase = (typeof PHASES)[number];
 
 /** The wave of the points from the sphere to the hands (ms of the sequence): `D` 6 600, delays up to half of it. */
 export const WAVE_START_MS = 3000;
-export const WAVE_END_MS = 9600;
+export const WAVE_END_MS = 10400;
 /** Share of the wave spent waiting: a point leaves at `start + c·D·rank` and takes at most `D·(1 − c)`. */
 export const WAVE_WAIT = 0.5;
 

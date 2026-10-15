@@ -20,7 +20,7 @@ const CANVAS = "[data-testid='hero-particles']";
 const VIEWPORTS = [
   { width: 1440, height: 900, points: 14_000 },
   { width: 1024, height: 768, points: 9_000 },
-  { width: 390, height: 844, points: 3_600 },
+  { width: 390, height: 844, points: 4_200 },
 ] as const;
 
 async function openHome(page: Page): Promise<void> {
@@ -111,7 +111,7 @@ test.describe("composition et périmètre (mouvement réduit)", () => {
 test.describe("métamorphose (mouvement autorisé)", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("1440 px : grande boule, main qui prend la boule, mains, dans l'ordre, une seule fois, puis l'image reste (O1, O6, 23)", async ({ page }) => {
+  test("1440 px : grande boule, une vague vers les mains, mains, dans l'ordre, une seule fois, puis l'image reste (O1, O6, 23)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     // Records every change of phase, with the time since the first observed state.
@@ -135,9 +135,10 @@ test.describe("métamorphose (mouvement autorisé)", () => {
     await expect(canvas).toHaveAttribute("data-state", "playing");
     await expect(canvas).toHaveAttribute("data-phase", "hands", { timeout: 20_000 });
     const log = await page.evaluate(() => (window as unknown as { __phases: { phase: string; at: number }[] }).__phases);
-    expect(log.map((entry) => entry.phase)).toEqual(["sphere", "to-hand", "hand", "to-hands", "hands"]);
+    // U.5(c): without the held ball (HELD_ENABLED false) the labels are sphere, to-hands, hands.
+    expect(log.map((entry) => entry.phase)).toEqual(["sphere", "to-hands", "hands"]);
     // The durations of the schedule between phases (the first entry is the first observed state, before the first frame: the clock is read from the first transition).
-    const expected = [0, 3_800, 6_600, 8_200, 10_600];
+    const expected = [0, 3_000, 10_600];
     for (let index = 2; index < log.length; index++) {
       const measured = log[index]!.at - log[1]!.at;
       const wanted = expected[index]! - expected[1]!;
@@ -213,7 +214,7 @@ test.describe("métamorphose (mouvement autorisé)", () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openHome(page);
       const canvas = page.locator(CANVAS);
-      for (const phase of ["sphere", "hand", "hands"]) {
+      for (const phase of ["sphere", "to-hands", "hands"]) {
         await expect(canvas).toHaveAttribute("data-phase", phase, { timeout: 30_000 });
         expect(contrastFailures(await measureContrast(page)), `${viewport.width} ${phase}`).toEqual([]);
       }

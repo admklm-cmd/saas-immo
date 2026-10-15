@@ -1,6 +1,6 @@
 import { createPrng } from "@/components/motion/engine/prng";
 
-import { SEEDS, SPHERE } from "./hero-config";
+import { SPHERE } from "./hero-config";
 
 /**
  * Point sets of the hero shapes (docs/design-system.md T.3, T.2). Pure and deterministic (fixed
@@ -19,12 +19,6 @@ export function emptyShape(count: number): Shape {
 }
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-
-function gaussian(random: () => number): number {
-  // Box-Muller; the guard keeps the logarithm finite.
-  const u = Math.max(random(), 1e-9);
-  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * random());
-}
 
 /**
  * Sphere: Fibonacci lattice on the surface, diameter 1 (radius 0.5), with a denser pole (docs T.3):

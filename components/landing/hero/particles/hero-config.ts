@@ -97,7 +97,7 @@ export const SPHERE = {
   breath: 0.035,
   /** The breath of the surface fades to 0 between these times (ms): the sphere is emptying into the hands. */
   breathFadeFromMs: 3000,
-  breathFadeToMs: 9600,
+  breathFadeToMs: 10_400,
   pole: 0.08,
   cap: (16 * Math.PI) / 180,
   /** Birth: the sphere swells from 60 % of its radius over this many ms, each point late by up to `birthSpread` ms. */

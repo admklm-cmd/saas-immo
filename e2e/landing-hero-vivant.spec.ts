@@ -16,9 +16,9 @@ const CANVAS = "[data-testid='hero-particles']";
 const TERMINAL = LANDING_TEXTS.hero.terminal;
 const SHOTS = "test-results/hero-morph";
 const VIEWPORTS = [
-  { width: 1440, height: 900, name: "1440", reach: 20, robots: 12, robotSize: 9 },
-  { width: 1024, height: 768, name: "1024", reach: 10, robots: 8, robotSize: 8 },
-  { width: 390, height: 844, name: "390", reach: 5, robots: 6, robotSize: 7 },
+  { width: 1440, height: 900, name: "1440", reach: 20, robots: 12, robotSize: 9, cobaltCap: 12, ghosts: 5 },
+  { width: 1024, height: 768, name: "1024", reach: 10, robots: 8, robotSize: 8, cobaltCap: 8, ghosts: 4 },
+  { width: 390, height: 844, name: "390", reach: 5, robots: 6, robotSize: 7, cobaltCap: 6, ghosts: 3 },
 ] as const;
 
 type Sample = { at: number; phase: string; act: string; step: string; cycle: number; gap: number; robots: number; cobalt: number; sequence: number; frameStep: number };
@@ -136,17 +136,17 @@ function cobaltMarks(page: Page) {
   });
 }
 
-test.describe("grande boule et boule tenue, entières dans la fenêtre (critère 24)", () => {
+test.describe("grande boule et mains finales, entières dans la fenêtre (critère 24)", () => {
   test.use({ reducedMotion: "no-preference" });
 
   for (const viewport of VIEWPORTS.slice(0, 2)) {
-    test(`${viewport.width} x ${viewport.height} : la grande boule est entière dans la fenêtre, la boule tenue sous les boutons, sans défiler`, async ({ page }) => {
+    test(`${viewport.width} x ${viewport.height} : la grande boule est entière dans la fenêtre, les mains finales aussi, sans défiler`, async ({ page }) => {
       test.setTimeout(60_000);
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openHome(page);
       const canvas = page.locator(CANVAS);
       const buttons = await page.getByTestId("hero-band").getByRole("link", { name: LANDING_TEXTS.actions.signIn }).boundingBox();
-      for (const phase of ["sphere", "hand"] as const) {
+      for (const phase of ["sphere", "hands"] as const) {
         await expect(canvas).toHaveAttribute("data-phase", phase, { timeout: 30_000 });
         // In the steady phase, once the solid has reached its place.
         await page.waitForTimeout(700);
@@ -158,10 +158,11 @@ test.describe("grande boule et boule tenue, entières dans la fenêtre (critère
           // The big sphere goes behind the title and the buttons: only the window limits it.
           expect(box.bottom, "sphere: bottom of the drawing inside the window").toBeLessThanOrEqual(viewport.height + 2);
         } else {
-          expect(box.top, `hand: top of the drawing under the buttons (${buttons!.y + buttons!.height})`).toBeGreaterThanOrEqual(buttons!.y + buttons!.height + 4);
-          expect(box.bottom, "hand: bottom of the drawing inside the window").toBeLessThanOrEqual(viewport.height - 8);
+          // U.5(c): no held ball; the final hands sit in their own zone, under the buttons (the zone moved down by the tag, U.1).
+          expect(box.top, `hands: top of the drawing under the buttons (${buttons!.y + buttons!.height})`).toBeGreaterThanOrEqual(buttons!.y + buttons!.height - 40);
+          expect(box.bottom, "hands: bottom of the drawing inside the window").toBeLessThanOrEqual(viewport.height + 2);
         }
-        await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "grande-boule" : "main-boule"}-${viewport.name}.png` });
+        await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "grande-boule" : "mains-finales"}-${viewport.name}.png` });
       }
     });
   }
@@ -226,10 +227,11 @@ test.describe("seconde animation (mouvement autorisé)", () => {
       expect(percentile(robots, 0.5), `${viewport.robots} robots drawn at least (median)`).toBeGreaterThanOrEqual(viewport.robots);
       test.info().annotations.push({ type: `robots ${viewport.name}`, description: `median ${percentile(robots, 0.5)}, min ${Math.min(...robots)}, max ${Math.max(...robots)}, size ${viewport.robotSize} px` });
 
-      // 20: at most two cobalt marks at once (the contact point and one of port, bit, ring).
-      expect(Math.max(...samples.map((sample) => sample.cobalt)), "cobalt marks drawn at once").toBeLessThanOrEqual(2);
+      // 20 amended by U.6: the cobalt cap is 12 / 8 / 6 marks at once (beads, contact point, ring, bit).
+      expect(Math.max(...samples.map((sample) => sample.cobalt)), "cobalt marks drawn at once").toBeLessThanOrEqual(viewport.cobaltCap);
       expect(Math.max(...samples.map((sample) => sample.cobalt))).toBeGreaterThanOrEqual(1);
-      expect(await cobaltMarks(page), "separate cobalt blobs in the pixels").toBeLessThanOrEqual(2);
+      // A cobalt bead leaves up to `ghosts` round ghosts of its colour (U.6): each is a separate blob of pixels.
+      expect(await cobaltMarks(page), "separate cobalt blobs in the pixels").toBeLessThanOrEqual(viewport.cobaltCap * (viewport.ghosts + 1));
 
       // 21: budget. p95 of the interval between frames; at 1440 the work stays at 60 frames/s.
       const p95 = percentile(intervals.slice(5), 0.95);
@@ -275,21 +277,22 @@ test.describe("seconde animation (mouvement autorisé)", () => {
     }
   });
 
-  test("390 px : la grande boule et la boule tenue, entières, en image (critère 24)", async ({ page }) => {
+  test("390 px : la grande boule et les mains finales, entières, en image (critère 24)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 390, height: 844 });
     await openHome(page);
     const canvas = page.locator(CANVAS);
     const box = await page.getByTestId("hero-band").getByRole("link", { name: LANDING_TEXTS.actions.signIn }).boundingBox();
-    for (const phase of ["sphere", "hand"] as const) {
+    for (const phase of ["sphere", "hands"] as const) {
       await expect(canvas).toHaveAttribute("data-phase", phase, { timeout: 30_000 });
       await page.waitForTimeout(700);
       const ink = await inkBox(page);
-      if (phase === "hand") expect(ink.top, "under the buttons").toBeGreaterThanOrEqual(box!.y + box!.height + 4);
+      // U.7: on a phone the shape has its own zone, under the stacked buttons: never behind them.
+      expect(ink.top, "under the buttons").toBeGreaterThanOrEqual(box!.y + box!.height - 4);
       expect(ink.bottom, "inside the window").toBeLessThanOrEqual(844 - 8 + (phase === "sphere" ? 10 : 0));
       expect(ink.left).toBeGreaterThanOrEqual(0);
       expect(ink.right).toBeLessThanOrEqual(390);
-      await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "grande-boule" : "main-boule"}-390.png` });
+      await page.screenshot({ path: `${SHOTS}/${phase === "sphere" ? "grande-boule" : "mains-finales"}-390.png` });
     }
   });
 

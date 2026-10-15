@@ -119,7 +119,8 @@ describe("HeroParticles with motion (§2.11.4 ter B, H)", () => {
       const phase = canvas().getAttribute("data-phase")!;
       if (seen.at(-1) !== phase) seen.push(phase);
     }
-    expect(seen).toEqual(["sphere", "to-hand", "hand", "to-hands", "hands"]);
+    // HELD_ENABLED is false (U.5(c)): no held-ball phases, one wave from the sphere to the hands.
+    expect(seen).toEqual(["sphere", "to-hands", "hands"]);
     const end = Number(canvas().getAttribute("data-sequence-ms"));
     expect(end).toBeGreaterThanOrEqual(10_600);
     run(5_000);

@@ -6,8 +6,9 @@ import { contrastFailures, instrumentPage, measureContrast, rafCalls } from "./h
 
 /**
  * New opening of the hero and prompt title (docs/design-system.md T, criteria 23 to 33 and the hero
- * part of 38): a big sphere behind the title, the hand that takes the ball, the two hands whose index
- * fingers almost touch; the title in the command-prompt face with its block cursor. Illustration:
+ * part of 38, amended by U on 14/10/2026): a big sphere behind the title that empties straight into the two hands
+ * whose index fingers almost touch (criteria 23 and 27, the held ball, are suspended while `HELD_ENABLED` is false);
+ * the title in the command-prompt face, without prompt sign or cursor (U.2). Illustration:
  * fictitious example, simulation; nothing is sent. No form on this journey: no consent checkbox.
  */
 
@@ -16,7 +17,7 @@ const CANVAS = "[data-testid='hero-particles']";
 const VIEWPORTS = [
   { width: 1440, height: 900, sphere: 768, points: 26_000, hands: 14_000, zoneTop: 499 },
   { width: 1024, height: 768, sphere: 640, points: 15_000, hands: 9_000, zoneTop: 392 },
-  { width: 390, height: 844, sphere: 350, points: 5_400, hands: 3_600, zoneTop: 540 },
+  { width: 390, height: 844, sphere: 360, points: 6_000, hands: 4_200, zoneTop: 449 },
 ] as const;
 
 async function openHome(page: Page): Promise<void> {
@@ -72,7 +73,7 @@ function drawnBox(page: Page) {
 
 test.describe("titre en invite de commandes (mouvement réduit)", () => {
   for (const viewport of [...VIEWPORTS, { width: 768, height: 1024 }] as const) {
-    test(`${viewport.width} px : police, graisse, lignes, étiquette hors du titre, curseur plein (32, 33)`, async ({ page }) => {
+    test(`${viewport.width} px : police, graisse, lignes, étiquette au-dessus du terminal, ni signe ni curseur (32, 41)`, async ({ page }) => {
       const fontRequests: string[] = [];
       page.on("request", (request) => {
         const host = new URL(request.url()).hostname;
@@ -105,18 +106,19 @@ test.describe("titre en invite de commandes (mouvement réduit)", () => {
       expect(style.overflow).toBeLessThanOrEqual(0);
       expect(style.page).toBeLessThanOrEqual(0);
 
-      // The tag sits above the title: no overlap at any width.
+      // U.1: the tag is the header of the demonstration, right above the terminal, never over the title.
       const tag = await page.getByTestId("hero-tag").boundingBox();
       const box = await title.boundingBox();
-      expect(tag && box && tag.y + tag.height <= box.y + 1).toBe(true);
+      const terminal = await page.getByTestId("hero-terminal").boundingBox();
+      expect(tag && box && (tag.y >= box.y + box.height || tag.y + tag.height <= box.y), "tag and title do not intersect").toBe(true);
+      expect(tag && terminal && terminal.y - (tag.y + tag.height) >= 0 && terminal.y - (tag.y + tag.height) < 24, "tag less than 24 px above the terminal").toBe(true);
       await expect(page.getByTestId("hero-tag")).toHaveText(LANDING_TEXTS.hero.tag);
 
-      // The accessible name is the sentence, read once; the cursor is decorative, solid and still.
+      // The accessible name is the sentence, read once; no cursor block, no prompt sign (U.2).
       await expect(title.locator(".sr-only")).toHaveText(HERO_TITLE);
-      const cursor = page.getByTestId("hero-cursor");
-      await expect(cursor).toHaveAttribute("aria-hidden", "true");
-      expect(await cursor.evaluate((node) => node.getAnimations().length)).toBe(0);
-      await expect(cursor).toHaveCSS("opacity", "1");
+      await expect(page.getByTestId("hero-cursor")).toHaveCount(0);
+      const sign = await title.locator("[data-title-line]").first().evaluate((node) => getComputedStyle(node, "::before").content);
+      expect(["none", "normal"]).toContain(sign);
       // « main » keeps its cobalt underline, under its four letters.
       const mark = await page.locator("[data-accent-mark]").first().evaluate((node) => getComputedStyle(node).backgroundColor);
       expect(mark).toMatch(/^rgb\(\s*(?:[0-9]{1,2}),\s*(?:[0-9]{1,3}),\s*(?:2[0-9]{2})\)$/);
@@ -177,7 +179,7 @@ test.describe("titre en invite de commandes (mouvement réduit)", () => {
     await openHome(page);
     await expect(page.getByRole("link", { name: LANDING_TEXTS.actions.estimation }).first()).toBeVisible();
     await expect(page.getByTestId("hero-tag")).toBeVisible();
-    await expect(page.getByTestId("hero-cursor")).toBeVisible();
+    await expect(page.getByTestId("hero-terminal")).toBeVisible();
   });
 });
 
@@ -242,7 +244,7 @@ test.describe("ouverture : grande boule, main qui prend la boule, raccord (mouve
     expect(changed / lit).toBeGreaterThanOrEqual(0.02);
   });
 
-  test("1440 px : phases dans l'ordre aux bornes 3,8 / 6,6 / 8,2 / 10,6 s, jamais de nuage ni de pomme, peau éteinte à 6,6 s (23, 26, 27, 28)", async ({ page }) => {
+  test("1440 px : une seule vague de la sphère vers les mains (3 → 10,4 s), jamais de nuage ni de pomme, peau éteinte à 7 s (23 adapté, 26, 28)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(() => {
@@ -258,18 +260,17 @@ test.describe("ouverture : grande boule, main qui prend la boule, raccord (mouve
       });
     });
     await openHome(page);
-    await expect(page.locator(CANVAS)).toHaveAttribute("data-phase", "to-hand", { timeout: 20_000 });
-    await expect(page.locator(CANVAS)).toHaveAttribute("data-phase", "hand", { timeout: 20_000 });
-    expect(Number(await attr(page, "data-skin")), "skin points after 6.6 s").toBe(0);
-    // The hand holds the ball: a disc of 75 to 115 px, the right-half points in it.
-    await atSequence(page, 7_400);
-    const [, , radius, part] = (await attr(page, "data-ball"))!.split(",").map(Number);
-    expect(radius).toBeGreaterThanOrEqual(75);
-    expect(radius).toBeLessThanOrEqual(115);
-    expect(part).toBeGreaterThanOrEqual(0.85);
+    await expect(page.locator(CANVAS)).toHaveAttribute("data-phase", "to-hands", { timeout: 20_000 });
+    await atSequence(page, 7_000);
+    expect(Number(await attr(page, "data-skin")), "skin points after 7 s").toBe(0);
     await expect(page.locator(CANVAS)).toHaveAttribute("data-phase", "hands", { timeout: 20_000 });
     const log = await page.evaluate(() => (window as unknown as { __phases: { phase: string; ms: number }[] }).__phases);
-    expect(log.map((entry) => entry.phase)).toEqual(["sphere", "to-hand", "hand", "to-hands", "hands"]);
+    // Criteria 23 and 27 (the held ball, phases `to-hand` and `hand`) are SUSPENDED: HELD_ENABLED is false (U.5(c)),
+    // the sphere empties straight into the hands. They come back when held.baked.json exists.
+    expect(log.map((entry) => entry.phase)).toEqual(["sphere", "to-hands", "hands"]);
+    expect(log.some((entry) => entry.phase === "hand" || entry.phase === "to-hand")).toBe(false);
+    expect(Math.abs(log[1]!.ms - 3_000)).toBeLessThanOrEqual(250);
+    expect(Math.abs(log[2]!.ms - 10_600)).toBeLessThanOrEqual(250);
     // The act 2 is the unchanged one: the cobalt contact point, the tips at their gap of rest.
     await atSequence(page, 10_900);
     const gap = Number(await attr(page, "data-tip-gap-rest"));
@@ -278,8 +279,10 @@ test.describe("ouverture : grande boule, main qui prend la boule, raccord (mouve
     expect(Number(await attr(page, "data-quiet")), "no quiet zone on the hands").toBe(0);
   });
 
+  test.fixme("1440 px : boule tenue par une main entre 5,4 et 7 s (critères 23 et 27) : SUSPENDU, HELD_ENABLED est faux tant que l'illustration held n'est pas livrée (U.5(c), U.9)", () => {});
+
   for (const viewport of VIEWPORTS) {
-    test(`${viewport.width} px : la zone des mains reste à ± 8 px de sa place du 13/10 (28)`, async ({ page }) => {
+    test(`${viewport.width} px : la zone des mains reste à ± 8 px de sa place du 13/10 (28), composition mobile en 390 (47)`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await openHome(page);
       const zone = await page.locator("[data-nano-stage]").boundingBox();
@@ -338,22 +341,18 @@ test.describe("ouverture : grande boule, main qui prend la boule, raccord (mouve
     expect(Number(await attr(page, "data-sequence-ms"))).toBeLessThan(1_500);
   });
 
-  test("1440 px : le curseur clignote quatre fois (4,2 s) puis reste plein, et « Rejouer » le réarme (33)", async ({ page }) => {
+  test("1440 px : plus de curseur ni de signe devant le titre, et « Rejouer » ne réarme rien (41)", async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     await openHome(page);
-    const cursor = page.getByTestId("hero-cursor");
-    const timing = await cursor.evaluate((node) => {
-      const animation = node.getAnimations()[0]!;
-      const t = animation.effect!.getComputedTiming();
-      return { iterations: t.iterations, duration: t.duration, delay: t.delay };
-    });
-    expect(timing).toEqual({ iterations: 4, duration: 1060, delay: 900 });
-    await page.waitForTimeout(5_600);
-    expect(await cursor.evaluate((node) => node.getAnimations().length)).toBe(0);
-    await expect(cursor).toHaveCSS("opacity", "1");
+    await expect(page.getByTestId("hero-cursor")).toHaveCount(0);
+    const title = page.getByRole("heading", { level: 1, name: HERO_TITLE });
+    // The title may play its own reveal; no animation of it is a cursor blink.
+    const blinking = () => title.evaluate((node) => node.getAnimations({ subtree: true }).filter((animation) => /cursor|blink/i.test((animation as CSSAnimation).animationName ?? "")).length);
+    expect(await blinking()).toBe(0);
     await page.getByTestId("landing-replay").click();
-    expect(await cursor.evaluate((node) => node.getAnimations().length)).toBeGreaterThan(0);
+    expect(await blinking()).toBe(0);
+    await expect(page.getByTestId("hero-cursor")).toHaveCount(0);
   });
 
   test("390 px : la grande boule, la main et le raccord ne débordent pas, ni ne bloquent les boutons", async ({ page }) => {

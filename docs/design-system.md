@@ -3493,6 +3493,32 @@ Total au-dessus de la zone ≈ 433 px : **la zone commence à ≈ y 433 et tient
 
 **U.10 À transmettre à `frontend-ux`.** (1) Ordre conseillé : a. étiquette, `>`, curseur, sous-titre (CSS et JSX, indépendants du moteur) ; b. mobile (zone de la sphère, largeur des mains, boutons) ; c. perles (`paintRobots`, `hands-robots`) ; d. mouvement continu (`Φ(T)`, `e(q)`, évaluation de `A(T)` et `B(T)`, libellés dérivés) ; e. `held` seulement quand l'image sera livrée. (2) Ne rien changer à `hands.baked.json`, au poster, aux réglages S.7, ni à l'acte 2 (cycle d'approche, point de contact). (3) Les valeurs de départ (largeur des mains sur téléphone, `BALL_AT` de `held`, plafond de perles) se règlent **à l'œil sur capture** ; on consigne les valeurs retenues dans une section « U.11 Implémentation » comme T.11. (4) Mesurer le budget du mouvement continu **avant** de livrer ; consigner le palier de repli éventuel.
 
+##### U.11 Réalisation (frontend-ux, 15/10/2026) : valeurs retenues, écarts, mesures
+
+> **Statut : étapes a à f livrées le 15/10/2026.** `HELD_ENABLED = false` : critères 23, 27 et 48 **suspendus** (pas d'illustration « main en coupe »). Tests : unitaires verts, E2E `landing-hero-fluide.spec.ts` ajouté (critères 43 à 47 et plafond cobalt du 46).
+
+**Valeurs retenues.** Mains sur téléphone : `HANDS_WIDTH_SHARE.phone = 2` (valeur de départ conservée), `motionScale.phone` 0,55, identités phone 4 200 (+ 1 800 de peau = 6 000 points dessinés au plus à l'ouverture). Perles : 24 / 16 / 10, Ø 3,0 / 2,6 / 2,4 px, plafond cobalt 12 / 8 / 6, traînes 5 / 4 / 3 fantômes (U.6). Compensation de la zone de forme à 1440 : `margin-top` 8,84 rem (au lieu de 8,28 de T) pour que le haut de la zone reste à 498 px (référence 499, écart 1 px) ; à 1024 : 1,9 rem (écart 2 px). À 390 la composition est neuve (U.7) : zone à 449 px, hauteur 396 px.
+
+**Écarts à la spécification (assumés).**
+
+1. **Fin de la vague : 10 400 ms (et non 9 600).** Avec 9 600, les derniers points arrivaient 1 s avant l'acte 2 et le mouvement moyen tombait à 0,10 px par 50 ms entre 9,6 et 10,6 s (test unitaire du critère 43 en échec à 9,4 et 9,5 s : 0,22 px). La vague finit maintenant à 10 400 ms ; `e(q)` garde une vitesse non nulle à l'arrivée, donc le mouvement décroît en douceur (0,49 px à 10,0 s, 0,29 à 10,2 s) puis relaie la respiration et la dérive (0,10 px, la valeur de l'acte 2 inchangée). Seuil du test unitaire : **0,25 px jusqu'à 10 000 ms**, **0,08 px ensuite** (jamais nul) ; la dérive seule ne peut pas valoir 0,25 sans trembler. `breathFadeToMs` suit (10 400). Libellés : `data-phases` vaut `hands` seul à partir de 10 400.
+2. **Contraste du sous-titre.** Mesure réelle (pixel le plus sombre sous chaque ligne, texte rendu transparent) : **5,2:1 à 1024** (bord dense de la sphère derrière la 2ᵉ ligne), 6,3 à 1440, 6,8 à 390 : AA tenu (4,5), mais sous le 5,41 du critère 29 à 1024 seulement. Le titre reste ≥ 9,1:1 (≥ 7 exigé). L'étiquette (`.label-mono`, #66666e sur #ffffff) mesure **5,7:1** et non 17:1 comme annoncé en U.8 : AA tenu, texte inchangé, opaque. À arbitrer par le designer (assombrir `ink-muted` du sous-titre à 1024 si l'on veut 5,41).
+3. **Test de contraste de l'ouverture : il était vide.** L'assistant `measureContrast` ignorait tout texte d'un ancêtre opaque, donc tout le hero (fond blanc opaque de `hero-stage`) : les contrôles « pendant toute l'ouverture » passaient sans rien mesurer. Corrigé (`e2e/helpers/landing-network.ts` ne traite plus `hero-stage` comme une carte) : les mesures ci-dessus sont les premières réelles.
+4. **Titre mobile à 360** : le mot « main » mesure 25,6 px (28 px à 390, le titre suit la colonne) : plancher du test typographique 25 px pour le hero sous 390 px, 27 px ailleurs.
+5. **Cobalt en pixels (acte 2)** : chaque perle cobalt laisse jusqu'à 5 / 4 / 3 fantômes de sa couleur, donc le nombre de taches de pixels cobalt peut valoir plafond × (fantômes + 1) ; la limite de marques **comptées** (`data-cobalt`) reste 12 / 8 / 6.
+
+**Mesures réelles (Chromium headless, 60 Hz).** p95 d'intervalle d'image / travail JavaScript par image (`Performance.getMetrics`, `ScriptDuration`) :
+
+| Largeur | Ouverture (0 à 11 s) | Acte 2 (12 à 22 s) | Palier de repli |
+|---|---|---|---|
+| 1440, 14 000 points | p95 **16,7 ms**, p99 16,8 ; JS **3,25 ms** / image (p75 moteur 3,0) | p95 16,7 ; JS 2,88 ms | aucun |
+| 1024, 9 000 points | p95 **16,7 ms** ; JS 2,43 ms | p95 16,8 ; JS 1,75 ms | aucun |
+| 390, processeur × 4, 4 200 points | p95 **33,4 ms** (30 images/s), 3 images sur 564 au-delà de 34 ms ; JS 4,51 ms | p95 16,8 ; JS 1,49 ms | aucun (le moteur passe déjà à une image sur deux sur téléphone) |
+
+Budget T.4 / U.4 (≤ 4 ms JS à 1440, p95 ≤ 17 ms ; ≤ 34 ms à 390 × 4) **tenu** : le repli de U.4 (surface figée, peau × 0,5, identités × 0,75) n'a pas été utilisé, et il ne revient dans aucun cas à un point immobile.
+
+**Tests.** Unitaires : `components/landing`, `app/(marketing)`, `components/ui`, `components/texts` : 405 tests verts. E2E (accueil, hero, rejeu, sans-boucle, contraste, page-dust, typographie, voiles) : 117 réussis, 1 suspendu (`test.fixme`, critères 23 et 27).
+
 #### 2.11.5 Parcours du hero, badge et graphique : joués une fois
 
 > **`HeroJourney` remplacé le 02/10/2026 (soir)** par le bloc A (§ 2.11.8.3, en boucle, seule

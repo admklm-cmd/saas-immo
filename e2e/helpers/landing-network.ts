@@ -73,6 +73,8 @@ export async function measureContrast(page: Page): Promise<LineContrast[]> {
       // A card: an ancestor with a background of opacity ≥ 0.85.
       let card = false;
       for (let current: Element | null = element; current && current !== main; current = current.parentElement) {
+        // The opaque white stage of the hero is the ground the canvas is painted on, not a card: the texts over it are measured.
+        if (current.getAttribute("data-testid") === "hero-stage") continue;
         const channels = getComputedStyle(current).backgroundColor.match(/[\d.]+/g);
         if (channels && (channels.length === 3 || Number(channels[3]) >= 0.85)) {
           card = true;

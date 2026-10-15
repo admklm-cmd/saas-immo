@@ -303,7 +303,9 @@ test.describe("site public", () => {
         await open(page, path);
         expect(await overflowReport(page), `${path} @ ${width}`).toEqual([]);
         for (const accent of await accents(page)) {
-          expect(accent.size, `${path} @ ${width}: « ${accent.text} »`).toBeGreaterThanOrEqual(27); // 27.1 px at 390 on /estimation since the title tokens were lowered (34c5e20)
+          // 27.1 px at 390 on /estimation since the title tokens were lowered (34c5e20); the hero title is 28 px at 390 and follows the column below it (U.7: 25.6 px at 360).
+          const floor = path === "/" && width < 390 ? 25 : 27;
+          expect(accent.size, `${path} @ ${width}: « ${accent.text} »`).toBeGreaterThanOrEqual(floor);
         }
         if (width >= 1024) {
           for (const line of await authorLineCounts(page)) {
